@@ -29,7 +29,15 @@ export function Card({ className, children }: { className?: string; children: Re
   return <div className={cn('rounded-lg border border-border bg-surface', className)}>{children}</div>
 }
 
-export function CardHeader({ title, subtitle, action }: { title: ReactNode; subtitle?: ReactNode; action?: ReactNode }) {
+export function CardHeader({
+  title,
+  subtitle,
+  action,
+}: {
+  title: ReactNode
+  subtitle?: ReactNode
+  action?: ReactNode
+}) {
   return (
     <div className="flex items-start justify-between gap-4 border-b border-border px-5 py-4">
       <div className="min-w-0">
@@ -47,7 +55,15 @@ export function CardBody({ className, children }: { className?: string; children
 
 type Tone = 'neutral' | 'info' | 'good' | 'warning' | 'critical' | 'brand' | 'accent'
 
-export function Badge({ tone = 'neutral', children, className }: { tone?: Tone; children: ReactNode; className?: string }) {
+export function Badge({
+  tone = 'neutral',
+  children,
+  className,
+}: {
+  tone?: Tone
+  children: ReactNode
+  className?: string
+}) {
   return (
     <span
       className={cn(
@@ -67,7 +83,15 @@ export function Badge({ tone = 'neutral', children, className }: { tone?: Tone; 
   )
 }
 
-export function PageHeader({ title, description, actions }: { title: ReactNode; description?: ReactNode; actions?: ReactNode }) {
+export function PageHeader({
+  title,
+  description,
+  actions,
+}: {
+  title: ReactNode
+  description?: ReactNode
+  actions?: ReactNode
+}) {
   return (
     <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
       <div className="min-w-0">
@@ -92,7 +116,13 @@ export function StatTile({ label, value, hint }: { label: ReactNode; value: Reac
 export function Progress({ value, tone = 'brand' }: { value: number; tone?: 'brand' | 'warning' | 'critical' }) {
   const clamped = Math.max(0, Math.min(100, value))
   return (
-    <div className="h-1.5 w-full overflow-hidden rounded-full bg-surface-2" role="progressbar" aria-valuenow={clamped} aria-valuemin={0} aria-valuemax={100}>
+    <div
+      className="h-1.5 w-full overflow-hidden rounded-full bg-surface-2"
+      role="progressbar"
+      aria-valuenow={clamped}
+      aria-valuemin={0}
+      aria-valuemax={100}
+    >
       <div
         className={cn(
           'h-full rounded-full',
@@ -126,7 +156,9 @@ export function Tabs<T extends string>({
             onClick={() => onChange(tab.id)}
             className={cn(
               '-mb-px border-b-2 px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors',
-              tab.id === value ? 'border-brand text-text dark:border-accent' : 'border-transparent text-muted hover:text-text',
+              tab.id === value
+                ? 'border-brand text-text dark:border-accent'
+                : 'border-transparent text-muted hover:text-text',
             )}
           >
             {tab.label}
@@ -147,7 +179,16 @@ export function Table({ children }: { children: ReactNode }) {
 }
 
 export function Th({ children, className }: { children?: ReactNode; className?: string }) {
-  return <th className={cn('border-b border-border px-4 py-2.5 text-xs font-medium tracking-wide text-muted uppercase', className)}>{children}</th>
+  return (
+    <th
+      className={cn(
+        'border-b border-border px-4 py-2.5 text-xs font-medium tracking-wide text-muted uppercase',
+        className,
+      )}
+    >
+      {children}
+    </th>
+  )
 }
 
 export function Td({ children, className }: { children?: ReactNode; className?: string }) {
@@ -179,7 +220,17 @@ export function Select({ children, ...props }: SelectHTMLAttributes<HTMLSelectEl
   )
 }
 
-export function Toggle({ checked, onChange, label, disabled }: { checked: boolean; onChange: (v: boolean) => void; label: ReactNode; disabled?: boolean }) {
+export function Toggle({
+  checked,
+  onChange,
+  label,
+  disabled,
+}: {
+  checked: boolean
+  onChange: (v: boolean) => void
+  label: ReactNode
+  disabled?: boolean
+}) {
   return (
     <label className={cn('flex w-fit items-center gap-3 text-sm text-text', disabled && 'opacity-60')}>
       <button
@@ -190,14 +241,27 @@ export function Toggle({ checked, onChange, label, disabled }: { checked: boolea
         onClick={() => onChange(!checked)}
         className={cn('relative h-5 w-9 rounded-full transition-colors', checked ? 'bg-series-1' : 'bg-border')}
       >
-        <span className={cn('absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-all', checked ? 'left-4.5' : 'left-0.5')} />
+        <span
+          className={cn(
+            'absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-all',
+            checked ? 'left-4.5' : 'left-0.5',
+          )}
+        />
       </button>
       {label}
     </label>
   )
 }
 
-export function EmptyState({ title, description, action }: { title: ReactNode; description?: ReactNode; action?: ReactNode }) {
+export function EmptyState({
+  title,
+  description,
+  action,
+}: {
+  title: ReactNode
+  description?: ReactNode
+  action?: ReactNode
+}) {
   return (
     <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-border px-6 py-12 text-center">
       <p className="font-medium text-text">{title}</p>
@@ -217,7 +281,12 @@ export function Avatar({ initials }: { initials: string }) {
 
 export function Code({ children, className }: { children: ReactNode; className?: string }) {
   return (
-    <pre className={cn('overflow-x-auto rounded-md bg-surface-2 p-3 font-mono text-xs leading-relaxed text-text', className)}>
+    <pre
+      className={cn(
+        'overflow-x-auto rounded-md bg-surface-2 p-3 font-mono text-xs leading-relaxed text-text',
+        className,
+      )}
+    >
       {children}
     </pre>
   )

@@ -1,6 +1,17 @@
 import { useEffect, useState, useSyncExternalStore, type ReactElement } from 'react'
 import { useTranslation } from 'react-i18next'
-import { AlertTriangle, Bot, CheckCircle2, ChevronDown, Download, Loader2, Maximize2, Minimize2, PauseCircle, X } from 'lucide-react'
+import {
+  AlertTriangle,
+  Bot,
+  CheckCircle2,
+  ChevronDown,
+  Download,
+  Loader2,
+  Maximize2,
+  Minimize2,
+  PauseCircle,
+  X,
+} from 'lucide-react'
 import { cn } from '@/lib/cn'
 import { formatUsd } from '@/lib/format'
 import { activitySeed, projects, type ActivityEvent, type ActivityStatus } from '@/mocks/data'
@@ -31,15 +42,61 @@ function useEvents() {
   )
 }
 
-const templates: { agent: string; projectId: string; message: string; seconds: number; cost: number; fail?: boolean; waiting?: boolean }[] = [
-  { agent: 'Business rules extractor', projectId: 'p1', message: 'Extracting rules from shard BILL', seconds: 9, cost: 1.84 },
+const templates: {
+  agent: string
+  projectId: string
+  message: string
+  seconds: number
+  cost: number
+  fail?: boolean
+  waiting?: boolean
+}[] = [
+  {
+    agent: 'Business rules extractor',
+    projectId: 'p1',
+    message: 'Extracting rules from shard BILL',
+    seconds: 9,
+    cost: 1.84,
+  },
   { agent: 'Rules verifier', projectId: 'p1', message: 'Verifying 12 citations in shard BILL', seconds: 6, cost: 0.42 },
-  { agent: 'Backend developer', projectId: 'p1', message: 'Fixing bug CARDS-112 (rounding in InterestCalculator)', seconds: 10, cost: 0.96 },
+  {
+    agent: 'Backend developer',
+    projectId: 'p1',
+    message: 'Fixing bug CARDS-112 (rounding in InterestCalculator)',
+    seconds: 10,
+    cost: 0.96,
+  },
   { agent: 'Test engineer', projectId: 'p1', message: 'Re-running 412 tests from clean', seconds: 7, cost: 0.12 },
-  { agent: 'UX/UI designer', projectId: 'p4', message: 'Regenerating prototype "Personal data" (v4)', seconds: 8, cost: 0.58 },
-  { agent: 'Equivalence validator', projectId: 'p2', message: 'Comparing 14 fresh inputs with the legacy', seconds: 8, cost: 0.37, fail: true },
-  { agent: 'Supervisor', projectId: 'p1', message: 'Gate C1 waiting for business approval', seconds: 3, cost: 0, waiting: true },
-  { agent: 'Code reviewer', projectId: 'p1', message: 'Reviewing commit a91c2e4 for CARDS-107', seconds: 5, cost: 0.21 },
+  {
+    agent: 'UX/UI designer',
+    projectId: 'p4',
+    message: 'Regenerating prototype "Personal data" (v4)',
+    seconds: 8,
+    cost: 0.58,
+  },
+  {
+    agent: 'Equivalence validator',
+    projectId: 'p2',
+    message: 'Comparing 14 fresh inputs with the legacy',
+    seconds: 8,
+    cost: 0.37,
+    fail: true,
+  },
+  {
+    agent: 'Supervisor',
+    projectId: 'p1',
+    message: 'Gate C1 waiting for business approval',
+    seconds: 3,
+    cost: 0,
+    waiting: true,
+  },
+  {
+    agent: 'Code reviewer',
+    projectId: 'p1',
+    message: 'Reviewing commit a91c2e4 for CARDS-107',
+    seconds: 5,
+    cost: 0.21,
+  },
 ]
 
 let simulationStarted = false
@@ -50,7 +107,16 @@ function startSimulation() {
   window.setInterval(() => {
     const tpl = templates[i++ % templates.length]
     const id = `ev-${Date.now()}`
-    const ev: ActivityEvent = { id, startedAt: new Date().toISOString(), agent: tpl.agent, projectId: tpl.projectId, message: tpl.message, status: 'running', costUsd: 0, tokens: 0 }
+    const ev: ActivityEvent = {
+      id,
+      startedAt: new Date().toISOString(),
+      agent: tpl.agent,
+      projectId: tpl.projectId,
+      message: tpl.message,
+      status: 'running',
+      costUsd: 0,
+      tokens: 0,
+    }
     events = [ev, ...events].slice(0, 60)
     emit()
     window.setTimeout(() => {
@@ -64,7 +130,11 @@ function startSimulation() {
               costUsd: tpl.cost,
               tokens: Math.round(tpl.cost * 180_000),
               error: tpl.fail
-                ? { code: 'EQUIVALENCE_DIFF', message: 'Fresh input F11 differs from the legacy output', detail: 'legacy STATUS=S, new STATUS=SUSPENDED (no mapping declared for the status code)' }
+                ? {
+                    code: 'EQUIVALENCE_DIFF',
+                    message: 'Fresh input F11 differs from the legacy output',
+                    detail: 'legacy STATUS=S, new STATUS=SUSPENDED (no mapping declared for the status code)',
+                  }
                 : undefined,
             },
       )
@@ -80,7 +150,11 @@ function elapsed(ev: ActivityEvent, now: number) {
 }
 
 function timeOf(iso: string, lang: string) {
-  return new Intl.DateTimeFormat(lang === 'es' ? 'es-EC' : 'en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' }).format(new Date(iso))
+  return new Intl.DateTimeFormat(lang === 'es' ? 'es-EC' : 'en-US', {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  }).format(new Date(iso))
 }
 
 // Full event payload for offline analysis (what support needs to reproduce the failure).
@@ -148,7 +222,9 @@ export function AgentActivityPanel() {
             <Loader2 size={11} className="animate-spin" /> {running.length}
           </span>
         )}
-        {failed.length > 0 && <span className="rounded-full bg-critical/12 px-2 py-0.5 text-xs text-critical-ink">{failed.length}</span>}
+        {failed.length > 0 && (
+          <span className="rounded-full bg-critical/12 px-2 py-0.5 text-xs text-critical-ink">{failed.length}</span>
+        )}
         <span className="text-xs text-muted tabular">{formatUsd(total, 2)}</span>
       </button>
     )
@@ -166,17 +242,32 @@ export function AgentActivityPanel() {
       <div className="flex items-center gap-2 border-b border-border bg-sidebar px-4 py-3 text-white">
         <Bot size={16} className="text-accent" />
         <span className="flex-1 text-sm font-semibold">{t('activity.panel.title')}</span>
-        <span className="text-xs text-sidebar-text tabular">{t('activity.panel.summary', { running: running.length, cost: formatUsd(total, 2) })}</span>
-        <button onClick={() => setMode(mode === 'open' ? 'maximized' : 'open')} className="rounded p-1 hover:bg-white/10" aria-label={t(mode === 'open' ? 'activity.panel.maximize' : 'activity.panel.restore')}>
+        <span className="text-xs text-sidebar-text tabular">
+          {t('activity.panel.summary', { running: running.length, cost: formatUsd(total, 2) })}
+        </span>
+        <button
+          onClick={() => setMode(mode === 'open' ? 'maximized' : 'open')}
+          className="rounded p-1 hover:bg-white/10"
+          aria-label={t(mode === 'open' ? 'activity.panel.maximize' : 'activity.panel.restore')}
+        >
           {mode === 'open' ? <Maximize2 size={14} /> : <Minimize2 size={14} />}
         </button>
-        <button onClick={() => setMode('minimized')} className="rounded p-1 hover:bg-white/10" aria-label={t('activity.panel.minimize')}>
+        <button
+          onClick={() => setMode('minimized')}
+          className="rounded p-1 hover:bg-white/10"
+          aria-label={t('activity.panel.minimize')}
+        >
           <X size={14} />
         </button>
       </div>
 
       {latest && (
-        <div className={cn('border-b border-border px-4 py-3', latest.status === 'failed' ? 'bg-critical/8' : latest.status === 'running' ? 'bg-info/8' : 'bg-surface-2')}>
+        <div
+          className={cn(
+            'border-b border-border px-4 py-3',
+            latest.status === 'failed' ? 'bg-critical/8' : latest.status === 'running' ? 'bg-info/8' : 'bg-surface-2',
+          )}
+        >
           <div className="text-[10px] font-medium tracking-wide text-muted uppercase">{t('activity.panel.latest')}</div>
           <div className="mt-1 flex items-center gap-2 text-sm">
             {statusIcon[latest.status]}
@@ -194,7 +285,15 @@ export function AgentActivityPanel() {
 
       <div className="flex gap-1 border-b border-border px-3 py-2 text-xs">
         {(['all', 'running', 'failed', 'waiting', 'succeeded'] as const).map((f) => (
-          <button key={f} onClick={() => setFilter(f)} aria-pressed={filter === f} className={cn('rounded-full px-2.5 py-1', filter === f ? 'bg-brand text-brand-contrast' : 'text-muted hover:bg-surface-2')}>
+          <button
+            key={f}
+            onClick={() => setFilter(f)}
+            aria-pressed={filter === f}
+            className={cn(
+              'rounded-full px-2.5 py-1',
+              filter === f ? 'bg-brand text-brand-contrast' : 'text-muted hover:bg-surface-2',
+            )}
+          >
             {t(`activity.panel.filters.${f}`)}
           </button>
         ))}
@@ -205,12 +304,18 @@ export function AgentActivityPanel() {
           const open = expanded === ev.id
           return (
             <li key={ev.id} className={cn(ev.status === 'failed' && 'bg-critical/5')}>
-              <button onClick={() => setExpanded(open ? null : ev.id)} className="flex w-full items-start gap-2 px-4 py-2.5 text-left hover:bg-surface-2" aria-expanded={open}>
+              <button
+                onClick={() => setExpanded(open ? null : ev.id)}
+                className="flex w-full items-start gap-2 px-4 py-2.5 text-left hover:bg-surface-2"
+                aria-expanded={open}
+              >
                 <span className="mt-0.5">{statusIcon[ev.status]}</span>
                 <span className="min-w-0 flex-1">
                   <span className="flex items-baseline gap-2">
                     <span className="truncate text-sm font-medium text-text">{ev.agent}</span>
-                    <span className="ml-auto shrink-0 text-[11px] text-muted tabular">{timeOf(ev.startedAt, i18n.language)}</span>
+                    <span className="ml-auto shrink-0 text-[11px] text-muted tabular">
+                      {timeOf(ev.startedAt, i18n.language)}
+                    </span>
                   </span>
                   <span className="block truncate text-xs text-text-2">{ev.message}</span>
                   <span className="mt-0.5 flex gap-3 text-[11px] text-muted tabular">
@@ -219,12 +324,17 @@ export function AgentActivityPanel() {
                     <span>{formatUsd(ev.costUsd, 2)}</span>
                   </span>
                 </span>
-                <ChevronDown size={14} className={cn('mt-1 shrink-0 text-muted transition-transform', open && 'rotate-180')} />
+                <ChevronDown
+                  size={14}
+                  className={cn('mt-1 shrink-0 text-muted transition-transform', open && 'rotate-180')}
+                />
               </button>
               {open && (
                 <div className="space-y-2 px-4 pb-3 pl-10 text-xs">
                   <div className="text-muted">{projects.find((p) => p.id === ev.projectId)?.name}</div>
-                  <div className="text-muted tabular">{t('activity.panel.tokens', { value: ev.tokens.toLocaleString() })}</div>
+                  <div className="text-muted tabular">
+                    {t('activity.panel.tokens', { value: ev.tokens.toLocaleString() })}
+                  </div>
                   {ev.error && (
                     <div className="rounded-md border border-critical/30 bg-critical/8 p-2">
                       <div className="font-mono text-critical-ink">{ev.error.code}</div>
@@ -232,7 +342,13 @@ export function AgentActivityPanel() {
                       <div className="mt-1 text-text-2">{ev.error.detail}</div>
                     </div>
                   )}
-                  <button onClick={() => downloadJson(ev)} className={cn('inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1', ev.error ? 'border-critical/40 text-critical-ink' : 'border-border text-text-2')}>
+                  <button
+                    onClick={() => downloadJson(ev)}
+                    className={cn(
+                      'inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1',
+                      ev.error ? 'border-critical/40 text-critical-ink' : 'border-border text-text-2',
+                    )}
+                  >
                     <Download size={12} /> {t('activity.panel.downloadJson')}
                   </button>
                 </div>

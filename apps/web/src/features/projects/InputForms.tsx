@@ -12,9 +12,22 @@ type Source = 'files' | 'git' | 'screens' | 'figma' | 'prototype' | 'jira'
 // Validation steps every input goes through before any agent reads it (spec 15.4).
 const STEPS = ['received', 'typeAndSize', 'archiveSafety', 'malware', 'secrets', 'versioned'] as const
 
-export function AddInputForm({ open, onClose, flow, initialSource }: { open: boolean; onClose: () => void; flow: Flow; initialSource?: Source }) {
+export function AddInputForm({
+  open,
+  onClose,
+  flow,
+  initialSource,
+}: {
+  open: boolean
+  onClose: () => void
+  flow: Flow
+  initialSource?: Source
+}) {
   const { t } = useTranslation()
-  const sources: Source[] = flow === 'modernization' ? ['files', 'git', 'screens', 'figma', 'prototype', 'jira'] : ['files', 'screens', 'figma', 'prototype', 'jira']
+  const sources: Source[] =
+    flow === 'modernization'
+      ? ['files', 'git', 'screens', 'figma', 'prototype', 'jira']
+      : ['files', 'screens', 'figma', 'prototype', 'jira']
   const [source, setSource] = useState<Source>(initialSource ?? sources[0])
   const [shots, setShots] = useState<{ name: string; url: string }[]>([])
   const [protoUrl, setProtoUrl] = useState('')
@@ -82,7 +95,11 @@ export function AddInputForm({ open, onClose, flow, initialSource }: { open: boo
         )
       }
     >
-      <Tabs tabs={sources.map((id) => ({ id, label: t(`inputForms.sources.${id}`) }))} value={source} onChange={(v) => !running && setSource(v)} />
+      <Tabs
+        tabs={sources.map((id) => ({ id, label: t(`inputForms.sources.${id}`) }))}
+        value={source}
+        onChange={(v) => !running && setSource(v)}
+      />
 
       {source === 'files' && (
         <div>
@@ -96,8 +113,15 @@ export function AddInputForm({ open, onClose, flow, initialSource }: { open: boo
           >
             <Upload size={22} className="text-muted" />
             <span className="text-sm text-text">{t('inputForms.drop')}</span>
-            <span className="text-xs text-muted">{t(flow === 'modernization' ? 'inputForms.acceptedCode' : 'inputForms.acceptedDocs')}</span>
-            <input type="file" multiple className="sr-only" onChange={(e) => setFiles(Array.from(e.target.files ?? []).map((f) => f.name))} />
+            <span className="text-xs text-muted">
+              {t(flow === 'modernization' ? 'inputForms.acceptedCode' : 'inputForms.acceptedDocs')}
+            </span>
+            <input
+              type="file"
+              multiple
+              className="sr-only"
+              onChange={(e) => setFiles(Array.from(e.target.files ?? []).map((f) => f.name))}
+            />
           </label>
           {files.length > 0 && (
             <ul className="mt-3 space-y-1 text-sm text-text">
@@ -114,7 +138,11 @@ export function AddInputForm({ open, onClose, flow, initialSource }: { open: boo
       {source === 'git' && (
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label={t('inputForms.repoUrl')}>
-            <Input value={repo} onChange={(e) => setRepo(e.target.value)} placeholder="https://github.com/andesbank/card-management" />
+            <Input
+              value={repo}
+              onChange={(e) => setRepo(e.target.value)}
+              placeholder="https://github.com/andesbank/card-management"
+            />
           </Field>
           <Field label={t('inputForms.branch')}>
             <Input value={branch} onChange={(e) => setBranch(e.target.value)} />
@@ -134,7 +162,11 @@ export function AddInputForm({ open, onClose, flow, initialSource }: { open: boo
       {source === 'figma' && (
         <div className="space-y-4">
           <Field label={t('inputForms.figmaLink')} hint={t('inputForms.figmaHint')}>
-            <Input value={figma} onChange={(e) => setFigma(e.target.value)} placeholder="https://www.figma.com/design/AbC123/Onboarding" />
+            <Input
+              value={figma}
+              onChange={(e) => setFigma(e.target.value)}
+              placeholder="https://www.figma.com/design/AbC123/Onboarding"
+            />
           </Field>
           <Field label={t('inputForms.figmaPages')}>
             <Input placeholder="Onboarding flow, Components" />
@@ -153,7 +185,9 @@ export function AddInputForm({ open, onClose, flow, initialSource }: { open: boo
               accept="image/*"
               multiple
               className="sr-only"
-              onChange={(e) => setShots(Array.from(e.target.files ?? []).map((f) => ({ name: f.name, url: URL.createObjectURL(f) })))}
+              onChange={(e) =>
+                setShots(Array.from(e.target.files ?? []).map((f) => ({ name: f.name, url: URL.createObjectURL(f) })))
+              }
             />
           </label>
           {shots.length > 0 && (
@@ -172,7 +206,11 @@ export function AddInputForm({ open, onClose, flow, initialSource }: { open: boo
       {source === 'prototype' && (
         <div className="space-y-4">
           <Field label={t('inputForms.prototypeLink')} hint={t('inputForms.prototypeHint')}>
-            <Input value={protoUrl} onChange={(e) => setProtoUrl(e.target.value)} placeholder="https://www.figma.com/proto/… · https://prototype.example.com" />
+            <Input
+              value={protoUrl}
+              onChange={(e) => setProtoUrl(e.target.value)}
+              placeholder="https://www.figma.com/proto/… · https://prototype.example.com"
+            />
           </Field>
           <Field label={t('inputForms.prototypeNotes')}>
             <Textarea rows={3} placeholder={t('inputForms.prototypeNotesPlaceholder')} />
@@ -190,7 +228,11 @@ export function AddInputForm({ open, onClose, flow, initialSource }: { open: boo
           </Field>
           <Field label={t('inputForms.jiraConnection')}>
             <Select defaultValue="default">
-              <option value="default">{devops === 'jira' ? 'Jira — andesbank.atlassian.net (integration)' : 'Azure DevOps — dev.azure.com/andesbank (integration)'}</option>
+              <option value="default">
+                {devops === 'jira'
+                  ? 'Jira — andesbank.atlassian.net (integration)'
+                  : 'Azure DevOps — dev.azure.com/andesbank (integration)'}
+              </option>
             </Select>
           </Field>
           <Field label={devops === 'jira' ? t('inputForms.jql') : t('inputForms.wiql')} hint={t('inputForms.jqlHint')}>
@@ -205,7 +247,13 @@ export function AddInputForm({ open, onClose, flow, initialSource }: { open: boo
           <ol className="space-y-2">
             {STEPS.map((step, i) => (
               <li key={step} className={cn('flex items-center gap-2 text-sm', i < done ? 'text-text' : 'text-muted')}>
-                {i < done ? <CheckCircle2 size={16} className="text-good" /> : i === done ? <Loader2 size={16} className="animate-spin text-info" /> : <Circle size={16} />}
+                {i < done ? (
+                  <CheckCircle2 size={16} className="text-good" />
+                ) : i === done ? (
+                  <Loader2 size={16} className="animate-spin text-info" />
+                ) : (
+                  <Circle size={16} />
+                )}
                 {t(`inputForms.steps.${step}`)}
               </li>
             ))}

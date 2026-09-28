@@ -42,7 +42,10 @@ export function DecisionCard({ decision, onAnswer }: { decision: Decision; onAns
           {decision.evidence.map((e) => {
             const Icon = evidenceIcon[e.ref as keyof typeof evidenceIcon] ?? FileText
             return (
-              <span key={e.label} className="inline-flex items-center gap-1.5 rounded-md border border-border px-2 py-1 font-mono text-xs text-text-2">
+              <span
+                key={e.label}
+                className="inline-flex items-center gap-1.5 rounded-md border border-border px-2 py-1 font-mono text-xs text-text-2"
+              >
                 <Icon size={12} /> {e.label}
               </span>
             )
@@ -54,7 +57,9 @@ export function DecisionCard({ decision, onAnswer }: { decision: Decision; onAns
             <CheckCircle2 size={16} className="mt-0.5 shrink-0 text-good" />
             <span className="text-text">
               <strong>{decision.answer}</strong>
-              <span className="block text-xs text-muted">{t('decisions.answeredBy', { name: decision.answeredBy })}</span>
+              <span className="block text-xs text-muted">
+                {t('decisions.answeredBy', { name: decision.answeredBy })}
+              </span>
             </span>
           </div>
         ) : (
@@ -72,11 +77,18 @@ export function DecisionCard({ decision, onAnswer }: { decision: Decision; onAns
             </Field>
 
             {option && (
-              <div className={cn('rounded-md p-3 text-sm', option.id === decision.recommended ? 'bg-accent/10' : 'bg-surface-2')}>
+              <div
+                className={cn(
+                  'rounded-md p-3 text-sm',
+                  option.id === decision.recommended ? 'bg-accent/10' : 'bg-surface-2',
+                )}
+              >
                 <div className="flex items-center gap-1.5 text-xs font-medium text-text">
                   {option.id === decision.recommended && <Sparkles size={12} className="text-accent-ink" />}
                   {option.id === decision.recommended ? t('decisions.whyRecommended') : t('decisions.whyOption')}
-                  <Badge className="ml-auto">{t('decisions.confidence', { level: t(`confidence.${option.confidence}`) })}</Badge>
+                  <Badge className="ml-auto">
+                    {t('decisions.confidence', { level: t(`confidence.${option.confidence}`) })}
+                  </Badge>
                 </div>
                 <p className="mt-1 text-text-2">{option.rationale}</p>
               </div>
@@ -90,7 +102,13 @@ export function DecisionCard({ decision, onAnswer }: { decision: Decision; onAns
 
             {showComment ? (
               <Field label={t('decisions.comment')}>
-                <Textarea value={comment} onChange={(e) => setComment(e.target.value)} rows={2} placeholder={t('decisions.commentPlaceholder')} autoFocus />
+                <Textarea
+                  value={comment}
+                  onChange={(e) => setComment(e.target.value)}
+                  rows={2}
+                  placeholder={t('decisions.commentPlaceholder')}
+                  autoFocus
+                />
               </Field>
             ) : (
               <button className="text-xs font-medium text-info hover:underline" onClick={() => setShowComment(true)}>
@@ -99,7 +117,9 @@ export function DecisionCard({ decision, onAnswer }: { decision: Decision; onAns
             )}
 
             <div className="flex flex-wrap items-center gap-3 border-t border-border pt-4">
-              <span className="text-xs text-muted">{t('decisions.impact', { items: decision.affects.join(', ') })}</span>
+              <span className="text-xs text-muted">
+                {t('decisions.impact', { items: decision.affects.join(', ') })}
+              </span>
               <Button
                 variant="primary"
                 className="ml-auto"
@@ -129,7 +149,9 @@ export function DecisionList({ decisions, onChange }: { decisions: Decision[]; o
   const shown = decisions.filter((d) => filter === 'all' || d.status === filter)
 
   const answer = (id: string, text: string) =>
-    onChange(decisions.map((d) => (d.id === id ? { ...d, status: 'answered', answer: text, answeredBy: 'David Balseca' } : d)))
+    onChange(
+      decisions.map((d) => (d.id === id ? { ...d, status: 'answered', answer: text, answeredBy: 'David Balseca' } : d)),
+    )
 
   return (
     <div className="space-y-4">
@@ -139,7 +161,12 @@ export function DecisionList({ decisions, onChange }: { decisions: Decision[]; o
             key={f}
             onClick={() => setFilter(f)}
             aria-pressed={filter === f}
-            className={cn('rounded-full border px-3 py-1 text-sm', filter === f ? 'border-series-1 bg-series-1/10 text-text' : 'border-border text-text-2 hover:bg-surface-2')}
+            className={cn(
+              'rounded-full border px-3 py-1 text-sm',
+              filter === f
+                ? 'border-series-1 bg-series-1/10 text-text'
+                : 'border-border text-text-2 hover:bg-surface-2',
+            )}
           >
             {t(`decisions.filters.${f}`)} {f === 'open' && `(${open.length})`}
           </button>
@@ -152,7 +179,12 @@ export function DecisionList({ decisions, onChange }: { decisions: Decision[]; o
             onChange(
               decisions.map((d) =>
                 d.status === 'open' && d.risk === 'low'
-                  ? { ...d, status: 'answered', answer: d.options.find((o) => o.id === d.recommended)!.label, answeredBy: 'David Balseca' }
+                  ? {
+                      ...d,
+                      status: 'answered',
+                      answer: d.options.find((o) => o.id === d.recommended)!.label,
+                      answeredBy: 'David Balseca',
+                    }
                   : d,
               ),
             )
@@ -164,7 +196,9 @@ export function DecisionList({ decisions, onChange }: { decisions: Decision[]; o
       </div>
       <p className="text-xs text-muted">{t('decisions.bulkHint')}</p>
       {shown.length === 0 ? (
-        <p className="rounded-md border border-dashed border-border p-6 text-center text-sm text-muted">{t('decisions.empty')}</p>
+        <p className="rounded-md border border-dashed border-border p-6 text-center text-sm text-muted">
+          {t('decisions.empty')}
+        </p>
       ) : (
         shown.map((d) => <DecisionCard key={d.id} decision={d} onAnswer={(a) => answer(d.id, a)} />)
       )}

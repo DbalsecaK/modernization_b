@@ -74,7 +74,11 @@ export function nextStoryId() {
 export function saveStory(story: UserStory, change: string) {
   const exists = state.stories.some((s) => s.id === story.id)
   const version = exists ? story.version + 1 : 1
-  const saved = { ...story, version, status: state.approved && story.status === 'approved' ? ('inReview' as const) : story.status }
+  const saved = {
+    ...story,
+    version,
+    status: state.approved && story.status === 'approved' ? ('inReview' as const) : story.status,
+  }
   const stories = exists ? state.stories.map((s) => (s.id === story.id ? saved : s)) : [...state.stories, saved]
   // New stories join the wave the suggestion gives them; existing ones keep their place.
   const plan = exists ? state.plan : placeNew(saved, stories)
@@ -90,7 +94,9 @@ function placeNew(story: UserStory, stories: UserStory[]): Plan {
 export function discardStory(id: string, reason: string, outOfScope: boolean) {
   const s = state.stories.find((x) => x.id === id)!
   set({
-    stories: state.stories.map((x) => (x.id === id ? { ...x, status: 'discarded', discardReason: reason, outOfScope, version: x.version + 1 } : x)),
+    stories: state.stories.map((x) =>
+      x.id === id ? { ...x, status: 'discarded', discardReason: reason, outOfScope, version: x.version + 1 } : x,
+    ),
     plan: state.plan.map((w) => w.filter((x) => x !== id)).filter((w) => w.length > 0),
     history: log(id, s.version + 1, `${outOfScope ? 'Marked out of scope' : 'Discarded'}: ${reason}`),
   })
@@ -98,7 +104,13 @@ export function discardStory(id: string, reason: string, outOfScope: boolean) {
 
 export function restoreStory(id: string) {
   const s = state.stories.find((x) => x.id === id)!
-  const restored = { ...s, status: 'inReview' as const, discardReason: undefined, outOfScope: undefined, version: s.version + 1 }
+  const restored = {
+    ...s,
+    status: 'inReview' as const,
+    discardReason: undefined,
+    outOfScope: undefined,
+    version: s.version + 1,
+  }
   const stories = state.stories.map((x) => (x.id === id ? restored : x))
   set({ stories, plan: placeNew(restored, stories), history: log(id, restored.version, 'Restored') })
 }
@@ -130,7 +142,14 @@ export function splitStory(id: string, title: string, criteria: number[], rules:
   const stories = [...state.stories.map((x) => (x.id === id ? rest : x)), part]
   const w = state.plan.findIndex((x) => x.includes(id))
   const plan = state.plan.map((x, i) => (i === w ? [...x, newId] : x))
-  set({ stories, plan, history: [{ story: newId, version: 1, by: who(), at: new Date().toISOString(), change: `Created by splitting ${id}` }, ...log(id, rest.version, `Split: "${title}" moved to ${newId}`)] })
+  set({
+    stories,
+    plan,
+    history: [
+      { story: newId, version: 1, by: who(), at: new Date().toISOString(), change: `Created by splitting ${id}` },
+      ...log(id, rest.version, `Split: "${title}" moved to ${newId}`),
+    ],
+  })
   return newId
 }
 
@@ -138,7 +157,7 @@ export function splitStory(id: string, title: string, criteria: number[], rules:
 export function mergeStories(id: string, other: string) {
   const a = state.stories.find((x) => x.id === id)!
   const b = state.stories.find((x) => x.id === other)!
-  const uniq = <T,>(xs: T[]) => Array.from(new Set(xs))
+  const uniq = <T>(xs: T[]) => Array.from(new Set(xs))
   const merged: UserStory = {
     ...a,
     criteria: [...a.criteria, ...b.criteria],
@@ -146,7 +165,9 @@ export function mergeStories(id: string, other: string) {
     screens: uniq([...a.screens, ...b.screens]),
     contracts: uniq([...a.contracts, ...b.contracts]),
     nodes: uniq([...a.nodes, ...b.nodes]),
-    dependsOn: [...a.dependsOn, ...b.dependsOn].filter((d, i, all) => d.story !== id && d.story !== other && all.findIndex((x) => x.story === d.story) === i),
+    dependsOn: [...a.dependsOn, ...b.dependsOn].filter(
+      (d, i, all) => d.story !== id && d.story !== other && all.findIndex((x) => x.story === d.story) === i,
+    ),
     points: a.points + b.points,
     status: 'inReview',
     version: a.version + 1,
@@ -175,7 +196,12 @@ export function resetPlan() {
 }
 
 export function approveC1() {
-  set({ approved: true, stories: state.stories.map((s) => (s.status === 'inReview' || s.status === 'draft' ? { ...s, status: 'approved' } : s)) })
+  set({
+    approved: true,
+    stories: state.stories.map((s) =>
+      s.status === 'inReview' || s.status === 'draft' ? { ...s, status: 'approved' } : s,
+    ),
+  })
 }
 
 export function dismissSuggestion(id: string) {

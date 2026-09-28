@@ -14,10 +14,23 @@ export const SOURCE_OPTIONS = [
   'C# .NET Framework 4.8',
 ] as const
 
-export const INPUT_OPTIONS = ['User stories (Jira)', 'Functional document (Word)', 'User manual (PDF)', 'Figma', 'Screenshots'] as const
+export const INPUT_OPTIONS = [
+  'User stories (Jira)',
+  'Functional document (Word)',
+  'User manual (PDF)',
+  'Figma',
+  'Screenshots',
+] as const
 
 export const TARGET_OPTIONS = {
-  architecture: ['Microservices (hexagonal)', 'Modular monolith (hexagonal)', 'MVC', 'Serverless', 'Event-driven', 'BFF + microservices'],
+  architecture: [
+    'Microservices (hexagonal)',
+    'Modular monolith (hexagonal)',
+    'MVC',
+    'Serverless',
+    'Event-driven',
+    'BFF + microservices',
+  ],
   backend: ['Java Spring Boot', 'Java Quarkus', '.NET 10', 'Go', 'Next.js'],
   frontend: ['React', 'Angular', 'Next.js', '—'],
   database: ['PostgreSQL', 'MySQL', 'SQL Server', 'Oracle', 'MongoDB'],
@@ -95,12 +108,17 @@ export function missingSkills(sources: string[], skillIds: string[]) {
     'Sybase ASE stored procedures': 'sybase-tsql',
     'ASP.NET WebForms': 'webforms',
   }
-  return sources.filter((s) => required[s] && !skillIds.includes(required[s])).map((s) => ({ source: s, skill: required[s] }))
+  return sources
+    .filter((s) => required[s] && !skillIds.includes(required[s]))
+    .map((s) => ({ source: s, skill: required[s] }))
 }
 
 // Phases that must have at least one responsible agent.
 export function uncoveredPhases(flow: Flow, agentIds: string[]) {
-  const needed = flow === 'modernization' ? ['inventory', 'ruleExtraction', 'design', 'generation', 'verification'] : ['normalization', 'ui', 'design', 'generation', 'validation']
+  const needed =
+    flow === 'modernization'
+      ? ['inventory', 'ruleExtraction', 'design', 'generation', 'verification']
+      : ['normalization', 'ui', 'design', 'generation', 'validation']
   const covered = new Set(agents.filter((a) => agentIds.includes(a.id)).flatMap((a) => a.phases))
   return needed.filter((p) => !covered.has(p))
 }

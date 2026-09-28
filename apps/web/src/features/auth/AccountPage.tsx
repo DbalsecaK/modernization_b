@@ -5,7 +5,18 @@ import { useSession } from '@/lib/session'
 import { setLanguage } from '@/i18n'
 import { formatDateTime } from '@/lib/format'
 import { currentUser } from '@/mocks/data'
-import { Badge, Button, Card, CardBody, CardHeader, Field, Input, PageHeader, Select, Tabs } from '@/components/ui/primitives'
+import {
+  Badge,
+  Button,
+  Card,
+  CardBody,
+  CardHeader,
+  Field,
+  Input,
+  PageHeader,
+  Select,
+  Tabs,
+} from '@/components/ui/primitives'
 
 const TABS = ['profile', 'security', 'sessions'] as const
 
@@ -44,7 +55,14 @@ export function AccountPage() {
       {tab === 'security' && (
         <div className="grid max-w-4xl gap-5 lg:grid-cols-2">
           <Card>
-            <CardHeader title={t('account.password')} subtitle={isSso ? t('account.passwordSso') : t('account.passwordChanged', { date: formatDateTime('2026-07-02T10:00:00Z') })} />
+            <CardHeader
+              title={t('account.password')}
+              subtitle={
+                isSso
+                  ? t('account.passwordSso')
+                  : t('account.passwordChanged', { date: formatDateTime('2026-07-02T10:00:00Z') })
+              }
+            />
             <CardBody className="space-y-4">
               <Field label={t('account.currentPassword')}>
                 <Input type="password" disabled={isSso} />
@@ -60,9 +78,19 @@ export function AccountPage() {
           <Card>
             <CardHeader title={t('account.mfa')} subtitle={t('account.mfaRequired')} />
             <CardBody className="space-y-3">
-              <MfaMethod Icon={Smartphone} name={t('account.authenticatorApp')} detail="Microsoft Authenticator" active />
+              <MfaMethod
+                Icon={Smartphone}
+                name={t('account.authenticatorApp')}
+                detail="Microsoft Authenticator"
+                active
+              />
               <MfaMethod Icon={Fingerprint} name={t('account.passkey')} detail="MacBook Pro — Touch ID" active />
-              <MfaMethod Icon={KeyRound} name={t('account.recoveryCodes')} detail={t('account.recoveryRemaining', { count: 8 })} active />
+              <MfaMethod
+                Icon={KeyRound}
+                name={t('account.recoveryCodes')}
+                detail={t('account.recoveryRemaining', { count: 8 })}
+                active
+              />
               <div className="flex flex-wrap gap-2 pt-2">
                 <Button size="sm">{t('account.addPasskey')}</Button>
                 <Button size="sm" variant="ghost">
@@ -76,7 +104,15 @@ export function AccountPage() {
 
       {tab === 'sessions' && (
         <Card className="max-w-3xl">
-          <CardHeader title={t('account.activeSessions')} subtitle={t('account.sessionPolicy')} action={<Button size="sm" variant="danger">{t('account.signOutOthers')}</Button>} />
+          <CardHeader
+            title={t('account.activeSessions')}
+            subtitle={t('account.sessionPolicy')}
+            action={
+              <Button size="sm" variant="danger">
+                {t('account.signOutOthers')}
+              </Button>
+            }
+          />
           <CardBody className="space-y-3">
             {[
               { device: 'Chrome · macOS', where: 'Quito, EC', time: '2026-09-28T09:40:00Z', current: true },
@@ -90,7 +126,13 @@ export function AccountPage() {
                     {s.where} · {formatDateTime(s.time)}
                   </div>
                 </div>
-                {s.current ? <Badge tone="good">{t('account.thisDevice')}</Badge> : <Button size="sm" variant="ghost">{t('account.revoke')}</Button>}
+                {s.current ? (
+                  <Badge tone="good">{t('account.thisDevice')}</Badge>
+                ) : (
+                  <Button size="sm" variant="ghost">
+                    {t('account.revoke')}
+                  </Button>
+                )}
               </div>
             ))}
           </CardBody>
@@ -100,7 +142,17 @@ export function AccountPage() {
   )
 }
 
-function MfaMethod({ Icon, name, detail, active }: { Icon: typeof Smartphone; name: string; detail: string; active: boolean }) {
+function MfaMethod({
+  Icon,
+  name,
+  detail,
+  active,
+}: {
+  Icon: typeof Smartphone
+  name: string
+  detail: string
+  active: boolean
+}) {
   const { t } = useTranslation()
   return (
     <div className="flex items-center gap-3 rounded-md border border-border p-3">

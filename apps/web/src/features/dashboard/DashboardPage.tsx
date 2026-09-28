@@ -21,13 +21,20 @@ export function DashboardPage() {
         title={t('dashboard.title')}
         description={t('dashboard.description')}
         actions={
-          <div className="flex rounded-md border border-border bg-surface p-0.5 text-sm" role="group" aria-label={t('dashboard.perspective')}>
+          <div
+            className="flex rounded-md border border-border bg-surface p-0.5 text-sm"
+            role="group"
+            aria-label={t('dashboard.perspective')}
+          >
             {(['executive', 'delivery', 'admin'] as const).map((p) => (
               <button
                 key={p}
                 onClick={() => setPerspective(p)}
                 aria-pressed={perspective === p}
-                className={cn('rounded px-3 py-1.5', perspective === p ? 'bg-brand text-brand-contrast' : 'text-text-2 hover:text-text')}
+                className={cn(
+                  'rounded px-3 py-1.5',
+                  perspective === p ? 'bg-brand text-brand-contrast' : 'text-text-2 hover:text-text',
+                )}
               >
                 {t(`dashboard.perspectives.${p}`)}
               </button>
@@ -54,19 +61,43 @@ function ExecutiveView() {
   return (
     <div className="space-y-6">
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatTile label={t('dashboard.activeProjects')} value={active.length} hint={t('dashboard.ofTotal', { total: projects.length })} />
-        <StatTile label={t('dashboard.rulesVerified')} value={`${verified} / ${totalRules}`} hint={t('dashboard.rulesVerifiedHint')} />
+        <StatTile
+          label={t('dashboard.activeProjects')}
+          value={active.length}
+          hint={t('dashboard.ofTotal', { total: projects.length })}
+        />
+        <StatTile
+          label={t('dashboard.rulesVerified')}
+          value={`${verified} / ${totalRules}`}
+          hint={t('dashboard.rulesVerifiedHint')}
+        />
         <StatTile label={t('dashboard.provenModules')} value={proven} hint={t('dashboard.provenHint')} />
-        <StatTile label={t('dashboard.spendVsBudget')} value={formatUsd(spent)} hint={t('dashboard.budgetOf', { budget: formatUsd(budget) })} />
+        <StatTile
+          label={t('dashboard.spendVsBudget')}
+          value={formatUsd(spent)}
+          hint={t('dashboard.budgetOf', { budget: formatUsd(budget) })}
+        />
       </div>
       <div className="grid gap-6 xl:grid-cols-3">
         <Card className="xl:col-span-2">
-          <CardHeader title={t('dashboard.projectProgress')} action={<Link to="/projects" className="text-sm font-medium text-info hover:underline">{t('common.viewAll')}</Link>} />
+          <CardHeader
+            title={t('dashboard.projectProgress')}
+            action={
+              <Link to="/projects" className="text-sm font-medium text-info hover:underline">
+                {t('common.viewAll')}
+              </Link>
+            }
+          />
           <CardBody className="divide-y divide-border p-0">
             {projects.map((p) => {
               const current = p.phases.find((ph) => ph.status !== 'done') ?? p.phases[p.phases.length - 1]
               return (
-                <Link key={p.id} to="/projects/$projectId" params={{ projectId: p.id }} className="flex items-center gap-4 px-5 py-3 hover:bg-surface-2">
+                <Link
+                  key={p.id}
+                  to="/projects/$projectId"
+                  params={{ projectId: p.id }}
+                  className="flex items-center gap-4 px-5 py-3 hover:bg-surface-2"
+                >
                   <div className="min-w-0 flex-1">
                     <div className="truncate text-sm font-medium text-text">{p.name}</div>
                     <div className="mt-1 flex items-center gap-2 text-xs text-muted">
@@ -89,16 +120,29 @@ function ExecutiveView() {
         <Card>
           <CardHeader title={t('dashboard.risks')} />
           <CardBody className="space-y-3">
-            <Risk icon={<AlertTriangle size={16} className="text-warning" />} text={t('dashboard.riskBudget', { project: 'Card Management', pct: 80 })} />
-            <Risk icon={<PauseCircle size={16} className="text-warning" />} text={t('dashboard.riskGate', { count: 148 })} />
-            <Risk icon={<ShieldAlert size={16} className="text-critical" />} text={t('dashboard.riskPartly', { project: 'Interest Accrual SP' })} />
+            <Risk
+              icon={<AlertTriangle size={16} className="text-warning" />}
+              text={t('dashboard.riskBudget', { project: 'Card Management', pct: 80 })}
+            />
+            <Risk
+              icon={<PauseCircle size={16} className="text-warning" />}
+              text={t('dashboard.riskGate', { count: 148 })}
+            />
+            <Risk
+              icon={<ShieldAlert size={16} className="text-critical" />}
+              text={t('dashboard.riskPartly', { project: 'Interest Accrual SP' })}
+            />
           </CardBody>
         </Card>
       </div>
       <Card>
         <CardHeader title={t('dashboard.monthlySpend')} subtitle={t('dashboard.monthlySpendHint')} />
         <CardBody>
-          <LineChart data={monthlyCost.map((m) => ({ x: formatMonth(m.month), y: m.usd }))} format={(v) => formatUsd(v)} label={t('dashboard.monthlySpend')} />
+          <LineChart
+            data={monthlyCost.map((m) => ({ x: formatMonth(m.month), y: m.usd }))}
+            format={(v) => formatUsd(v)}
+            label={t('dashboard.monthlySpend')}
+          />
         </CardBody>
       </Card>
     </div>
@@ -131,24 +175,39 @@ function DeliveryView() {
         <Card>
           <CardHeader title={t('dashboard.liveActivity')} />
           <CardBody className="space-y-3">
-            {runEvents.slice().reverse().map((e) => (
-              <div key={e.id} className="flex gap-3 text-sm">
-                <span className="w-16 shrink-0 text-xs text-muted tabular">{e.time}</span>
-                <div className="min-w-0">
-                  <div className="text-text">
-                    <span className="font-medium">{e.agent}</span> · <span className="text-text-2">{t(`runEvent.${e.kind}`)}</span>
+            {runEvents
+              .slice()
+              .reverse()
+              .map((e) => (
+                <div key={e.id} className="flex gap-3 text-sm">
+                  <span className="w-16 shrink-0 text-xs text-muted tabular">{e.time}</span>
+                  <div className="min-w-0">
+                    <div className="text-text">
+                      <span className="font-medium">{e.agent}</span> ·{' '}
+                      <span className="text-text-2">{t(`runEvent.${e.kind}`)}</span>
+                    </div>
+                    <div className="text-xs text-muted">{e.detail}</div>
                   </div>
-                  <div className="text-xs text-muted">{e.detail}</div>
                 </div>
-              </div>
-            ))}
+              ))}
           </CardBody>
         </Card>
         <Card>
-          <CardHeader title={t('dashboard.pendingApprovals')} action={<Link to="/tasks" className="text-sm font-medium text-info hover:underline">{t('common.viewAll')}</Link>} />
+          <CardHeader
+            title={t('dashboard.pendingApprovals')}
+            action={
+              <Link to="/tasks" className="text-sm font-medium text-info hover:underline">
+                {t('common.viewAll')}
+              </Link>
+            }
+          />
           <CardBody className="space-y-2">
             {tasks.map((task) => (
-              <Link key={task.id} to="/tasks" className="flex items-center gap-3 rounded-md p-2 text-sm hover:bg-surface-2">
+              <Link
+                key={task.id}
+                to="/tasks"
+                className="flex items-center gap-3 rounded-md p-2 text-sm hover:bg-surface-2"
+              >
                 <Badge tone={task.priority === 'high' ? 'critical' : 'neutral'}>{t(`tasks.kinds.${task.kind}`)}</Badge>
                 <span className="flex-1 truncate text-text">{task.title}</span>
                 <ArrowRight size={14} className="text-muted" />
@@ -168,23 +227,45 @@ function AdminView() {
     <div className="space-y-6">
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatTile label={t('dashboard.tenants')} value={tenants.length} />
-        <StatTile label={t('dashboard.activeUsers')} value={activeUsers} hint={t('dashboard.withoutMfa', { count: users.filter((u) => !u.mfa).length })} />
-        <StatTile label={t('dashboard.monthSpend')} value={formatUsd(tenants.reduce((s, x) => s + x.monthCostUsd, 0))} />
-        <StatTile label={t('dashboard.connectionsHealthy')} value={`${connections.filter((c) => c.status === 'connected').length} / ${connections.length}`} />
+        <StatTile
+          label={t('dashboard.activeUsers')}
+          value={activeUsers}
+          hint={t('dashboard.withoutMfa', { count: users.filter((u) => !u.mfa).length })}
+        />
+        <StatTile
+          label={t('dashboard.monthSpend')}
+          value={formatUsd(tenants.reduce((s, x) => s + x.monthCostUsd, 0))}
+        />
+        <StatTile
+          label={t('dashboard.connectionsHealthy')}
+          value={`${connections.filter((c) => c.status === 'connected').length} / ${connections.length}`}
+        />
       </div>
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
           <CardHeader title={t('dashboard.spendByTenant')} />
           <CardBody>
-            <BarList data={tenants.map((x) => ({ label: x.name, value: x.monthCostUsd }))} format={(v) => formatUsd(v)} />
+            <BarList
+              data={tenants.map((x) => ({ label: x.name, value: x.monthCostUsd }))}
+              format={(v) => formatUsd(v)}
+            />
           </CardBody>
         </Card>
         <Card>
           <CardHeader title={t('dashboard.alerts')} />
           <CardBody className="space-y-3">
-            <Risk icon={<PlugZap size={16} className="text-critical" />} text={t('dashboard.alertConnection', { name: 'NexTI — Anthropic API' })} />
-            <Risk icon={<AlertTriangle size={16} className="text-warning" />} text={t('dashboard.alertMfa', { name: 'Jorge Mena' })} />
-            <Risk icon={<AlertTriangle size={16} className="text-warning" />} text={t('dashboard.alertWorker', { name: 'w-sandbox-win-1' })} />
+            <Risk
+              icon={<PlugZap size={16} className="text-critical" />}
+              text={t('dashboard.alertConnection', { name: 'NexTI — Anthropic API' })}
+            />
+            <Risk
+              icon={<AlertTriangle size={16} className="text-warning" />}
+              text={t('dashboard.alertMfa', { name: 'Jorge Mena' })}
+            />
+            <Risk
+              icon={<AlertTriangle size={16} className="text-warning" />}
+              text={t('dashboard.alertWorker', { name: 'w-sandbox-win-1' })}
+            />
           </CardBody>
         </Card>
       </div>

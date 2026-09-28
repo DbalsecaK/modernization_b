@@ -5,7 +5,15 @@ import { cn } from '@/lib/cn'
 import { setLanguage } from '@/i18n'
 import { Logo } from '@/components/layout/AppShell'
 
-export function AuthLayout({ title, subtitle, children }: { title: ReactNode; subtitle?: ReactNode; children: ReactNode }) {
+export function AuthLayout({
+  title,
+  subtitle,
+  children,
+}: {
+  title: ReactNode
+  subtitle?: ReactNode
+  children: ReactNode
+}) {
   const { t, i18n } = useTranslation()
   return (
     <div className="flex min-h-full">
@@ -35,7 +43,10 @@ export function AuthLayout({ title, subtitle, children }: { title: ReactNode; su
               key={lng}
               onClick={() => setLanguage(lng)}
               aria-pressed={i18n.language === lng}
-              className={cn('rounded px-2 py-1 font-medium uppercase', i18n.language === lng ? 'bg-brand text-brand-contrast' : 'text-muted hover:text-text')}
+              className={cn(
+                'rounded px-2 py-1 font-medium uppercase',
+                i18n.language === lng ? 'bg-brand text-brand-contrast' : 'text-muted hover:text-text',
+              )}
             >
               {lng}
             </button>

@@ -10,7 +10,15 @@ const DEPLOYMENTS = ['sharedSaas', 'dedicatedSaas', 'customerCloud', 'onPrem'] a
 const PROJECT_ROLES = ['projectOwner', 'architect', 'analyst', 'businessReviewer', 'developer', 'observer'] as const
 const TENANT_ROLES = ['tenantAdmin', 'auditor', 'finance'] as const
 
-export function TenantForm({ open, onClose, onSave }: { open: boolean; onClose: () => void; onSave: (t: Tenant) => void }) {
+export function TenantForm({
+  open,
+  onClose,
+  onSave,
+}: {
+  open: boolean
+  onClose: () => void
+  onSave: (t: Tenant) => void
+}) {
   const { t } = useTranslation()
   const [name, setName] = useState('')
   const [deployment, setDeployment] = useState<Tenant['deployment']>('sharedSaas')
@@ -36,7 +44,15 @@ export function TenantForm({ open, onClose, onSave }: { open: boolean; onClose: 
             variant="primary"
             disabled={!valid}
             onClick={() => {
-              onSave({ id: `t${Date.now()}`, name, deployment, projects: 0, users: 1, monthCostUsd: 0, defaultLanguage: language })
+              onSave({
+                id: `t${Date.now()}`,
+                name,
+                deployment,
+                projects: 0,
+                users: 1,
+                monthCostUsd: 0,
+                defaultLanguage: language,
+              })
               toast(t('adminForms.tenantCreated', { name }))
               onClose()
             }}
@@ -74,7 +90,12 @@ export function TenantForm({ open, onClose, onSave }: { open: boolean; onClose: 
         </Field>
       </div>
       <Field label={t('adminForms.firstAdmin')} hint={t('adminForms.firstAdminHint')}>
-        <Input type="email" value={adminEmail} onChange={(e) => setAdminEmail(e.target.value)} placeholder="admin@coastalbank.example" />
+        <Input
+          type="email"
+          value={adminEmail}
+          onChange={(e) => setAdminEmail(e.target.value)}
+          placeholder="admin@coastalbank.example"
+        />
       </Field>
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label={t('adminForms.emailDomain')}>
@@ -131,9 +152,15 @@ export function InviteForm({ open, onClose }: { open: boolean; onClose: () => vo
       }
     >
       <Field label={t('adminForms.emails')} hint={t('adminForms.emailsHint')}>
-        <Input value={emails} onChange={(e) => setEmails(e.target.value)} placeholder="ana@andesbank.example, jose@andesbank.example" />
+        <Input
+          value={emails}
+          onChange={(e) => setEmails(e.target.value)}
+          placeholder="ana@andesbank.example, jose@andesbank.example"
+        />
       </Field>
-      {invalid.length > 0 && <Notice tone="critical">{t('adminForms.invalidEmails', { emails: invalid.join(', ') })}</Notice>}
+      {invalid.length > 0 && (
+        <Notice tone="critical">{t('adminForms.invalidEmails', { emails: invalid.join(', ') })}</Notice>
+      )}
       <Field label={t('admin.tenant')}>
         <Select value={tenant} onChange={(e) => setTenant(e.target.value)}>
           {tenants.map((x) => (
@@ -144,7 +171,12 @@ export function InviteForm({ open, onClose }: { open: boolean; onClose: () => vo
         </Select>
       </Field>
       <Field label={t('adminForms.tenantRoles')} hint={t('adminForms.tenantRolesHint')}>
-        <CheckboxGroup columns={3} options={TENANT_ROLES.map((r) => ({ id: r, label: t(`roles.${r}`) }))} value={tenantRoles} onChange={setTenantRoles} />
+        <CheckboxGroup
+          columns={3}
+          options={TENANT_ROLES.map((r) => ({ id: r, label: t(`roles.${r}`) }))}
+          value={tenantRoles}
+          onChange={setTenantRoles}
+        />
       </Field>
       <Field label={t('adminForms.projects')}>
         <CheckboxGroup
@@ -170,7 +202,15 @@ export function InviteForm({ open, onClose }: { open: boolean; onClose: () => vo
   )
 }
 
-export function RoleForm({ open, onClose, permissions }: { open: boolean; onClose: () => void; permissions: string[] }) {
+export function RoleForm({
+  open,
+  onClose,
+  permissions,
+}: {
+  open: boolean
+  onClose: () => void
+  permissions: string[]
+}) {
   const { t } = useTranslation()
   const [name, setName] = useState('')
   const [scope, setScope] = useState<'tenant' | 'project'>('project')
@@ -223,7 +263,12 @@ export function RoleForm({ open, onClose, permissions }: { open: boolean; onClos
         </Select>
       </Field>
       <Field label={t('admin.permissions')}>
-        <CheckboxGroup columns={2} options={permissions.map((p) => ({ id: p, label: <span className="font-mono text-xs">{p}</span> }))} value={granted} onChange={setGranted} />
+        <CheckboxGroup
+          columns={2}
+          options={permissions.map((p) => ({ id: p, label: <span className="font-mono text-xs">{p}</span> }))}
+          value={granted}
+          onChange={setGranted}
+        />
       </Field>
       <Notice tone="info">{t('admin.segregation')}</Notice>
     </Drawer>
@@ -306,10 +351,16 @@ export function IdentityProviderForm({ open, onClose }: { open: boolean; onClose
       )}
       <div className="rounded-md bg-surface-2 p-3 text-xs text-text-2">
         <div className="font-medium text-text">{t('adminForms.redirectUri')}</div>
-        <code className="mt-1 block font-mono">https://auth.nexti-platform.example/realms/platform/broker/{preset}/endpoint</code>
+        <code className="mt-1 block font-mono">
+          https://auth.nexti-platform.example/realms/platform/broker/{preset}/endpoint
+        </code>
       </div>
       <Field label={t('admin.auth.domains')} hint={t('adminForms.domainsHint')}>
-        <Input value={domains} onChange={(e) => setDomains(e.target.value)} placeholder="andesbank.example, andes.example" />
+        <Input
+          value={domains}
+          onChange={(e) => setDomains(e.target.value)}
+          placeholder="andesbank.example, andes.example"
+        />
       </Field>
       <div className="space-y-3">
         <Toggle checked={ssoOnly} onChange={setSsoOnly} label={t('adminForms.enforceSso')} />
@@ -320,8 +371,16 @@ export function IdentityProviderForm({ open, onClose }: { open: boolean; onClose
         <div className="space-y-2">
           {mappings.map((m, i) => (
             <div key={i} className="flex gap-2">
-              <Input value={m.group} onChange={(e) => setMappings(mappings.map((x, j) => (j === i ? { ...x, group: e.target.value } : x)))} aria-label={t('adminForms.idpGroup')} />
-              <Select value={m.role} onChange={(e) => setMappings(mappings.map((x, j) => (j === i ? { ...x, role: e.target.value } : x)))} aria-label={t('admin.role')}>
+              <Input
+                value={m.group}
+                onChange={(e) => setMappings(mappings.map((x, j) => (j === i ? { ...x, group: e.target.value } : x)))}
+                aria-label={t('adminForms.idpGroup')}
+              />
+              <Select
+                value={m.role}
+                onChange={(e) => setMappings(mappings.map((x, j) => (j === i ? { ...x, role: e.target.value } : x)))}
+                aria-label={t('admin.role')}
+              >
                 {[...TENANT_ROLES, ...PROJECT_ROLES].map((r) => (
                   <option key={r} value={r}>
                     {t(`roles.${r}`)}

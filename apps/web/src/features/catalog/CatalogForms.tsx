@@ -8,7 +8,23 @@ import { CheckboxGroup, Drawer, Textarea, toast } from '@/components/ui/overlay'
 import { Notice } from '@/features/projects/NewProjectWizard'
 import { agentName } from './AgentCard'
 
-const PHASES = ['inventory', 'domains', 'classification', 'ruleExtraction', 'ui', 'design', 'characterization', 'generation', 'verification', 'hardening', 'delivery', 'ingestion', 'normalization', 'consolidation', 'validation'] as const
+const PHASES = [
+  'inventory',
+  'domains',
+  'classification',
+  'ruleExtraction',
+  'ui',
+  'design',
+  'characterization',
+  'generation',
+  'verification',
+  'hardening',
+  'delivery',
+  'ingestion',
+  'normalization',
+  'consolidation',
+  'validation',
+] as const
 const CAPABILITIES = ['toolCalling', 'vision', 'structuredOutput', 'longContext', 'reasoning'] as const
 const TOOLS = ['readGraph', 'readCode', 'readInputs', 'readWorkspace', 'writeWorkspace', 'sandbox'] as const
 
@@ -20,7 +36,15 @@ const slug = (s: string) =>
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/(^-|-$)/g, '')
 
-export function AgentForm({ open, onClose, onSave }: { open: boolean; onClose: () => void; onSave: (a: AgentDefinition) => void }) {
+export function AgentForm({
+  open,
+  onClose,
+  onSave,
+}: {
+  open: boolean
+  onClose: () => void
+  onSave: (a: AgentDefinition) => void
+}) {
   const { t } = useTranslation()
   const [name, setName] = useState('')
   const [nameEs, setNameEs] = useState('')
@@ -102,13 +126,28 @@ export function AgentForm({ open, onClose, onSave }: { open: boolean; onClose: (
         </Field>
       </div>
       <Field label={t('catalogForms.phases')}>
-        <CheckboxGroup columns={3} options={PHASES.map((p) => ({ id: p, label: t(`phases.${p}`) }))} value={phases} onChange={setPhases} />
+        <CheckboxGroup
+          columns={3}
+          options={PHASES.map((p) => ({ id: p, label: t(`phases.${p}`) }))}
+          value={phases}
+          onChange={setPhases}
+        />
       </Field>
       <Field label={t('catalogForms.capabilities')} hint={t('catalogForms.capabilitiesHint')}>
-        <CheckboxGroup columns={3} options={CAPABILITIES.map((c) => ({ id: c, label: t(`capabilities.${c}`) }))} value={capabilities} onChange={setCapabilities} />
+        <CheckboxGroup
+          columns={3}
+          options={CAPABILITIES.map((c) => ({ id: c, label: t(`capabilities.${c}`) }))}
+          value={capabilities}
+          onChange={setCapabilities}
+        />
       </Field>
       <Field label={t('catalogForms.tools')} hint={t('catalogForms.toolsHint')}>
-        <CheckboxGroup columns={3} options={TOOLS.map((x) => ({ id: x, label: t(`tools.${x}`) }))} value={tools} onChange={setTools} />
+        <CheckboxGroup
+          columns={3}
+          options={TOOLS.map((x) => ({ id: x, label: t(`tools.${x}`) }))}
+          value={tools}
+          onChange={setTools}
+        />
       </Field>
       {writes && <Notice tone="warning">{t('catalogForms.writeWarning')}</Notice>}
       <Field label={t('catalogForms.defaultProfile')}>
@@ -121,14 +160,27 @@ export function AgentForm({ open, onClose, onSave }: { open: boolean; onClose: (
         </Select>
       </Field>
       <Field label={t('catalogForms.systemPrompt')} hint={t('catalogForms.systemPromptHint')}>
-        <Textarea value={prompt} onChange={(e) => setPrompt(e.target.value)} className="min-h-40 font-mono text-xs" placeholder="You are a mainframe batch analyst. Read JCL and COBOL…" />
+        <Textarea
+          value={prompt}
+          onChange={(e) => setPrompt(e.target.value)}
+          className="min-h-40 font-mono text-xs"
+          placeholder="You are a mainframe batch analyst. Read JCL and COBOL…"
+        />
       </Field>
       <Notice tone="info">{t('catalogForms.evaluationNotice')}</Notice>
     </Drawer>
   )
 }
 
-export function SkillForm({ open, onClose, onSave }: { open: boolean; onClose: () => void; onSave: (s: SkillDefinition) => void }) {
+export function SkillForm({
+  open,
+  onClose,
+  onSave,
+}: {
+  open: boolean
+  onClose: () => void
+  onSave: (s: SkillDefinition) => void
+}) {
   const { t, i18n } = useTranslation()
   const [name, setName] = useState('')
   const [type, setType] = useState<SkillType>('customer')
@@ -162,7 +214,10 @@ export function SkillForm({ open, onClose, onSave }: { open: boolean; onClose: (
                 type,
                 description,
                 appliesTo,
-                tags: tags.split(',').map((x) => x.trim()).filter(Boolean),
+                tags: tags
+                  .split(',')
+                  .map((x) => x.trim())
+                  .filter(Boolean),
                 conflictsWith: conflicts,
                 version: '0.1.0',
                 evalScore: null,
@@ -208,7 +263,9 @@ export function SkillForm({ open, onClose, onSave }: { open: boolean; onClose: (
       <Field label={t('catalogForms.conflicts')}>
         <Select
           value=""
-          onChange={(e) => e.target.value && !conflicts.includes(e.target.value) && setConflicts([...conflicts, e.target.value])}
+          onChange={(e) =>
+            e.target.value && !conflicts.includes(e.target.value) && setConflicts([...conflicts, e.target.value])
+          }
         >
           <option value="">{t('catalogForms.addConflict')}</option>
           {allSkills.map((s) => (
@@ -220,7 +277,11 @@ export function SkillForm({ open, onClose, onSave }: { open: boolean; onClose: (
         {conflicts.length > 0 && (
           <div className="mt-2 flex flex-wrap gap-2">
             {conflicts.map((c) => (
-              <button key={c} onClick={() => setConflicts(conflicts.filter((x) => x !== c))} className="rounded-full bg-critical/10 px-2 py-0.5 text-xs text-critical-ink">
+              <button
+                key={c}
+                onClick={() => setConflicts(conflicts.filter((x) => x !== c))}
+                className="rounded-full bg-critical/10 px-2 py-0.5 text-xs text-critical-ink"
+              >
                 {allSkills.find((s) => s.id === c)?.name} ×
               </button>
             ))}
@@ -231,7 +292,12 @@ export function SkillForm({ open, onClose, onSave }: { open: boolean; onClose: (
         <label className="flex cursor-pointer items-center justify-center gap-2 rounded-md border border-dashed border-border px-4 py-6 text-sm text-text-2 hover:bg-surface-2">
           <Upload size={16} />
           {file ?? t('catalogForms.choosePackage')}
-          <input type="file" accept=".md,.zip" className="sr-only" onChange={(e) => setFile(e.target.files?.[0]?.name ?? null)} />
+          <input
+            type="file"
+            accept=".md,.zip"
+            className="sr-only"
+            onChange={(e) => setFile(e.target.files?.[0]?.name ?? null)}
+          />
         </label>
       </Field>
       <Field label={t('catalogForms.scope')}>

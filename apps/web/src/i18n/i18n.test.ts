@@ -11,7 +11,9 @@ function keys(node: unknown, prefix = ''): string[] {
 function placeholders(node: unknown, prefix = '', out: Record<string, string[]> = {}) {
   if (typeof node === 'string') out[prefix] = [...node.matchAll(/\{\{(\w+)\}\}/g)].map((m) => m[1]).sort()
   else if (node && typeof node === 'object')
-    Object.entries(node as Record<string, unknown>).forEach(([k, v]) => placeholders(v, prefix ? `${prefix}.${k}` : k, out))
+    Object.entries(node as Record<string, unknown>).forEach(([k, v]) =>
+      placeholders(v, prefix ? `${prefix}.${k}` : k, out),
+    )
   return out
 }
 

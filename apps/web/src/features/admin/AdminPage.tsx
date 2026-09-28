@@ -7,7 +7,22 @@ import { auditLog, identityProviders, permissionMatrix, roles, tenants as seedTe
 import type { Tenant } from '@/mocks/types'
 import { toast } from '@/components/ui/overlay'
 import { IdentityProviderForm, InviteForm, RoleForm, TenantForm } from './AdminForms'
-import { Badge, Button, Card, CardBody, CardHeader, Field, Input, PageHeader, Select, Table, Tabs, Td, Th, Toggle } from '@/components/ui/primitives'
+import {
+  Badge,
+  Button,
+  Card,
+  CardBody,
+  CardHeader,
+  Field,
+  Input,
+  PageHeader,
+  Select,
+  Table,
+  Tabs,
+  Td,
+  Th,
+  Toggle,
+} from '@/components/ui/primitives'
 import { Notice } from '@/features/projects/NewProjectWizard'
 
 const TABS = ['tenants', 'users', 'roles', 'authentication', 'security', 'integrations', 'audit'] as const
@@ -115,10 +130,18 @@ function Users() {
                   ))}
                 </div>
               </Td>
-              <Td>{u.mfa ? <Badge tone="good">{t('admin.mfaOn')}</Badge> : <Badge tone="warning">{t('admin.mfaPending')}</Badge>}</Td>
+              <Td>
+                {u.mfa ? (
+                  <Badge tone="good">{t('admin.mfaOn')}</Badge>
+                ) : (
+                  <Badge tone="warning">{t('admin.mfaPending')}</Badge>
+                )}
+              </Td>
               <Td>{formatDateTime(u.lastSeen)}</Td>
               <Td>
-                <Badge tone={u.status === 'active' ? 'good' : u.status === 'invited' ? 'info' : 'neutral'}>{t(`admin.userStatus.${u.status}`)}</Badge>
+                <Badge tone={u.status === 'active' ? 'good' : u.status === 'invited' ? 'info' : 'neutral'}>
+                  {t(`admin.userStatus.${u.status}`)}
+                </Badge>
               </Td>
             </tr>
           ))}
@@ -130,13 +153,29 @@ function Users() {
 
 function Roles() {
   const { t } = useTranslation()
-  const shown = ['superAdmin', 'tenantAdmin', 'projectOwner', 'architect', 'analyst', 'businessReviewer', 'developer', 'auditor', 'finance']
+  const shown = [
+    'superAdmin',
+    'tenantAdmin',
+    'projectOwner',
+    'architect',
+    'analyst',
+    'businessReviewer',
+    'developer',
+    'auditor',
+    'finance',
+  ]
   const [open, setOpen] = useState(false)
   // Editable copy of the matrix; changes are saved as a new version of the role bundles.
   const [matrix, setMatrix] = useState(permissionMatrix.map((p) => ({ ...p, roles: [...p.roles] })))
   const [dirty, setDirty] = useState(false)
   const toggle = (permission: string, role: string) => {
-    setMatrix(matrix.map((p) => (p.permission !== permission ? p : { ...p, roles: p.roles.includes(role) ? p.roles.filter((r) => r !== role) : [...p.roles, role] })))
+    setMatrix(
+      matrix.map((p) =>
+        p.permission !== permission
+          ? p
+          : { ...p, roles: p.roles.includes(role) ? p.roles.filter((r) => r !== role) : [...p.roles, role] },
+      ),
+    )
     setDirty(true)
   }
   return (
@@ -181,10 +220,26 @@ function Roles() {
           subtitle={t('admin.matrixHint')}
           action={
             <div className="flex gap-2">
-              <Button size="sm" variant="ghost" disabled={!dirty} onClick={() => { setMatrix(permissionMatrix.map((p) => ({ ...p, roles: [...p.roles] }))); setDirty(false) }}>
+              <Button
+                size="sm"
+                variant="ghost"
+                disabled={!dirty}
+                onClick={() => {
+                  setMatrix(permissionMatrix.map((p) => ({ ...p, roles: [...p.roles] })))
+                  setDirty(false)
+                }}
+              >
                 {t('common.discard')}
               </Button>
-              <Button size="sm" variant="primary" disabled={!dirty} onClick={() => { setDirty(false); toast(t('adminForms.matrixSaved')) }}>
+              <Button
+                size="sm"
+                variant="primary"
+                disabled={!dirty}
+                onClick={() => {
+                  setDirty(false)
+                  toast(t('adminForms.matrixSaved'))
+                }}
+              >
                 {t('common.save')}
               </Button>
             </div>
@@ -214,7 +269,11 @@ function Roles() {
                         aria-label={`${p.permission} · ${t(`roles.${r}`)}`}
                         className="flex h-10 w-full items-center justify-center hover:bg-surface-2"
                       >
-                        {p.roles.includes(r) ? <Check size={14} className="text-good" /> : <span className="text-muted">·</span>}
+                        {p.roles.includes(r) ? (
+                          <Check size={14} className="text-good" />
+                        ) : (
+                          <span className="text-muted">·</span>
+                        )}
                       </button>
                     </Td>
                   ))}
@@ -257,11 +316,19 @@ function Authentication() {
         <CardHeader title={t('admin.auth.methods')} subtitle={t('admin.auth.methodsHint')} />
         <CardBody className="grid gap-4 md:grid-cols-2">
           <div className="rounded-md border border-border p-4">
-            <Toggle checked={sso} onChange={setSso} label={<span className="font-medium">{t('admin.auth.sso')}</span>} />
+            <Toggle
+              checked={sso}
+              onChange={setSso}
+              label={<span className="font-medium">{t('admin.auth.sso')}</span>}
+            />
             <p className="mt-2 text-sm text-text-2">{t('admin.auth.ssoHint')}</p>
           </div>
           <div className="rounded-md border border-border p-4">
-            <Toggle checked={local} onChange={setLocal} label={<span className="font-medium">{t('admin.auth.local')}</span>} />
+            <Toggle
+              checked={local}
+              onChange={setLocal}
+              label={<span className="font-medium">{t('admin.auth.local')}</span>}
+            />
             <p className="mt-2 text-sm text-text-2">{t('admin.auth.localHint')}</p>
           </div>
           {!sso && !local && (
@@ -273,7 +340,10 @@ function Authentication() {
       </Card>
 
       <Card>
-        <CardHeader title={t('admin.auth.providers')} subtitle={t('admin.auth.providersHint')} action={
+        <CardHeader
+          title={t('admin.auth.providers')}
+          subtitle={t('admin.auth.providersHint')}
+          action={
             <Button size="sm" variant="primary" disabled={!sso} onClick={() => setIdpOpen(true)}>
               <Plus size={14} /> {t('admin.auth.addProvider')}
             </Button>
@@ -296,7 +366,13 @@ function Authentication() {
                 <Td className="text-text">{p.type}</Td>
                 <Td>{p.tenant}</Td>
                 <Td className="font-mono text-xs">{p.domains.join(', ')}</Td>
-                <Td>{p.enforced ? <Badge tone="brand">{t('admin.auth.ssoOnly')}</Badge> : <Badge>{t('admin.auth.optional')}</Badge>}</Td>
+                <Td>
+                  {p.enforced ? (
+                    <Badge tone="brand">{t('admin.auth.ssoOnly')}</Badge>
+                  ) : (
+                    <Badge>{t('admin.auth.optional')}</Badge>
+                  )}
+                </Td>
                 <Td>
                   <Badge tone="good">{t('common.active')}</Badge>
                 </Td>
@@ -335,10 +411,26 @@ function Authentication() {
           <CardBody className="space-y-3">
             <Toggle checked={mfaAll} onChange={setMfaAll} label={t('admin.auth.mfaRequired')} />
             <div className="grid gap-2 pt-2 sm:grid-cols-2">
-              <Toggle checked={methods.totp} onChange={(v) => setMethods({ ...methods, totp: v })} label={t('admin.auth.totp')} />
-              <Toggle checked={methods.passkey} onChange={(v) => setMethods({ ...methods, passkey: v })} label={t('admin.auth.passkeys')} />
-              <Toggle checked={methods.recovery} onChange={(v) => setMethods({ ...methods, recovery: v })} label={t('admin.auth.recoveryCodes')} />
-              <Toggle checked={methods.sms} onChange={(v) => setMethods({ ...methods, sms: v })} label={t('admin.auth.sms')} />
+              <Toggle
+                checked={methods.totp}
+                onChange={(v) => setMethods({ ...methods, totp: v })}
+                label={t('admin.auth.totp')}
+              />
+              <Toggle
+                checked={methods.passkey}
+                onChange={(v) => setMethods({ ...methods, passkey: v })}
+                label={t('admin.auth.passkeys')}
+              />
+              <Toggle
+                checked={methods.recovery}
+                onChange={(v) => setMethods({ ...methods, recovery: v })}
+                label={t('admin.auth.recoveryCodes')}
+              />
+              <Toggle
+                checked={methods.sms}
+                onChange={(v) => setMethods({ ...methods, sms: v })}
+                label={t('admin.auth.sms')}
+              />
             </div>
             {methods.sms && <Notice tone="warning">{t('admin.auth.smsWarning')}</Notice>}
             {!mfaAll && <Notice tone="critical">{t('admin.auth.mfaOffWarning')}</Notice>}
@@ -445,7 +537,11 @@ function Audit() {
   const { t } = useTranslation()
   return (
     <Card>
-      <CardHeader title={t('admin.auditTitle')} subtitle={t('admin.auditHint')} action={<Button size="sm">{t('usage.export')}</Button>} />
+      <CardHeader
+        title={t('admin.auditTitle')}
+        subtitle={t('admin.auditHint')}
+        action={<Button size="sm">{t('usage.export')}</Button>}
+      />
       <Table>
         <thead>
           <tr>

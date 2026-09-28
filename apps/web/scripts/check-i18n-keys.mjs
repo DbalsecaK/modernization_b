@@ -5,7 +5,11 @@ import { join } from 'node:path'
 const en = JSON.parse(readFileSync('src/i18n/locales/en.json', 'utf8'))
 const tops = new Set(Object.keys(en))
 const files = []
-const walk = (d) => readdirSync(d).forEach((f) => { const p = join(d, f); statSync(p).isDirectory() ? walk(p) : /\.tsx?$/.test(p) && files.push(p) })
+const walk = (d) =>
+  readdirSync(d).forEach((f) => {
+    const p = join(d, f)
+    statSync(p).isDirectory() ? walk(p) : /\.tsx?$/.test(p) && files.push(p)
+  })
 walk('src')
 // Normalize Windows separators so the mocks folder is excluded on every OS.
 const scanned = files.filter((f) => !f.replaceAll('\\', '/').includes('/mocks/'))

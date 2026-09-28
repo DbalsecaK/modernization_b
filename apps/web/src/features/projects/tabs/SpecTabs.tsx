@@ -45,7 +45,10 @@ export function SpecificationTab({ project }: { project: Project }) {
             role="tab"
             aria-selected={view === v}
             onClick={() => setView(v)}
-            className={cn('rounded-md px-3 py-1.5 text-sm', view === v ? 'bg-brand text-brand-contrast' : 'text-text-2 hover:bg-surface-2')}
+            className={cn(
+              'rounded-md px-3 py-1.5 text-sm',
+              view === v ? 'bg-brand text-brand-contrast' : 'text-text-2 hover:bg-surface-2',
+            )}
           >
             {t(`spec.views.${v}`)} <span className="ml-1 text-xs opacity-80">{counts[v]}</span>
           </button>
@@ -71,10 +74,15 @@ function ScreensView() {
         <ul className="divide-y divide-border">
           {screenSpecs.map((x) => (
             <li key={x.id}>
-              <button onClick={() => setSelected(x.id)} className={cn('w-full px-4 py-3 text-left hover:bg-surface-2', selected === x.id && 'bg-surface-2')}>
+              <button
+                onClick={() => setSelected(x.id)}
+                className={cn('w-full px-4 py-3 text-left hover:bg-surface-2', selected === x.id && 'bg-surface-2')}
+              >
                 <div className="flex items-center gap-2">
                   <span className="font-mono text-xs text-muted">{x.id}</span>
-                  <Badge tone={ruleStatusTone[x.status]} className="ml-auto">{t(`ruleStatus.${x.status}`)}</Badge>
+                  <Badge tone={ruleStatusTone[x.status]} className="ml-auto">
+                    {t(`ruleStatus.${x.status}`)}
+                  </Badge>
                 </div>
                 <div className="mt-1 text-sm font-medium text-text">{x.name}</div>
                 <div className="text-xs text-muted">{x.source}</div>
@@ -115,7 +123,9 @@ function ScreensView() {
             <div className="text-xs font-medium text-muted uppercase">{t('spec.actions')}</div>
             <ul className="mt-1 space-y-1 text-sm text-text-2">
               {screen.actions.map((a) => (
-                <li key={a} className="font-mono text-xs">{a}</li>
+                <li key={a} className="font-mono text-xs">
+                  {a}
+                </li>
               ))}
             </ul>
           </div>
@@ -180,7 +190,12 @@ function RulesView({ project }: { project: Project }) {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-3">
-        <Select className="max-w-xs" value={status} onChange={(e) => setStatus(e.target.value as typeof status)} aria-label={t('spec.filterStatus')}>
+        <Select
+          className="max-w-xs"
+          value={status}
+          onChange={(e) => setStatus(e.target.value as typeof status)}
+          aria-label={t('spec.filterStatus')}
+        >
           <option value="all">{t('spec.allStatuses')}</option>
           {(['approved', 'inReview', 'question', 'draft'] as const).map((s) => (
             <option key={s} value={s}>
@@ -188,7 +203,9 @@ function RulesView({ project }: { project: Project }) {
             </option>
           ))}
         </Select>
-        <span className="text-sm text-muted">{t('spec.rulesCount', { count: project.rules.total, approved: project.rules.approved })}</span>
+        <span className="text-sm text-muted">
+          {t('spec.rulesCount', { count: project.rules.total, approved: project.rules.approved })}
+        </span>
         <div className="ml-auto flex gap-2">
           <Button size="sm">
             <Download size={14} /> {t('spec.export')}
@@ -203,10 +220,18 @@ function RulesView({ project }: { project: Project }) {
           <ul className="divide-y divide-border">
             {list.map((r) => (
               <li key={r.id}>
-                <button onClick={() => setSelected(r)} className={cn('w-full px-4 py-3 text-left hover:bg-surface-2', selected.id === r.id && 'bg-surface-2')}>
+                <button
+                  onClick={() => setSelected(r)}
+                  className={cn(
+                    'w-full px-4 py-3 text-left hover:bg-surface-2',
+                    selected.id === r.id && 'bg-surface-2',
+                  )}
+                >
                   <div className="flex items-center gap-2">
                     <span className="font-mono text-xs text-muted">{r.id}</span>
-                    <Badge tone={r.priority === 'P0' ? 'critical' : r.priority === 'P1' ? 'warning' : 'neutral'}>{r.priority}</Badge>
+                    <Badge tone={r.priority === 'P0' ? 'critical' : r.priority === 'P1' ? 'warning' : 'neutral'}>
+                      {r.priority}
+                    </Badge>
                     <Badge tone={ruleStatusTone[r.status]} className="ml-auto">
                       {t(`ruleStatus.${r.status}`)}
                     </Badge>
@@ -300,7 +325,13 @@ export function UiDesignTab({ project }: { project: Project }) {
       ]
   return (
     <div className="space-y-6">
-      <AddInputForm key={addSource ?? 'none'} open={!!addSource} onClose={() => setAddSource(null)} flow={project.flow} initialSource={addSource ?? undefined} />
+      <AddInputForm
+        key={addSource ?? 'none'}
+        open={!!addSource}
+        onClose={() => setAddSource(null)}
+        flow={project.flow}
+        initialSource={addSource ?? undefined}
+      />
       <Notice tone="info">{t(isModernization ? 'uiDesign.fromBms' : 'uiDesign.fromFigma')}</Notice>
       <Card>
         <CardHeader
@@ -335,7 +366,9 @@ export function UiDesignTab({ project }: { project: Project }) {
           <Card>
             <CardHeader title={t('uiDesign.legacyScreen')} subtitle="COACTUP · COACTUPC" />
             <CardBody>
-              <pre className="overflow-x-auto rounded-md bg-black p-4 font-mono text-[11px] leading-5 text-[#33ff66]">{bmsScreen}</pre>
+              <pre className="overflow-x-auto rounded-md bg-black p-4 font-mono text-[11px] leading-5 text-[#33ff66]">
+                {bmsScreen}
+              </pre>
             </CardBody>
           </Card>
         ) : (
@@ -350,7 +383,11 @@ export function UiDesignTab({ project }: { project: Project }) {
                   <div className="mt-1.5 truncate text-xs font-medium text-text">{f.name}</div>
                   <div className="flex items-center justify-between text-[10px] text-muted">
                     <span>{f.mapped}</span>
-                    {f.gaps > 0 ? <Badge tone="warning">{t('uiDesign.gaps', { count: f.gaps })}</Badge> : <Badge tone="good">OK</Badge>}
+                    {f.gaps > 0 ? (
+                      <Badge tone="warning">{t('uiDesign.gaps', { count: f.gaps })}</Badge>
+                    ) : (
+                      <Badge tone="good">OK</Badge>
+                    )}
                   </div>
                 </div>
               ))}
@@ -358,7 +395,11 @@ export function UiDesignTab({ project }: { project: Project }) {
           </Card>
         )}
         <Card>
-          <CardHeader title={t('uiDesign.prototype')} subtitle={t('uiDesign.prototypeHint')} action={<Badge tone="warning">{t('uiDesign.awaitingC2')}</Badge>} />
+          <CardHeader
+            title={t('uiDesign.prototype')}
+            subtitle={t('uiDesign.prototypeHint')}
+            action={<Badge tone="warning">{t('uiDesign.awaitingC2')}</Badge>}
+          />
           <CardBody>
             <PrototypeForm flow={project.flow} />
           </CardBody>
@@ -381,7 +422,9 @@ export function UiDesignTab({ project }: { project: Project }) {
                 <tr key={g.id}>
                   <Td className="font-mono text-xs">{g.id}</Td>
                   <Td>
-                    <Badge tone={g.kind === 'contradiction' ? 'critical' : 'warning'}>{t(`uiDesign.gapKinds.${g.kind}`)}</Badge>
+                    <Badge tone={g.kind === 'contradiction' ? 'critical' : 'warning'}>
+                      {t(`uiDesign.gapKinds.${g.kind}`)}
+                    </Badge>
                   </Td>
                   <Td className="text-text">{g.target}</Td>
                   <Td>{g.detail}</Td>
@@ -480,7 +523,10 @@ function PrototypeForm({ flow }: { flow: Project['flow'] }) {
           <input
             defaultValue={value}
             readOnly={readOnly}
-            className={cn('h-9 w-full rounded-md border border-border px-3 text-text', readOnly ? 'bg-surface-2' : 'bg-surface')}
+            className={cn(
+              'h-9 w-full rounded-md border border-border px-3 text-text',
+              readOnly ? 'bg-surface-2' : 'bg-surface',
+            )}
           />
         </label>
       ))}
@@ -513,7 +559,10 @@ export function ArchitectureTab({ project }: { project: Project }) {
   return (
     <div className="space-y-6">
       <Card>
-        <CardHeader title={t('architecture.contexts')} subtitle={`${project.target.architecture} · ${project.target.backend} · ${project.target.database}`} />
+        <CardHeader
+          title={t('architecture.contexts')}
+          subtitle={`${project.target.architecture} · ${project.target.backend} · ${project.target.database}`}
+        />
         <Table>
           <thead>
             <tr>
@@ -603,44 +652,48 @@ export function CodeTab({ project }: { project: Project }) {
   const generation = project.phases.find((p) => p.key === 'generation')
   return (
     <div className="space-y-4">
-    {generation?.status === 'pending' && <Notice tone="info">{t('code.notYet')}</Notice>}
-    <Card>
-      <CardHeader
-        title={t('code.title')}
-        subtitle={t('code.subtitle')}
-        action={
-          <div className="flex gap-2">
-            <Button size="sm">
-              <Download size={14} /> {t('code.download')}
-            </Button>
-            <Button size="sm" variant="primary">
-              <GitPullRequest size={14} /> {t('code.push')}
-            </Button>
+      {generation?.status === 'pending' && <Notice tone="info">{t('code.notYet')}</Notice>}
+      <Card>
+        <CardHeader
+          title={t('code.title')}
+          subtitle={t('code.subtitle')}
+          action={
+            <div className="flex gap-2">
+              <Button size="sm">
+                <Download size={14} /> {t('code.download')}
+              </Button>
+              <Button size="sm" variant="primary">
+                <GitPullRequest size={14} /> {t('code.push')}
+              </Button>
+            </div>
+          }
+        />
+        <div className="grid md:grid-cols-[240px_1fr]">
+          <ul className="border-b border-border p-3 text-sm md:border-r md:border-b-0">
+            {tree.map((n) => (
+              <li key={n.path}>
+                <button
+                  disabled={n.dir}
+                  onClick={() => setFile(n.path)}
+                  className={cn(
+                    'flex w-full items-center gap-1.5 rounded px-2 py-1 text-left',
+                    !n.dir && 'hover:bg-surface-2',
+                    file === n.path && 'bg-surface-2 font-medium',
+                  )}
+                  style={{ paddingLeft: 8 + n.depth * 14 }}
+                >
+                  {n.dir ? <Folder size={14} className="text-muted" /> : <FileCode2 size={14} className="text-muted" />}
+                  <span className="truncate text-text">{n.path}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+          <div className="min-w-0 p-4">
+            <div className="mb-2 font-mono text-xs text-muted">{file}</div>
+            <Code>{codeFiles[file] ?? ''}</Code>
           </div>
-        }
-      />
-      <div className="grid md:grid-cols-[240px_1fr]">
-        <ul className="border-b border-border p-3 text-sm md:border-r md:border-b-0">
-          {tree.map((n) => (
-            <li key={n.path}>
-              <button
-                disabled={n.dir}
-                onClick={() => setFile(n.path)}
-                className={cn('flex w-full items-center gap-1.5 rounded px-2 py-1 text-left', !n.dir && 'hover:bg-surface-2', file === n.path && 'bg-surface-2 font-medium')}
-                style={{ paddingLeft: 8 + n.depth * 14 }}
-              >
-                {n.dir ? <Folder size={14} className="text-muted" /> : <FileCode2 size={14} className="text-muted" />}
-                <span className="truncate text-text">{n.path}</span>
-              </button>
-            </li>
-          ))}
-        </ul>
-        <div className="min-w-0 p-4">
-          <div className="mb-2 font-mono text-xs text-muted">{file}</div>
-          <Code>{codeFiles[file] ?? ''}</Code>
         </div>
-      </div>
-    </Card>
+      </Card>
     </div>
   )
 }
@@ -648,7 +701,9 @@ export function CodeTab({ project }: { project: Project }) {
 export function TraceabilityTab() {
   const { t } = useTranslation()
   const search = useSearch({ strict: false }) as { rule?: string }
-  const [ruleId, setRuleId] = useState(compareItems.find((c) => c.ruleId === search.rule)?.ruleId ?? compareItems[0].ruleId)
+  const [ruleId, setRuleId] = useState(
+    compareItems.find((c) => c.ruleId === search.rule)?.ruleId ?? compareItems[0].ruleId,
+  )
   const [by, setBy] = useState<'rule' | 'program'>('rule')
   const item = compareItems.find((c) => c.ruleId === ruleId)!
   const rule = rules.find((r) => r.id === item.ruleId)
@@ -661,7 +716,12 @@ export function TraceabilityTab() {
         <Card>
           <div className="flex border-b border-border p-1 text-xs">
             {(['rule', 'program'] as const).map((b) => (
-              <button key={b} onClick={() => setBy(b)} aria-pressed={by === b} className={cn('flex-1 rounded px-2 py-1', by === b ? 'bg-brand text-brand-contrast' : 'text-muted')}>
+              <button
+                key={b}
+                onClick={() => setBy(b)}
+                aria-pressed={by === b}
+                className={cn('flex-1 rounded px-2 py-1', by === b ? 'bg-brand text-brand-contrast' : 'text-muted')}
+              >
                 {t(`traceability.by.${b}`)}
               </button>
             ))}
@@ -669,9 +729,17 @@ export function TraceabilityTab() {
           <ul className="p-1">
             {compareItems.map((c) => (
               <li key={c.ruleId}>
-                <button onClick={() => setRuleId(c.ruleId)} className={cn('w-full rounded-md px-3 py-2 text-left hover:bg-surface-2', ruleId === c.ruleId && 'bg-surface-2')}>
+                <button
+                  onClick={() => setRuleId(c.ruleId)}
+                  className={cn(
+                    'w-full rounded-md px-3 py-2 text-left hover:bg-surface-2',
+                    ruleId === c.ruleId && 'bg-surface-2',
+                  )}
+                >
                   <div className="font-mono text-xs text-text">{by === 'rule' ? c.ruleId : c.program}</div>
-                  <div className="truncate text-xs text-muted">{by === 'rule' ? rules.find((r) => r.id === c.ruleId)?.name : c.ruleId}</div>
+                  <div className="truncate text-xs text-muted">
+                    {by === 'rule' ? rules.find((r) => r.id === c.ruleId)?.name : c.ruleId}
+                  </div>
                 </button>
               </li>
             ))}
@@ -697,12 +765,17 @@ export function TraceabilityTab() {
             <CardBody className="grid gap-4 text-sm md:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
               <div className="space-y-3">
                 <p className="text-text">{rule?.statement}</p>
-                {rule && <Code className="whitespace-pre-wrap">{`Given ${rule.given}\nWhen ${rule.when}\nThen ${rule.then}`}</Code>}
+                {rule && (
+                  <Code className="whitespace-pre-wrap">{`Given ${rule.given}\nWhen ${rule.when}\nThen ${rule.then}`}</Code>
+                )}
               </div>
               <div className="space-y-1.5 text-xs">
                 <TraceLink ok label={t('traceability.citationVerified')} />
                 <TraceLink ok label={t('traceability.implementationVerified')} />
-                <TraceLink ok={rule?.testStatus === 'tested'} label={t(rule?.testStatus === 'tested' ? 'traceability.testPassed' : 'traceability.testNotRun')} />
+                <TraceLink
+                  ok={rule?.testStatus === 'tested'}
+                  label={t(rule?.testStatus === 'tested' ? 'traceability.testPassed' : 'traceability.testNotRun')}
+                />
               </div>
             </CardBody>
           </Card>
@@ -710,7 +783,13 @@ export function TraceabilityTab() {
             <CardHeader
               title={t('traceability.outputs')}
               subtitle={t('traceability.outputsHint')}
-              action={differing > 0 ? <Badge tone="critical">{t('traceability.differs', { count: differing })}</Badge> : <Badge tone="good">{t('traceability.allSame')}</Badge>}
+              action={
+                differing > 0 ? (
+                  <Badge tone="critical">{t('traceability.differs', { count: differing })}</Badge>
+                ) : (
+                  <Badge tone="good">{t('traceability.allSame')}</Badge>
+                )
+              }
             />
             <Table>
               <thead>
@@ -729,7 +808,13 @@ export function TraceabilityTab() {
                     <Td className="text-xs">{o.input}</Td>
                     <Td className="font-mono text-xs text-text">{o.legacy}</Td>
                     <Td className={cn('font-mono text-xs', o.same ? 'text-text' : 'text-critical-ink')}>{o.next}</Td>
-                    <Td>{o.same ? <Badge tone="good">{t('traceability.same')}</Badge> : <Badge tone="critical">{t('traceability.different')}</Badge>}</Td>
+                    <Td>
+                      {o.same ? (
+                        <Badge tone="good">{t('traceability.same')}</Badge>
+                      ) : (
+                        <Badge tone="critical">{t('traceability.different')}</Badge>
+                      )}
+                    </Td>
                   </tr>
                 ))}
               </tbody>

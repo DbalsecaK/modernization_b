@@ -38,7 +38,16 @@ export function ProjectWorkspace() {
   const project = projects.find((p) => p.id === projectId)
 
   if (!project) {
-    return <EmptyState title={t('project.notFound')} action={<Link to="/projects" className="text-sm text-info hover:underline">{t('project.back')}</Link>} />
+    return (
+      <EmptyState
+        title={t('project.notFound')}
+        action={
+          <Link to="/projects" className="text-sm text-info hover:underline">
+            {t('project.back')}
+          </Link>
+        }
+      />
+    )
   }
 
   // The inventory tab only applies to modernization projects (the legacy map).

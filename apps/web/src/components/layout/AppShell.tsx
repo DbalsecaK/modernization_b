@@ -76,7 +76,9 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
           </li>
         ))}
       </ul>
-      <div className="border-t border-white/10 px-5 py-4 text-xs text-sidebar-text/70">{t('app.version', { version: '0.1.0' })}</div>
+      <div className="border-t border-white/10 px-5 py-4 text-xs text-sidebar-text/70">
+        {t('app.version', { version: '0.1.0' })}
+      </div>
     </nav>
   )
 }
@@ -124,20 +126,33 @@ function UserMenu() {
   const [open, setOpen] = useState(false)
   return (
     <div className="relative">
-      <button onClick={() => setOpen((o) => !o)} className="flex items-center gap-2 rounded-md p-1 hover:bg-surface-2" aria-expanded={open}>
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className="flex items-center gap-2 rounded-md p-1 hover:bg-surface-2"
+        aria-expanded={open}
+      >
         <Avatar initials={currentUser.initials} />
         <ChevronDown size={14} className="hidden text-muted sm:block" />
       </button>
       {open && (
-        <div className="absolute right-0 z-30 mt-2 w-64 rounded-lg border border-border bg-surface p-2 shadow-lg" onMouseLeave={() => setOpen(false)}>
+        <div
+          className="absolute right-0 z-30 mt-2 w-64 rounded-lg border border-border bg-surface p-2 shadow-lg"
+          onMouseLeave={() => setOpen(false)}
+        >
           <div className="px-3 py-2">
             <div className="text-sm font-medium text-text">{currentUser.name}</div>
             <div className="truncate text-xs text-muted">{session?.email ?? currentUser.email}</div>
             <div className="mt-1 text-xs text-muted">
-              {session?.method === 'sso' ? t('auth.signedInWithSso', { provider: session.provider }) : t('auth.signedInWithPassword')}
+              {session?.method === 'sso'
+                ? t('auth.signedInWithSso', { provider: session.provider })
+                : t('auth.signedInWithPassword')}
             </div>
           </div>
-          <Link to="/account" onClick={() => setOpen(false)} className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-text hover:bg-surface-2">
+          <Link
+            to="/account"
+            onClick={() => setOpen(false)}
+            className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-text hover:bg-surface-2"
+          >
             <UserRound size={16} /> {t('nav.account')}
           </Link>
           <button
@@ -169,19 +184,31 @@ export function AppShell() {
           <div className="absolute inset-y-0 left-0 w-64">
             <Sidebar onNavigate={() => setMobileOpen(false)} />
           </div>
-          <button className="absolute top-4 left-68 text-white" onClick={() => setMobileOpen(false)} aria-label={t('common.close')}>
+          <button
+            className="absolute top-4 left-68 text-white"
+            onClick={() => setMobileOpen(false)}
+            aria-label={t('common.close')}
+          >
             <X />
           </button>
         </div>
       )}
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="sticky top-0 z-20 flex h-16 items-center gap-3 border-b border-border bg-surface px-4 sm:px-6">
-          <button className="rounded-md p-2 text-muted hover:bg-surface-2 lg:hidden" onClick={() => setMobileOpen(true)} aria-label={t('nav.open')}>
+          <button
+            className="rounded-md p-2 text-muted hover:bg-surface-2 lg:hidden"
+            onClick={() => setMobileOpen(true)}
+            aria-label={t('nav.open')}
+          >
             <Menu size={20} />
           </button>
           <div className="hidden items-center gap-2 rounded-md border border-border px-2.5 py-1.5 text-sm md:flex">
             <Building2 size={16} className="text-muted" />
-            <select className="bg-transparent text-text focus:outline-none" aria-label={t('topbar.tenant')} defaultValue="all">
+            <select
+              className="bg-transparent text-text focus:outline-none"
+              aria-label={t('topbar.tenant')}
+              defaultValue="all"
+            >
               <option value="all">{t('topbar.allTenants')}</option>
               {tenants.map((tenant) => (
                 <option key={tenant.id} value={tenant.id}>
@@ -192,7 +219,9 @@ export function AppShell() {
           </div>
           <GlobalSearch />
           <div className="ml-auto flex items-center gap-2">
-            <span className="hidden rounded-full border border-warning/50 px-2 py-0.5 text-xs text-warning-ink xl:inline">{t('app.sampleData')}</span>
+            <span className="hidden rounded-full border border-warning/50 px-2 py-0.5 text-xs text-warning-ink xl:inline">
+              {t('app.sampleData')}
+            </span>
             <LanguageSwitcher />
             <ThemeToggle />
             <NotificationsMenu />

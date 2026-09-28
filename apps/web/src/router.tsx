@@ -36,8 +36,16 @@ const loginRoute = createRoute({
   component: LoginPage,
 })
 const mfaRoute = createRoute({ getParentRoute: () => rootRoute, path: '/login/mfa', component: MfaPage })
-const forgotRoute = createRoute({ getParentRoute: () => rootRoute, path: '/forgot-password', component: ForgotPasswordPage })
-const inviteRoute = createRoute({ getParentRoute: () => rootRoute, path: '/accept-invite', component: AcceptInvitePage })
+const forgotRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/forgot-password',
+  component: ForgotPasswordPage,
+})
+const inviteRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/accept-invite',
+  component: AcceptInvitePage,
+})
 
 // Authenticated area.
 const appRoute = createRoute({
@@ -51,7 +59,11 @@ const appRoute = createRoute({
 
 const dashboardRoute = createRoute({ getParentRoute: () => appRoute, path: '/', component: DashboardPage })
 const projectsRoute = createRoute({ getParentRoute: () => appRoute, path: '/projects', component: ProjectsPage })
-const newProjectRoute = createRoute({ getParentRoute: () => appRoute, path: '/projects/new', component: NewProjectWizard })
+const newProjectRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: '/projects/new',
+  component: NewProjectWizard,
+})
 const projectRoute = createRoute({
   getParentRoute: () => appRoute,
   path: '/projects/$projectId',
@@ -60,11 +72,31 @@ const projectRoute = createRoute({
 })
 const tasksRoute = createRoute({ getParentRoute: () => appRoute, path: '/tasks', component: TasksPage })
 const usageRoute = createRoute({ getParentRoute: () => appRoute, path: '/usage', component: UsagePage })
-const aiConfigRoute = createRoute({ getParentRoute: () => appRoute, path: '/ai-config', validateSearch: tabSearch, component: AiConfigPage })
-const catalogRoute = createRoute({ getParentRoute: () => appRoute, path: '/catalog', validateSearch: tabSearch, component: CatalogPage })
-const adminRoute = createRoute({ getParentRoute: () => appRoute, path: '/admin', validateSearch: tabSearch, component: AdminPage })
+const aiConfigRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: '/ai-config',
+  validateSearch: tabSearch,
+  component: AiConfigPage,
+})
+const catalogRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: '/catalog',
+  validateSearch: tabSearch,
+  component: CatalogPage,
+})
+const adminRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: '/admin',
+  validateSearch: tabSearch,
+  component: AdminPage,
+})
 const platformRoute = createRoute({ getParentRoute: () => appRoute, path: '/platform', component: PlatformPage })
-const accountRoute = createRoute({ getParentRoute: () => appRoute, path: '/account', validateSearch: tabSearch, component: AccountPage })
+const accountRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: '/account',
+  validateSearch: tabSearch,
+  component: AccountPage,
+})
 
 const routeTree = rootRoute.addChildren([
   loginRoute,

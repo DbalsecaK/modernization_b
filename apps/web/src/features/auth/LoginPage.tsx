@@ -66,9 +66,20 @@ export function LoginPage() {
       {step === 'email' && (
         <form onSubmit={onContinue} className="space-y-4" noValidate>
           <Field label={t('auth.workEmail')}>
-            <Input type="email" autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@company.com" autoFocus />
+            <Input
+              type="email"
+              autoComplete="username"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="name@company.com"
+              autoFocus
+            />
           </Field>
-          {error && <p className="text-sm text-critical-ink" role="alert">{error}</p>}
+          {error && (
+            <p className="text-sm text-critical-ink" role="alert">
+              {error}
+            </p>
+          )}
           <Button type="submit" variant="primary" className="w-full">
             {t('common.continue')}
           </Button>
@@ -80,7 +91,14 @@ export function LoginPage() {
         <div className="space-y-4">
           <div className="flex items-center justify-between rounded-md bg-surface-2 px-3 py-2 text-sm">
             <span className="truncate text-text">{email}</span>
-            <button className="text-xs font-medium text-info hover:underline" onClick={() => { setStep('email'); setPassword(''); setError(null) }}>
+            <button
+              className="text-xs font-medium text-info hover:underline"
+              onClick={() => {
+                setStep('email')
+                setPassword('')
+                setError(null)
+              }}
+            >
               {t('common.change')}
             </button>
           </div>
@@ -99,9 +117,19 @@ export function LoginPage() {
               {realm && <Divider label={t('auth.orUsePassword')} />}
               <form onSubmit={onPassword} className="space-y-4" noValidate>
                 <Field label={t('auth.password')}>
-                  <Input type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} autoFocus={!realm} />
+                  <Input
+                    type="password"
+                    autoComplete="current-password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    autoFocus={!realm}
+                  />
                 </Field>
-                {error && <p className="text-sm text-critical-ink" role="alert">{error}</p>}
+                {error && (
+                  <p className="text-sm text-critical-ink" role="alert">
+                    {error}
+                  </p>
+                )}
                 <div className="flex justify-end">
                   <Link to="/forgot-password" className="text-sm font-medium text-info hover:underline">
                     {t('auth.forgotPassword')}
@@ -117,32 +145,36 @@ export function LoginPage() {
       )}
 
       {!realm && (
-      <>
-      <Divider label={t('auth.orSso')} />
-      <div className="space-y-2">
-        {ssoProviders.map((provider) => (
-          <Button key={provider} className="w-full" onClick={() => startSso(provider)}>
-            {t('auth.continueWith', { provider })}
-          </Button>
-        ))}
-        {!companySso ? (
-          <Button variant="ghost" className="w-full" onClick={() => setCompanySso(true)}>
-            {t('auth.otherSso')}
-          </Button>
-        ) : (
-          <form
-            className="flex gap-2"
-            onSubmit={(e) => {
-              e.preventDefault()
-              startSso(t('auth.companySso'))
-            }}
-          >
-            <Input placeholder={t('auth.companyDomainPlaceholder')} aria-label={t('auth.companyDomain')} autoFocus />
-            <Button type="submit">{t('common.continue')}</Button>
-          </form>
-        )}
-      </div>
-      </>
+        <>
+          <Divider label={t('auth.orSso')} />
+          <div className="space-y-2">
+            {ssoProviders.map((provider) => (
+              <Button key={provider} className="w-full" onClick={() => startSso(provider)}>
+                {t('auth.continueWith', { provider })}
+              </Button>
+            ))}
+            {!companySso ? (
+              <Button variant="ghost" className="w-full" onClick={() => setCompanySso(true)}>
+                {t('auth.otherSso')}
+              </Button>
+            ) : (
+              <form
+                className="flex gap-2"
+                onSubmit={(e) => {
+                  e.preventDefault()
+                  startSso(t('auth.companySso'))
+                }}
+              >
+                <Input
+                  placeholder={t('auth.companyDomainPlaceholder')}
+                  aria-label={t('auth.companyDomain')}
+                  autoFocus
+                />
+                <Button type="submit">{t('common.continue')}</Button>
+              </form>
+            )}
+          </div>
+        </>
       )}
 
       <p className="mt-8 text-center text-xs text-muted">

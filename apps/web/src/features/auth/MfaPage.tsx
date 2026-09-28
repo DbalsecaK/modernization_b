@@ -43,7 +43,10 @@ export function MfaPage() {
   }
 
   return (
-    <AuthLayout title={t('auth.mfa.title')} subtitle={t(mode === 'totp' ? 'auth.mfa.subtitleTotp' : 'auth.mfa.subtitleRecovery')}>
+    <AuthLayout
+      title={t('auth.mfa.title')}
+      subtitle={t(mode === 'totp' ? 'auth.mfa.subtitleTotp' : 'auth.mfa.subtitleRecovery')}
+    >
       <form onSubmit={onSubmit} className="space-y-4" noValidate>
         <Field label={t(mode === 'totp' ? 'auth.mfa.code' : 'auth.mfa.recoveryCode')}>
           <Input
@@ -57,7 +60,11 @@ export function MfaPage() {
             autoFocus
           />
         </Field>
-        {error && <p className="text-sm text-critical-ink" role="alert">{error}</p>}
+        {error && (
+          <p className="text-sm text-critical-ink" role="alert">
+            {error}
+          </p>
+        )}
         <Button type="submit" variant="primary" className="w-full">
           {t('auth.mfa.verify')}
         </Button>
@@ -67,7 +74,15 @@ export function MfaPage() {
         <Button className="w-full" onClick={complete}>
           <Fingerprint size={16} /> {t('auth.mfa.usePasskey')}
         </Button>
-        <Button variant="ghost" className="w-full" onClick={() => { setMode(mode === 'totp' ? 'recovery' : 'totp'); setCode(''); setError(null) }}>
+        <Button
+          variant="ghost"
+          className="w-full"
+          onClick={() => {
+            setMode(mode === 'totp' ? 'recovery' : 'totp')
+            setCode('')
+            setError(null)
+          }}
+        >
           {t(mode === 'totp' ? 'auth.mfa.useRecovery' : 'auth.mfa.useTotp')}
         </Button>
       </div>

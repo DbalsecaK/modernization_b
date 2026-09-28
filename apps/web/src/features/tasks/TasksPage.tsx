@@ -46,45 +46,52 @@ export function TasksPage() {
       />
       {tab === 'questions' && <DecisionList decisions={decisions} onChange={updateDecisions} />}
       {tab === 'approvals' && (
-      <>
-      <div className="mb-4 flex flex-wrap gap-2">
-        {(['all', ...kinds] as const).map((k) => (
-          <button
-            key={k}
-            onClick={() => setFilter(k)}
-            aria-pressed={filter === k}
-            className={cn('rounded-full border px-3 py-1 text-sm', filter === k ? 'border-series-1 bg-series-1/10 text-text' : 'border-border text-text-2 hover:bg-surface-2')}
-          >
-            {k === 'all' ? t('tasks.all') : t(`tasks.kinds.${k}`)}
-          </button>
-        ))}
-      </div>
-      <Card>
-        <ul className="divide-y divide-border">
-          {list.map((task) => {
-            const project = projects.find((p) => p.id === task.projectId)!
-            return (
-              <li key={task.id}>
-                <Link
-                  to="/projects/$projectId"
-                  params={{ projectId: project.id }}
-                  search={{ tab: tabFor[task.kind], view: task.kind === 'reviewStories' ? 'stories' : undefined }}
-                  className="flex flex-wrap items-center gap-3 px-5 py-4 hover:bg-surface-2"
-                >
-                  <Badge tone={task.priority === 'high' ? 'critical' : 'neutral'}>{t(`tasks.kinds.${task.kind}`)}</Badge>
-                  <div className="min-w-0 flex-1">
-                    <div className="text-sm font-medium text-text">{task.title}</div>
-                    <div className="text-xs text-muted">{project.name}</div>
-                  </div>
-                  <span className="text-xs text-muted">{t('tasks.due', { date: formatDate(task.due) })}</span>
-                  <ArrowRight size={16} className="text-muted" />
-                </Link>
-              </li>
-            )
-          })}
-        </ul>
-      </Card>
-      </>
+        <>
+          <div className="mb-4 flex flex-wrap gap-2">
+            {(['all', ...kinds] as const).map((k) => (
+              <button
+                key={k}
+                onClick={() => setFilter(k)}
+                aria-pressed={filter === k}
+                className={cn(
+                  'rounded-full border px-3 py-1 text-sm',
+                  filter === k
+                    ? 'border-series-1 bg-series-1/10 text-text'
+                    : 'border-border text-text-2 hover:bg-surface-2',
+                )}
+              >
+                {k === 'all' ? t('tasks.all') : t(`tasks.kinds.${k}`)}
+              </button>
+            ))}
+          </div>
+          <Card>
+            <ul className="divide-y divide-border">
+              {list.map((task) => {
+                const project = projects.find((p) => p.id === task.projectId)!
+                return (
+                  <li key={task.id}>
+                    <Link
+                      to="/projects/$projectId"
+                      params={{ projectId: project.id }}
+                      search={{ tab: tabFor[task.kind], view: task.kind === 'reviewStories' ? 'stories' : undefined }}
+                      className="flex flex-wrap items-center gap-3 px-5 py-4 hover:bg-surface-2"
+                    >
+                      <Badge tone={task.priority === 'high' ? 'critical' : 'neutral'}>
+                        {t(`tasks.kinds.${task.kind}`)}
+                      </Badge>
+                      <div className="min-w-0 flex-1">
+                        <div className="text-sm font-medium text-text">{task.title}</div>
+                        <div className="text-xs text-muted">{project.name}</div>
+                      </div>
+                      <span className="text-xs text-muted">{t('tasks.due', { date: formatDate(task.due) })}</span>
+                      <ArrowRight size={16} className="text-muted" />
+                    </Link>
+                  </li>
+                )
+              })}
+            </ul>
+          </Card>
+        </>
       )}
     </>
   )

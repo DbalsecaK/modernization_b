@@ -52,7 +52,11 @@ export function Drawer({
             <h2 className="text-lg font-semibold text-text">{title}</h2>
             {description && <p className="mt-0.5 text-sm text-text-2">{description}</p>}
           </div>
-          <button onClick={onClose} className="rounded-md p-1.5 text-muted hover:bg-surface-2 hover:text-text" aria-label={t('common.close')}>
+          <button
+            onClick={onClose}
+            className="rounded-md p-1.5 text-muted hover:bg-surface-2 hover:text-text"
+            aria-label={t('common.close')}
+          >
             <X size={18} />
           </button>
         </div>
@@ -91,7 +95,10 @@ export function Toaster() {
   return (
     <div className="pointer-events-none fixed bottom-4 left-4 z-[60] flex flex-col gap-2" aria-live="polite">
       {items.map((item) => (
-        <div key={item.id} className="flex items-center gap-2 rounded-md border border-border bg-surface px-4 py-3 text-sm text-text shadow-lg">
+        <div
+          key={item.id}
+          className="flex items-center gap-2 rounded-md border border-border bg-surface px-4 py-3 text-sm text-text shadow-lg"
+        >
           <CheckCircle2 size={16} className="text-good" /> {item.message}
         </div>
       ))}
@@ -128,8 +135,16 @@ export function CheckboxGroup<T extends string>({
       {options.map((o) => {
         const on = value.includes(o.id)
         return (
-          <label key={o.id} className="flex cursor-pointer items-center gap-2 rounded-md border border-border px-3 py-2 text-sm text-text hover:bg-surface-2">
-            <input type="checkbox" checked={on} onChange={() => onChange(on ? value.filter((v) => v !== o.id) : [...value, o.id])} className="accent-[var(--series-1)]" />
+          <label
+            key={o.id}
+            className="flex cursor-pointer items-center gap-2 rounded-md border border-border px-3 py-2 text-sm text-text hover:bg-surface-2"
+          >
+            <input
+              type="checkbox"
+              checked={on}
+              onChange={() => onChange(on ? value.filter((v) => v !== o.id) : [...value, o.id])}
+              className="accent-[var(--series-1)]"
+            />
             {o.label}
           </label>
         )

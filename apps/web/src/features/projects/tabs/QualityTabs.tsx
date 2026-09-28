@@ -1,12 +1,35 @@
 import { useTranslation } from 'react-i18next'
-import { AlertTriangle, CheckCircle2, CircleDashed, GitBranch, RefreshCw, ShieldCheck, Split, XCircle } from 'lucide-react'
+import {
+  AlertTriangle,
+  CheckCircle2,
+  CircleDashed,
+  GitBranch,
+  RefreshCw,
+  ShieldCheck,
+  Split,
+  XCircle,
+} from 'lucide-react'
 import { cn } from '@/lib/cn'
 import { formatCompact, formatDateTime, formatUsd } from '@/lib/format'
 import { agents, auditLog, costByAgent, costByPhase, invocationDetails, projects, runEvents } from '@/mocks/data'
 import { useState } from 'react'
 import { Drawer, toast } from '@/components/ui/overlay'
 import type { Project, RunEvent } from '@/mocks/types'
-import { Badge, Button, Card, CardBody, CardHeader, Code, Field, Input, Progress, StatTile, Table, Td, Th } from '@/components/ui/primitives'
+import {
+  Badge,
+  Button,
+  Card,
+  CardBody,
+  CardHeader,
+  Code,
+  Field,
+  Input,
+  Progress,
+  StatTile,
+  Table,
+  Td,
+  Th,
+} from '@/components/ui/primitives'
 import { VerdictBadge } from '@/components/ui/status'
 import { BarList } from '@/components/charts/charts'
 import { agentName } from '@/features/catalog/AgentCard'
@@ -17,7 +40,11 @@ type CheckState = 'pass' | 'gap' | 'fail' | 'na'
 const checksByProject: Record<string, { id: string; state: CheckState; detail: string }[]> = {
   p2: [
     { id: 'tests', state: 'pass', detail: '412 tests executed from clean, 0 failed (JUnit XML parsed).' },
-    { id: 'rules', state: 'gap', detail: '4 of 31 P0 rules are named only by tests that did not run: RULE-012, RULE-019, RULE-027, RULE-030.' },
+    {
+      id: 'rules',
+      state: 'gap',
+      detail: '4 of 31 P0 rules are named only by tests that did not run: RULE-012, RULE-019, RULE-027, RULE-030.',
+    },
     { id: 'same', state: 'pass', detail: '86 development cases: 86 same after masks (run timestamp).' },
     { id: 'fresh', state: 'pass', detail: '14 fresh inputs, no differences.' },
     { id: 'canary', state: 'pass', detail: 'Rounding mode HALF_UP → HALF_EVEN: 9 tests failed.' },
@@ -64,7 +91,17 @@ export function ValidationTab({ project }: { project: Project }) {
                 <div className="text-sm font-medium text-text">{t(`validation.checks.${c.id}`)}</div>
                 <div className="text-sm text-text-2">{c.detail}</div>
               </div>
-              <Badge tone={c.state === 'pass' ? 'good' : c.state === 'gap' ? 'warning' : c.state === 'fail' ? 'critical' : 'neutral'}>
+              <Badge
+                tone={
+                  c.state === 'pass'
+                    ? 'good'
+                    : c.state === 'gap'
+                      ? 'warning'
+                      : c.state === 'fail'
+                        ? 'critical'
+                        : 'neutral'
+                }
+              >
                 {t(`validation.state.${c.state}`)}
               </Badge>
             </div>
@@ -91,7 +128,11 @@ export function ValidationTab({ project }: { project: Project }) {
             <Field label={t('validation.comment')}>
               <Input placeholder={t('validation.commentPlaceholder')} />
             </Field>
-            <Button variant="primary" disabled={project.verdict !== 'PROVEN'} onClick={() => toast(t('validation.signed'))}>
+            <Button
+              variant="primary"
+              disabled={project.verdict !== 'PROVEN'}
+              onClick={() => toast(t('validation.signed'))}
+            >
               <ShieldCheck size={16} /> {t('validation.sign')}
             </Button>
             {project.verdict !== 'PROVEN' && <p className="text-xs text-muted">{t('validation.signDisabled')}</p>}
@@ -137,7 +178,10 @@ export function RunsTab({ project }: { project: Project }) {
                   <DetailItem label={t('runs.detail.model')} value={info.model} />
                   <DetailItem label={t('runs.detail.iteration')} value={info.iteration} />
                   <DetailItem label={t('runs.detail.duration')} value={`${info.durationS} s`} />
-                  <DetailItem label={t('runs.detail.tokens')} value={`${formatCompact(info.inputTokens)} in · ${formatCompact(info.outputTokens)} out`} />
+                  <DetailItem
+                    label={t('runs.detail.tokens')}
+                    value={`${formatCompact(info.inputTokens)} in · ${formatCompact(info.outputTokens)} out`}
+                  />
                   <DetailItem label={t('runs.detail.cost')} value={formatUsd(info.costUsd, 2)} />
                 </dl>
                 <div>
@@ -166,7 +210,11 @@ export function RunsTab({ project }: { project: Project }) {
         <StatTile label={t('runs.escalations')} value="1" />
       </div>
       <Card>
-        <CardHeader title={t('runs.fanOut')} subtitle={t('runs.fanOutHint')} action={<Badge tone="info">{t('runs.live')}</Badge>} />
+        <CardHeader
+          title={t('runs.fanOut')}
+          subtitle={t('runs.fanOutHint')}
+          action={<Badge tone="info">{t('runs.live')}</Badge>}
+        />
         <CardBody className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
           {shards.map((s, i) => {
             const value = project.id === 'p1' ? 100 : Math.min(100, 40 + i * 7)
@@ -200,7 +248,11 @@ export function RunsTab({ project }: { project: Project }) {
                     <span className="font-medium text-text">{e.agent}</span>
                     <span className="text-text-2">{t(`runEvent.${e.kind}`)}</span>
                     <span className="text-xs text-muted">· {t(`phases.${e.phase}`)}</span>
-                    {e.tokens && <span className="text-xs text-muted">· {t('runs.tokens', { value: formatCompact(e.tokens) })}</span>}
+                    {e.tokens && (
+                      <span className="text-xs text-muted">
+                        · {t('runs.tokens', { value: formatCompact(e.tokens) })}
+                      </span>
+                    )}
                   </div>
                   <p className="mt-0.5 text-sm text-text-2">{e.detail}</p>
                   <button className="mt-1 text-xs font-medium text-info hover:underline" onClick={() => setDetail(e)}>
@@ -222,23 +274,40 @@ export function CostsTab({ project }: { project: Project }) {
   return (
     <div className="space-y-6">
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatTile label={t('costs.spent')} value={formatUsd(project.costUsd)} hint={<Progress value={pct} tone={pct >= 80 ? 'warning' : 'brand'} />} />
+        <StatTile
+          label={t('costs.spent')}
+          value={formatUsd(project.costUsd)}
+          hint={<Progress value={pct} tone={pct >= 80 ? 'warning' : 'brand'} />}
+        />
         <StatTile label={t('costs.budget')} value={formatUsd(project.budgetUsd)} hint={t('costs.used', { pct })} />
         <StatTile label={t('costs.tokens')} value={formatCompact(project.tokens)} />
-        <StatTile label={t('costs.forecast')} value={formatUsd(project.costUsd / Math.max(project.progress, 1) * 100)} hint={t('costs.forecastHint')} />
+        <StatTile
+          label={t('costs.forecast')}
+          value={formatUsd((project.costUsd / Math.max(project.progress, 1)) * 100)}
+          hint={t('costs.forecastHint')}
+        />
       </div>
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
           <CardHeader title={t('costs.byPhase')} />
           <CardBody>
-            <BarList data={costByPhase.map((c) => ({ label: t(`phases.${c.key}`), value: c.usd }))} format={(v) => formatUsd(v)} />
+            <BarList
+              data={costByPhase.map((c) => ({ label: t(`phases.${c.key}`), value: c.usd }))}
+              format={(v) => formatUsd(v)}
+            />
           </CardBody>
         </Card>
         <Card>
           <CardHeader title={t('costs.byAgent')} />
           <CardBody>
             <BarList
-              data={costByAgent.map((c) => ({ label: agentName(agents.find((a) => a.id === c.key)!, i18n.language), value: c.usd }))}
+              data={costByAgent.map((c) => ({
+                label: agentName(
+                  agents.find((a) => a.id === c.key)!,
+                  i18n.language,
+                ),
+                value: c.usd,
+              }))}
               format={(v) => formatUsd(v)}
             />
           </CardBody>

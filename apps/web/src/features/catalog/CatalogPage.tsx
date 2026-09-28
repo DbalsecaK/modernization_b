@@ -4,7 +4,19 @@ import { Plus } from 'lucide-react'
 import { useTab } from '@/lib/useTab'
 import { agents as seedAgents, skills as seedSkills } from '@/mocks/data'
 import type { AgentDefinition, AgentGroup, SkillDefinition, SkillType, SupportLevel } from '@/mocks/types'
-import { Badge, Button, Card, CardBody, CardHeader, PageHeader, Select, Table, Tabs, Td, Th } from '@/components/ui/primitives'
+import {
+  Badge,
+  Button,
+  Card,
+  CardBody,
+  CardHeader,
+  PageHeader,
+  Select,
+  Table,
+  Tabs,
+  Td,
+  Th,
+} from '@/components/ui/primitives'
 import { LevelBadge } from '@/components/ui/status'
 import { AgentCard, agentName } from './AgentCard'
 import { AgentForm, SkillForm } from './CatalogForms'
@@ -12,7 +24,12 @@ import { AgentForm, SkillForm } from './CatalogForms'
 const TABS = ['agents', 'skills', 'adapters', 'packs', 'compatibility', 'templates'] as const
 
 const adapters: { name: string; level: SupportLevel; version: string; validation: string }[] = [
-  { name: 'COBOL batch (+ JCL, copybooks, VSAM)', level: 'certified', version: '1.2.0', validation: 'goldenMasterLocal' },
+  {
+    name: 'COBOL batch (+ JCL, copybooks, VSAM)',
+    level: 'certified',
+    version: '1.2.0',
+    validation: 'goldenMasterLocal',
+  },
   { name: 'COBOL CICS + BMS maps', level: 'certified', version: '1.1.0', validation: 'traces' },
   { name: 'Sybase ASE stored procedures', level: 'certified', version: '0.9.0', validation: 'goldenMasterLocal' },
   { name: 'ASP.NET WebForms / .NET Framework', level: 'assisted', version: '0.6.0', validation: 'windowsRunner' },
@@ -37,7 +54,14 @@ const packs: { axis: string; name: string; level: SupportLevel; wave: 1 | 2 | 3 
   { axis: 'cloud', name: 'GCP', level: 'assisted', wave: 2 },
 ]
 
-const compatRules = ['mongoModeling', 'serverlessBatch', 'serverlessCics', 'nextBff', 'goConventions', 'upliftOption'] as const
+const compatRules = [
+  'mongoModeling',
+  'serverlessBatch',
+  'serverlessCics',
+  'nextBff',
+  'goConventions',
+  'upliftOption',
+] as const
 
 export function CatalogPage() {
   const { t, i18n } = useTranslation()
@@ -68,7 +92,12 @@ export function CatalogPage() {
 
       {tab === 'agents' && (
         <>
-          <Select className="mb-4 max-w-xs" value={group} onChange={(e) => setGroup(e.target.value as typeof group)} aria-label={t('catalog.group')}>
+          <Select
+            className="mb-4 max-w-xs"
+            value={group}
+            onChange={(e) => setGroup(e.target.value as typeof group)}
+            aria-label={t('catalog.group')}
+          >
             <option value="all">{t('catalog.allGroups')}</option>
             {(['analysis', 'design', 'build', 'quality', 'control'] as const).map((g) => (
               <option key={g} value={g}>
@@ -91,7 +120,12 @@ export function CatalogPage() {
           <CardHeader
             title={t('catalog.skillsTitle', { count: skills.length })}
             action={
-              <Select className="h-9 w-48" value={skillType} onChange={(e) => setSkillType(e.target.value as typeof skillType)} aria-label={t('catalog.skillType')}>
+              <Select
+                className="h-9 w-48"
+                value={skillType}
+                onChange={(e) => setSkillType(e.target.value as typeof skillType)}
+                aria-label={t('catalog.skillType')}
+              >
                 <option value="all">{t('catalog.allTypes')}</option>
                 {(['source', 'target', 'conversion', 'crossCutting', 'customer'] as const).map((s) => (
                   <option key={s} value={s}>
@@ -121,14 +155,20 @@ export function CatalogPage() {
                       <div className="text-xs text-muted">{s.description}</div>
                       {s.conflictsWith.length > 0 && (
                         <div className="mt-1 text-xs text-critical-ink">
-                          {t('catalog.conflictsWith', { names: s.conflictsWith.map((c) => skills.find((x) => x.id === c)?.name).join(', ') })}
+                          {t('catalog.conflictsWith', {
+                            names: s.conflictsWith.map((c) => skills.find((x) => x.id === c)?.name).join(', '),
+                          })}
                         </div>
                       )}
                     </Td>
                     <Td>
                       <Badge>{t(`skillTypes.${s.type}`)}</Badge>
                     </Td>
-                    <Td className="text-xs">{s.appliesTo.map((id) => agentName(agents.find((a) => a.id === id) ?? agents[0], i18n.language)).join(', ')}</Td>
+                    <Td className="text-xs">
+                      {s.appliesTo
+                        .map((id) => agentName(agents.find((a) => a.id === id) ?? agents[0], i18n.language))
+                        .join(', ')}
+                    </Td>
                     <Td className="tabular">{s.evalScore === null ? '—' : `${Math.round(s.evalScore * 100)}%`}</Td>
                     <Td>
                       <Badge tone={s.status === 'published' ? 'good' : 'info'}>{t(`skillStatus.${s.status}`)}</Badge>

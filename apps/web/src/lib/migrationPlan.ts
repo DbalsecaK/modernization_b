@@ -45,7 +45,14 @@ export function suggestPlan(stories: PlanStory[]): Plan {
   })
   return waves
     .filter(Boolean)
-    .map((w) => w.sort((a, b) => rank[byId.get(a)!.priority] - rank[byId.get(b)!.priority] || byId.get(a)!.points - byId.get(b)!.points || a.localeCompare(b)))
+    .map((w) =>
+      w.sort(
+        (a, b) =>
+          rank[byId.get(a)!.priority] - rank[byId.get(b)!.priority] ||
+          byId.get(a)!.points - byId.get(b)!.points ||
+          a.localeCompare(b),
+      ),
+    )
 }
 
 export function waveOf(plan: Plan, id: string): number {
@@ -60,8 +67,10 @@ export function validatePlan(plan: Plan, stories: PlanStory[]): PlanIssue[] {
       const s = stories.find((x) => x.id === id)
       s?.dependsOn.forEach((d) => {
         const dw = waveOf(plan, d.story)
-        if (dw === -1) issues.push({ story: id, dependency: d.story, kind: d.kind, problem: 'missing', reason: d.reason })
-        else if (dw > w) issues.push({ story: id, dependency: d.story, kind: d.kind, problem: 'before', reason: d.reason })
+        if (dw === -1)
+          issues.push({ story: id, dependency: d.story, kind: d.kind, problem: 'missing', reason: d.reason })
+        else if (dw > w)
+          issues.push({ story: id, dependency: d.story, kind: d.kind, problem: 'before', reason: d.reason })
       })
     }),
   )
@@ -70,7 +79,13 @@ export function validatePlan(plan: Plan, stories: PlanStory[]): PlanIssue[] {
 
 // Moves a story. A move that creates a new hard dependency problem is rejected; soft ones are allowed with a
 // warning (a temporary ACL or stub covers the gap, strangler fig).
-export function moveStory(plan: Plan, stories: PlanStory[], id: string, toWave: number, index?: number): { plan: Plan; accepted: boolean; newIssues: PlanIssue[] } {
+export function moveStory(
+  plan: Plan,
+  stories: PlanStory[],
+  id: string,
+  toWave: number,
+  index?: number,
+): { plan: Plan; accepted: boolean; newIssues: PlanIssue[] } {
   const next = plan.map((w) => w.filter((x) => x !== id))
   while (next.length <= toWave) next.push([])
   const target = next[toWave]
