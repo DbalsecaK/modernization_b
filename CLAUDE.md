@@ -55,7 +55,7 @@ pnpm lint               # ESLint; pnpm format:check para Prettier
 ```bash
 uv sync --all-packages  # workspace uv: apps/api y packages/*
 pnpm py:check           # Ruff, mypy estricto y pytest
-pnpm api:dev            # API FastAPI en http://localhost:8000
+pnpm api:dev            # API FastAPI en http://localhost:8100 (docs: /api/v1/docs)
 ```
 
 ## Reglas no negociables

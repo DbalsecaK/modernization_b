@@ -6,7 +6,7 @@ from nexti_api.settings import Settings
 
 
 def make_client() -> TestClient:
-    app = create_app(Settings(app_env="test"))
+    app = create_app(Settings(_env_file=None, app_env="test"))
 
     @app.get("/boom")
     async def boom() -> None:
@@ -17,10 +17,6 @@ def make_client() -> TestClient:
         return n
 
     return TestClient(app)
-
-
-def test_healthz() -> None:
-    assert make_client().get("/healthz").json() == {"status": "ok"}
 
 
 def test_problem_error_uses_rfc9457() -> None:

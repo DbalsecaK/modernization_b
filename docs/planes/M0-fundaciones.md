@@ -289,8 +289,8 @@ cliente TypeScript generado desde él para la web.
 | # | Paso | Listo cuando |
 |---|---|---|
 | 1 ✅ | Monorepo: workspace uv con `apps/api` y `packages/core`, Ruff, mypy, pytest; base de la API (settings, errores RFC 9457); ESLint + Prettier en la web (enmienda 3) | `pnpm py:check`, `pnpm lint`, `pnpm format:check`, `pnpm web:test` en verde |
-| 2 | `infra/docker-compose` con todos los servicios, healthchecks, roles de BD, `init_env.py` y realm de Keycloak de desarrollo | `docker compose up -d --wait` y todos *healthy* |
-| 3 | API: logs estructurados, `/health/live` y `/health/ready`, OpenAPI | `GET /health/ready` = 200 con todos los servicios |
+| 2 ✅ | `infra/docker-compose` con todos los servicios, healthchecks, roles de BD, `init_env.py` y realm de Keycloak de desarrollo | `docker compose up -d --wait` y todos *healthy* |
+| 3 ✅ | API: logs estructurados, `/health/live` y `/health/ready`, OpenAPI | `GET /health/ready` = 200 con todos los servicios |
 | 4 | Esquema con Alembic: tenancy, usuarios, roles, permisos, asignaciones, proyecto mínimo, invitaciones, outbox; RLS y roles de BD; datos sembrados | Tests SQL de aislamiento en verde |
 | 5 | Auditoría append-only con hash encadenado y verificación | Tests de inmutabilidad y cadena en verde |
 | 6 | BFF con Keycloak: login, callback, logout, sesión Redis, cookie, CSRF, `me`, cambio de tenant | Login real en local; test "ningún token en el navegador" |

@@ -50,7 +50,7 @@ uv sync --all-packages
 pnpm lint         # ESLint (apps/web)
 pnpm format:check # Prettier (apps/web)
 pnpm py:check     # Ruff, mypy estricto y pytest (apps/api, packages/)
-pnpm api:dev      # API en http://localhost:8100 (healthz: /healthz)
+pnpm api:dev      # API en http://localhost:8100 (/api/v1/health/ready, docs en /api/v1/docs)
 ```
 
 ### Entorno local (Docker Compose)

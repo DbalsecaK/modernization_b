@@ -4,15 +4,17 @@ version = "0.1.0"
 description = "NexTI platform API and BFF (FastAPI)."
 requires-python = ">=3.12"
 dependencies = [
+  "asyncpg>=0.31",
   "fastapi>=0.118",
+  "httpx>=0.28",
   "pydantic>=2.11",
   "pydantic-settings>=2.10",
+  "redis>=8.1",
+  "sqlalchemy[asyncio]>=2.1",
+  "structlog>=26.1",
   "uvicorn[standard]>=0.37",
   "nexti-core",
 ]
-
-[dependency-groups]
-dev = ["httpx>=0.28"]
 
 [tool.uv.sources]
 nexti-core = { workspace = true }
