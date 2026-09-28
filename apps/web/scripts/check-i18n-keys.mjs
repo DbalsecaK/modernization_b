@@ -7,7 +7,8 @@ const tops = new Set(Object.keys(en))
 const files = []
 const walk = (d) => readdirSync(d).forEach((f) => { const p = join(d, f); statSync(p).isDirectory() ? walk(p) : /\.tsx?$/.test(p) && files.push(p) })
 walk('src')
-const scanned = files.filter((f) => !f.includes('/mocks/'))
+// Normalize Windows separators so the mocks folder is excluded on every OS.
+const scanned = files.filter((f) => !f.replaceAll('\\', '/').includes('/mocks/'))
 
 const resolve = (key) => {
   let node = en

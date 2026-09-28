@@ -91,6 +91,8 @@ export function KnowledgeGraph({ onCompare }: { onCompare: (ruleId: string) => v
   const svgRef = useRef<SVGSVGElement>(null)
   const boxRef = useRef<HTMLDivElement>(null)
   const drag = useRef<{ x: number; y: number } | null>(null)
+  // Set once the user zooms or pans, so a container resize no longer re-fits the view.
+  const touched = useRef(false)
   const [boxWidth, setBoxWidth] = useState(800)
 
   const flow = businessFlows.find((f) => f.id === flowId)
@@ -185,6 +187,8 @@ export function KnowledgeGraph({ onCompare }: { onCompare: (ruleId: string) => v
     return () => el.removeEventListener('wheel', onWheel)
   }, [])
 
+  // Restart the walkthrough when another flow is picked.
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => setStep(0), [flowId])
 
   useEffect(() => {
@@ -196,12 +200,13 @@ export function KnowledgeGraph({ onCompare }: { onCompare: (ruleId: string) => v
   }, [])
 
   // Re-fit when the container size changes, unless the user already zoomed or panned.
-  const touched = useRef(false)
   useEffect(() => {
     if (!touched.current) setView({ k: fitK, x: 0, y: 0 })
   }, [fitK])
   useEffect(() => {
     touched.current = false
+    // Switching between map and circles resets the zoom on purpose.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setView({ k: fitK, x: 0, y: 0 })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode])

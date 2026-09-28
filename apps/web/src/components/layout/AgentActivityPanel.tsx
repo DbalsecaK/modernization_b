@@ -119,7 +119,7 @@ export function AgentActivityPanel() {
   const [mode, setMode] = useState<Mode>('minimized')
   const [filter, setFilter] = useState<'all' | ActivityStatus>('all')
   const [expanded, setExpanded] = useState<string | null>(null)
-  const [now, setNow] = useState(Date.now())
+  const [now, setNow] = useState(() => Date.now())
 
   useEffect(() => {
     startSimulation()

@@ -47,6 +47,15 @@ pnpm install            # en la raíz del repo
 pnpm web:dev            # servidor de desarrollo (http://localhost:5173)
 pnpm web:build          # typecheck + build
 pnpm web:test           # tests (paridad de catálogos i18n) + chequeo de claves usadas
+pnpm lint               # ESLint; pnpm format:check para Prettier
+```
+
+## Comandos de Python
+
+```bash
+uv sync --all-packages  # workspace uv: apps/api y packages/*
+pnpm py:check           # Ruff, mypy estricto y pytest
+pnpm api:dev            # API FastAPI en http://localhost:8000
 ```
 
 ## Reglas no negociables

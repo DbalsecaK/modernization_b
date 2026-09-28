@@ -39,3 +39,19 @@ El producto es **nativamente en inglés**, con cambio completo a español.
 pnpm install
 pnpm web:dev      # http://localhost:5173
 ```
+
+## Desarrollo
+
+Requisitos: Node 24 con pnpm 10, Python 3.12 y [uv](https://docs.astral.sh/uv/).
+
+```bash
+pnpm install      # web y herramientas de lint
+uv sync --all-packages
+pnpm lint         # ESLint (apps/web)
+pnpm format:check # Prettier (apps/web)
+pnpm py:check     # Ruff, mypy estricto y pytest (apps/api, packages/)
+pnpm api:dev      # API en http://localhost:8000 (healthz: /healthz)
+```
+
+ESLint y Prettier viven en `tools/lint` con su propio TypeScript 6: TypeScript 7 (compilador nativo) ya no
+expone la API que usa typescript-eslint. La web sigue compilando con TypeScript 7.
