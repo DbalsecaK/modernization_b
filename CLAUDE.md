@@ -9,7 +9,7 @@ y construir funcionalidades nuevas desde documentación y Figma, con agentes de 
 
 **La fuente de verdad es `docs/ESPECIFICACION_PLATAFORMA.md`.** Léela antes de cualquier tarea no trivial.
 Si una tarea contradice la especificación, detente y pregunta; si la especificación cambia, actualízala en
-el mismo cambio y registra la decisión (sección 22 o un ADR en `docs/adr/`).
+el mismo cambio y registra la decisión (sección 22 y un ADR en `docs/adr/`, índice en `docs/adr/README.md`).
 
 ## Cómo trabajar
 
@@ -65,7 +65,9 @@ pnpm web:test           # tests (paridad de catálogos i18n) + chequeo de claves
 10. Versiones de modelos siempre fijas (sin alias "latest").
 11. **Autenticación solo con Keycloak** (sección 15.1): la plataforma nunca guarda contraseñas ni secretos
     de MFA ni implementa su propio login. El navegador nunca recibe tokens: el BFF los guarda y emite una
-    cookie `httpOnly`. Keycloak autentica, OpenFGA autoriza.
+    cookie `httpOnly`. Keycloak autentica, OpenFGA autoriza. Se implanta por etapas (D-27, `docs/adr/0004`):
+    en M0 Keycloak mínimo con cuentas locales; SSO, MFA y Organizations en M0b. El modo `dev-auth` (usuario
+    sembrado sin contraseña) solo existe en desarrollo y tests, y la API no arranca con él en otro entorno.
 
 ## Calidad
 

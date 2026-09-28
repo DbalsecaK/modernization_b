@@ -15,6 +15,8 @@ El producto es **nativamente en inglés**, con cambio completo a español.
 
 - [Especificación de la plataforma](docs/ESPECIFICACION_PLATAFORMA.md): visión, flujos, arquitectura,
   seguridad, RBAC, configuración IA, costos, frontend y roadmap por hitos.
+- [Decisiones de arquitectura (ADR)](docs/adr/README.md): OpenFGA, Keycloak con Organizations, componentes
+  UI y autenticación por etapas.
 - [CLAUDE.md](CLAUDE.md): instrucciones para trabajar con Claude Code.
 
 ## Estado
@@ -27,7 +29,8 @@ El producto es **nativamente en inglés**, con cambio completo a español.
   bugs, panel flotante de actividad de agentes, e historias de usuario editables con un plan de migración por
   olas sugerido por el sistema y modificable, validado contra las dependencias, con criterios de aceptación
   en Gherkin validados.
-- Siguiente paso: hito **M0 — Fundaciones** (Keycloak, multi-tenant, RBAC, auditoría, CI).
+- Siguiente paso: hito **M0 — Fundaciones** (Keycloak mínimo con cuentas locales, multi-tenant, usuarios y
+  permisos con OpenFGA, auditoría, CI). SSO con Entra ID, MFA y Organizations van en **M0b**.
 
 ## Probar el prototipo
 

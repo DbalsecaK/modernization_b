@@ -950,10 +950,14 @@ plataforma **no almacena contraseñas ni secretos de MFA**: todo eso vive en Key
   - **Broker** hacia los IdP de los clientes (Entra ID, Okta, Google, cualquier OIDC/SAML), con mapeo
     de grupos/claims a roles y aprovisionamiento JIT.
   - Emisión de tokens OIDC hacia el BFF de la plataforma.
-- **Multi-tenant:** en SaaS compartido, **un realm de la plataforma con una Organization por tenant**
-  (IdP y dominios asociados a cada organización, lo que da el home-realm discovery por dominio de correo).
-  En despliegues dedicados, en la nube del cliente u on-prem, **una instancia de Keycloak por despliegue**.
-  Validar en M0 el soporte de Organizations de la versión elegida; alternativa: un realm por tenant.
+- **Multi-tenant (decisión D-20, ADR-0002):** en SaaS compartido, **un realm de la plataforma con una
+  Organization por tenant** (IdP y dominios asociados a cada organización, lo que da el home-realm discovery
+  por dominio de correo; un usuario de NexTI tiene una sola cuenta con membresía en varias organizaciones).
+  En despliegues dedicados, en la nube del cliente u on-prem, **una instancia (o un realm) de Keycloak por
+  despliegue**; para la plataforma sigue siendo un tenant, sin cambios de código. Si un cliente del SaaS
+  exige una política que Keycloak solo permite por realm (p. ej. contraseñas o duración de sesión), pasa a
+  realm dedicado. Versión de Keycloak con Organizations estable (26 o posterior), **fijada**; la validación
+  con tests se hace en M0b.
 - **Flujo:** la web → BFF (FastAPI) → Keycloak (Authorization Code + PKCE). El BFF guarda los tokens del
   lado servidor y entrega al navegador solo una cookie de sesión `httpOnly`, `Secure`, `SameSite`.
   Protección CSRF. Sesiones cortas, rotación y revocación inmediata (logout propaga a Keycloak).
@@ -972,6 +976,28 @@ plataforma **no almacena contraseñas ni secretos de MFA**: todo eso vive en Key
   al log de auditoría de la plataforma.
 - **Operación:** Keycloak en alta disponibilidad con su propia base PostgreSQL, actualizaciones de
   seguridad al día, tema y configuración versionados como código (exportación de realm / Terraform).
+
+**Implantación por etapas (decisión D-27, ADR-0004)**
+
+La autenticación va con Keycloak **desde el primer hito**, pero con lo mínimo; lo empresarial se agrega al
+final como configuración, sin cambiar la API ni las pantallas.
+
+| Etapa | Qué incluye | Qué no incluye todavía |
+|---|---|---|
+| **M0** | Keycloak en Docker Compose con un realm importado al arrancar (`infra/keycloak/`), **cuentas locales con usuario y contraseña guardadas en Keycloak**, BFF con cookie `httpOnly`, logout, sesión y CSRF. En la base de la plataforma: usuarios (enlazados a Keycloak por `sub`), tenants, membresías, roles, permisos, invitaciones y rol por proyecto, sincronizados con OpenFGA | SSO con IdP externos, MFA obligatoria, Organizations, home-realm discovery, tema Keycloakify, políticas por tenant vía Admin REST API |
+| **M0b** | SSO con **Microsoft Entra ID** (y Okta, Google o cualquier OIDC/SAML) como IdP de Keycloak, mapeo de grupos a roles y JIT, **MFA** (TOTP, passkeys, recuperación), **Organizations por tenant**, home-realm discovery y "solo SSO", tema Keycloakify desde las pantallas del prototipo, configuración por tenant desde Administración | — |
+
+- **Lo que no cambia en ninguna etapa:** la plataforma **no guarda contraseñas ni secretos de MFA** (viven en
+  Keycloak), el navegador no recibe tokens y OpenFGA autoriza. Pasar de M0 a M0b es agregar proveedores y
+  políticas en Keycloak.
+- **Modo `dev-auth` (solo desarrollo y tests):** para trabajar rápido, la API puede iniciar sesión eligiendo
+  un **usuario sembrado**, sin contraseña, y emite la misma cookie de sesión que el BFF. Solo existe si
+  `APP_ENV=development` o `test`; la API **se niega a arrancar** con `dev-auth` activo en cualquier otro
+  entorno (test automatizado) y cada inicio de sesión por esta vía queda en la auditoría marcado como
+  `dev-auth`. No reemplaza a Keycloak en los tests de aceptación de M0.
+- **Módulo de usuarios y permisos propio:** es parte de la plataforma desde M0 (entidades de 19.4 y
+  sección 16): la pantalla Administración gestiona usuarios, invitaciones, roles, la matriz de permisos y el
+  rol por proyecto; las credenciales se gestionan en Keycloak.
 
 ### 15.2 Perímetro
 
@@ -1039,8 +1065,16 @@ Los roles son **paquetes configurables** de permisos.
 
 ### 16.4 Implementación
 
-**OpenFGA** (modelo de relaciones estilo Zanzibar) para la jerarquía plataforma → tenant → proyecto.
-Alternativa a evaluar: Casbin. Decisión en la sección 22.
+**OpenFGA** (modelo de relaciones estilo Zanzibar) para la jerarquía plataforma → tenant → proyecto
+(decisión D-15, ADR-0001). Casbin quedó descartado: los permisos son relaciones (rol por proyecto, herencia
+del administrador del tenant, segregación de funciones) y la plataforma necesita preguntar tanto "¿puede X
+hacer Y sobre Z?" como "¿qué proyectos puede ver X?" (listados, buscador, panel de actividad).
+
+- **Fuente de verdad de los roles:** PostgreSQL (`membership`, `project_member`, `role`, `role_permission`).
+  Un único módulo de la API escribe la tabla y la relación en OpenFGA en la misma operación (patrón outbox) y
+  un job de reconciliación corrige diferencias.
+- **Modelo versionado** en `infra/openfga/` con tests del modelo (casos permitido/denegado) en CI.
+- Cada endpoint consulta OpenFGA con el usuario y el tenant de la sesión; las denegaciones van a la auditoría.
 
 ---
 
@@ -1203,6 +1237,12 @@ nativo con cambio a español y tema claro/oscuro.
   agentes (18.8) y las historias de usuario con el plan de migración por olas (7.7; la validación del plan
   está en `src/lib/migrationPlan.ts` y la de los criterios Gherkin en `src/lib/gherkin.ts`, deterministas y
   con tests, y deben migrar al backend con el mismo comportamiento).
+- **Componentes (D-14):** las primitivas del prototipo (`components/ui/primitives.tsx` y `overlay.tsx`) pasan a
+  usar **shadcn/ui sobre Radix** por dentro (Dialog/Sheet para el `Drawer`, Select, Combobox, Tooltip, Toast,
+  Tabs) **sin cambiar su API**, así las pantallas no se tocan. Se valida con tests de accesibilidad (axe).
+- **Login (D-27):** en M0 las pantallas de login, MFA, recuperación e invitación del prototipo no se usan (el
+  login es el de Keycloak con su tema base, o el selector de `dev-auth` en desarrollo); en M0b pasan a ser el
+  tema Keycloakify.
 - Capturas de referencia en `docs/prototipo/`.
 - Cómo correrlo: ver `apps/web/README.md`.
 
@@ -1253,13 +1293,13 @@ React (web) ──HTTPS──> WAF / API Gateway
 
 | Capa | Tecnología |
 |---|---|
-| Frontend | React + TypeScript, Vite, TanStack Query y TanStack Router, Tailwind + shadcn/ui (a confirmar), grafo en SVG propio con d3-hierarchy (vista de círculos; evaluar Cytoscape.js o Sigma.js para grafos de miles de nodos), Monaco (código), i18next |
+| Frontend | React + TypeScript, Vite, TanStack Query y TanStack Router, Tailwind + **shadcn/ui sobre Radix** (D-14; se adoptan detrás de las primitivas del prototipo), grafo en SVG propio con d3-hierarchy (vista de círculos; evaluar Cytoscape.js o Sigma.js para grafos de miles de nodos), Monaco (código), i18next |
 | Backend API | Python 3.12+, FastAPI, Pydantic v2, SQLAlchemy 2 + Alembic |
 | Orquestación | LangGraph (checkpointer PostgreSQL), LangChain (abstracción de modelos y herramientas) |
 | Trabajos | Workers Python con cola sobre Redis (Celery o alternativa; decisión en la sección 22) |
 | Datos | PostgreSQL 16+, Neo4j 5, S3 / MinIO |
-| Autorización | OpenFGA |
-| Identidad | **Keycloak** (IdP + broker SSO, Organizations por tenant, tema con Keycloakify); en dev, en Docker Compose |
+| Autorización | OpenFGA (D-15) |
+| Identidad | **Keycloak** (IdP + broker SSO, Organizations por tenant, tema con Keycloakify; D-19, D-20); en dev, en Docker Compose con realm importado y cuentas locales (D-27) |
 | Observabilidad | Langfuse (autoalojado), OpenTelemetry, logs estructurados |
 | Sandbox | Docker (dev), gVisor/Firecracker (prod), runners Windows para .NET Framework |
 | Parsers | Parsers propios/deterministas por origen; tree-sitter para nivel asistido |
@@ -1357,20 +1397,26 @@ Cada hito termina con: código en la rama, tests pasando en CI, documentación a
 - Docker Compose local: PostgreSQL, Neo4j, Redis, MinIO, Keycloak, OpenFGA, Langfuse.
 - FastAPI con OIDC (patrón BFF, cookies), sesión, CSRF.
 - Tenants, usuarios, membresías, RLS, OpenFGA con roles base.
+- **Módulo de usuarios y permisos:** usuarios (enlazados a Keycloak por `sub`), invitaciones, roles, matriz
+  de permisos y rol por proyecto, con sus pantallas de Administración; sincronización con OpenFGA (outbox +
+  reconciliación) y modelo de OpenFGA versionado con tests (D-15, sección 16.4).
 - Audit log append-only.
-- Módulo de autenticación con **Keycloak**: realm de la plataforma, Organizations por tenant, cuentas
-  propias con MFA (TOTP y passkeys), broker SSO (OIDC/SAML), home-realm discovery, invitaciones,
-  recuperación de contraseña, políticas por tenant configuradas vía Admin REST API, tema con Keycloakify
-  (sección 15.1).
+- Autenticación **mínima con Keycloak** (D-27, sección 15.1): realm importado al arrancar, cuentas locales con
+  usuario y contraseña en Keycloak, BFF con cookie `httpOnly`, logout, sesión y CSRF; modo `dev-auth` solo en
+  desarrollo y tests. SSO, MFA, Organizations y Keycloakify quedan para **M0b**.
 - Web: conectar el prototipo de `apps/web` (sección 18.7) a la API real: login, layout, menú por permisos, tema.
+- Primitivas de UI sobre shadcn/ui + Radix sin cambiar su API (D-14), con tests de accesibilidad (axe).
 - i18n: inglés como idioma fuente y por defecto; catálogo en español; selector de idioma (18.6).
 
 **Aceptación:** un usuario de un tenant no puede ver datos de otro (test automatizado a nivel API y SQL);
-login con SSO (un segundo Keycloak o un IdP de prueba como proveedor externo) y con cuenta propia + MFA;
-un dominio con "solo SSO" no puede entrar con contraseña; ningún token llega al navegador; la plataforma no
-guarda contraseñas; toda acción sensible (incluidos los eventos de Keycloak) queda en la auditoría.
+se inicia sesión con una cuenta local de Keycloak y se cierra sesión; ningún token llega al navegador; la
+plataforma no guarda contraseñas (test sobre el esquema: no hay columnas de contraseña ni secretos); la API no
+arranca con `dev-auth` fuera de desarrollo/test; cada endpoint tiene test de autorización permitido y
+denegado contra OpenFGA; un cambio de rol en la base se refleja en OpenFGA (y la reconciliación corrige una
+diferencia forzada); toda acción sensible (incluidos los eventos de Keycloak) queda en la auditoría.
 La web arranca en inglés; al cambiar a español no queda ningún texto sin traducir (test automatizado
-que compara las claves de ambos catálogos); la preferencia persiste entre sesiones.
+que compara las claves de ambos catálogos); la preferencia persiste entre sesiones; las primitivas migradas
+pasan los tests de accesibilidad.
 
 ### M1 — Configuración IA y consumo
 
@@ -1482,6 +1528,27 @@ otro tenant no ve ni usa la conexión; toda escritura externa queda auditada.
 - Opción *uplift* a .NET 10 vs reescritura.
 - Runner Windows en el sandbox.
 
+### M0b — Identidad empresarial (SSO, MFA, Organizations)
+
+Se hace **después de los hitos funcionales y antes de M9** (o antes, si un cliente lo necesita para un piloto);
+es configuración de Keycloak más pantallas, sin cambios en la API de negocio (D-27).
+
+- SSO con **Microsoft Entra ID** y otros IdP OIDC/SAML (Okta, Google) como proveedores de Keycloak; mapeo de
+  grupos a roles y aprovisionamiento JIT.
+- MFA obligatoria para cuentas propias (TOTP, passkeys/WebAuthn, códigos de recuperación), políticas de
+  contraseña, bloqueo, recuperación de contraseña e invitaciones con activación.
+- **Organizations por tenant** en un realm (D-20), home-realm discovery y modo "solo SSO"; realm dedicado para
+  despliegues dedicados.
+- Tema **Keycloakify** construido desde las pantallas del prototipo (en y es).
+- Administración → Autenticación configura Keycloak vía Admin REST API con cuenta de servicio de mínimo privilegio.
+- Eventos de Keycloak a la auditoría.
+
+**Aceptación:** login con SSO (un segundo Keycloak o un IdP de prueba como proveedor externo, y Entra ID en un
+tenant de prueba) y con cuenta propia + MFA; un dominio con "solo SSO" no puede entrar con contraseña; el
+token trae la Organization y de ella sale el `tenant_id`; un usuario de NexTI con membresía en dos
+organizaciones solo ve los datos del tenant activo; los grupos del IdP se traducen a los roles esperados;
+ningún token llega al navegador y la plataforma sigue sin guardar contraseñas.
+
 ### M9 — Endurecimiento y despliegue
 
 - Helm, Terraform por nube, perfiles de despliegue; plano de datos en la nube del cliente.
@@ -1557,6 +1624,10 @@ Sybase SP (M4) → BMS (M5) → CICS (M6) → ASPX (M8).
 | D-24 | Referencias de UI (capturas, Figma, prototipos) cargables desde la creación del proyecto y después; chat con el agente UX/UI designer para pedir cambios al prototipo, con versiones y sin aprobar por sí solo (7.1, 7.4) |
 | D-25 | Historias de usuario visibles y editables antes de migrar (crear, editar, dividir, fusionar, descartar con motivo) y plan de migración por olas **sugerido por el sistema y modificable por las personas**, validado por código contra las dependencias del grafo; ambos se aprueban en C1 y después todo cambio es cambio de alcance (7.7) |
 | D-26 | Criterios de aceptación de las HU en Gherkin **validados por código** (Given/When/Then en orden, un comportamiento por escenario, esquemas con ejemplos, sin duplicados; inglés y español); un criterio inválido impide guardar y bloquea C1 (7.7) |
+| D-14 | Componentes UI: **shadcn/ui sobre Radix**, adoptados detrás de las primitivas del prototipo sin cambiar su API; accesibilidad validada con axe ([ADR-0003](adr/0003-componentes-ui-shadcn-radix.md)) |
+| D-15 | Autorización con **OpenFGA** (relaciones estilo Zanzibar); roles en PostgreSQL como fuente de verdad, sincronizados por outbox con reconciliación; Casbin descartado ([ADR-0001](adr/0001-autorizacion-openfga.md)) |
+| D-20 | Keycloak: **un realm con una Organization por tenant** en el SaaS compartido; realm o instancia dedicada en despliegues dedicados o si un cliente exige políticas por realm; versión fijada 26+ ([ADR-0002](adr/0002-keycloak-organizations-por-tenant.md)) |
+| D-27 | Autenticación **por etapas**: Keycloak mínimo desde M0 (cuentas locales en Keycloak, BFF, `dev-auth` solo en desarrollo) y SSO/MFA/Organizations/Keycloakify en **M0b**; la plataforma nunca guarda contraseñas ([ADR-0004](adr/0004-autenticacion-por-etapas.md)) |
 | D-18 | Producto nativamente en inglés (UI, prompts, skills, catálogo); español como traducción completa; idioma de artefactos configurable por proyecto (inglés por defecto) |
 
 ### 22.2 Pendientes
@@ -1567,9 +1638,6 @@ Sybase SP (M4) → BMS (M5) → CICS (M6) → ASPX (M8).
 | D-11 | ¿NexTI solo informa el consumo de IA o también lo factura (con margen) cuando la cuenta es de NexTI? |
 | D-12 | Neo4j Community (particionado por etiqueta) vs Enterprise (base por tenant) |
 | D-13 | Cola de trabajos: Celery vs alternativa (Arq, Dramatiq, Temporal) |
-| D-14 | Librería de componentes UI (shadcn/ui u otra) |
-| D-15 | OpenFGA vs Casbin |
-| D-20 | Keycloak: una Organization por tenant en un realm vs un realm por tenant (validar en M0) |
 | D-16 | Modelo de licenciamiento (por proyecto, por líneas, por tenant) |
 | D-17 | Primer cliente para despliegue en nube propia: ¿AWS o Azure? |
 
