@@ -56,5 +56,6 @@ el mismo cambio y registra la decisión (sección 22 o un ADR en `docs/adr/`).
     Nunca escribas textos visibles directamente en el componente: usa claves i18n y agrega ambas traducciones.
   - Idioma por defecto: inglés. Prompts de sistema, skills y catálogo base en inglés.
   - Mensajes de error de la API: código estable + texto en inglés.
-- Identificadores de código en inglés.
-- Documentación interna del repo (`docs/`) y mensajes de commit: en español.
+- **Todo el desarrollo en inglés:** identificadores, comentarios, docstrings, logs, nombres de tablas,
+  endpoints y textos por defecto. El español solo existe como traducción seleccionable por el usuario.
+- Única excepción: la especificación y la documentación interna en `docs/`, y los mensajes de commit, en español.
