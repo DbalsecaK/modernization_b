@@ -4,3 +4,5 @@ coverage
 pnpm-lock.yaml
 *.md
 apps/web/src/i18n/locales/*.json
+apps/web/src/api/schema.d.ts
+apps/api/openapi.json

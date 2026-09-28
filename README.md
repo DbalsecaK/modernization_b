@@ -33,12 +33,18 @@ El producto es **nativamente en inglés**, con cambio completo a español.
 - Siguiente paso: hito **M0 — Fundaciones** (Keycloak mínimo con cuentas locales, multi-tenant, usuarios y
   permisos con OpenFGA, auditoría, CI). SSO con Entra ID, MFA y Organizations van en **M0b**.
 
-## Probar el prototipo
+## Probar la aplicación
+
+Con el entorno local levantado (ver Desarrollo):
 
 ```bash
-pnpm install
-pnpm web:dev      # http://localhost:5173
+pnpm api:dev      # API en http://localhost:8100
+pnpm web:dev      # web en http://localhost:5173 (proxy de /api y /auth hacia la API)
 ```
+
+El inicio de sesión va a Keycloak con los usuarios ficticios del realm (contraseña `KC_DEV_USER_PASSWORD` del
+`.env`), o en desarrollo con `dev-auth` eligiendo un usuario sembrado. Sesión, menú por permisos, selector de
+cliente e idioma usan la API real; el resto de las pantallas sigue con datos de ejemplo hasta su hito.
 
 ## Desarrollo
 
@@ -64,6 +70,7 @@ pnpm db:seed                                   # datos ficticios de desarrollo (
 pnpm fga:test                                  # tests del modelo de OpenFGA (infra/openfga)
 pnpm authz:reconcile                           # iguala OpenFGA a lo que implica PostgreSQL
 uv run python -m nexti_api.cli keycloak-events # copia los eventos de Keycloak a la auditoría (también en segundo plano)
+pnpm api:types                                 # regenera los tipos TypeScript de la web desde el OpenAPI de la API
 docker compose -f infra/docker-compose/compose.yaml --profile observability up -d --wait   # + Langfuse
 ```
 

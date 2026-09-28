@@ -51,7 +51,8 @@
       "dark": "oscuro"
     },
     "notificationsCount_one": "Notificaciones ({{count}} sin leer)",
-    "notificationsCount_other": "Notificaciones ({{count}} sin leer)"
+    "notificationsCount_other": "Notificaciones ({{count}} sin leer)",
+    "noTenant": "Ningún cliente seleccionado"
   },
   "auth": {
     "heroTitle": "Moderniza sistemas legacy y construye nuevas funcionalidades con agentes de IA verificados.",
@@ -86,7 +87,9 @@
     "backToSignIn": "Volver a iniciar sesión",
     "errors": {
       "invalidEmail": "Ingresa un correo válido.",
-      "invalidCredentials": "El correo o la contraseña no son correctos."
+      "invalidCredentials": "El correo o la contraseña no son correctos.",
+      "signInFailed": "El inicio de sesión no se completó. Vuelve a intentarlo.",
+      "noPlatformAccess": "Tu cuenta todavía no tiene acceso a la plataforma. Pide una invitación a tu administrador."
     },
     "mfa": {
       "title": "Verificación en dos pasos",
@@ -127,7 +130,13 @@
       "lower": "Una letra minúscula",
       "number": "Un número",
       "symbol": "Un símbolo"
-    }
+    },
+    "signInWithPlatform": "Iniciar sesión con tu cuenta de la plataforma",
+    "signInWithPlatformHint": "Ingresarás tu correo y contraseña en la página de inicio de sesión de la plataforma y volverás aquí.",
+    "devAuthTitle": "Inicio de sesión de desarrollo",
+    "devAuthHint": "Solo en desarrollo y pruebas: entra como un usuario sembrado sin contraseña. Cada inicio de sesión queda auditado como dev-auth.",
+    "signedInWithKeycloak": "Sesión iniciada con tu cuenta de la plataforma",
+    "signedInWithDevAuth": "Sesión iniciada con dev-auth (solo desarrollo)"
   },
   "account": {
     "title": "Cuenta y seguridad",

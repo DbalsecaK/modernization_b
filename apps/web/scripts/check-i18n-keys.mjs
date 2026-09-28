@@ -11,8 +11,9 @@ const walk = (d) =>
     statSync(p).isDirectory() ? walk(p) : /\.tsx?$/.test(p) && files.push(p)
   })
 walk('src')
-// Normalize Windows separators so the mocks folder is excluded on every OS.
-const scanned = files.filter((f) => !f.replaceAll('\\', '/').includes('/mocks/'))
+// Normalize Windows separators so the excluded folders match on every OS. mocks/ holds sample data and api/
+// holds API identifiers (permission keys such as usage.view), not UI texts.
+const scanned = files.filter((f) => !/\/(mocks|api)\//.test(f.replaceAll('\\', '/')))
 
 const resolve = (key) => {
   let node = en

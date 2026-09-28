@@ -20,10 +20,11 @@ import {
   X,
 } from 'lucide-react'
 import { cn } from '@/lib/cn'
-import { signOut, useSession } from '@/lib/session'
+import { useQueryClient } from '@tanstack/react-query'
+import { canOpen, initials, signOut, switchTenant, useMe } from '@/api/session'
 import { setTheme, useTheme } from '@/lib/theme'
 import { setLanguage } from '@/i18n'
-import { currentUser, tasks, tenants } from '@/mocks/data'
+import { tasks } from '@/mocks/data'
 import { Avatar } from '@/components/ui/primitives'
 import { Toaster } from '@/components/ui/overlay'
 import { GlobalSearch, NotificationsMenu } from './TopbarWidgets'
@@ -51,6 +52,7 @@ export function Logo({ className }: { className?: string }) {
 
 function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const { t } = useTranslation()
+  const me = useMe()
   return (
     <nav className="flex h-full flex-col bg-sidebar text-sidebar-text" aria-label={t('nav.main')}>
       <div className="flex h-16 items-center gap-2 px-5">
@@ -58,23 +60,27 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
         <span className="text-xs text-sidebar-text/80">{t('app.productShort')}</span>
       </div>
       <ul className="flex-1 space-y-0.5 px-3 py-2">
-        {nav.map(({ to, key, Icon, ...rest }) => (
-          <li key={to}>
-            <Link
-              to={to}
-              onClick={onNavigate}
-              activeOptions={{ exact: to === '/' }}
-              className="flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors hover:bg-white/5 hover:text-white"
-              activeProps={{ className: 'bg-sidebar-active text-white font-medium' }}
-            >
-              <Icon size={18} aria-hidden />
-              <span className="flex-1">{t(`nav.${key}`)}</span>
-              {'badge' in rest && rest.badge ? (
-                <span className="rounded-full bg-accent px-1.5 text-xs font-semibold text-[#052158]">{rest.badge}</span>
-              ) : null}
-            </Link>
-          </li>
-        ))}
+        {nav
+          .filter(({ key }) => canOpen(me, key))
+          .map(({ to, key, Icon, ...rest }) => (
+            <li key={to}>
+              <Link
+                to={to}
+                onClick={onNavigate}
+                activeOptions={{ exact: to === '/' }}
+                className="flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors hover:bg-white/5 hover:text-white"
+                activeProps={{ className: 'bg-sidebar-active text-white font-medium' }}
+              >
+                <Icon size={18} aria-hidden />
+                <span className="flex-1">{t(`nav.${key}`)}</span>
+                {'badge' in rest && rest.badge ? (
+                  <span className="rounded-full bg-accent px-1.5 text-xs font-semibold text-[#052158]">
+                    {rest.badge}
+                  </span>
+                ) : null}
+              </Link>
+            </li>
+          ))}
       </ul>
       <div className="border-t border-white/10 px-5 py-4 text-xs text-sidebar-text/70">
         {t('app.version', { version: '0.1.0' })}
@@ -121,17 +127,20 @@ function ThemeToggle() {
 
 function UserMenu() {
   const { t } = useTranslation()
-  const session = useSession()
+  const me = useMe()
+  const client = useQueryClient()
   const navigate = useNavigate()
   const [open, setOpen] = useState(false)
+  if (!me) return null
   return (
     <div className="relative">
       <button
         onClick={() => setOpen((o) => !o)}
         className="flex items-center gap-2 rounded-md p-1 hover:bg-surface-2"
         aria-expanded={open}
+        aria-label={t('nav.account')}
       >
-        <Avatar initials={currentUser.initials} />
+        <Avatar initials={initials(me.user.displayName)} />
         <ChevronDown size={14} className="hidden text-muted sm:block" />
       </button>
       {open && (
@@ -140,12 +149,10 @@ function UserMenu() {
           onMouseLeave={() => setOpen(false)}
         >
           <div className="px-3 py-2">
-            <div className="text-sm font-medium text-text">{currentUser.name}</div>
-            <div className="truncate text-xs text-muted">{session?.email ?? currentUser.email}</div>
+            <div className="text-sm font-medium text-text">{me.user.displayName}</div>
+            <div className="truncate text-xs text-muted">{me.user.email}</div>
             <div className="mt-1 text-xs text-muted">
-              {session?.method === 'sso'
-                ? t('auth.signedInWithSso', { provider: session.provider })
-                : t('auth.signedInWithPassword')}
+              {me.authMethod === 'dev-auth' ? t('auth.signedInWithDevAuth') : t('auth.signedInWithKeycloak')}
             </div>
           </div>
           <Link
@@ -156,8 +163,8 @@ function UserMenu() {
             <UserRound size={16} /> {t('nav.account')}
           </Link>
           <button
-            onClick={() => {
-              signOut()
+            onClick={async () => {
+              await signOut(client)
               void navigate({ to: '/login' })
             }}
             className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-text hover:bg-surface-2"
@@ -166,6 +173,32 @@ function UserMenu() {
           </button>
         </div>
       )}
+    </div>
+  )
+}
+
+function TenantSwitcher() {
+  const { t } = useTranslation()
+  const me = useMe()
+  const client = useQueryClient()
+  if (!me) return null
+  return (
+    <div className="hidden items-center gap-2 rounded-md border border-border px-2.5 py-1.5 text-sm md:flex">
+      <Building2 size={16} className="text-muted" />
+      <select
+        className="bg-transparent text-text focus:outline-none"
+        aria-label={t('topbar.tenant')}
+        value={me.activeTenant?.id ?? ''}
+        onChange={(e) => void switchTenant(client, e.target.value)}
+        disabled={me.tenants.length === 0}
+      >
+        {!me.activeTenant && <option value="">{t('topbar.noTenant')}</option>}
+        {me.tenants.map((tenant) => (
+          <option key={tenant.id} value={tenant.id}>
+            {tenant.name}
+          </option>
+        ))}
+      </select>
     </div>
   )
 }
@@ -202,21 +235,7 @@ export function AppShell() {
           >
             <Menu size={20} />
           </button>
-          <div className="hidden items-center gap-2 rounded-md border border-border px-2.5 py-1.5 text-sm md:flex">
-            <Building2 size={16} className="text-muted" />
-            <select
-              className="bg-transparent text-text focus:outline-none"
-              aria-label={t('topbar.tenant')}
-              defaultValue="all"
-            >
-              <option value="all">{t('topbar.allTenants')}</option>
-              {tenants.map((tenant) => (
-                <option key={tenant.id} value={tenant.id}>
-                  {tenant.name}
-                </option>
-              ))}
-            </select>
-          </div>
+          <TenantSwitcher />
           <GlobalSearch />
           <div className="ml-auto flex items-center gap-2">
             <span className="hidden rounded-full border border-warning/50 px-2 py-0.5 text-xs text-warning-ink xl:inline">

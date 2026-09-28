@@ -1,10 +1,9 @@
 import { useTranslation } from 'react-i18next'
 import { Fingerprint, KeyRound, Laptop, Smartphone } from 'lucide-react'
 import { useTab } from '@/lib/useTab'
-import { useSession } from '@/lib/session'
+import { useMe } from '@/api/session'
 import { setLanguage } from '@/i18n'
 import { formatDateTime } from '@/lib/format'
-import { currentUser } from '@/mocks/data'
 import {
   Badge,
   Button,
@@ -22,9 +21,10 @@ const TABS = ['profile', 'security', 'sessions'] as const
 
 export function AccountPage() {
   const { t, i18n } = useTranslation()
-  const session = useSession()
+  const me = useMe()
   const [tab, setTab] = useTab(TABS, 'profile')
-  const isSso = session?.method === 'sso'
+  // Credentials and profile live in Keycloak (SSO accounts in their provider from M0b).
+  const isSso = false
 
   return (
     <>
@@ -36,10 +36,10 @@ export function AccountPage() {
           <CardHeader title={t('account.profile')} />
           <CardBody className="space-y-4">
             <Field label={t('account.name')}>
-              <Input defaultValue={currentUser.name} />
+              <Input defaultValue={me?.user.displayName} readOnly />
             </Field>
             <Field label={t('account.email')} hint={isSso ? t('account.managedBySso') : undefined}>
-              <Input defaultValue={session?.email ?? currentUser.email} disabled={isSso} />
+              <Input defaultValue={me?.user.email} disabled={isSso} readOnly />
             </Field>
             <Field label={t('account.language')} hint={t('account.languageHint')}>
               <Select value={i18n.language} onChange={(e) => setLanguage(e.target.value as 'en' | 'es')}>

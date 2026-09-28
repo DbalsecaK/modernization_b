@@ -1,3 +1,4 @@
+// Design of the M0b Keycloak theme (Keycloakify, D-27): not routed in M0, where Keycloak shows its own pages.
 import { useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
@@ -34,7 +35,7 @@ export function AcceptInvitePage() {
           e.preventDefault()
           if (!valid) return
           startMfaChallenge('jmena@andesbank.example')
-          void navigate({ to: '/login/mfa' })
+          void navigate({ to: '/login' })
         }}
       >
         <Field label={t('auth.invite.name')}>

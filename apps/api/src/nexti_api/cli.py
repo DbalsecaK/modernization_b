@@ -68,6 +68,20 @@ async def _keycloak_events(settings: Settings) -> int:
     return 0
 
 
+def _openapi(path: str) -> int:
+    """Write the OpenAPI document (the web client's types are generated from it). No services needed."""
+    import json
+    from pathlib import Path
+
+    from nexti_api.main import create_app
+
+    # dev-auth included so the development-only routes are typed too; they do not exist in other environments.
+    app = create_app(Settings(_env_file=None, app_env="development", dev_auth_enabled=True))
+    Path(path).write_text(json.dumps(app.openapi(), indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    print(f"Wrote {path}")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="nexti_api.cli")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -75,7 +89,11 @@ def main(argv: list[str] | None = None) -> int:
     rec = sub.add_parser("reconcile", help="make OpenFGA equal to what PostgreSQL implies")
     rec.add_argument("--check", action="store_true", help="only report differences (exit 1 if any)")
     sub.add_parser("keycloak-events", help="copy new Keycloak events to the audit log")
+    api = sub.add_parser("openapi", help="write the OpenAPI document to a file")
+    api.add_argument("path")
     args = parser.parse_args(argv)
+    if args.command == "openapi":
+        return _openapi(args.path)
     settings = get_settings()
     if args.command == "seed-dev":
         return asyncio.run(_seed_dev(settings))

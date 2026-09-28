@@ -48,6 +48,7 @@ pnpm web:dev            # servidor de desarrollo (http://localhost:5173)
 pnpm web:build          # typecheck + build
 pnpm web:test           # tests (paridad de catálogos i18n) + chequeo de claves usadas
 pnpm lint               # ESLint; pnpm format:check para Prettier
+pnpm api:types          # regenera apps/web/src/api/schema.d.ts desde el OpenAPI de la API
 ```
 
 ## Comandos de Python

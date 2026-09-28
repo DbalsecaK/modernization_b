@@ -303,6 +303,12 @@ cliente TypeScript generado desde él para la web.
   toque), sin cambiar su API.
 - **Calidad:** ESLint + Prettier (configuración nueva), Vitest (tests actuales), **Playwright** e2e y **axe**.
 - i18n: toda clave nueva en `en.json` y `es.json` (el test de paridad lo exige).
+- **Implementado (paso 10):** tipos generados con `openapi-typescript` (en `tools/codegen`, con TypeScript 5,
+  porque TS 7 no expone la API del compilador) y cliente `openapi-fetch` que añade `X-CSRF-Token` en las
+  mutaciones; proxy de Vite de `/api` y `/auth`; `meQuery` de TanStack Query para el guard del router y el menú;
+  login de M0 (botón a Keycloak, errores del callback y selector de dev-auth); el idioma se guarda con
+  `PATCH /api/v1/me` y el del servidor prevalece. Las pantallas de MFA, recuperación e invitación quedan fuera del
+  router como diseño del tema de M0b.
 
 ## 10. CI (`.github/workflows/ci.yml`)
 
@@ -342,7 +348,7 @@ cliente TypeScript generado desde él para la web.
 | 7 ✅ | `dev-auth` y arranque seguro | Test de arranque en producción falla como se espera |
 | 8 ✅ | OpenFGA: modelo y tests del modelo, cliente, `require(...)`, outbox y reconciliación | `fga model test` y tests de sincronización en verde |
 | 9 ✅ | Routers de administración (tenants, usuarios, invitaciones con Keycloak + Mailpit, roles, matriz, asignaciones, proyectos, auditoría) con tests permitido/denegado y aislamiento | Suite `authz` e `isolation` en verde |
-| 10 | Web: cliente de API, TanStack Query, sesión real, menú por permisos, selector de tenant | La web entra con Keycloak o dev-auth y muestra el menú según el rol |
+| 10 ✅ | Web: cliente de API, TanStack Query, sesión real, menú por permisos, selector de tenant | La web entra con Keycloak o dev-auth y muestra el menú según el rol |
 | 11 | Web: Administración conectada (usuarios, invitaciones, roles, matriz, auditoría); reemplazo de mocks | e2e de invitar, asignar rol y ver auditoría |
 | 12 | Primitivas sobre Radix + Playwright/axe | Tests de accesibilidad en verde, sin cambios en imports de pantallas |
 | 13 | CI completo (jobs de la sección 10) | Pipeline verde en el PR |

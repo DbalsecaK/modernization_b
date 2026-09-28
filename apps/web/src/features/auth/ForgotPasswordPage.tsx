@@ -1,3 +1,4 @@
+// Design of the M0b Keycloak theme (Keycloakify, D-27): not routed in M0, where Keycloak shows its own pages.
 import { useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'

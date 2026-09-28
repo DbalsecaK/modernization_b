@@ -1,3 +1,4 @@
+// Design of the M0b Keycloak theme (Keycloakify, D-27): not routed in M0, where Keycloak shows its own pages.
 import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
@@ -5,7 +6,7 @@ import { Fingerprint } from 'lucide-react'
 import { clearChallenge, pendingChallenge, signIn } from '@/lib/session'
 import { Button, Field, Input } from '@/components/ui/primitives'
 import { AuthLayout } from './AuthLayout'
-import { Divider } from './LoginPage'
+import { Divider } from './AuthLayout'
 
 export function MfaPage() {
   const { t } = useTranslation()
