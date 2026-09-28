@@ -4,6 +4,296 @@
  */
 
 export interface paths {
+    "/api/v1/ai/assignment-options": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Options */
+        get: operations["options_api_v1_ai_assignment_options_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ai/assignments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Assignments
+         * @description Tenant-wide rows, plus the rows of `projectId` when given.
+         */
+        get: operations["list_assignments_api_v1_ai_assignments_get"];
+        /** Set Assignment */
+        put: operations["set_assignment_api_v1_ai_assignments_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ai/assignments:resolve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Resolve
+         * @description Which profile the gateway would use for this context (the same cascade as the gateway).
+         */
+        get: operations["resolve_api_v1_ai_assignments_resolve_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ai/catalog": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Catalog */
+        get: operations["list_catalog_api_v1_ai_catalog_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ai/catalog/versions/{version_id}:load-offerings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Load
+         * @description Load the upstream providers of one model with their current prices.
+         */
+        post: operations["load_api_v1_ai_catalog_versions__version_id__load_offerings_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ai/catalog:sync": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Sync
+         * @description Refresh families and versions from the provider's public catalog.
+         */
+        post: operations["sync_api_v1_ai_catalog_sync_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ai/connections": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Connections */
+        get: operations["list_connections_api_v1_ai_connections_get"];
+        put?: never;
+        /** Create Connection */
+        post: operations["create_connection_api_v1_ai_connections_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ai/connections/{connection_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete Connection */
+        delete: operations["delete_connection_api_v1_ai_connections__connection_id__delete"];
+        options?: never;
+        head?: never;
+        /** Update Connection */
+        patch: operations["update_connection_api_v1_ai_connections__connection_id__patch"];
+        trace?: never;
+    };
+    "/api/v1/ai/connections/{connection_id}:test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Test Connection
+         * @description Check the stored credential with the provider (no model is called, so it costs nothing).
+         */
+        post: operations["test_connection_api_v1_ai_connections__connection_id__test_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ai/offerings/{offering_id}/effort-mapping": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Effort Mapping
+         * @description Normalized effort -> the real parameter sent to the model (spec 12.3).
+         */
+        get: operations["get_effort_mapping_api_v1_ai_offerings__offering_id__effort_mapping_get"];
+        /** Set Effort Mapping */
+        put: operations["set_effort_mapping_api_v1_ai_offerings__offering_id__effort_mapping_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ai/offerings/{offering_id}/prices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Prices */
+        get: operations["list_prices_api_v1_ai_offerings__offering_id__prices_get"];
+        put?: never;
+        /**
+         * Add Manual Price
+         * @description A price the provider does not report (spec 12.2). Past costs keep the version they used.
+         */
+        post: operations["add_manual_price_api_v1_ai_offerings__offering_id__prices_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ai/policy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Policy */
+        get: operations["get_policy_api_v1_ai_policy_get"];
+        /** Set Policy */
+        put: operations["set_policy_api_v1_ai_policy_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ai/profiles": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Profiles */
+        get: operations["list_profiles_api_v1_ai_profiles_get"];
+        put?: never;
+        /** Create Profile */
+        post: operations["create_profile_api_v1_ai_profiles_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ai/profiles/{profile_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Update Profile */
+        put: operations["update_profile_api_v1_ai_profiles__profile_id__put"];
+        post?: never;
+        /**
+         * Delete Profile
+         * @description Assignments that use the profile go with it; profiles that fall back to it lose their fallback.
+         */
+        delete: operations["delete_profile_api_v1_ai_profiles__profile_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ai/profiles/{profile_id}:test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Test Profile
+         * @description A minimal real call through the gateway; it is recorded in the usage ledger like any other call.
+         */
+        post: operations["test_profile_api_v1_ai_profiles__profile_id__test_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/audit": {
         parameters: {
             query?: never;
@@ -53,6 +343,42 @@ export interface paths {
         put?: never;
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/budgets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Budgets */
+        get: operations["list_budgets_api_v1_budgets_get"];
+        put?: never;
+        /** Create Budget */
+        post: operations["create_budget_api_v1_budgets_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/budgets/{budget_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Update Budget */
+        put: operations["update_budget_api_v1_budgets__budget_id__put"];
+        post?: never;
+        /** Delete Budget */
+        delete: operations["delete_budget_api_v1_budgets__budget_id__delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -359,6 +685,23 @@ export interface paths {
         patch: operations["update_tenant_api_v1_tenants__tenant_id__patch"];
         trace?: never;
     };
+    "/api/v1/usage/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Summary */
+        get: operations["summary_api_v1_usage_summary_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/users": {
         parameters: {
             query?: never;
@@ -529,37 +872,23 @@ export interface components {
              */
             userId: string;
         };
-        /** AssignmentOut */
-        AssignmentOut: {
-            /**
-             * Createdat
-             * Format: date-time
-             */
-            createdAt: string;
-            /**
-             * Id
-             * Format: uuid
-             */
-            id: string;
+        /** AssignmentIn */
+        AssignmentIn: {
+            /** Agentrole */
+            agentRole?: string | null;
+            /** Phase */
+            phase?: string | null;
+            /** Profileid */
+            profileId: string | null;
             /** Projectid */
-            projectId: string | null;
-            /**
-             * Roleid
-             * Format: uuid
-             */
-            roleId: string;
-            /** Rolekey */
-            roleKey: string;
-            /**
-             * Scope
-             * @enum {string}
-             */
-            scope: "tenant" | "project";
-            /**
-             * Userid
-             * Format: uuid
-             */
-            userId: string;
+            projectId?: string | null;
+        };
+        /** AssignmentOptions */
+        AssignmentOptions: {
+            /** Agentroles */
+            agentRoles: string[];
+            /** Phases */
+            phases: string[];
         };
         /** AuditEntryOut */
         AuditEntryOut: {
@@ -604,6 +933,58 @@ export interface components {
             /** Nextbefore */
             nextBefore: number | null;
         };
+        /** BudgetIn */
+        BudgetIn: {
+            /**
+             * Alertpct
+             * @default 80
+             */
+            alertPct: number;
+            /** Amountusd */
+            amountUsd: number | string;
+            /**
+             * Hardstop
+             * @default true
+             */
+            hardStop: boolean;
+            /**
+             * Period
+             * @default monthly
+             * @enum {string}
+             */
+            period: "monthly" | "total";
+            /** Projectid */
+            projectId?: string | null;
+        };
+        /** BudgetOut */
+        BudgetOut: {
+            /** Alertpct */
+            alertPct: number;
+            /** Alerts */
+            alerts: number[];
+            /** Amountusd */
+            amountUsd: string;
+            /** Hardstop */
+            hardStop: boolean;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Period
+             * @enum {string}
+             */
+            period: "monthly" | "total";
+            /** Periodkey */
+            periodKey: string;
+            /** Projectid */
+            projectId: string | null;
+            /** Projectname */
+            projectName: string | null;
+            /** Spentusd */
+            spentUsd: string;
+        };
         /** ChainOut */
         ChainOut: {
             /** Checked */
@@ -625,6 +1006,52 @@ export interface components {
              */
             status: "ok" | "fail";
         };
+        /** ConnectionCreate */
+        ConnectionCreate: {
+            /** Apikey */
+            apiKey: string;
+            /** Name */
+            name: string;
+            /**
+             * Provider
+             * @default openrouter
+             * @constant
+             */
+            provider: "openrouter";
+        };
+        /** ConnectionOut */
+        ConnectionOut: {
+            /** Hascredential */
+            hasCredential: boolean;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Lasttestdetail */
+            lastTestDetail: string | null;
+            /** Lasttestedat */
+            lastTestedAt: string | null;
+            /** Name */
+            name: string;
+            /**
+             * Provider
+             * @constant
+             */
+            provider: "openrouter";
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "untested" | "ok" | "failed";
+        };
+        /** ConnectionUpdate */
+        ConnectionUpdate: {
+            /** Apikey */
+            apiKey?: string | null;
+            /** Name */
+            name?: string | null;
+        };
         /** DevLoginIn */
         DevLoginIn: {
             /**
@@ -644,6 +1071,15 @@ export interface components {
              * Format: uuid
              */
             id: string;
+        };
+        /** EffortMappingIn */
+        EffortMappingIn: {
+            /** Parameters */
+            parameters: {
+                [key: string]: {
+                    [key: string]: unknown;
+                };
+            };
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -738,6 +1174,24 @@ export interface components {
              */
             status: "pending" | "accepted" | "revoked" | "expired";
         };
+        /** LoadOut */
+        LoadOut: {
+            /** Offerings */
+            offerings: number;
+        };
+        /** ManualPriceIn */
+        ManualPriceIn: {
+            /** Cachereadpermtok */
+            cacheReadPerMtok?: number | string | null;
+            /** Cachewritepermtok */
+            cacheWritePerMtok?: number | string | null;
+            /** Inputpermtok */
+            inputPerMtok: number | string;
+            /** Outputpermtok */
+            outputPerMtok: number | string;
+            /** Requestusd */
+            requestUsd?: number | string | null;
+        };
         /** MeOut */
         MeOut: {
             activeTenant: components["schemas"]["SessionTenantOut"] | null;
@@ -793,6 +1247,34 @@ export interface components {
              */
             status: "active" | "suspended";
         };
+        /** OfferingOut */
+        OfferingOut: {
+            /** Allowedbypolicy */
+            allowedByPolicy: boolean;
+            /** Capabilities */
+            capabilities: string[];
+            /** Contextwindow */
+            contextWindow: number | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Maxoutputtokens */
+            maxOutputTokens: number | null;
+            /** Policyreason */
+            policyReason: string | null;
+            price: components["schemas"]["PriceOut"] | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "available" | "unavailable";
+            /** Upstreamprovider */
+            upstreamProvider: string;
+            /** Zdr */
+            zdr: boolean;
+        };
         /** PermissionOut */
         PermissionOut: {
             /** Description */
@@ -801,6 +1283,169 @@ export interface components {
             key: string;
             /** Scopes */
             scopes: ("tenant" | "project")[];
+        };
+        /** PolicyIn */
+        PolicyIn: {
+            /** Allowedupstreamproviders */
+            allowedUpstreamProviders?: string[] | null;
+            /** Deniedupstreamproviders */
+            deniedUpstreamProviders?: string[];
+            /**
+             * Denydatacollection
+             * @default true
+             */
+            denyDataCollection: boolean;
+            /**
+             * Openrouterallowed
+             * @default true
+             */
+            openrouterAllowed: boolean;
+            /**
+             * Requirezdr
+             * @default false
+             */
+            requireZdr: boolean;
+        };
+        /** PolicyOut */
+        PolicyOut: {
+            /** Allowedupstreamproviders */
+            allowedUpstreamProviders: string[] | null;
+            /** Deniedupstreamproviders */
+            deniedUpstreamProviders: string[];
+            /** Denydatacollection */
+            denyDataCollection: boolean;
+            /** Openrouterallowed */
+            openrouterAllowed: boolean;
+            /** Requirezdr */
+            requireZdr: boolean;
+        };
+        /** PriceOut */
+        PriceOut: {
+            /** Cachereadpermtok */
+            cacheReadPerMtok: string | null;
+            /** Cachewritepermtok */
+            cacheWritePerMtok: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Inputpermtok */
+            inputPerMtok: string;
+            /** Outputpermtok */
+            outputPerMtok: string;
+            /** Requestusd */
+            requestUsd: string | null;
+            /**
+             * Source
+             * @enum {string}
+             */
+            source: "provider_sync" | "manual";
+            /**
+             * Validfrom
+             * Format: date-time
+             */
+            validFrom: string;
+            /** Validto */
+            validTo: string | null;
+        };
+        /** ProfileIn */
+        ProfileIn: {
+            /**
+             * Connectionid
+             * Format: uuid
+             */
+            connectionId: string;
+            /**
+             * Effort
+             * @default medium
+             * @enum {string}
+             */
+            effort: "low" | "medium" | "high" | "max";
+            /** Fallbackprofileid */
+            fallbackProfileId?: string | null;
+            /**
+             * Maxoutputtokens
+             * @default 4096
+             */
+            maxOutputTokens: number;
+            /**
+             * Maxretries
+             * @default 2
+             */
+            maxRetries: number;
+            /** Name */
+            name: string;
+            /**
+             * Offeringid
+             * Format: uuid
+             */
+            offeringId: string;
+            /** Temperature */
+            temperature?: number | string | null;
+            /**
+             * Timeoutseconds
+             * @default 120
+             */
+            timeoutSeconds: number;
+        };
+        /** ProfileOut */
+        ProfileOut: {
+            /**
+             * Connectionid
+             * Format: uuid
+             */
+            connectionId: string;
+            /**
+             * Effort
+             * @enum {string}
+             */
+            effort: "low" | "medium" | "high" | "max";
+            /** Fallbackprofileid */
+            fallbackProfileId: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Maxoutputtokens */
+            maxOutputTokens: number;
+            /** Maxretries */
+            maxRetries: number;
+            /** Model */
+            model: string;
+            /** Name */
+            name: string;
+            /**
+             * Offeringid
+             * Format: uuid
+             */
+            offeringId: string;
+            /** Temperature */
+            temperature: string | null;
+            /** Timeoutseconds */
+            timeoutSeconds: number;
+            /** Upstreamprovider */
+            upstreamProvider: string;
+        };
+        /** ProfileTestOut */
+        ProfileTestOut: {
+            /** Content */
+            content: string | null;
+            /** Costusd */
+            costUsd: string;
+            /** Errorcode */
+            errorCode: string | null;
+            /** Inputtokens */
+            inputTokens: number;
+            /** Ok */
+            ok: boolean;
+            /** Outputtokens */
+            outputTokens: number;
+            /** Providercostusd */
+            providerCostUsd: string | null;
+            /** Wasfallback */
+            wasFallback: boolean;
         };
         /** ProjectOut */
         ProjectOut: {
@@ -828,6 +1473,11 @@ export interface components {
              * @enum {string}
              */
             status: "ok" | "fail";
+        };
+        /** ResolvedOut */
+        ResolvedOut: {
+            /** Profileid */
+            profileId: string | null;
         };
         /** RoleCreate */
         RoleCreate: {
@@ -912,6 +1562,13 @@ export interface components {
             /** Slug */
             slug: string;
         };
+        /** SyncOut */
+        SyncOut: {
+            /** Families */
+            families: number;
+            /** Versions */
+            versions: number;
+        };
         /** TenantCreate */
         TenantCreate: {
             /**
@@ -974,6 +1631,52 @@ export interface components {
             /** Status */
             status?: ("active" | "suspended") | null;
         };
+        /** UsageRow */
+        UsageRow: {
+            /** Cachereadtokens */
+            cacheReadTokens: number;
+            /** Calls */
+            calls: number;
+            /** Costusd */
+            costUsd: string | null;
+            /** Failedcalls */
+            failedCalls: number;
+            /** Inputtokens */
+            inputTokens: number;
+            /** Key */
+            key: string | null;
+            /** Label */
+            label: string;
+            /** Outputtokens */
+            outputTokens: number;
+            /** Providercostusd */
+            providerCostUsd: string | null;
+            /** Reasoningtokens */
+            reasoningTokens: number;
+        };
+        /** UsageSummary */
+        UsageSummary: {
+            /** Costvisible */
+            costVisible: boolean;
+            /**
+             * Groupby
+             * @enum {string}
+             */
+            groupBy: "project" | "model" | "phase" | "agentRole" | "provider" | "month" | "day";
+            /** Rows */
+            rows: components["schemas"]["UsageRow"][];
+            /**
+             * Since
+             * Format: date
+             */
+            since: string;
+            total: components["schemas"]["UsageRow"];
+            /**
+             * Until
+             * Format: date
+             */
+            until: string;
+        };
         /** UserOut */
         UserOut: {
             /** Displayname */
@@ -1004,6 +1707,84 @@ export interface components {
             /** Error Type */
             type: string;
         };
+        /** VersionOut */
+        VersionOut: {
+            /** Canonicalslug */
+            canonicalSlug: string;
+            /** Capabilities */
+            capabilities: string[];
+            /** Contextwindow */
+            contextWindow: number | null;
+            /** Family */
+            family: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
+            /** Offerings */
+            offerings: components["schemas"]["OfferingOut"][];
+            /** Providerslug */
+            providerSlug: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "available" | "deprecated";
+        };
+        /** AssignmentOut */
+        nexti_api__admin__assignments__AssignmentOut: {
+            /**
+             * Createdat
+             * Format: date-time
+             */
+            createdAt: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Projectid */
+            projectId: string | null;
+            /**
+             * Roleid
+             * Format: uuid
+             */
+            roleId: string;
+            /** Rolekey */
+            roleKey: string;
+            /**
+             * Scope
+             * @enum {string}
+             */
+            scope: "tenant" | "project";
+            /**
+             * Userid
+             * Format: uuid
+             */
+            userId: string;
+        };
+        /** AssignmentOut */
+        nexti_api__ai__assignments__AssignmentOut: {
+            /** Agentrole */
+            agentRole: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Phase */
+            phase: string | null;
+            /**
+             * Profileid
+             * Format: uuid
+             */
+            profileId: string;
+            /** Projectid */
+            projectId: string | null;
+        };
     };
     responses: never;
     parameters: never;
@@ -1013,6 +1794,695 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    options_api_v1_ai_assignment_options_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AssignmentOptions"];
+                };
+            };
+        };
+    };
+    list_assignments_api_v1_ai_assignments_get: {
+        parameters: {
+            query?: {
+                projectId?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["nexti_api__ai__assignments__AssignmentOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    set_assignment_api_v1_ai_assignments_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AssignmentIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["nexti_api__ai__assignments__AssignmentOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    resolve_api_v1_ai_assignments_resolve_get: {
+        parameters: {
+            query?: {
+                projectId?: string | null;
+                phase?: string | null;
+                agentRole?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResolvedOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_catalog_api_v1_ai_catalog_get: {
+        parameters: {
+            query?: {
+                search?: string | null;
+                only_offered?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VersionOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    load_api_v1_ai_catalog_versions__version_id__load_offerings_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                version_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoadOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    sync_api_v1_ai_catalog_sync_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SyncOut"];
+                };
+            };
+        };
+    };
+    list_connections_api_v1_ai_connections_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConnectionOut"][];
+                };
+            };
+        };
+    };
+    create_connection_api_v1_ai_connections_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConnectionCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConnectionOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_connection_api_v1_ai_connections__connection_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                connection_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_connection_api_v1_ai_connections__connection_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                connection_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConnectionUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConnectionOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    test_connection_api_v1_ai_connections__connection_id__test_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                connection_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConnectionOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_effort_mapping_api_v1_ai_offerings__offering_id__effort_mapping_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                offering_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    set_effort_mapping_api_v1_ai_offerings__offering_id__effort_mapping_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                offering_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EffortMappingIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: {
+                            [key: string]: unknown;
+                        };
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_prices_api_v1_ai_offerings__offering_id__prices_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                offering_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PriceOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    add_manual_price_api_v1_ai_offerings__offering_id__prices_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                offering_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ManualPriceIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PriceOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_policy_api_v1_ai_policy_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PolicyOut"];
+                };
+            };
+        };
+    };
+    set_policy_api_v1_ai_policy_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PolicyIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PolicyOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_profiles_api_v1_ai_profiles_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProfileOut"][];
+                };
+            };
+        };
+    };
+    create_profile_api_v1_ai_profiles_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProfileIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProfileOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_profile_api_v1_ai_profiles__profile_id__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                profile_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProfileIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProfileOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_profile_api_v1_ai_profiles__profile_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                profile_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    test_profile_api_v1_ai_profiles__profile_id__test_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                profile_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProfileTestOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_entries_api_v1_audit_get: {
         parameters: {
             query?: {
@@ -1098,6 +2568,123 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ChainOut"];
+                };
+            };
+        };
+    };
+    list_budgets_api_v1_budgets_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BudgetOut"][];
+                };
+            };
+        };
+    };
+    create_budget_api_v1_budgets_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BudgetIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BudgetOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_budget_api_v1_budgets__budget_id__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                budget_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BudgetIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BudgetOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_budget_api_v1_budgets__budget_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                budget_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -1375,7 +2962,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["AssignmentOut"][];
+                    "application/json": components["schemas"]["nexti_api__admin__assignments__AssignmentOut"][];
                 };
             };
             /** @description Validation Error */
@@ -1408,7 +2995,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["AssignmentOut"];
+                    "application/json": components["schemas"]["nexti_api__admin__assignments__AssignmentOut"];
                 };
             };
             /** @description Validation Error */
@@ -1742,6 +3329,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TenantOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    summary_api_v1_usage_summary_get: {
+        parameters: {
+            query?: {
+                groupBy?: "project" | "model" | "phase" | "agentRole" | "provider" | "month" | "day";
+                since?: string | null;
+                until?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UsageSummary"];
                 };
             };
             /** @description Validation Error */

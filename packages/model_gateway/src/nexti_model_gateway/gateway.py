@@ -204,7 +204,9 @@ class ModelGateway:
                 .join(ModelVersion, ModelVersion.id == ModelOffering.version_id)
                 .where(ModelProfile.id == profile_id)
             )
-        ).one()
+        ).one_or_none()
+        if row is None:
+            raise NoProfileError("the model profile does not exist in this tenant")
         price = (
             await conn.execute(
                 select(PriceVersion).where(PriceVersion.offering_id == row.offering_id, PriceVersion.valid_to.is_(None))
@@ -398,7 +400,14 @@ class ModelGateway:
             return attempt
         return attempt
 
-    async def complete(self, ctx: CallContext, messages: list[dict[str, Any]], **extra: Any) -> Completion:
+    async def complete(
+        self,
+        ctx: CallContext,
+        messages: list[dict[str, Any]],
+        *,
+        profile_id: uuid.UUID | None = None,
+        **extra: Any,
+    ) -> Completion:
         """Call the model assigned to the context. Raises BudgetExceededError, PolicyDeniedError, NoProfileError
         or ProviderCallError; every attempt (including blocked ones) is in the usage ledger."""
         now = datetime.now(UTC)
@@ -413,7 +422,8 @@ class ModelGateway:
                     )
                 )
             ).all()
-            profile_id = resolve_profile(
+            # An explicit profile (e.g. "test profile") skips the cascade; RLS still limits it to the tenant.
+            profile_id = profile_id or resolve_profile(
                 [AssignmentRow(r.project_id, r.phase, r.agent_role, r.profile_id) for r in rows],
                 ctx.project_id,
                 ctx.phase,

@@ -47,17 +47,41 @@
         "title": "AssignmentCreate",
         "type": "object"
       },
-      "AssignmentOut": {
+      "AssignmentIn": {
         "properties": {
-          "createdAt": {
-            "format": "date-time",
-            "title": "Createdat",
-            "type": "string"
+          "agentRole": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agentrole"
           },
-          "id": {
-            "format": "uuid",
-            "title": "Id",
-            "type": "string"
+          "phase": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phase"
+          },
+          "profileId": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profileid"
           },
           "projectId": {
             "anyOf": [
@@ -70,40 +94,36 @@
               }
             ],
             "title": "Projectid"
-          },
-          "roleId": {
-            "format": "uuid",
-            "title": "Roleid",
-            "type": "string"
-          },
-          "roleKey": {
-            "title": "Rolekey",
-            "type": "string"
-          },
-          "scope": {
-            "enum": [
-              "tenant",
-              "project"
-            ],
-            "title": "Scope",
-            "type": "string"
-          },
-          "userId": {
-            "format": "uuid",
-            "title": "Userid",
-            "type": "string"
           }
         },
         "required": [
-          "id",
-          "userId",
-          "roleId",
-          "roleKey",
-          "scope",
-          "projectId",
-          "createdAt"
+          "profileId"
         ],
-        "title": "AssignmentOut",
+        "title": "AssignmentIn",
+        "type": "object"
+      },
+      "AssignmentOptions": {
+        "properties": {
+          "agentRoles": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Agentroles",
+            "type": "array"
+          },
+          "phases": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Phases",
+            "type": "array"
+          }
+        },
+        "required": [
+          "phases",
+          "agentRoles"
+        ],
+        "title": "AssignmentOptions",
         "type": "object"
       },
       "AuditEntryOut": {
@@ -240,6 +260,144 @@
         "title": "AuditPage",
         "type": "object"
       },
+      "BudgetIn": {
+        "properties": {
+          "alertPct": {
+            "default": 80,
+            "maximum": 99.0,
+            "minimum": 1.0,
+            "title": "Alertpct",
+            "type": "integer"
+          },
+          "amountUsd": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,12}|(?=[\\d.]{1,15}0*$)\\d{0,12}\\.\\d{0,2}0*$)",
+                "type": "string"
+              }
+            ],
+            "title": "Amountusd"
+          },
+          "hardStop": {
+            "default": true,
+            "title": "Hardstop",
+            "type": "boolean"
+          },
+          "period": {
+            "default": "monthly",
+            "enum": [
+              "monthly",
+              "total"
+            ],
+            "title": "Period",
+            "type": "string"
+          },
+          "projectId": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Projectid"
+          }
+        },
+        "required": [
+          "amountUsd"
+        ],
+        "title": "BudgetIn",
+        "type": "object"
+      },
+      "BudgetOut": {
+        "properties": {
+          "alertPct": {
+            "title": "Alertpct",
+            "type": "integer"
+          },
+          "alerts": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Alerts",
+            "type": "array"
+          },
+          "amountUsd": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Amountusd",
+            "type": "string"
+          },
+          "hardStop": {
+            "title": "Hardstop",
+            "type": "boolean"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "period": {
+            "enum": [
+              "monthly",
+              "total"
+            ],
+            "title": "Period",
+            "type": "string"
+          },
+          "periodKey": {
+            "title": "Periodkey",
+            "type": "string"
+          },
+          "projectId": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Projectid"
+          },
+          "projectName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Projectname"
+          },
+          "spentUsd": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Spentusd",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "projectId",
+          "projectName",
+          "period",
+          "amountUsd",
+          "alertPct",
+          "hardStop",
+          "spentUsd",
+          "periodKey",
+          "alerts"
+        ],
+        "title": "BudgetOut",
+        "type": "object"
+      },
       "ChainOut": {
         "properties": {
           "checked": {
@@ -304,6 +462,131 @@
         "title": "CheckResult",
         "type": "object"
       },
+      "ConnectionCreate": {
+        "properties": {
+          "apiKey": {
+            "maxLength": 500,
+            "minLength": 8,
+            "title": "Apikey",
+            "type": "string"
+          },
+          "name": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "provider": {
+            "const": "openrouter",
+            "default": "openrouter",
+            "title": "Provider",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "apiKey"
+        ],
+        "title": "ConnectionCreate",
+        "type": "object"
+      },
+      "ConnectionOut": {
+        "properties": {
+          "hasCredential": {
+            "title": "Hascredential",
+            "type": "boolean"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "lastTestDetail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lasttestdetail"
+          },
+          "lastTestedAt": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lasttestedat"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "provider": {
+            "const": "openrouter",
+            "title": "Provider",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "untested",
+              "ok",
+              "failed"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "provider",
+          "name",
+          "status",
+          "hasCredential",
+          "lastTestedAt",
+          "lastTestDetail"
+        ],
+        "title": "ConnectionOut",
+        "type": "object"
+      },
+      "ConnectionUpdate": {
+        "properties": {
+          "apiKey": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "minLength": 8,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Apikey"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          }
+        },
+        "title": "ConnectionUpdate",
+        "type": "object"
+      },
       "DevLoginIn": {
         "properties": {
           "userId": {
@@ -340,6 +623,31 @@
           "displayName"
         ],
         "title": "DevUser",
+        "type": "object"
+      },
+      "EffortMappingIn": {
+        "properties": {
+          "parameters": {
+            "additionalProperties": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "propertyNames": {
+              "enum": [
+                "low",
+                "medium",
+                "high",
+                "max"
+              ]
+            },
+            "title": "Parameters",
+            "type": "object"
+          }
+        },
+        "required": [
+          "parameters"
+        ],
+        "title": "EffortMappingIn",
         "type": "object"
       },
       "HTTPValidationError": {
@@ -564,6 +872,103 @@
         "title": "InvitationOut",
         "type": "object"
       },
+      "LoadOut": {
+        "properties": {
+          "offerings": {
+            "title": "Offerings",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "offerings"
+        ],
+        "title": "LoadOut",
+        "type": "object"
+      },
+      "ManualPriceIn": {
+        "properties": {
+          "cacheReadPerMtok": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cachereadpermtok"
+          },
+          "cacheWritePerMtok": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cachewritepermtok"
+          },
+          "inputPerMtok": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              }
+            ],
+            "title": "Inputpermtok"
+          },
+          "outputPerMtok": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              }
+            ],
+            "title": "Outputpermtok"
+          },
+          "requestUsd": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Requestusd"
+          }
+        },
+        "required": [
+          "inputPerMtok",
+          "outputPerMtok"
+        ],
+        "title": "ManualPriceIn",
+        "type": "object"
+      },
       "MeOut": {
         "properties": {
           "activeTenant": {
@@ -714,6 +1119,99 @@
         "title": "MemberUpdate",
         "type": "object"
       },
+      "OfferingOut": {
+        "properties": {
+          "allowedByPolicy": {
+            "title": "Allowedbypolicy",
+            "type": "boolean"
+          },
+          "capabilities": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Capabilities",
+            "type": "array"
+          },
+          "contextWindow": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contextwindow"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "maxOutputTokens": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Maxoutputtokens"
+          },
+          "policyReason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Policyreason"
+          },
+          "price": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PriceOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "status": {
+            "enum": [
+              "available",
+              "unavailable"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "upstreamProvider": {
+            "title": "Upstreamprovider",
+            "type": "string"
+          },
+          "zdr": {
+            "title": "Zdr",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "upstreamProvider",
+          "contextWindow",
+          "maxOutputTokens",
+          "capabilities",
+          "zdr",
+          "status",
+          "price",
+          "allowedByPolicy",
+          "policyReason"
+        ],
+        "title": "OfferingOut",
+        "type": "object"
+      },
       "PermissionOut": {
         "properties": {
           "description": {
@@ -742,6 +1240,443 @@
           "description"
         ],
         "title": "PermissionOut",
+        "type": "object"
+      },
+      "PolicyIn": {
+        "properties": {
+          "allowedUpstreamProviders": {
+            "anyOf": [
+              {
+                "items": {
+                  "maxLength": 100,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Allowedupstreamproviders"
+          },
+          "deniedUpstreamProviders": {
+            "items": {
+              "maxLength": 100,
+              "minLength": 1,
+              "type": "string"
+            },
+            "title": "Deniedupstreamproviders",
+            "type": "array"
+          },
+          "denyDataCollection": {
+            "default": true,
+            "title": "Denydatacollection",
+            "type": "boolean"
+          },
+          "openrouterAllowed": {
+            "default": true,
+            "title": "Openrouterallowed",
+            "type": "boolean"
+          },
+          "requireZdr": {
+            "default": false,
+            "title": "Requirezdr",
+            "type": "boolean"
+          }
+        },
+        "title": "PolicyIn",
+        "type": "object"
+      },
+      "PolicyOut": {
+        "properties": {
+          "allowedUpstreamProviders": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Allowedupstreamproviders"
+          },
+          "deniedUpstreamProviders": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Deniedupstreamproviders",
+            "type": "array"
+          },
+          "denyDataCollection": {
+            "title": "Denydatacollection",
+            "type": "boolean"
+          },
+          "openrouterAllowed": {
+            "title": "Openrouterallowed",
+            "type": "boolean"
+          },
+          "requireZdr": {
+            "title": "Requirezdr",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "openrouterAllowed",
+          "allowedUpstreamProviders",
+          "deniedUpstreamProviders",
+          "requireZdr",
+          "denyDataCollection"
+        ],
+        "title": "PolicyOut",
+        "type": "object"
+      },
+      "PriceOut": {
+        "properties": {
+          "cacheReadPerMtok": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cachereadpermtok"
+          },
+          "cacheWritePerMtok": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cachewritepermtok"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "inputPerMtok": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Inputpermtok",
+            "type": "string"
+          },
+          "outputPerMtok": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Outputpermtok",
+            "type": "string"
+          },
+          "requestUsd": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Requestusd"
+          },
+          "source": {
+            "enum": [
+              "provider_sync",
+              "manual"
+            ],
+            "title": "Source",
+            "type": "string"
+          },
+          "validFrom": {
+            "format": "date-time",
+            "title": "Validfrom",
+            "type": "string"
+          },
+          "validTo": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Validto"
+          }
+        },
+        "required": [
+          "id",
+          "inputPerMtok",
+          "outputPerMtok",
+          "cacheReadPerMtok",
+          "cacheWritePerMtok",
+          "requestUsd",
+          "validFrom",
+          "validTo",
+          "source"
+        ],
+        "title": "PriceOut",
+        "type": "object"
+      },
+      "ProfileIn": {
+        "properties": {
+          "connectionId": {
+            "format": "uuid",
+            "title": "Connectionid",
+            "type": "string"
+          },
+          "effort": {
+            "default": "medium",
+            "enum": [
+              "low",
+              "medium",
+              "high",
+              "max"
+            ],
+            "title": "Effort",
+            "type": "string"
+          },
+          "fallbackProfileId": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fallbackprofileid"
+          },
+          "maxOutputTokens": {
+            "default": 4096,
+            "maximum": 1000000.0,
+            "minimum": 1.0,
+            "title": "Maxoutputtokens",
+            "type": "integer"
+          },
+          "maxRetries": {
+            "default": 2,
+            "maximum": 10.0,
+            "minimum": 0.0,
+            "title": "Maxretries",
+            "type": "integer"
+          },
+          "name": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "offeringId": {
+            "format": "uuid",
+            "title": "Offeringid",
+            "type": "string"
+          },
+          "temperature": {
+            "anyOf": [
+              {
+                "maximum": 2.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Temperature"
+          },
+          "timeoutSeconds": {
+            "default": 120,
+            "maximum": 3600.0,
+            "minimum": 1.0,
+            "title": "Timeoutseconds",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "name",
+          "connectionId",
+          "offeringId"
+        ],
+        "title": "ProfileIn",
+        "type": "object"
+      },
+      "ProfileOut": {
+        "properties": {
+          "connectionId": {
+            "format": "uuid",
+            "title": "Connectionid",
+            "type": "string"
+          },
+          "effort": {
+            "enum": [
+              "low",
+              "medium",
+              "high",
+              "max"
+            ],
+            "title": "Effort",
+            "type": "string"
+          },
+          "fallbackProfileId": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fallbackprofileid"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "maxOutputTokens": {
+            "title": "Maxoutputtokens",
+            "type": "integer"
+          },
+          "maxRetries": {
+            "title": "Maxretries",
+            "type": "integer"
+          },
+          "model": {
+            "title": "Model",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "offeringId": {
+            "format": "uuid",
+            "title": "Offeringid",
+            "type": "string"
+          },
+          "temperature": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Temperature"
+          },
+          "timeoutSeconds": {
+            "title": "Timeoutseconds",
+            "type": "integer"
+          },
+          "upstreamProvider": {
+            "title": "Upstreamprovider",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "connectionId",
+          "offeringId",
+          "model",
+          "upstreamProvider",
+          "effort",
+          "maxOutputTokens",
+          "temperature",
+          "timeoutSeconds",
+          "maxRetries",
+          "fallbackProfileId"
+        ],
+        "title": "ProfileOut",
+        "type": "object"
+      },
+      "ProfileTestOut": {
+        "properties": {
+          "content": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Content"
+          },
+          "costUsd": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Costusd",
+            "type": "string"
+          },
+          "errorCode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Errorcode"
+          },
+          "inputTokens": {
+            "title": "Inputtokens",
+            "type": "integer"
+          },
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          },
+          "outputTokens": {
+            "title": "Outputtokens",
+            "type": "integer"
+          },
+          "providerCostUsd": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Providercostusd"
+          },
+          "wasFallback": {
+            "title": "Wasfallback",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "ok",
+          "content",
+          "inputTokens",
+          "outputTokens",
+          "costUsd",
+          "providerCostUsd",
+          "wasFallback",
+          "errorCode"
+        ],
+        "title": "ProfileTestOut",
         "type": "object"
       },
       "ProjectOut": {
@@ -795,6 +1730,27 @@
           "checks"
         ],
         "title": "Readiness",
+        "type": "object"
+      },
+      "ResolvedOut": {
+        "properties": {
+          "profileId": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profileid"
+          }
+        },
+        "required": [
+          "profileId"
+        ],
+        "title": "ResolvedOut",
         "type": "object"
       },
       "RoleCreate": {
@@ -999,6 +1955,24 @@
         "title": "SessionTenantOut",
         "type": "object"
       },
+      "SyncOut": {
+        "properties": {
+          "families": {
+            "title": "Families",
+            "type": "integer"
+          },
+          "versions": {
+            "title": "Versions",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "families",
+          "versions"
+        ],
+        "title": "SyncOut",
+        "type": "object"
+      },
       "TenantCreate": {
         "properties": {
           "defaultLanguage": {
@@ -1165,6 +2139,138 @@
         "title": "TenantUpdate",
         "type": "object"
       },
+      "UsageRow": {
+        "properties": {
+          "cacheReadTokens": {
+            "title": "Cachereadtokens",
+            "type": "integer"
+          },
+          "calls": {
+            "title": "Calls",
+            "type": "integer"
+          },
+          "costUsd": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Costusd"
+          },
+          "failedCalls": {
+            "title": "Failedcalls",
+            "type": "integer"
+          },
+          "inputTokens": {
+            "title": "Inputtokens",
+            "type": "integer"
+          },
+          "key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Key"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "outputTokens": {
+            "title": "Outputtokens",
+            "type": "integer"
+          },
+          "providerCostUsd": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Providercostusd"
+          },
+          "reasoningTokens": {
+            "title": "Reasoningtokens",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "key",
+          "label",
+          "calls",
+          "failedCalls",
+          "inputTokens",
+          "outputTokens",
+          "reasoningTokens",
+          "cacheReadTokens",
+          "costUsd",
+          "providerCostUsd"
+        ],
+        "title": "UsageRow",
+        "type": "object"
+      },
+      "UsageSummary": {
+        "properties": {
+          "costVisible": {
+            "title": "Costvisible",
+            "type": "boolean"
+          },
+          "groupBy": {
+            "enum": [
+              "project",
+              "model",
+              "phase",
+              "agentRole",
+              "provider",
+              "month",
+              "day"
+            ],
+            "title": "Groupby",
+            "type": "string"
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/UsageRow"
+            },
+            "title": "Rows",
+            "type": "array"
+          },
+          "since": {
+            "format": "date",
+            "title": "Since",
+            "type": "string"
+          },
+          "total": {
+            "$ref": "#/components/schemas/UsageRow"
+          },
+          "until": {
+            "format": "date",
+            "title": "Until",
+            "type": "string"
+          }
+        },
+        "required": [
+          "since",
+          "until",
+          "groupBy",
+          "costVisible",
+          "total",
+          "rows"
+        ],
+        "title": "UsageSummary",
+        "type": "object"
+      },
       "UserOut": {
         "properties": {
           "displayName": {
@@ -1237,6 +2343,193 @@
         ],
         "title": "ValidationError",
         "type": "object"
+      },
+      "VersionOut": {
+        "properties": {
+          "canonicalSlug": {
+            "title": "Canonicalslug",
+            "type": "string"
+          },
+          "capabilities": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Capabilities",
+            "type": "array"
+          },
+          "contextWindow": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contextwindow"
+          },
+          "family": {
+            "title": "Family",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "offerings": {
+            "items": {
+              "$ref": "#/components/schemas/OfferingOut"
+            },
+            "title": "Offerings",
+            "type": "array"
+          },
+          "providerSlug": {
+            "title": "Providerslug",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "available",
+              "deprecated"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "family",
+          "providerSlug",
+          "canonicalSlug",
+          "name",
+          "contextWindow",
+          "capabilities",
+          "status",
+          "offerings"
+        ],
+        "title": "VersionOut",
+        "type": "object"
+      },
+      "nexti_api__admin__assignments__AssignmentOut": {
+        "properties": {
+          "createdAt": {
+            "format": "date-time",
+            "title": "Createdat",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "projectId": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Projectid"
+          },
+          "roleId": {
+            "format": "uuid",
+            "title": "Roleid",
+            "type": "string"
+          },
+          "roleKey": {
+            "title": "Rolekey",
+            "type": "string"
+          },
+          "scope": {
+            "enum": [
+              "tenant",
+              "project"
+            ],
+            "title": "Scope",
+            "type": "string"
+          },
+          "userId": {
+            "format": "uuid",
+            "title": "Userid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "userId",
+          "roleId",
+          "roleKey",
+          "scope",
+          "projectId",
+          "createdAt"
+        ],
+        "title": "AssignmentOut",
+        "type": "object"
+      },
+      "nexti_api__ai__assignments__AssignmentOut": {
+        "properties": {
+          "agentRole": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agentrole"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "phase": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phase"
+          },
+          "profileId": {
+            "format": "uuid",
+            "title": "Profileid",
+            "type": "string"
+          },
+          "projectId": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Projectid"
+          }
+        },
+        "required": [
+          "id",
+          "projectId",
+          "phase",
+          "agentRole",
+          "profileId"
+        ],
+        "title": "AssignmentOut",
+        "type": "object"
       }
     }
   },
@@ -1246,6 +2539,1012 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/api/v1/ai/assignment-options": {
+      "get": {
+        "operationId": "options_api_v1_ai_assignment_options_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssignmentOptions"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Options",
+        "tags": [
+          "ai"
+        ]
+      }
+    },
+    "/api/v1/ai/assignments": {
+      "get": {
+        "description": "Tenant-wide rows, plus the rows of `projectId` when given.",
+        "operationId": "list_assignments_api_v1_ai_assignments_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "projectId",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Projectid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/nexti_api__ai__assignments__AssignmentOut"
+                  },
+                  "title": "Response List Assignments Api V1 Ai Assignments Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Assignments",
+        "tags": [
+          "ai"
+        ]
+      },
+      "put": {
+        "operationId": "set_assignment_api_v1_ai_assignments_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssignmentIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/nexti_api__ai__assignments__AssignmentOut"
+                  },
+                  "title": "Response Set Assignment Api V1 Ai Assignments Put",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Set Assignment",
+        "tags": [
+          "ai"
+        ]
+      }
+    },
+    "/api/v1/ai/assignments:resolve": {
+      "get": {
+        "description": "Which profile the gateway would use for this context (the same cascade as the gateway).",
+        "operationId": "resolve_api_v1_ai_assignments_resolve_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "projectId",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Projectid"
+            }
+          },
+          {
+            "in": "query",
+            "name": "phase",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Phase"
+            }
+          },
+          {
+            "in": "query",
+            "name": "agentRole",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Agentrole"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResolvedOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Resolve",
+        "tags": [
+          "ai"
+        ]
+      }
+    },
+    "/api/v1/ai/catalog": {
+      "get": {
+        "operationId": "list_catalog_api_v1_ai_catalog_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Search"
+            }
+          },
+          {
+            "in": "query",
+            "name": "only_offered",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Only Offered",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/VersionOut"
+                  },
+                  "title": "Response List Catalog Api V1 Ai Catalog Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Catalog",
+        "tags": [
+          "ai"
+        ]
+      }
+    },
+    "/api/v1/ai/catalog/versions/{version_id}:load-offerings": {
+      "post": {
+        "description": "Load the upstream providers of one model with their current prices.",
+        "operationId": "load_api_v1_ai_catalog_versions__version_id__load_offerings_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "version_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Version Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoadOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Load",
+        "tags": [
+          "ai"
+        ]
+      }
+    },
+    "/api/v1/ai/catalog:sync": {
+      "post": {
+        "description": "Refresh families and versions from the provider's public catalog.",
+        "operationId": "sync_api_v1_ai_catalog_sync_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SyncOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Sync",
+        "tags": [
+          "ai"
+        ]
+      }
+    },
+    "/api/v1/ai/connections": {
+      "get": {
+        "operationId": "list_connections_api_v1_ai_connections_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ConnectionOut"
+                  },
+                  "title": "Response List Connections Api V1 Ai Connections Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Connections",
+        "tags": [
+          "ai"
+        ]
+      },
+      "post": {
+        "operationId": "create_connection_api_v1_ai_connections_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConnectionCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectionOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Connection",
+        "tags": [
+          "ai"
+        ]
+      }
+    },
+    "/api/v1/ai/connections/{connection_id}": {
+      "delete": {
+        "operationId": "delete_connection_api_v1_ai_connections__connection_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "connection_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Connection Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Connection",
+        "tags": [
+          "ai"
+        ]
+      },
+      "patch": {
+        "operationId": "update_connection_api_v1_ai_connections__connection_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "connection_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Connection Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConnectionUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectionOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Connection",
+        "tags": [
+          "ai"
+        ]
+      }
+    },
+    "/api/v1/ai/connections/{connection_id}:test": {
+      "post": {
+        "description": "Check the stored credential with the provider (no model is called, so it costs nothing).",
+        "operationId": "test_connection_api_v1_ai_connections__connection_id__test_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "connection_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Connection Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConnectionOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Test Connection",
+        "tags": [
+          "ai"
+        ]
+      }
+    },
+    "/api/v1/ai/offerings/{offering_id}/effort-mapping": {
+      "get": {
+        "description": "Normalized effort -> the real parameter sent to the model (spec 12.3).",
+        "operationId": "get_effort_mapping_api_v1_ai_offerings__offering_id__effort_mapping_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "offering_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Offering Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "propertyNames": {
+                    "enum": [
+                      "low",
+                      "medium",
+                      "high",
+                      "max"
+                    ]
+                  },
+                  "title": "Response Get Effort Mapping Api V1 Ai Offerings  Offering Id  Effort Mapping Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Effort Mapping",
+        "tags": [
+          "ai"
+        ]
+      },
+      "put": {
+        "operationId": "set_effort_mapping_api_v1_ai_offerings__offering_id__effort_mapping_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "offering_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Offering Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EffortMappingIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "propertyNames": {
+                    "enum": [
+                      "low",
+                      "medium",
+                      "high",
+                      "max"
+                    ]
+                  },
+                  "title": "Response Set Effort Mapping Api V1 Ai Offerings  Offering Id  Effort Mapping Put",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Set Effort Mapping",
+        "tags": [
+          "ai"
+        ]
+      }
+    },
+    "/api/v1/ai/offerings/{offering_id}/prices": {
+      "get": {
+        "operationId": "list_prices_api_v1_ai_offerings__offering_id__prices_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "offering_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Offering Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/PriceOut"
+                  },
+                  "title": "Response List Prices Api V1 Ai Offerings  Offering Id  Prices Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Prices",
+        "tags": [
+          "ai"
+        ]
+      },
+      "post": {
+        "description": "A price the provider does not report (spec 12.2). Past costs keep the version they used.",
+        "operationId": "add_manual_price_api_v1_ai_offerings__offering_id__prices_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "offering_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Offering Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ManualPriceIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/PriceOut"
+                  },
+                  "title": "Response Add Manual Price Api V1 Ai Offerings  Offering Id  Prices Post",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Add Manual Price",
+        "tags": [
+          "ai"
+        ]
+      }
+    },
+    "/api/v1/ai/policy": {
+      "get": {
+        "operationId": "get_policy_api_v1_ai_policy_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PolicyOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Policy",
+        "tags": [
+          "ai"
+        ]
+      },
+      "put": {
+        "operationId": "set_policy_api_v1_ai_policy_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PolicyIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PolicyOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Set Policy",
+        "tags": [
+          "ai"
+        ]
+      }
+    },
+    "/api/v1/ai/profiles": {
+      "get": {
+        "operationId": "list_profiles_api_v1_ai_profiles_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ProfileOut"
+                  },
+                  "title": "Response List Profiles Api V1 Ai Profiles Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Profiles",
+        "tags": [
+          "ai"
+        ]
+      },
+      "post": {
+        "operationId": "create_profile_api_v1_ai_profiles_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProfileIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfileOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Profile",
+        "tags": [
+          "ai"
+        ]
+      }
+    },
+    "/api/v1/ai/profiles/{profile_id}": {
+      "delete": {
+        "description": "Assignments that use the profile go with it; profiles that fall back to it lose their fallback.",
+        "operationId": "delete_profile_api_v1_ai_profiles__profile_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "profile_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Profile Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Profile",
+        "tags": [
+          "ai"
+        ]
+      },
+      "put": {
+        "operationId": "update_profile_api_v1_ai_profiles__profile_id__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "profile_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Profile Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProfileIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfileOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Profile",
+        "tags": [
+          "ai"
+        ]
+      }
+    },
+    "/api/v1/ai/profiles/{profile_id}:test": {
+      "post": {
+        "description": "A minimal real call through the gateway; it is recorded in the usage ledger like any other call.",
+        "operationId": "test_profile_api_v1_ai_profiles__profile_id__test_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "profile_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Profile Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfileTestOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Test Profile",
+        "tags": [
+          "ai"
+        ]
+      }
+    },
     "/api/v1/audit": {
       "get": {
         "operationId": "list_entries_api_v1_audit_get",
@@ -1478,6 +3777,157 @@
         "summary": "Verify Chain",
         "tags": [
           "audit"
+        ]
+      }
+    },
+    "/api/v1/budgets": {
+      "get": {
+        "operationId": "list_budgets_api_v1_budgets_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/BudgetOut"
+                  },
+                  "title": "Response List Budgets Api V1 Budgets Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Budgets",
+        "tags": [
+          "usage"
+        ]
+      },
+      "post": {
+        "operationId": "create_budget_api_v1_budgets_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BudgetIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BudgetOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Budget",
+        "tags": [
+          "usage"
+        ]
+      }
+    },
+    "/api/v1/budgets/{budget_id}": {
+      "delete": {
+        "operationId": "delete_budget_api_v1_budgets__budget_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "budget_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Budget Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Budget",
+        "tags": [
+          "usage"
+        ]
+      },
+      "put": {
+        "operationId": "update_budget_api_v1_budgets__budget_id__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "budget_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Budget Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BudgetIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BudgetOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Budget",
+        "tags": [
+          "usage"
         ]
       }
     },
@@ -1834,7 +4284,7 @@
               "application/json": {
                 "schema": {
                   "items": {
-                    "$ref": "#/components/schemas/AssignmentOut"
+                    "$ref": "#/components/schemas/nexti_api__admin__assignments__AssignmentOut"
                   },
                   "title": "Response List Assignments Api V1 Role Assignments Get",
                   "type": "array"
@@ -1876,7 +4326,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/AssignmentOut"
+                  "$ref": "#/components/schemas/nexti_api__admin__assignments__AssignmentOut"
                 }
               }
             },
@@ -2337,6 +4787,92 @@
         "summary": "Update Tenant",
         "tags": [
           "tenants"
+        ]
+      }
+    },
+    "/api/v1/usage/summary": {
+      "get": {
+        "operationId": "summary_api_v1_usage_summary_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "groupBy",
+            "required": false,
+            "schema": {
+              "default": "model",
+              "enum": [
+                "project",
+                "model",
+                "phase",
+                "agentRole",
+                "provider",
+                "month",
+                "day"
+              ],
+              "title": "Groupby",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "since",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Since"
+            }
+          },
+          {
+            "in": "query",
+            "name": "until",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Until"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UsageSummary"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Summary",
+        "tags": [
+          "usage"
         ]
       }
     },

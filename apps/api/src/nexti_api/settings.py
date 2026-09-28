@@ -54,6 +54,8 @@ class Settings(BaseSettings):
     secrets_url: str = ""
     secrets_token: SecretStr = SecretStr("")
     secrets_mount: str = "secret"
+    # OpenRouter API base (tests point it to a simulated server).
+    openrouter_url: str = "https://openrouter.ai/api/v1"
     openfga_url: str = ""
     openfga_api_key: SecretStr = SecretStr("")
     # Outside development/test the store and model are pinned; locally they are created/updated from the repo.
