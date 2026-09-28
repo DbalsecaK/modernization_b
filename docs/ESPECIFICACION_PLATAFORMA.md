@@ -752,13 +752,39 @@ La plataforma soporta **dos métodos de inicio de sesión**, habilitables por te
 **Cuenta del usuario (Cuenta y seguridad):** perfil e idioma, cambio de contraseña (solo cuentas propias),
 métodos MFA y passkeys, regeneración de códigos de recuperación, sesiones activas con revocación.
 
-**Implementación**
+**Implementación: Keycloak (decisión D-19)**
 
-- **Patrón BFF:** el token nunca vive en el navegador; sesión en cookie `httpOnly`, `Secure`, `SameSite`.
-- Sesiones cortas, rotación y revocación inmediata. Protección CSRF.
-- Contraseñas con **Argon2id**; WebAuthn para passkeys; TOTP según RFC 6238.
-- Toda autenticación (éxito, fallo, bloqueo, cambio de MFA) queda en la auditoría.
-- Decisión pendiente D-19: módulo propio en FastAPI vs Keycloak como broker/IdP embebido.
+El módulo de autenticación se implementa con **Keycloak** como proveedor de identidad y broker. La
+plataforma **no almacena contraseñas ni secretos de MFA**: todo eso vive en Keycloak.
+
+- **Rol de Keycloak:**
+  - IdP de las cuentas propias (usuario/contraseña, TOTP, passkeys/WebAuthn, códigos de recuperación,
+    políticas de contraseña, bloqueo por fuerza bruta, verificación de correo, recuperación de contraseña).
+  - **Broker** hacia los IdP de los clientes (Entra ID, Okta, Google, cualquier OIDC/SAML), con mapeo
+    de grupos/claims a roles y aprovisionamiento JIT.
+  - Emisión de tokens OIDC hacia el BFF de la plataforma.
+- **Multi-tenant:** en SaaS compartido, **un realm de la plataforma con una Organization por tenant**
+  (IdP y dominios asociados a cada organización, lo que da el home-realm discovery por dominio de correo).
+  En despliegues dedicados, en la nube del cliente u on-prem, **una instancia de Keycloak por despliegue**.
+  Validar en M0 el soporte de Organizations de la versión elegida; alternativa: un realm por tenant.
+- **Flujo:** la web → BFF (FastAPI) → Keycloak (Authorization Code + PKCE). El BFF guarda los tokens del
+  lado servidor y entrega al navegador solo una cookie de sesión `httpOnly`, `Secure`, `SameSite`.
+  Protección CSRF. Sesiones cortas, rotación y revocación inmediata (logout propaga a Keycloak).
+- **Pantallas de login:** las páginas de Keycloak (login, MFA, recuperación, activación) se personalizan
+  con un **tema propio construido con Keycloakify** a partir del diseño del prototipo (`apps/web`), con
+  los mismos catálogos en inglés (por defecto) y español. La pantalla "email first" puede quedar en la web
+  y redirigir a Keycloak con `login_hint` e `kc_idp_hint` según el dominio.
+- **Administración:** la pestaña Administración → Autenticación de la plataforma configura Keycloak a través
+  de su **Admin REST API** (con una cuenta de servicio de mínimo privilegio). La consola de Keycloak no se
+  expone a los clientes.
+- **Autorización:** Keycloak autentica; **OpenFGA autoriza** (roles y permisos de la sección 16). Los grupos
+  del IdP del cliente se traducen a roles de la plataforma al iniciar sesión.
+- **SCIM:** Keycloak no trae SCIM nativo; se agrega con una extensión o un endpoint SCIM en la plataforma
+  que sincroniza hacia Keycloak (decidir en el hito correspondiente).
+- **Auditoría:** los eventos de Keycloak (login, fallo, bloqueo, cambios de MFA, admin events) se envían
+  al log de auditoría de la plataforma.
+- **Operación:** Keycloak en alta disponibilidad con su propia base PostgreSQL, actualizaciones de
+  seguridad al día, tema y configuración versionados como código (exportación de realm / Terraform).
 
 ### 15.2 Perímetro
 
@@ -1008,7 +1034,7 @@ React (web) ──HTTPS──> WAF / API Gateway
 | Trabajos | Workers Python con cola sobre Redis (Celery o alternativa; decisión en la sección 22) |
 | Datos | PostgreSQL 16+, Neo4j 5, S3 / MinIO |
 | Autorización | OpenFGA |
-| Identidad (dev) | Keycloak como IdP OIDC local |
+| Identidad | **Keycloak** (IdP + broker SSO, Organizations por tenant, tema con Keycloakify); en dev, en Docker Compose |
 | Observabilidad | Langfuse (autoalojado), OpenTelemetry, logs estructurados |
 | Sandbox | Docker (dev), gVisor/Firecracker (prod), runners Windows para .NET Framework |
 | Parsers | Parsers propios/deterministas por origen; tree-sitter para nivel asistido |
@@ -1090,14 +1116,17 @@ Cada hito termina con: código en la rama, tests pasando en CI, documentación a
 - FastAPI con OIDC (patrón BFF, cookies), sesión, CSRF.
 - Tenants, usuarios, membresías, RLS, OpenFGA con roles base.
 - Audit log append-only.
-- Módulo de autenticación: SSO (OIDC/SAML) + cuentas propias con MFA, home-realm discovery,
-  invitaciones, recuperación de contraseña, políticas por tenant (sección 15.1).
+- Módulo de autenticación con **Keycloak**: realm de la plataforma, Organizations por tenant, cuentas
+  propias con MFA (TOTP y passkeys), broker SSO (OIDC/SAML), home-realm discovery, invitaciones,
+  recuperación de contraseña, políticas por tenant configuradas vía Admin REST API, tema con Keycloakify
+  (sección 15.1).
 - Web: conectar el prototipo de `apps/web` (sección 18.7) a la API real: login, layout, menú por permisos, tema.
 - i18n: inglés como idioma fuente y por defecto; catálogo en español; selector de idioma (18.6).
 
 **Aceptación:** un usuario de un tenant no puede ver datos de otro (test automatizado a nivel API y SQL);
-login con SSO (Keycloak local como IdP de prueba) y con cuenta propia + MFA; un dominio con "solo SSO"
-no puede entrar con contraseña; toda acción sensible queda en la auditoría.
+login con SSO (un segundo Keycloak o un IdP de prueba como proveedor externo) y con cuenta propia + MFA;
+un dominio con "solo SSO" no puede entrar con contraseña; ningún token llega al navegador; la plataforma no
+guarda contraseñas; toda acción sensible (incluidos los eventos de Keycloak) queda en la auditoría.
 La web arranca en inglés; al cambiar a español no queda ningún texto sin traducir (test automatizado
 que compara las claves de ambos catálogos); la preferencia persiste entre sesiones.
 
@@ -1245,6 +1274,7 @@ Sybase SP (M4) → BMS (M5) → CICS (M6) → ASPX (M8).
 | D-08 | Soporte de todos los modelos de despliegue por diseño |
 | D-09 | Multi-proveedor de modelos con gateway único y libro de consumo propio |
 | D-10 | Agentes y skills seleccionables con recomendación determinista |
+| D-19 | Autenticación con **Keycloak** (IdP + broker SSO, Organizations por tenant, tema Keycloakify); la plataforma no guarda credenciales; OpenFGA autoriza |
 | D-18 | Producto nativamente en inglés (UI, prompts, skills, catálogo); español como traducción completa; idioma de artefactos configurable por proyecto (inglés por defecto) |
 
 ### 22.2 Pendientes
@@ -1257,9 +1287,9 @@ Sybase SP (M4) → BMS (M5) → CICS (M6) → ASPX (M8).
 | D-13 | Cola de trabajos: Celery vs alternativa (Arq, Dramatiq, Temporal) |
 | D-14 | Librería de componentes UI (shadcn/ui u otra) |
 | D-15 | OpenFGA vs Casbin |
+| D-20 | Keycloak: una Organization por tenant en un realm vs un realm por tenant (validar en M0) |
 | D-16 | Modelo de licenciamiento (por proyecto, por líneas, por tenant) |
 | D-17 | Primer cliente para despliegue en nube propia: ¿AWS o Azure? |
-| D-19 | Módulo de autenticación: implementación propia en FastAPI vs Keycloak como broker/IdP embebido |
 
 Las decisiones nuevas se agregan como ADR en `docs/adr/` y se reflejan aquí.
 

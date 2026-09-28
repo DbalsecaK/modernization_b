@@ -53,6 +53,9 @@ pnpm web:test           # tests (paridad de catálogos i18n) + chequeo de claves
 8. **Sin secretos en el repositorio.** Usar variables de entorno / Vault. No commitear `.env`.
 9. **Prohibido commitear código o datos de clientes**, incluidas las aplicaciones de referencia.
 10. Versiones de modelos siempre fijas (sin alias "latest").
+11. **Autenticación solo con Keycloak** (sección 15.1): la plataforma nunca guarda contraseñas ni secretos
+    de MFA ni implementa su propio login. El navegador nunca recibe tokens: el BFF los guarda y emite una
+    cookie `httpOnly`. Keycloak autentica, OpenFGA autoriza.
 
 ## Calidad
 

@@ -1,8 +1,9 @@
 import { useSyncExternalStore } from 'react'
 import { readStorage, writeStorage } from './storage'
 
-// Mock session. In the real platform the session lives in an httpOnly cookie issued by the BFF
-// (spec 15.1); the browser never holds a token.
+// Mock session. In the real platform authentication is done by Keycloak (spec 15.1, D-19): the BFF runs the
+// OIDC code flow and issues an httpOnly session cookie; the browser never holds a token. The login, MFA,
+// reset and invitation screens become a Keycloak theme (Keycloakify) built from these prototype pages.
 const KEY = 'nexti.session'
 const listeners = new Set<() => void>()
 
