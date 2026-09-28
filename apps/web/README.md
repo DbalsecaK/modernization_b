@@ -23,7 +23,7 @@ password of 8+ characters goes to the MFA step (any 6 digits).
 | Project → Inventory | Knowledge graph in two layouts (**Circles** and **Layers**): pick a **business flow** to walk it step by step, pick a **business rule** to focus it, click a node for its description and connections, show impact, filter relations, show **only orphans and isolated** nodes, zoom, pan and double-click to zoom in |
 | Project → Source ↔ target | Legacy and target code side by side, the rule, and legacy vs new outputs |
 | Project → Specification | Rules, screens, contracts and questions |
-| Project → Specification → User stories | The stories that will be built, by feature: Gherkin criteria, links to rules / screens / contracts / legacy components, coverage gaps, versions. **Edit, create, split, merge, discard** (with a reason or as out of scope) and restore; accept or dismiss agent suggestions; approve with the plan at C1. Switch "Acting as" to see the permissions |
+| Project → Specification → User stories | The stories that will be built, by feature: Gherkin criteria, links to rules / screens / contracts / legacy components, coverage gaps, versions. **Edit, create, split, merge, discard** (with a reason or as out of scope) and restore; accept or dismiss agent suggestions; approve with the plan at C1. Switch "Acting as" to see the permissions. Each **acceptance criterion is checked as Gherkin** (Given → When → Then, one behavior per scenario, outlines with examples; English or Spanish keywords): open **US-008** to see an invalid one, or type in the editor to see the errors live |
 | Project → Specification → Migration plan | Waves **suggested** from the dependencies; drag stories or use the arrows. A move before a **hard** dependency is rejected; before a **soft** one it is allowed with an ACL/stub warning. Suggested vs yours, back to the suggested order |
 | Project → Inputs → Add input | Files, Git, **screenshots**, Figma, **prototype link**, Jira / Azure DevOps (JQL or WIQL), with security checks |
 | Project → UI design | Design system, prototype, **references** (add screenshots, Figma, prototypes) and the **prototype chat**: ask the UX/UI designer agent for a change and get a new version |
@@ -41,7 +41,7 @@ password of 8+ characters goes to the MFA step (any 6 digits).
 |---|---|
 | `pnpm dev` | Development server |
 | `pnpm build` | Typecheck + production build |
-| `pnpm test` | i18n catalog parity tests, migration-plan rules + check that every key used in code exists |
+| `pnpm test` | i18n catalog parity tests, migration-plan rules, Gherkin checks + check that every key used in code exists |
 | `pnpm typecheck` | TypeScript only |
 
 ## Structure
@@ -52,7 +52,8 @@ src/
 ├─ styles.css                  # Design tokens (light/dark) + Tailwind
 ├─ i18n/                       # i18next setup; locales/en.json (source) and es.json
 ├─ lib/                        # format, session (mock), theme, recommendation rules, URL tabs,
-│                              #   migrationPlan.ts (deterministic waves and dependency checks, with tests)
+│                              #   migrationPlan.ts (deterministic waves and dependency checks) and gherkin.ts
+│                              #   (acceptance-criteria checks), both with tests
 ├─ mocks/                      # Sample data and domain types — replace with API calls
 ├─ components/                 # UI primitives, drawer/toasts (overlay), status badges, charts, app shell, top bar widgets,
 │                              #   floating agent activity panel (layout/AgentActivityPanel.tsx)

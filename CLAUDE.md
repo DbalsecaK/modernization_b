@@ -37,7 +37,8 @@ el mismo cambio y registra la decisión (sección 22 o un ADR en `docs/adr/`).
   - Referencias de UI y vínculo con Jira/ADO en el asistente: `apps/web/src/features/projects/ProjectSetupSections.tsx`;
     chat de cambios al prototipo: `apps/web/src/features/projects/PrototypeChat.tsx` (secciones 7.1 y 7.4).
   - Historias de usuario y plan de migración: `apps/web/src/features/projects/stories/`; la validación del plan
-    es determinista en `apps/web/src/lib/migrationPlan.ts` (sección 7.7) y debe migrar al backend sin cambiar.
+    es determinista en `apps/web/src/lib/migrationPlan.ts` y la de los criterios Gherkin en `apps/web/src/lib/gherkin.ts`
+    (sección 7.7); ambas deben migrar al backend sin cambiar su comportamiento.
 
 ## Comandos del frontend
 

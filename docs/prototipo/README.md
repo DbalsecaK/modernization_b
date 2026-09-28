@@ -37,3 +37,6 @@ Capturas de `apps/web` con datos de ejemplo (sección 18.7 de la especificación
 | `527-migration-plan.png` | Especificación → Plan de migración: olas sugeridas y cambios respecto a la sugerencia |
 | `528-plan-rejected.png` | Movimiento rechazado por una dependencia dura |
 | `529-plan-soft-warning.png` | Movimiento permitido con aviso por una dependencia blanda (ACL o stub temporal) |
+| `530-gherkin-story.png` | Historia con un criterio válido y otro marcado como inválido (falta el paso When) |
+| `531-gherkin-errors.png` | Editor de criterios con errores en vivo: pasos fuera de orden, texto libre, placeholder sin columna |
+| `532-gherkin-valid.png` | Editor con escenarios válidos en inglés y en español |

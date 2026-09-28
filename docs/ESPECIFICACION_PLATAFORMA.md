@@ -432,6 +432,23 @@ en revisión, pregunta abierta, aprobada, descartada, fusionada) y versión.
 **Cobertura (determinista):** toda regla, pantalla y contrato de la spec debe estar en al menos una HU
 activa; lo que no, se muestra como hueco. Las HU sin trazabilidad y las fuera de alcance se listan aparte.
 
+**Validación de los criterios de aceptación (Gherkin, determinista, D-26).** Cada criterio es un escenario y
+se valida por código, en vivo al editar y en el servidor al guardar:
+
+| Chequeo | Qué exige |
+|---|---|
+| Encabezado | Empieza con `Scenario:` / `Escenario:` (o `Scenario Outline:` / `Esquema del escenario:`) y tiene nombre |
+| Pasos | Al menos un `Given`, un `When` y un `Then` (o `Dado`, `Cuando`, `Entonces`); `And`/`But` (`Y`/`Pero`) solo continúan un paso anterior |
+| Orden y alcance | Given → When → Then; un `When` o `Given` después de un `Then` indica dos comportamientos: se pide dividir el escenario |
+| Contenido | Ningún paso vacío ni línea de texto libre que no sea un paso (se permiten tablas de datos, doc strings, comentarios y etiquetas) |
+| Esquemas | Un `Scenario Outline` tiene tabla `Examples` con filas, y cada `<placeholder>` es una columna de la tabla |
+| Unicidad | No hay dos escenarios con el mismo nombre en la HU |
+
+Las palabras clave se aceptan en inglés y en español (idioma de artefactos, 18.6). Un formulario con errores
+no se guarda; una HU importada con criterios inválidos (por ejemplo desde Jira o un documento) se marca y
+**bloquea C1** hasta corregirla. La validación es de forma: que el escenario describa bien la regla lo revisa
+una persona, y que se cumpla lo prueba el test generado desde el escenario (11.4).
+
 **Plan de migración por olas**
 
 - La plataforma **propone** el plan desde el grafo (5.2): cada HU va en la ola siguiente a la más tardía de
@@ -445,7 +462,7 @@ activa; lo que no, se muestra como hueco. Las HU sin trazabilidad y las fuera de
   - **Dependencia blanda**: se permite con **aviso** y se planifica una ACL o stub temporal (strangler fig, 6.3).
   - Una HU puede compartir ola con su dependencia (se construyen juntas), nunca ir antes.
 - El plan se aprueba en **C1** junto con las HU. C1 **no se puede aprobar** si hay HU con preguntas abiertas,
-  sin criterios de aceptación o con dependencias duras rotas en el plan.
+  sin criterios de aceptación, con **criterios Gherkin inválidos** o con dependencias duras rotas en el plan.
 
 **Después de C1:** todo cambio es un **cambio de alcance**: solo las HU afectadas vuelven a revisión, se
 recalcula el impacto en el grafo, se sincroniza con Jira/Azure DevOps (7.6) y, si la HU ya está en
@@ -1184,7 +1201,8 @@ nativo con cambio a español y tema claro/oscuro.
 - También incluye las referencias de UI en el asistente, Insumos y Diseño UI, el chat de cambios al
   prototipo, la pestaña Backlog (Jira/Azure DevOps con ciclo de bugs), el panel flotante de actividad de
   agentes (18.8) y las historias de usuario con el plan de migración por olas (7.7; la validación del plan
-  está en `src/lib/migrationPlan.ts`, determinista y con tests, y debe migrar al backend igual).
+  está en `src/lib/migrationPlan.ts` y la de los criterios Gherkin en `src/lib/gherkin.ts`, deterministas y
+  con tests, y deben migrar al backend con el mismo comportamiento).
 - Capturas de referencia en `docs/prototipo/`.
 - Cómo correrlo: ver `apps/web/README.md`.
 
@@ -1298,7 +1316,7 @@ restringido.
   `bug_loop_step` (pasos del ciclo de bug con agente y evidencia).
 - **Historias y plan:** `feature`, `user_story` (estado, origen, prioridad, estimación, motivo de descarte,
   fuera de alcance, fusionada en), `story_version` (instantánea por versión, quién y qué cambió),
-  `acceptance_criterion` (Gherkin), `story_link` (HU ↔ regla, pantalla, contrato o nodo del grafo),
+  `acceptance_criterion` (Gherkin, con el resultado de la validación y la versión del validador), `story_link` (HU ↔ regla, pantalla, contrato o nodo del grafo),
   `story_dependency` (dura o blanda, motivo, origen: grafo o persona), `story_suggestion`, `migration_plan`
   (versionado, sugerido o editado, aprobado en C1) y `migration_wave` (orden de HU por ola).
 - **Catálogo:** `agent_definition`, `skill_definition` (versionadas), `project_agent`, `project_skill`,
@@ -1399,8 +1417,9 @@ el panel de actividad solo muestra eventos de proyectos autorizados y el JSON de
 - Spec y revisión (C1), diseño (C3), generación por capas en el pack elegido (Java Spring Boot o .NET 10,
   ver decisión D-06).
 - **Historias de usuario y plan de migración** (7.7): HU derivadas de la spec; editar, crear, dividir,
-  fusionar, descartar y restaurar con versiones y auditoría; cobertura; plan por olas sugerido desde el grafo,
-  editable y validado por código; aprobación conjunta en C1.
+  fusionar, descartar y restaurar con versiones y auditoría; cobertura; **validación Gherkin** de los criterios
+  de aceptación (en vivo y en el servidor); plan por olas sugerido desde el grafo, editable y validado por
+  código; aprobación conjunta en C1.
 - Comparación origen ↔ destino lado a lado por regla, con comportamiento legacy vs nuevo.
 - Golden master con Sybase ASE en contenedor y PostgreSQL; `verification` (compare, trace, proof pack, canario).
 - Pestañas Especificación, Validación y Trazabilidad (versión inicial).
@@ -1409,7 +1428,9 @@ el panel de actividad solo muestra eventos de proyectos autorizados y el JSON de
 omisiones, alucinaciones y errores de precisión contra la spec de referencia. Además: mover una HU antes de
 una dependencia dura se rechaza (también si se llama a la API directamente); una dependencia blanda se
 permite con aviso; descartar una HU que deja reglas sin cubrir lo muestra en la cobertura; C1 no se aprueba
-con HU con preguntas abiertas, sin criterios o con dependencias duras rotas; todo cambio de HU o del plan
+con HU con preguntas abiertas, sin criterios, con Gherkin inválido o con dependencias duras rotas; guardar
+un escenario sin `When`, con pasos fuera de orden o con un `<placeholder>` que no está en `Examples` se
+rechaza también por API (en inglés y en español); todo cambio de HU o del plan
 queda versionado y auditado; un usuario sin permiso no puede editar HU ni el plan (test permitido y denegado).
 
 ### M5 — BMS → pantallas y prototipos
@@ -1436,7 +1457,8 @@ con posición, longitud y atributos correctos.
 
 - Ingesta de documentos, HU, Figma (API), capturas (visión) y links de prototipos, desde el asistente y después.
 - Normalización, consolidación, detección de contradicciones y huecos, preguntas.
-- Historias de usuario y plan de incrementos (7.7) con HU que vienen de documentos, Figma y Jira/Azure DevOps.
+- Historias de usuario y plan de incrementos (7.7) con HU que vienen de documentos, Figma y Jira/Azure DevOps;
+  sus criterios se normalizan a Gherkin y pasan la misma validación (una HU importada inválida bloquea C1).
 - Generación con contratos primero; validación de aceptación, contract tests y fidelidad visual.
 
 **Aceptación:** con un set de HU + Figma de ejemplo se genera y valida una funcionalidad de punta a punta,
@@ -1534,6 +1556,7 @@ Sybase SP (M4) → BMS (M5) → CICS (M6) → ASPX (M8).
 | D-23 | Panel flotante de actividad de agentes en toda la app: minimizable/maximizable, evento más reciente arriba, agente, tiempo y costo por evento, JSON completo descargable en errores (18.8) |
 | D-24 | Referencias de UI (capturas, Figma, prototipos) cargables desde la creación del proyecto y después; chat con el agente UX/UI designer para pedir cambios al prototipo, con versiones y sin aprobar por sí solo (7.1, 7.4) |
 | D-25 | Historias de usuario visibles y editables antes de migrar (crear, editar, dividir, fusionar, descartar con motivo) y plan de migración por olas **sugerido por el sistema y modificable por las personas**, validado por código contra las dependencias del grafo; ambos se aprueban en C1 y después todo cambio es cambio de alcance (7.7) |
+| D-26 | Criterios de aceptación de las HU en Gherkin **validados por código** (Given/When/Then en orden, un comportamiento por escenario, esquemas con ejemplos, sin duplicados; inglés y español); un criterio inválido impide guardar y bloquea C1 (7.7) |
 | D-18 | Producto nativamente en inglés (UI, prompts, skills, catálogo); español como traducción completa; idioma de artefactos configurable por proyecto (inglés por defecto) |
 
 ### 22.2 Pendientes
