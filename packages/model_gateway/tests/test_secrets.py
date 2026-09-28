@@ -1,14 +1,17 @@
 import uuid
 
 import httpx
+import pytest
 
-from nexti_model_gateway.secrets import SecretsConfig, SecretStore, connection_path
+from nexti_model_gateway.secrets import SecretsConfig, SecretsError, SecretStore, connection_path
 
 from .conftest import ENV, needs_openbao
 
 
 def store(http: httpx.AsyncClient) -> SecretStore:
-    config = SecretsConfig(url=f"http://127.0.0.1:{ENV.get('OPENBAO_PORT', '8210')}", token=ENV["OPENBAO_DEV_ROOT_SECRET"])
+    config = SecretsConfig(
+        url=f"http://127.0.0.1:{ENV.get('OPENBAO_PORT', '8210')}", token=ENV["OPENBAO_DEV_ROOT_SECRET"]
+    )
     return SecretStore(config, http)
 
 
@@ -32,11 +35,7 @@ async def test_a_wrong_token_cannot_read() -> None:
     path = connection_path(uuid.uuid4(), uuid.uuid4())
     async with httpx.AsyncClient(timeout=10) as http:
         await store(http).put(path, "x")
-        intruder = SecretStore(SecretsConfig(url=store(http).config.url, token="wrong"), http)
-        try:
+        intruder = SecretStore(SecretsConfig(url=store(http).config.url, token="wrong"), http)  # noqa: S106
+        with pytest.raises(SecretsError, match="403"):
             await intruder.get(path)
-        except Exception as exc:
-            assert "403" in str(exc)
-        else:
-            raise AssertionError("a wrong token read the secret")
         await store(http).delete(path)

@@ -3,6 +3,7 @@ tests/integration/test_schema.py fails if the two drift apart). Checks and RLS p
 
 import uuid
 from datetime import datetime
+from decimal import Decimal
 from typing import Any
 
 from sqlalchemy import (
@@ -15,6 +16,7 @@ from sqlalchemy import (
     Index,
     Integer,
     LargeBinary,
+    Numeric,
     PrimaryKeyConstraint,
     Text,
     UniqueConstraint,
@@ -224,3 +226,218 @@ class KeycloakEventCursor(Base):
     last_time: Mapped[int] = mapped_column(BigInteger, nullable=False)
     last_ids: Mapped[list[str]] = mapped_column(ARRAY(Text), nullable=False, server_default=text("'{}'"))
     updated_at: Mapped[datetime] = _now()
+
+
+# AI configuration and usage (migration 0004, spec 12 and 13). Catalog tables are global; the rest are tenant data.
+
+
+class ModelFamily(Base):
+    __tablename__ = "model_family"
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    key: Mapped[str] = mapped_column(Text, nullable=False, unique=True)
+    name: Mapped[str] = mapped_column(Text, nullable=False)
+
+
+class ModelVersion(Base):
+    __tablename__ = "model_version"
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    family_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("model_family.id"), nullable=False)
+    provider_slug: Mapped[str] = mapped_column(Text, nullable=False, unique=True)
+    canonical_slug: Mapped[str] = mapped_column(Text, nullable=False, unique=True)
+    name: Mapped[str] = mapped_column(Text, nullable=False)
+    context_window: Mapped[int | None] = mapped_column(Integer)
+    capabilities: Mapped[list[str]] = mapped_column(ARRAY(Text), nullable=False, server_default=text("'{}'"))
+    status: Mapped[str] = mapped_column(Text, nullable=False, server_default="available")
+    created_at: Mapped[datetime] = _now()
+    updated_at: Mapped[datetime] = _now()
+
+
+class ModelOffering(Base):
+    __tablename__ = "model_offering"
+    __table_args__ = (UniqueConstraint("version_id", "provider", "upstream_provider"),)
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    version_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("model_version.id"), nullable=False)
+    provider: Mapped[str] = mapped_column(Text, nullable=False)
+    upstream_provider: Mapped[str] = mapped_column(Text, nullable=False)
+    context_window: Mapped[int | None] = mapped_column(Integer)
+    max_output_tokens: Mapped[int | None] = mapped_column(Integer)
+    capabilities: Mapped[list[str]] = mapped_column(ARRAY(Text), nullable=False, server_default=text("'{}'"))
+    zdr: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
+    status: Mapped[str] = mapped_column(Text, nullable=False, server_default="available")
+    updated_at: Mapped[datetime] = _now()
+
+
+class PriceVersion(Base):
+    __tablename__ = "price_version"
+    __table_args__ = (
+        Index("price_version_current_key", "offering_id", unique=True, postgresql_where=text("valid_to IS NULL")),
+    )
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    offering_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("model_offering.id"), nullable=False)
+    input_per_mtok: Mapped[Decimal] = mapped_column(Numeric(18, 6), nullable=False)
+    output_per_mtok: Mapped[Decimal] = mapped_column(Numeric(18, 6), nullable=False)
+    cache_read_per_mtok: Mapped[Decimal | None] = mapped_column(Numeric(18, 6))
+    cache_write_per_mtok: Mapped[Decimal | None] = mapped_column(Numeric(18, 6))
+    request_usd: Mapped[Decimal | None] = mapped_column(Numeric(18, 8))
+    valid_from: Mapped[datetime] = _now()
+    valid_to: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    source: Mapped[str] = mapped_column(Text, nullable=False)
+    created_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("app_user.id"))
+
+
+class EffortMapping(Base):
+    __tablename__ = "effort_mapping"
+    offering_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("model_offering.id"), primary_key=True)
+    effort: Mapped[str] = mapped_column(Text, primary_key=True)
+    parameters: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))
+    updated_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("app_user.id"))
+    updated_at: Mapped[datetime] = _now()
+
+
+class ProviderConnection(Base):
+    __tablename__ = "provider_connection"
+    __table_args__ = (UniqueConstraint("tenant_id", "name"), UniqueConstraint("id", "tenant_id"))
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    tenant_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("tenant.id"), nullable=False)
+    provider: Mapped[str] = mapped_column(Text, nullable=False)
+    name: Mapped[str] = mapped_column(Text, nullable=False)
+    vault_path: Mapped[str | None] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(Text, nullable=False, server_default="untested")
+    last_tested_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    last_test_detail: Mapped[str | None] = mapped_column(Text)
+    created_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("app_user.id"))
+    created_at: Mapped[datetime] = _now()
+    updated_at: Mapped[datetime] = _now()
+
+
+class ModelProfile(Base):
+    __tablename__ = "model_profile"
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "name"),
+        UniqueConstraint("id", "tenant_id"),
+        ForeignKeyConstraint(
+            ["connection_id", "tenant_id"], ["provider_connection.id", "provider_connection.tenant_id"]
+        ),
+        ForeignKeyConstraint(
+            ["fallback_profile_id", "tenant_id"],
+            ["model_profile.id", "model_profile.tenant_id"],
+            ondelete="SET NULL (fallback_profile_id)",
+        ),
+    )
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    tenant_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("tenant.id"), nullable=False)
+    name: Mapped[str] = mapped_column(Text, nullable=False)
+    connection_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    offering_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("model_offering.id"), nullable=False)
+    effort: Mapped[str] = mapped_column(Text, nullable=False, server_default="medium")
+    max_output_tokens: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("4096"))
+    temperature: Mapped[Decimal | None] = mapped_column(Numeric(3, 2))
+    timeout_seconds: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("120"))
+    max_retries: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("2"))
+    fallback_profile_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
+    created_at: Mapped[datetime] = _now()
+    updated_at: Mapped[datetime] = _now()
+
+
+class ModelAssignment(Base):
+    __tablename__ = "model_assignment"
+    __table_args__ = (
+        ForeignKeyConstraint(["project_id", "tenant_id"], ["project.id", "project.tenant_id"], ondelete="CASCADE"),
+        ForeignKeyConstraint(
+            ["profile_id", "tenant_id"], ["model_profile.id", "model_profile.tenant_id"], ondelete="CASCADE"
+        ),
+        UniqueConstraint("tenant_id", "project_id", "phase", "agent_role", postgresql_nulls_not_distinct=True),
+    )
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    project_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
+    phase: Mapped[str | None] = mapped_column(Text)
+    agent_role: Mapped[str | None] = mapped_column(Text)
+    profile_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    updated_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("app_user.id"))
+    updated_at: Mapped[datetime] = _now()
+
+
+class ModelPolicy(Base):
+    __tablename__ = "model_policy"
+    tenant_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("tenant.id"), primary_key=True)
+    openrouter_allowed: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
+    allowed_upstream_providers: Mapped[list[str] | None] = mapped_column(ARRAY(Text))
+    denied_upstream_providers: Mapped[list[str]] = mapped_column(
+        ARRAY(Text), nullable=False, server_default=text("'{}'")
+    )
+    require_zdr: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
+    deny_data_collection: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
+    updated_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("app_user.id"))
+    updated_at: Mapped[datetime] = _now()
+
+
+class UsageLedger(Base):
+    """Append-only (trigger in migration 0004). Costs in USD; `price_version_id` is the tariff applied."""
+
+    __tablename__ = "usage_ledger"
+    id: Mapped[int] = mapped_column(BigInteger, Identity(always=True), primary_key=True)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("tenant.id"), nullable=False)
+    occurred_at: Mapped[datetime] = _now()
+    project_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
+    run_id: Mapped[str | None] = mapped_column(Text)
+    phase: Mapped[str | None] = mapped_column(Text)
+    agent_role: Mapped[str | None] = mapped_column(Text)
+    iteration: Mapped[int | None] = mapped_column(Integer)
+    profile_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
+    connection_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
+    offering_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("model_offering.id"))
+    price_version_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("price_version.id"))
+    model: Mapped[str | None] = mapped_column(Text)
+    upstream_provider: Mapped[str | None] = mapped_column(Text)
+    provider_request_id: Mapped[str | None] = mapped_column(Text)
+    input_tokens: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
+    output_tokens: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
+    reasoning_tokens: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
+    cache_read_tokens: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
+    cache_write_tokens: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
+    latency_ms: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
+    retries: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
+    was_fallback: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
+    outcome: Mapped[str] = mapped_column(Text, nullable=False)
+    error_code: Mapped[str | None] = mapped_column(Text)
+    cost_usd: Mapped[Decimal] = mapped_column(Numeric(18, 8), nullable=False, server_default=text("0"))
+    provider_cost_usd: Mapped[Decimal | None] = mapped_column(Numeric(18, 8))
+
+
+Index("usage_ledger_tenant_time_idx", UsageLedger.tenant_id, UsageLedger.occurred_at)
+Index("usage_ledger_project_time_idx", UsageLedger.project_id, UsageLedger.occurred_at)
+
+
+class Budget(Base):
+    __tablename__ = "budget"
+    __table_args__ = (
+        UniqueConstraint("id", "tenant_id"),
+        UniqueConstraint("tenant_id", "project_id", "period", postgresql_nulls_not_distinct=True),
+        ForeignKeyConstraint(["project_id", "tenant_id"], ["project.id", "project.tenant_id"], ondelete="CASCADE"),
+    )
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    tenant_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("tenant.id"), nullable=False)
+    project_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
+    period: Mapped[str] = mapped_column(Text, nullable=False)
+    amount_usd: Mapped[Decimal] = mapped_column(Numeric(14, 2), nullable=False)
+    alert_pct: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("80"))
+    hard_stop: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
+    created_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("app_user.id"))
+    created_at: Mapped[datetime] = _now()
+    updated_at: Mapped[datetime] = _now()
+
+
+class BudgetAlert(Base):
+    __tablename__ = "budget_alert"
+    __table_args__ = (
+        UniqueConstraint("budget_id", "level", "period_key"),
+        ForeignKeyConstraint(["budget_id", "tenant_id"], ["budget.id", "budget.tenant_id"], ondelete="CASCADE"),
+    )
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    budget_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    level: Mapped[int] = mapped_column(Integer, nullable=False)
+    period_key: Mapped[str] = mapped_column(Text, nullable=False)
+    spent_usd: Mapped[Decimal] = mapped_column(Numeric(18, 8), nullable=False)
+    triggered_at: Mapped[datetime] = _now()

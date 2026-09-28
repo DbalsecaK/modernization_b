@@ -21,6 +21,7 @@ Estas tablas **no** llevan `tenant_id`, y cada una tiene su propia forma de aisl
 | `permission`, `permission_scope` | Catálogo de la plataforma (16.2), igual para todos | Solo lectura para la API (sin grants de escritura) |
 | `platform_role_assignment` | Roles de NexTI, no son datos de un cliente | Solo lectura para la API; los asignan operadores con el rol dueño |
 | `keycloak_event_cursor` | Estado técnico del lector de eventos | Sin datos de clientes |
+| `model_family`, `model_version`, `model_offering`, `price_version`, `effort_mapping` (M1) | Catálogo de modelos: datos públicos de los proveedores, iguales para todos | La sincronización con el proveedor los actualiza; precios manuales y tabla de esfuerzo solo el superadministrador |
 
 - `tenant` también tiene RLS: se ve el tenant activo y aquellos donde el usuario tiene membresía activa.
 - Invitar a una persona que ya existe en otro tenant pasa por `ensure_user_for_invitation()` (SECURITY DEFINER),
