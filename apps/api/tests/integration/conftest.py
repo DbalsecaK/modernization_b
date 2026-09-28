@@ -124,6 +124,7 @@ def api_settings(databases: Databases, fga: OpenFga) -> Settings:
         openfga_model_id=fga.model_id,
         relay_poll_seconds=0.2,
         reconcile_interval_seconds=0,
+        keycloak_events_interval_seconds=0,
     )
 
 

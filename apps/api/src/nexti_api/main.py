@@ -9,6 +9,7 @@ from fastapi import FastAPI
 
 from nexti_api import health, me
 from nexti_api.admin import assignments, audit_log, invitations, projects, roles, tenants, users
+from nexti_api.audit.keycloak_events import pull_keycloak_events
 from nexti_api.auth import dev_auth
 from nexti_api.auth import routes as auth_routes
 from nexti_api.auth.oidc import OidcClient
@@ -51,6 +52,19 @@ async def _reconcile_periodically(
             log.warning("authz_reconcile_failed", error=type(exc).__name__, detail=str(exc)[:200])
 
 
+async def _copy_keycloak_events(
+    resources: Resources, admin: KeycloakAdmin, settings: Settings, stop: asyncio.Event
+) -> None:
+    assert resources.engine is not None  # noqa: S101 (checked by the caller)
+    while not stop.is_set():
+        try:
+            await pull_keycloak_events(resources.engine, admin)
+        except Exception as exc:
+            log.warning("keycloak_events_failed", error=type(exc).__name__, detail=str(exc)[:200])
+        with contextlib.suppress(TimeoutError):
+            await asyncio.wait_for(stop.wait(), timeout=settings.keycloak_events_interval_seconds)
+
+
 def create_app(settings: Settings | None = None, health_checks: dict[str, health.Check] | None = None) -> FastAPI:
     """Build the API. `health_checks` replaces the real dependency checks (tests only)."""
     settings = settings or get_settings()
@@ -79,6 +93,10 @@ def create_app(settings: Settings | None = None, health_checks: dict[str, health
         if app.state.fga is not None and resources.relay_engine is not None:
             app.state.relay = OutboxRelay(resources.relay_engine, app.state.fga)
             tasks.append(asyncio.create_task(app.state.relay.run_forever(stop, settings.relay_poll_seconds)))
+        events_enabled = settings.keycloak_events_interval_seconds > 0
+        if app.state.keycloak_admin is not None and resources.engine is not None and events_enabled:
+            admin = app.state.keycloak_admin
+            tasks.append(asyncio.create_task(_copy_keycloak_events(resources, admin, settings, stop)))
         if app.state.fga is not None and resources.engine is not None and settings.reconcile_interval_seconds > 0:
             tasks.append(asyncio.create_task(_reconcile_periodically(resources, app.state.fga, settings, stop)))
         try:

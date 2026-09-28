@@ -21,7 +21,7 @@ from sqlalchemy import (
     func,
     text,
 )
-from sqlalchemy.dialects.postgresql import JSONB, UUID
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB, UUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
@@ -214,3 +214,13 @@ class AuditLog(Base):
 
 
 Index("audit_log_tenant_time_idx", AuditLog.tenant_id, AuditLog.occurred_at.desc())
+
+
+class KeycloakEventCursor(Base):
+    """Position of the Keycloak event poller (migration 0003)."""
+
+    __tablename__ = "keycloak_event_cursor"
+    kind: Mapped[str] = mapped_column(Text, primary_key=True)
+    last_time: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    last_ids: Mapped[list[str]] = mapped_column(ARRAY(Text), nullable=False, server_default=text("'{}'"))
+    updated_at: Mapped[datetime] = _now()

@@ -261,6 +261,11 @@ type project
 | `projects` | `GET` (solo los visibles, vía `ListObjects`) | `view` |
 | `audit` | `GET` con filtros y paginación, `GET /export` | `audit_view` |
 
+**Implementado (paso 9):** además de lo anterior, `POST /api/v1/invitations/{id}:resend` y
+`DELETE /api/v1/invitations/{id}` (revocar). Las invitaciones de rol de proyecto también las puede hacer quien
+tiene `project.configure` en ese proyecto. Un meta-test exige que toda ruta no pública declare su dependencia de
+autorización y tenga su caso permitido/denegado, y que toda mutación sensible deje registro de auditoría.
+
 Errores en formato **RFC 9457** con `code` estable y `detail` en inglés. OpenAPI generado por FastAPI y
 cliente TypeScript generado desde él para la web.
 
@@ -272,6 +277,10 @@ cliente TypeScript generado desde él para la web.
   membresías, denegaciones de autorización, cambios de tenants.
 - **Eventos de Keycloak** (login, error, cambio de contraseña, admin events) llegan por un endpoint interno o
   por lectura periódica de la Admin API y se registran con `actor_kind=keycloak`.
+- **Implementado (paso 9c):** lectura periódica de la Admin API (tarea de fondo cada 30 s y
+  `python -m nexti_api.cli keycloak-events`) con cursor en `keycloak_event_cursor`. Se copian los eventos de
+  usuario relevantes para la seguridad (login, logout, `*_ERROR`, bloqueos, contraseña, MFA, acciones) y todos
+  los admin events, a la cadena de plataforma, solo con campos seguros (sin ids de token ni representaciones).
 - Verificación: `GET /api/v1/audit/verify` (solo auditor/superadmin) recorre la cadena y reporta cortes.
 - **Implementado (paso 5):** la cadena la calcula un trigger de la base (`seq` sin huecos, `prev_hash`, `hash` =
   sha256 del JSON canónico de la fila), serializado por cadena con un advisory lock; una cadena por tenant y
@@ -332,7 +341,7 @@ cliente TypeScript generado desde él para la web.
 | 6 ✅ | BFF con Keycloak: login, callback, logout, sesión Redis, cookie, CSRF, `me`, cambio de tenant | Login real en local; test "ningún token en el navegador" |
 | 7 ✅ | `dev-auth` y arranque seguro | Test de arranque en producción falla como se espera |
 | 8 ✅ | OpenFGA: modelo y tests del modelo, cliente, `require(...)`, outbox y reconciliación | `fga model test` y tests de sincronización en verde |
-| 9 | Routers de administración (tenants, usuarios, invitaciones con Keycloak + Mailpit, roles, matriz, asignaciones, proyectos, auditoría) con tests permitido/denegado y aislamiento | Suite `authz` e `isolation` en verde |
+| 9 ✅ | Routers de administración (tenants, usuarios, invitaciones con Keycloak + Mailpit, roles, matriz, asignaciones, proyectos, auditoría) con tests permitido/denegado y aislamiento | Suite `authz` e `isolation` en verde |
 | 10 | Web: cliente de API, TanStack Query, sesión real, menú por permisos, selector de tenant | La web entra con Keycloak o dev-auth y muestra el menú según el rol |
 | 11 | Web: Administración conectada (usuarios, invitaciones, roles, matriz, auditoría); reemplazo de mocks | e2e de invitar, asignar rol y ver auditoría |
 | 12 | Primitivas sobre Radix + Playwright/axe | Tests de accesibilidad en verde, sin cambios en imports de pantallas |

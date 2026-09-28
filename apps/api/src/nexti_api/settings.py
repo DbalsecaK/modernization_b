@@ -39,6 +39,8 @@ class Settings(BaseSettings):
     keycloak_admin_client_id: str = "nexti-admin"
     keycloak_admin_client_secret: SecretStr = SecretStr("")
     invitation_days: int = 7
+    # Keycloak events copied to the audit log every N seconds (0 disables the background poller).
+    keycloak_events_interval_seconds: int = 30
     # Origin of the web app; the OIDC callback goes through it (Vite proxy in development).
     web_origin: str = "http://localhost:5173"
 

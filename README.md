@@ -63,6 +63,7 @@ pnpm db:migrate                                # esquema (Alembic, como platform
 pnpm db:seed                                   # datos ficticios de desarrollo (idempotente) + reconciliación OpenFGA
 pnpm fga:test                                  # tests del modelo de OpenFGA (infra/openfga)
 pnpm authz:reconcile                           # iguala OpenFGA a lo que implica PostgreSQL
+uv run python -m nexti_api.cli keycloak-events # copia los eventos de Keycloak a la auditoría (también en segundo plano)
 docker compose -f infra/docker-compose/compose.yaml --profile observability up -d --wait   # + Langfuse
 ```
 

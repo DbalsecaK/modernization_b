@@ -7,8 +7,10 @@ import sys
 import httpx
 from sqlalchemy.ext.asyncio import create_async_engine
 
+from nexti_api.audit.keycloak_events import pull_keycloak_events
 from nexti_api.authz import fga as fga_module
 from nexti_api.authz.reconcile import reconcile
+from nexti_api.keycloak_admin import KeycloakAdmin
 from nexti_api.seed import seed_dev
 from nexti_api.settings import Settings, get_settings
 
@@ -51,16 +53,34 @@ async def _seed_dev(settings: Settings) -> int:
     return 0
 
 
+async def _keycloak_events(settings: Settings) -> int:
+    url = settings.database_url.get_secret_value()
+    if not url or not settings.keycloak_admin_client_secret.get_secret_value():
+        print("DATABASE_URL and KEYCLOAK_ADMIN_CLIENT_SECRET are required.", file=sys.stderr)
+        return 2
+    engine = create_async_engine(url)
+    try:
+        async with httpx.AsyncClient(timeout=10) as http:
+            copied = await pull_keycloak_events(engine, KeycloakAdmin(settings, http))
+    finally:
+        await engine.dispose()
+    print(f"{copied} Keycloak events copied to the audit log.")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="nexti_api.cli")
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("seed-dev", help="insert the fictitious development data (development/test only)")
     rec = sub.add_parser("reconcile", help="make OpenFGA equal to what PostgreSQL implies")
     rec.add_argument("--check", action="store_true", help="only report differences (exit 1 if any)")
+    sub.add_parser("keycloak-events", help="copy new Keycloak events to the audit log")
     args = parser.parse_args(argv)
     settings = get_settings()
     if args.command == "seed-dev":
         return asyncio.run(_seed_dev(settings))
+    if args.command == "keycloak-events":
+        return asyncio.run(_keycloak_events(settings))
     if args.command == "reconcile":
         return asyncio.run(_reconcile(settings, apply=not args.check))
     return 1
