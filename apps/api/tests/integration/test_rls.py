@@ -126,7 +126,8 @@ async def test_relay_reads_every_outbox_row_and_only_updates_status(relay_engine
     async with relay_engine.begin() as conn:
         tenants: set[object] = set((await conn.execute(text("SELECT tenant_id FROM authz_outbox"))).scalars())
         await conn.execute(text("UPDATE authz_outbox SET attempts = attempts + 1 WHERE tenant_id IS NULL"))
-    assert tenants == {world.tenant_a, world.tenant_b, None}
+    # Other tests add tenants; the relay must see every tenant's rows and the platform ones.
+    assert {world.tenant_a, world.tenant_b, None} <= tenants
     with pytest.raises(DBAPIError, match="permission denied"):
         async with relay_engine.begin() as conn:
             await conn.execute(text("UPDATE authz_outbox SET tuples = '[]'::jsonb"))

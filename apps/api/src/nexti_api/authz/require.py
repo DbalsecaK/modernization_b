@@ -40,7 +40,7 @@ def _fga(request: Request) -> OpenFga:
     return fga
 
 
-async def _deny(request: Request, current: CurrentSession, tenant_id: uuid.UUID | None, what: str, target: str) -> None:
+async def deny(request: Request, current: CurrentSession, tenant_id: uuid.UUID | None, what: str, target: str) -> None:
     async with scoped_connection(request.app.state.resources.engine, DbScope(tenant_id=tenant_id)) as conn:
         await record(
             conn,
@@ -77,7 +77,7 @@ def require_tenant(permission: str) -> Dependency:
         if tenant_id is None:
             raise ProblemError(403, "no_active_tenant", "Select a tenant first.")
         if not await _fga(request).check(names.user(current.data.user_id), rel, names.tenant(tenant_id)):
-            await _deny(request, current, tenant_id, permission, names.tenant(tenant_id))
+            await deny(request, current, tenant_id, permission, names.tenant(tenant_id))
         return Authorized(current, current.data.user_id, tenant_id)
 
     return _mark(dependency, "tenant", permission)
@@ -96,7 +96,7 @@ def require_project(permission: str) -> Dependency:
         if tenant_id is None:
             raise ProblemError(403, "no_active_tenant", "Select a tenant first.")
         if not await _fga(request).check(names.user(current.data.user_id), rel, names.project(project_id)):
-            await _deny(request, current, tenant_id, permission, names.project(project_id))
+            await deny(request, current, tenant_id, permission, names.project(project_id))
         # The project may still belong to another tenant where the user also works: RLS on the active tenant
         # hides it from every query that follows.
         return Authorized(current, current.data.user_id, tenant_id)
@@ -110,7 +110,7 @@ def require_platform(role: str = "superAdmin") -> Dependency:
 
     async def dependency(request: Request, current: Annotated[CurrentSession, Depends(require_session)]) -> Authorized:
         if not await _fga(request).check(names.user(current.data.user_id), rel, names.PLATFORM):
-            await _deny(request, current, None, f"platform.{role}", names.PLATFORM)
+            await deny(request, current, None, f"platform.{role}", names.PLATFORM)
         return Authorized(current, current.data.user_id, current.data.active_tenant_id, platform_scope=True)
 
     return _mark(dependency, "platform", role)

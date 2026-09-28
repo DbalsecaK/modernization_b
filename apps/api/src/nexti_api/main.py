@@ -8,6 +8,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from nexti_api import health, me
+from nexti_api.admin import assignments, audit_log, projects, roles, tenants, users
 from nexti_api.auth import dev_auth
 from nexti_api.auth import routes as auth_routes
 from nexti_api.auth.oidc import OidcClient
@@ -99,6 +100,9 @@ def create_app(settings: Settings | None = None, health_checks: dict[str, health
     app.include_router(health.router)
     app.include_router(auth_routes.router)
     app.include_router(me.router)
+    for admin_router in (tenants.router, users.router, roles.router, assignments.router, projects.router):
+        app.include_router(admin_router)
+    app.include_router(audit_log.router)
     if settings.dev_auth_enabled:
         app.include_router(dev_auth.router)
     return app
