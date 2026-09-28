@@ -21,7 +21,10 @@ El producto es **nativamente en inglés**, con cambio completo a español.
 
 - Especificación maestra y decisiones registradas (`docs/ESPECIFICACION_PLATAFORMA.md`).
 - Prototipo navegable de todas las pantallas en `apps/web` (inglés nativo, español, tema claro/oscuro), con
-  datos simulados. Capturas en `docs/prototipo/`.
+  datos simulados. Capturas en `docs/prototipo/`. Incluye, entre otros: grafo de conocimiento, comparación
+  origen ↔ destino, preguntas del human in the loop, referencias de UI (capturas, Figma, prototipos) desde la
+  creación del proyecto, chat de cambios al prototipo, backlog con Jira/Azure DevOps y ciclo automático de
+  bugs, y panel flotante de actividad de agentes.
 - Siguiente paso: hito **M0 — Fundaciones** (Keycloak, multi-tenant, RBAC, auditoría, CI).
 
 ## Probar el prototipo

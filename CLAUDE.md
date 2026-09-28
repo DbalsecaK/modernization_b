@@ -32,6 +32,10 @@ el mismo cambio y registra la decisión (sección 22 o un ADR en `docs/adr/`).
   - Formularios de alta/edición: panel lateral `Drawer` y avisos `toast` de `apps/web/src/components/ui/overlay.tsx`.
   - Preguntas del human in the loop: `apps/web/src/features/decisions/` (sección 10.4).
   - Grafo de conocimiento: `apps/web/src/features/projects/graph/` (sección 5.2.1).
+  - Panel flotante de actividad de agentes: `apps/web/src/components/layout/AgentActivityPanel.tsx` (sección 18.8).
+  - Backlog Jira/Azure DevOps y ciclo de bugs: `apps/web/src/features/projects/tabs/BacklogTab.tsx` (sección 7.6).
+  - Referencias de UI y vínculo con Jira/ADO en el asistente: `apps/web/src/features/projects/ProjectSetupSections.tsx`;
+    chat de cambios al prototipo: `apps/web/src/features/projects/PrototypeChat.tsx` (secciones 7.1 y 7.4).
 
 ## Comandos del frontend
 

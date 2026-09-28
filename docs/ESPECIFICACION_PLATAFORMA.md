@@ -300,7 +300,15 @@ alucinaciones.
 - Figma: link o archivo (lectura de estructura vía API: frames, componentes, textos, variables/tokens,
   navegación del prototipo).
 - Capturas de pantalla y mockups (visión).
+- Links a prototipos existentes (Figma *proto* u otra URL navegable) con notas de qué respetar.
 - Nada de UI: la plataforma **propone** design system y prototipos (7.4).
+
+**Cuándo se cargan.** Las referencias de UI (capturas, links de Figma y links de prototipos) se pueden cargar
+**desde la creación del proyecto** (paso 2 del asistente, sección 18.3) y también después, desde la pestaña
+**Insumos** o desde **Diseño UI** (botones *Agregar capturas*, *Agregar Figma*, *Agregar prototipo*). En el
+Flujo 1 las mismas referencias sirven para modernizar la UI legacy (BMS, ASPX) hacia un diseño objetivo.
+Todo insumo pasa por la misma validación (tipo y tamaño, seguridad de archivos comprimidos, malware,
+secretos, versionado; sección 15.4) antes de que un agente lo lea.
 
 ### 7.2 Fases
 
@@ -336,6 +344,18 @@ alucinaciones.
 - Exportar a Figma queda como opción posterior (la API REST de Figma es de lectura; escribir requiere plugin).
 - Las pantallas legacy del Flujo 1 (BMS, ASPX) usan este mismo mecanismo.
 
+**Chat de cambios al prototipo (D-24).** En **Diseño UI** hay un chat con el agente *UX/UI designer* para
+pedir cambios en lenguaje natural sobre la pantalla seleccionada ("agrupa límites y saldos", "versión
+móvil", "agrega estados de error"), con sugerencias rápidas y la opción de adjuntar una imagen de
+referencia.
+
+- Cada pedido aceptado genera una **nueva versión del prototipo** (v1, v2, v3…) enlazada a la spec de
+  pantalla; el historial del chat queda como evidencia de la decisión de diseño.
+- Si el cambio altera la spec (un campo nuevo, una validación, una acción), el agente lo propone como
+  cambio de spec y, si toca algo aprobado, genera una **pregunta** (10.4) en lugar de aplicarlo en silencio.
+- El prototipo generado se renderiza en el sandbox (regla 4); los adjuntos son insumo no confiable (regla 5).
+- La aprobación sigue siendo la compuerta **C2**: el chat itera, no aprueba.
+
 ### 7.5 Definición de "completo" en el Flujo 2
 
 - Todo criterio de aceptación aprobado tiene un test que pasó.
@@ -343,6 +363,40 @@ alucinaciones.
 - Todo campo tiene validación definida y probada.
 - Todo endpoint del contrato está implementado y cubierto.
 - No quedan preguntas abiertas.
+
+### 7.6 Integración con Jira y Azure DevOps (backlog y ciclo de bugs)
+
+Los agentes mantienen sincronizado el backlog del cliente en **Jira** (Cloud o Data Center) o **Azure DevOps
+Boards** (D-22). Aplica a los dos flujos.
+
+**Dónde se configura**
+
+- **Conexión, por tenant:** en *Administración → Integraciones* (sección 17). URL del sitio u organización,
+  credencial (OAuth o token en Vault, nunca en el repositorio), alcance y prueba de conexión.
+- **Vínculo, por proyecto:** en el paso 2 del asistente (sección 18.3) o después en la pestaña **Backlog**. Se
+  elige la conexión del tenant y el proyecto de Jira o Azure DevOps (clave `CARDS` o nombre del proyecto).
+- **Mapeo de tipos** configurable: Feature → Epic (Jira) / Feature (ADO); Historia → Story / User Story;
+  Tarea → Sub-task / Task; Bug → Bug.
+
+**Reglas de automatización (activables por proyecto)**
+
+| Regla | Qué hace |
+|---|---|
+| Crear desde la spec | Al aprobar **C1**, genera features, historias (con criterios Gherkin) y tareas enlazadas a las reglas y pantallas de la spec |
+| Marcar como terminado | Cuando la verificación de un elemento pasa, el agente mueve el ítem a *Done* con la evidencia enlazada |
+| Bug ante fallo | Cuando un test o una equivalencia falla, el agente **tester** crea un bug con pasos, esperado vs obtenido, regla y traza |
+| Corrección automática | El agente **developer** toma el bug, propone la corrección en el sandbox y la deja en revisión |
+| Re-test y cierre | El tester re-ejecuta; si pasa, cierra el bug; si no, lo reabre con el nuevo resultado |
+| Sincronizar comentarios | Los comentarios del ítem externo entran como insumo (no confiable) y los de la plataforma se publican |
+
+**Ciclo del bug:** detectado → bug creado → developer activado → corrección propuesta → re-test → espera
+revisión humana. La corrección respeta el **nivel de autonomía** del proyecto y el **máximo de iteraciones**
+de autocorrección (11.1) según la autonomía (10.4); al superarlo, escala a una persona. El veredicto lo sigue calculando código
+determinista (regla 6): cerrar un bug en Jira no cambia un veredicto.
+
+**Reglas de seguridad:** la integración usa la credencial del tenant con alcance mínimo; toda escritura en el
+sistema externo queda en la auditoría; el contenido que viene de Jira/ADO es input no confiable (prompt
+injection); las escrituras son idempotentes (clave externa guardada en `work_item_link`) y reintentables.
 
 ---
 
@@ -929,7 +983,8 @@ Todo lo siguiente es configurable desde la UI por el rol correspondiente, con va
 - Agentes y skills: catálogo, versiones, publicación con aprobación y evaluación.
 - Configuración IA: conexiones, catálogo, perfiles, matriz por defecto, precios, políticas, presupuestos.
 - Prompts y constitución del cliente: versionados, con historial.
-- Integraciones: GitHub, GitLab, Azure DevOps, Jira, Figma.
+- Integraciones: GitHub, GitLab, Azure DevOps, Jira, Figma. Las conexiones se crean **por tenant**; cada
+  proyecto elige cuál usa (Jira/Azure DevOps en el asistente o en la pestaña Backlog, sección 7.6).
 
 **Defaults sólidos:** plantillas "estándar banco" e "interno ágil". La configuración avanzada queda detrás
 de permisos de administrador. Toda configuración es versionada y auditable.
@@ -969,7 +1024,11 @@ de permisos de administrador. Toda configuración es versionada y auditable.
 **Asistente de creación:**
 
 1. Datos básicos, flujo e idioma de los artefactos (inglés por defecto).
-2. Origen (tecnologías; zip/Git o insumos documentales).
+2. Origen (tecnologías; zip/Git o insumos documentales). Incluye además:
+   - **Referencias de UI:** capturas de pantalla (con miniaturas), links de Figma (validados:
+     `figma.com/file|design|proto`) y links de prototipos.
+   - **Seguimiento del trabajo:** vincular el proyecto a Jira o Azure DevOps (conexión del tenant + proyecto)
+     y activar la creación automática del backlog al aprobar C1 (sección 7.6).
 3. Destino y arquitectura (matriz de compatibilidad con avisos).
 4. **Equipo de agentes** (cards; recomendados con motivo; reemplazar/quitar/agregar).
 5. **Skills** (agrupadas por agente; recomendadas; conflictos y faltantes).
@@ -983,14 +1042,15 @@ de permisos de administrador. Toda configuración es versionada y auditable.
 | Pestaña | Contenido |
 |---|---|
 | Resumen | Pipeline visual, próximos pasos, riesgos, veredicto, costo |
-| Insumos | Código, repos, documentos, Figma, capturas, con versiones |
+| Insumos | Código, repos, documentos, Figma, capturas, links de prototipos, Jira/Azure DevOps, con versiones |
 | Inventario / Mapa | **Grafo interactivo** del legacy (sección 5.2.1): recorrido de flujos de negocio paso a paso, foco por regla, filtros de relaciones, filtro de huérfanos y aislados, color por dominio o estado, buscador, zoom y arrastre, detalle del nodo, **análisis de impacto** y acceso directo a la comparación |
 | Especificación | Subvistas: reglas, pantallas (campos, validaciones, acciones, estados), contratos y **preguntas** (tarjetas de decisión, sección 10.4) |
-| Diseño UI | Design system, prototipos navegables con comentarios, legacy ↔ prototipo |
+| Diseño UI | Design system, prototipos navegables con comentarios, legacy ↔ prototipo, **referencias** (capturas, Figma, prototipos) y **chat de cambios** con el agente UX/UI designer (7.4) |
 | Arquitectura | Bounded contexts, OpenAPI, ADR, fitness functions |
 | Código | Navegador de archivos, descarga o push según permisos |
 | Origen ↔ destino | Comparación por regla o por programa: **código legacy y código destino lado a lado** con las líneas relacionadas resaltadas, la regla con su estado de verificación y el **comportamiento legacy vs nuevo** (golden master e inputs frescos, con las diferencias marcadas) |
 | Validación | Tests, golden master con diffs, inputs frescos, canario, veredicto, sign-off |
+| Backlog | Conexión Jira/Azure DevOps del proyecto, mapeo de tipos, reglas de automatización, árbol feature → historia → tarea → bug con estado y sincronización, y **ciclo del bug** paso a paso (7.6) |
 | Ejecuciones | Historial y **vista en vivo de los agentes** (fase, subagentes, verificaciones, autocorrecciones) |
 | Costos | Consumo por fase, agente, modelo vs presupuesto |
 | Actividad | Auditoría del proyecto |
@@ -1013,7 +1073,7 @@ de permisos de administrador. Toda configuración es versionada y auditable.
 ### 18.5 Transversales
 
 Tiempo real (SSE/WebSocket), inglés nativo con cambio a español (18.6), tema claro/oscuro, WCAG 2.1 AA, todo enlazable por URL,
-estados vacíos, de carga y de error en todas las vistas.
+estados vacíos, de carga y de error en todas las vistas, y el **panel flotante de actividad de agentes** (18.8).
 
 ### 18.6 Idioma: inglés nativo, español como alternativa
 
@@ -1064,8 +1124,32 @@ nativo con cambio a español y tema claro/oscuro.
   notificaciones, el detalle de cada invocación de agente, el grafo interactivo con recorrido de flujos de
   negocio, foco por regla y filtro de huérfanos, la comparación origen ↔ destino y las tarjetas de decisión del
   human in the loop.
+- También incluye las referencias de UI en el asistente, Insumos y Diseño UI, el chat de cambios al
+  prototipo, la pestaña Backlog (Jira/Azure DevOps con ciclo de bugs) y el panel flotante de actividad de
+  agentes (18.8).
 - Capturas de referencia en `docs/prototipo/`.
 - Cómo correrlo: ver `apps/web/README.md`.
+
+### 18.8 Panel flotante de actividad de agentes
+
+Panel tipo *copilot*, disponible en todas las pantallas autenticadas (D-23), que muestra en vivo lo que hacen
+los agentes de los proyectos a los que el usuario tiene acceso.
+
+- **Estados del panel:** minimizado (píldora con agentes en ejecución, errores y costo acumulado), abierto
+  (ventana en la esquina inferior derecha) y maximizado (casi pantalla completa). Se minimiza, maximiza y
+  restaura con un clic.
+- **Orden:** el evento más reciente siempre arriba, ordenado por hora; una cabecera "Último" destaca el
+  evento más nuevo.
+- **Cada evento muestra:** nombre del agente, proyecto, fase, mensaje de lo que está haciendo ("en
+  ejecución…"), **tiempo transcurrido** en vivo, **costo** y tokens, modelo y estado (en ejecución, correcto,
+  fallido, esperando a una persona).
+- **Filtros:** todos, en ejecución, fallidos, esperando, correctos.
+- **Errores:** al expandir un evento fallido se ve el error y se puede **descargar el JSON completo**
+  (evento, proyecto, ejecución, modelo, traza, entorno, fecha de exportación) para soporte o análisis. El JSON
+  pasa por el mismo filtro de secretos que los logs: nunca incluye credenciales ni tokens.
+- **Fuente de datos:** en el sistema real, el stream SSE de eventos de ejecución (19.5), filtrado por
+  autorización (OpenFGA) en el servidor; el costo viene del libro de consumo del gateway.
+- Los avisos (`toast`) se muestran abajo a la izquierda para no tapar el panel.
 
 ---
 
@@ -1149,9 +1233,15 @@ restringido.
 - **Proyectos:** `project`, `project_config` (versionada), `pipeline_template`, `input_artifact`
   (insumo, con hash y versión), `integration`.
 - **Ejecución:** `run`, `phase_run`, `agent_invocation`, `gate`, `approval`, `question`, `verdict`,
-  `evidence_file`.
+  `evidence_file`, `activity_event` (eventos del panel de actividad, derivados de `agent_invocation`).
+- **Seguimiento del trabajo:** `integration_connection` (por tenant: Jira o Azure DevOps),
+  `project_tracker_link` (proyecto ↔ proyecto externo, mapeo de tipos, reglas de automatización),
+  `work_item_link` (ítem de la plataforma ↔ clave externa, tipo, estado, última sincronización),
+  `bug_loop_step` (pasos del ciclo de bug con agente y evidencia).
 - **Catálogo:** `agent_definition`, `skill_definition` (versionadas), `project_agent`, `project_skill`,
-  `source_adapter`, `target_pack`, `compatibility_rule`, `design_system`, `prototype`.
+  `source_adapter`, `target_pack`, `compatibility_rule`, `design_system`, `prototype`,
+  `prototype_version` (versión generada por cada cambio), `prototype_chat_message`, `ui_reference`
+  (captura, link de Figma o link de prototipo, como `input_artifact`).
 - **IA:** `provider_connection`, `model_family`, `model_version`, `model_offering`, `model_profile`,
   `effort_mapping`, `model_assignment`, `price_version`, `model_policy`.
 - **Consumo:** `usage_ledger` (append-only), `budget`, `budget_alert`.
@@ -1164,7 +1254,10 @@ Todas las tablas de negocio llevan `tenant_id` con RLS.
 - REST versionada: `/api/v1/...` con recursos anidados por tenant y proyecto
   (p. ej. `/api/v1/projects/{id}/runs`, `/api/v1/projects/{id}/spec/rules`).
 - El tenant se deriva de la sesión (no se confía en un parámetro del cliente).
-- Eventos en tiempo real: `GET /api/v1/runs/{id}/events` (SSE).
+- Eventos en tiempo real: `GET /api/v1/runs/{id}/events` (SSE) y `GET /api/v1/activity/events` (SSE del
+  panel de actividad, filtrado por autorización).
+- Backlog: `/api/v1/projects/{id}/tracker` (vínculo y reglas), `/api/v1/projects/{id}/work-items`,
+  `POST /api/v1/projects/{id}/work-items:sync`; prototipos: `/api/v1/projects/{id}/prototypes/{screen}/chat`.
 - OpenAPI generado por FastAPI; cliente TypeScript generado desde él para el frontend.
 - Paginación, filtros y errores con formato uniforme (RFC 9457 Problem Details).
 
@@ -1224,9 +1317,11 @@ las skills esperados; no se puede quitar un agente de Control; subir un zip con 
 - Patrón hacer → verificar → corregir con límites y escalamiento.
 - Sandbox (Docker en dev) sin red.
 - SSE de progreso; pestaña Ejecuciones en vivo; bandeja Mis tareas.
+- Panel flotante de actividad de agentes (18.8) conectado al SSE, con descarga del JSON de error.
 
 **Aceptación:** matar un worker a mitad de una fase y reanudar sin perder trabajo; una compuerta detiene el
-flujo hasta la aprobación de un usuario con el permiso; la autocorrección respeta el máximo de iteraciones.
+flujo hasta la aprobación de un usuario con el permiso; la autocorrección respeta el máximo de iteraciones;
+el panel de actividad solo muestra eventos de proyectos autorizados y el JSON descargado no contiene secretos.
 
 ### M4 — Primer vertical completo: Sybase SP → destino + PostgreSQL
 
@@ -1243,6 +1338,7 @@ omisiones, alucinaciones y errores de precisión contra la spec de referencia.
 
 - Parser BMS determinista → spec de pantalla.
 - Design system base NexTI y propuesta de prototipos navegables; comentarios e iteración (C2).
+- Chat de cambios al prototipo con versiones (7.4); referencias de UI (capturas, Figma, prototipos).
 - Vista legacy ↔ prototipo.
 
 **Aceptación:** todos los campos de los mapas de la aplicación de referencia aparecen en la spec de pantalla
@@ -1258,12 +1354,23 @@ con posición, longitud y atributos correctos.
 
 ### M7 — Flujo 2 completo
 
-- Ingesta de documentos, HU, Figma (API) y capturas (visión).
+- Ingesta de documentos, HU, Figma (API), capturas (visión) y links de prototipos, desde el asistente y después.
 - Normalización, consolidación, detección de contradicciones y huecos, preguntas.
 - Generación con contratos primero; validación de aceptación, contract tests y fidelidad visual.
 
 **Aceptación:** con un set de HU + Figma de ejemplo se genera y valida una funcionalidad de punta a punta,
 con cada elemento trazado a su insumo.
+
+### M7b — Integración Jira / Azure DevOps
+
+- Conexión por tenant en Administración (Vault), vínculo por proyecto en el asistente y en la pestaña Backlog.
+- Generación del backlog desde la spec al aprobar C1; marcado automático de terminado con evidencia.
+- Ciclo de bugs: tester crea el bug, developer propone la corrección en el sandbox, re-test y cierre, dentro
+  del nivel de autonomía y del máximo de iteraciones (7.6).
+
+**Aceptación:** con un proyecto Jira y uno de Azure DevOps de prueba, aprobar C1 crea la jerarquía esperada sin
+duplicados al re-sincronizar; un test fallido crea un bug y el ciclo termina en revisión humana; un usuario de
+otro tenant no ve ni usa la conexión; toda escritura externa queda auditada.
 
 ### M8 — ASPX / .NET Framework
 
@@ -1341,6 +1448,9 @@ Sybase SP (M4) → BMS (M5) → CICS (M6) → ASPX (M8).
 | D-10 | Agentes y skills seleccionables con recomendación determinista |
 | D-21 | Human in the loop por compuertas, preguntas con respuesta recomendada y revisión por excepción; tres niveles de autonomía por proyecto (sección 10.4) |
 | D-19 | Autenticación con **Keycloak** (IdP + broker SSO, Organizations por tenant, tema Keycloakify); la plataforma no guarda credenciales; OpenFGA autoriza |
+| D-22 | Jira y Azure DevOps: **conexión por tenant** (Administración), **vínculo por proyecto** (asistente o pestaña Backlog); los agentes crean y cierran ítems, el tester crea bugs y el developer los corrige dentro de los límites de autonomía e iteraciones (7.6) |
+| D-23 | Panel flotante de actividad de agentes en toda la app: minimizable/maximizable, evento más reciente arriba, agente, tiempo y costo por evento, JSON completo descargable en errores (18.8) |
+| D-24 | Referencias de UI (capturas, Figma, prototipos) cargables desde la creación del proyecto y después; chat con el agente UX/UI designer para pedir cambios al prototipo, con versiones y sin aprobar por sí solo (7.1, 7.4) |
 | D-18 | Producto nativamente en inglés (UI, prompts, skills, catálogo); español como traducción completa; idioma de artefactos configurable por proyecto (inglés por defecto) |
 
 ### 22.2 Pendientes

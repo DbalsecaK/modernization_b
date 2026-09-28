@@ -27,3 +27,8 @@ Capturas de `apps/web` con datos de ejemplo (sección 18.7 de la especificación
 | `507-ui-figma.png` | Flujo 2 → Diseño UI: frames de Figma y huecos detectados |
 | `509-add-connection.png` | Configuración IA → Agregar conexión (Bedrock) con descubrimiento de modelos |
 | `515-wizard-autonomy.png` | Asistente → Nivel de autonomía y cuándo interviene la persona |
+| `520-backlog.png` | Proyecto → Backlog: conexión Jira/Azure DevOps, reglas de automatización, ítems y ciclo del bug |
+| `521-ui-refs-chat.png` | Proyecto → Diseño UI: referencias (capturas, Figma, prototipos) y chat de cambios al prototipo |
+| `522-wizard-source.png` | Asistente → Origen: documentos, referencias de UI y vínculo con Jira/Azure DevOps |
+| `523-activity-panel.png` | Panel flotante de actividad de agentes (abierto): evento más reciente arriba, agente, tiempo y costo |
+| `524-activity-panel-max.png` | Panel de actividad maximizado con un error expandido y descarga del JSON |
