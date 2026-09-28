@@ -1,3 +1,4 @@
+// Design of the M0b Keycloak theme (Keycloakify, D-27): not routed in M0, where Keycloak shows its own pages.
 import { useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
@@ -24,21 +25,29 @@ export function AcceptInvitePage() {
   const valid = policy.every((rule) => rule.test(password)) && password === confirm
 
   return (
-    <AuthLayout title={t('auth.invite.title')} subtitle={t('auth.invite.subtitle', { tenant: 'Andes Bank', role: t('roles.auditor') })}>
+    <AuthLayout
+      title={t('auth.invite.title')}
+      subtitle={t('auth.invite.subtitle', { tenant: 'Andes Bank', role: t('roles.auditor') })}
+    >
       <form
         className="space-y-4"
         onSubmit={(e) => {
           e.preventDefault()
           if (!valid) return
           startMfaChallenge('jmena@andesbank.example')
-          void navigate({ to: '/login/mfa' })
+          void navigate({ to: '/login' })
         }}
       >
         <Field label={t('auth.invite.name')}>
           <Input defaultValue="Jorge Mena" autoComplete="name" />
         </Field>
         <Field label={t('auth.invite.newPassword')}>
-          <Input type="password" autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} />
+          <Input
+            type="password"
+            autoComplete="new-password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
         </Field>
         <ul className="grid grid-cols-1 gap-1 text-xs sm:grid-cols-2">
           {policy.map((rule) => {
@@ -51,7 +60,12 @@ export function AcceptInvitePage() {
           })}
         </ul>
         <Field label={t('auth.invite.confirmPassword')}>
-          <Input type="password" autoComplete="new-password" value={confirm} onChange={(e) => setConfirm(e.target.value)} />
+          <Input
+            type="password"
+            autoComplete="new-password"
+            value={confirm}
+            onChange={(e) => setConfirm(e.target.value)}
+          />
         </Field>
         <p className="text-xs text-muted">{t('auth.invite.mfaNext')}</p>
         <Button type="submit" variant="primary" className="w-full" disabled={!valid}>

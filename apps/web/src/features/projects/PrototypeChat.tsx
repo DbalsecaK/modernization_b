@@ -25,7 +25,12 @@ export function PrototypeChat({ screen }: { screen: string }) {
     list.current?.scrollTo({ top: list.current.scrollHeight })
   }, [messages, busy])
 
-  const suggestions = [t('protoChat.suggest.fields'), t('protoChat.suggest.mobile'), t('protoChat.suggest.errors'), t('protoChat.suggest.brand')]
+  const suggestions = [
+    t('protoChat.suggest.fields'),
+    t('protoChat.suggest.mobile'),
+    t('protoChat.suggest.errors'),
+    t('protoChat.suggest.brand'),
+  ]
 
   function send(value: string) {
     const request = value.trim()
@@ -36,7 +41,10 @@ export function PrototypeChat({ screen }: { screen: string }) {
     setAttachment(null)
     setBusy(true)
     window.setTimeout(() => {
-      setMessages((m) => [...m, { id: Date.now() + 1, from: 'agent', text: t('protoChat.reply', { request, version: next }), version: next }])
+      setMessages((m) => [
+        ...m,
+        { id: Date.now() + 1, from: 'agent', text: t('protoChat.reply', { request, version: next }), version: next },
+      ])
       setVersion(next)
       setBusy(false)
     }, 1400)
@@ -44,21 +52,39 @@ export function PrototypeChat({ screen }: { screen: string }) {
 
   return (
     <Card className="flex h-[480px] flex-col">
-      <CardHeader title={t('protoChat.title')} subtitle={t('protoChat.subtitle', { screen })} action={<Badge tone="info">v{version}</Badge>} />
+      <CardHeader
+        title={t('protoChat.title')}
+        subtitle={t('protoChat.subtitle', { screen })}
+        action={<Badge tone="info">v{version}</Badge>}
+      />
       <div ref={list} className="flex-1 space-y-3 overflow-y-auto px-5 py-4">
         {messages.map((m) => (
           <div key={m.id} className={cn('flex gap-2', m.from === 'user' && 'flex-row-reverse')}>
-            <span className={cn('flex h-7 w-7 shrink-0 items-center justify-center rounded-full', m.from === 'agent' ? 'bg-brand/10 text-brand dark:bg-accent/15 dark:text-accent' : 'bg-surface-2 text-muted')}>
+            <span
+              className={cn(
+                'flex h-7 w-7 shrink-0 items-center justify-center rounded-full',
+                m.from === 'agent'
+                  ? 'bg-brand/10 text-brand dark:bg-accent/15 dark:text-accent'
+                  : 'bg-surface-2 text-muted',
+              )}
+            >
               {m.from === 'agent' ? <Bot size={14} /> : <UserRound size={14} />}
             </span>
-            <div className={cn('max-w-[80%] rounded-lg px-3 py-2 text-sm', m.from === 'agent' ? 'bg-surface-2 text-text' : 'bg-series-1/10 text-text')}>
+            <div
+              className={cn(
+                'max-w-[80%] rounded-lg px-3 py-2 text-sm',
+                m.from === 'agent' ? 'bg-surface-2 text-text' : 'bg-series-1/10 text-text',
+              )}
+            >
               {m.text}
               {m.attachment && (
                 <div className="mt-1 flex items-center gap-1 text-xs text-muted">
                   <Image size={12} /> {m.attachment}
                 </div>
               )}
-              {m.version && <div className="mt-1 text-xs text-muted">{t('protoChat.newVersion', { version: m.version })}</div>}
+              {m.version && (
+                <div className="mt-1 text-xs text-muted">{t('protoChat.newVersion', { version: m.version })}</div>
+              )}
             </div>
           </div>
         ))}
@@ -71,7 +97,12 @@ export function PrototypeChat({ screen }: { screen: string }) {
       <div className="space-y-2 border-t border-border px-4 py-3">
         <div className="flex flex-wrap gap-1.5">
           {suggestions.map((s) => (
-            <button key={s} onClick={() => send(s)} disabled={busy} className="rounded-full border border-border px-2.5 py-1 text-xs text-text-2 hover:bg-surface-2 disabled:opacity-50">
+            <button
+              key={s}
+              onClick={() => send(s)}
+              disabled={busy}
+              className="rounded-full border border-border px-2.5 py-1 text-xs text-text-2 hover:bg-surface-2 disabled:opacity-50"
+            >
               {s}
             </button>
           ))}
@@ -84,9 +115,18 @@ export function PrototypeChat({ screen }: { screen: string }) {
             send(text)
           }}
         >
-          <label className="flex cursor-pointer items-center rounded-md border border-border px-2.5 text-muted hover:bg-surface-2" title={t('protoChat.attach')}>
+          <label
+            className="flex cursor-pointer items-center rounded-md border border-border px-2.5 text-muted hover:bg-surface-2"
+            title={t('protoChat.attach')}
+          >
             <Paperclip size={16} />
-            <input type="file" accept="image/*" className="sr-only" onChange={(e) => setAttachment(e.target.files?.[0]?.name ?? null)} aria-label={t('protoChat.attach')} />
+            <input
+              type="file"
+              accept="image/*"
+              className="sr-only"
+              onChange={(e) => setAttachment(e.target.files?.[0]?.name ?? null)}
+              aria-label={t('protoChat.attach')}
+            />
           </label>
           <input
             value={text}

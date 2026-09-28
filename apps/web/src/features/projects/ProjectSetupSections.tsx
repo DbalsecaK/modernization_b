@@ -30,14 +30,23 @@ export function DocumentsSection({ value, onChange }: { value: string[]; onChang
         <FileText size={20} className="text-muted" />
         <span className="text-sm text-text">{t('wizard.dropInputs')}</span>
         <span className="text-xs text-muted">{t('inputForms.acceptedDocs')}</span>
-        <input type="file" multiple className="sr-only" onChange={(e) => onChange([...value, ...Array.from(e.target.files ?? []).map((f) => f.name)])} />
+        <input
+          type="file"
+          multiple
+          className="sr-only"
+          onChange={(e) => onChange([...value, ...Array.from(e.target.files ?? []).map((f) => f.name)])}
+        />
       </label>
       {value.length > 0 && (
         <ul className="mt-2 flex flex-wrap gap-2">
           {value.map((d) => (
             <li key={d} className="flex items-center gap-1 rounded bg-surface-2 px-2 py-1 font-mono text-xs text-text">
               {d}
-              <button onClick={() => onChange(value.filter((x) => x !== d))} aria-label={t('common.remove')} className="text-muted hover:text-critical">
+              <button
+                onClick={() => onChange(value.filter((x) => x !== d))}
+                aria-label={t('common.remove')}
+                className="text-muted hover:text-critical"
+              >
                 <X size={12} />
               </button>
             </li>
@@ -73,7 +82,15 @@ export function UiReferencesSection({ value, onChange }: { value: UiReferences; 
             accept="image/*"
             multiple
             className="sr-only"
-            onChange={(e) => onChange({ ...value, screens: [...value.screens, ...Array.from(e.target.files ?? []).map((f) => ({ name: f.name, url: URL.createObjectURL(f) }))] })}
+            onChange={(e) =>
+              onChange({
+                ...value,
+                screens: [
+                  ...value.screens,
+                  ...Array.from(e.target.files ?? []).map((f) => ({ name: f.name, url: URL.createObjectURL(f) })),
+                ],
+              })
+            }
           />
         </label>
         {value.screens.length > 0 && (
@@ -117,7 +134,9 @@ export function UiReferencesSection({ value, onChange }: { value: UiReferences; 
         onAdd={() => (onChange({ ...value, prototypes: [...value.prototypes, proto.trim()] }), setProto(''))}
         onRemove={(l) => onChange({ ...value, prototypes: value.prototypes.filter((x) => x !== l) })}
       />
-      {value.screens.length === 0 && value.figma.length === 0 && value.prototypes.length === 0 && <Notice tone="info">{t('setup.noUiRefs')}</Notice>}
+      {value.screens.length === 0 && value.figma.length === 0 && value.prototypes.length === 0 && (
+        <Notice tone="info">{t('setup.noUiRefs')}</Notice>
+      )}
     </div>
   )
 }
@@ -147,7 +166,12 @@ function LinkList({
   return (
     <Field label={label} hint={input && !valid ? t('setup.invalidLink') : hint}>
       <div className="flex gap-2">
-        <Input value={input} onChange={(e) => setInput(e.target.value)} placeholder={placeholder} onKeyDown={(e) => e.key === 'Enter' && valid && (e.preventDefault(), onAdd())} />
+        <Input
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          placeholder={placeholder}
+          onKeyDown={(e) => e.key === 'Enter' && valid && (e.preventDefault(), onAdd())}
+        />
         <Button type="button" onClick={onAdd} disabled={!valid}>
           <Plus size={14} /> {t('setup.add')}
         </Button>
@@ -158,7 +182,12 @@ function LinkList({
             <li key={l} className="flex items-center gap-2 rounded bg-surface-2 px-2 py-1 text-xs">
               <Link2 size={12} className="text-muted" />
               <span className="flex-1 truncate font-mono text-text">{l}</span>
-              <button type="button" onClick={() => onRemove(l)} aria-label={t('common.remove')} className="text-muted hover:text-critical">
+              <button
+                type="button"
+                onClick={() => onRemove(l)}
+                aria-label={t('common.remove')}
+                className="text-muted hover:text-critical"
+              >
                 <X size={12} />
               </button>
             </li>
@@ -179,7 +208,10 @@ export function WorkTrackingSection({ value, onChange }: { value: WorkTracking; 
       </div>
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label={t('setup.integration')} hint={t('setup.integrationHint')}>
-          <Select value={value.integration} onChange={(e) => onChange({ ...value, integration: e.target.value as WorkTracking['integration'] })}>
+          <Select
+            value={value.integration}
+            onChange={(e) => onChange({ ...value, integration: e.target.value as WorkTracking['integration'] })}
+          >
             <option value="none">{t('setup.noIntegration')}</option>
             <option value="jira">Jira — andesbank.atlassian.net</option>
             <option value="azureDevOps">Azure DevOps — dev.azure.com/andesbank</option>

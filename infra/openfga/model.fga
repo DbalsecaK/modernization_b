@@ -1,0 +1,63 @@
+model
+  schema 1.1
+
+# Authorization model of the platform (spec 16, D-15, ADR-0001; plan M0 section 6).
+# Relation names are the permission keys of nexti_core.authz_catalog with "." replaced by "_".
+# PostgreSQL is the source of truth; these tuples are derived from it (outbox + reconciliation).
+
+type user
+
+# platform:nexti
+type platform
+  relations
+    define super_admin: [user]
+    define support_operator: [user]
+
+# Tenant-scope role of one tenant (a configurable bundle): role:<role id>
+type role
+  relations
+    define assignee: [user]
+
+# Project-scope role in one project: role_binding:<project id>_<role id>. One object per project and role,
+# so a role held in one project never grants anything in another project.
+type role_binding
+  relations
+    define assignee: [user]
+
+type tenant
+  relations
+    define platform: [platform]
+    define member: [user]
+    define admin: [user] or super_admin from platform
+    define viewer: member or admin or support_operator from platform
+    # Tenant permissions, granted to tenant roles; the administrator holds all of them.
+    define project_create: [role#assignee] or admin
+    define code_view: [role#assignee] or admin
+    define models_configure: [role#assignee] or admin
+    define usage_view: [role#assignee] or admin
+    define cost_view: [role#assignee] or admin
+    define skills_publish: [role#assignee] or admin
+    define users_manage: [role#assignee] or admin
+    define audit_view: [role#assignee] or admin
+
+type project
+  relations
+    define tenant: [tenant]
+    define member: [role_binding#assignee]
+    # Auditors read all the evidence of their tenant (16.1).
+    define viewer: member or admin from tenant or audit_view from tenant
+    # Project permissions, granted to project roles; the tenant administrator inherits them (16.3) ...
+    define project_configure: [role_binding#assignee] or admin from tenant
+    define input_upload: [role_binding#assignee] or admin from tenant
+    define pipeline_run: [role_binding#assignee] or admin from tenant
+    define gate_c1_approve: [role_binding#assignee] or admin from tenant
+    define gate_c2_approve: [role_binding#assignee] or admin from tenant
+    define gate_c3_approve: [role_binding#assignee] or admin from tenant
+    define code_view: [role_binding#assignee] or code_view from tenant
+    define code_download: [role_binding#assignee] or admin from tenant
+    define code_push: [role_binding#assignee] or admin from tenant
+    define usage_view: [role_binding#assignee] or usage_view from tenant
+    define agents_select: [role_binding#assignee] or admin from tenant
+    define skills_select: [role_binding#assignee] or admin from tenant
+    # ... except signing sign-offs, which needs a project role with that permission (16.3).
+    define signoff_sign: [role_binding#assignee]

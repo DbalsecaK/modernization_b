@@ -1,15 +1,47 @@
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { AlertTriangle, Bot, CheckCircle2, GitMerge, History, Link2, Pencil, Plus, RotateCcw, Scissors, Trash2, UserRound } from 'lucide-react'
+import {
+  AlertTriangle,
+  Bot,
+  CheckCircle2,
+  GitMerge,
+  History,
+  Link2,
+  Pencil,
+  Plus,
+  RotateCcw,
+  Scissors,
+  Trash2,
+  UserRound,
+} from 'lucide-react'
 import { cn } from '@/lib/cn'
 import { formatDateTime } from '@/lib/format'
-import { contracts, rules, screenSpecs, storyFeatures, storySuggestions, type StoryStatus, type UserStory } from '@/mocks/data'
+import {
+  contracts,
+  rules,
+  screenSpecs,
+  storyFeatures,
+  storySuggestions,
+  type StoryStatus,
+  type UserStory,
+} from '@/mocks/data'
 import { Badge, Button, Card, CardBody, CardHeader, Code, Field, Input, Select } from '@/components/ui/primitives'
 import { CheckboxGroup, Drawer, Textarea, toast } from '@/components/ui/overlay'
 import { Notice } from '../NewProjectWizard'
 import { validatePlan } from '@/lib/migrationPlan'
 import { splitScenarios, validateCriteria, type GherkinIssue } from '@/lib/gherkin'
-import { approveC1, can, discardStory, dismissSuggestion, mergeStories, nextStoryId, restoreStory, saveStory, splitStory, useStories } from './store'
+import {
+  approveC1,
+  can,
+  discardStory,
+  dismissSuggestion,
+  mergeStories,
+  nextStoryId,
+  restoreStory,
+  saveStory,
+  splitStory,
+  useStories,
+} from './store'
 import { RoleSwitch } from './RoleSwitch'
 
 // User stories to build, reviewed and approved at gate C1 before the migration starts (spec 7.7).
@@ -56,7 +88,9 @@ export function UserStoriesView() {
   const coverageGaps = uncovered.rules.length + uncovered.screens.length + uncovered.contracts.length
 
   const list = stories.filter(
-    (s) => (status === 'all' ? s.status !== 'merged' : s.status === status) && `${s.id} ${s.title}`.toLowerCase().includes(query.toLowerCase()),
+    (s) =>
+      (status === 'all' ? s.status !== 'merged' : s.status === status) &&
+      `${s.id} ${s.title}`.toLowerCase().includes(query.toLowerCase()),
   )
   const counts = (st: StoryStatus) => stories.filter((s) => s.status === st).length
   const suggestions = storySuggestions.filter((g) => g.story === story.id && !dismissed.includes(g.id))
@@ -66,10 +100,18 @@ export function UserStoriesView() {
       <div className="flex flex-wrap items-center gap-3">
         <div className="flex flex-wrap gap-2 text-xs">
           <Badge>{t('stories.total', { count: live.length })}</Badge>
-          <Badge tone="good">{t('stories.status.approved')}: {counts('approved')}</Badge>
-          <Badge tone="info">{t('stories.status.inReview')}: {counts('inReview')}</Badge>
-          <Badge tone="warning">{t('stories.status.question')}: {counts('question')}</Badge>
-          <Badge>{t('stories.status.draft')}: {counts('draft')}</Badge>
+          <Badge tone="good">
+            {t('stories.status.approved')}: {counts('approved')}
+          </Badge>
+          <Badge tone="info">
+            {t('stories.status.inReview')}: {counts('inReview')}
+          </Badge>
+          <Badge tone="warning">
+            {t('stories.status.question')}: {counts('question')}
+          </Badge>
+          <Badge>
+            {t('stories.status.draft')}: {counts('draft')}
+          </Badge>
           <Badge>{t('stories.points', { count: live.reduce((a, s) => a + s.points, 0) })}</Badge>
         </div>
         <div className="ml-auto flex flex-wrap items-center gap-2">
@@ -96,7 +138,14 @@ export function UserStoriesView() {
         <Notice tone="info">{t('stories.afterC1')}</Notice>
       ) : (
         <Notice tone={blockers > 0 ? 'warning' : 'info'}>
-          {blockers > 0 ? t('stories.blockers', { questions: questions.length, criteria: noCriteria.length, invalid: invalid.length, plan: hardIssues.length }) : t('stories.readyToApprove')}
+          {blockers > 0
+            ? t('stories.blockers', {
+                questions: questions.length,
+                criteria: noCriteria.length,
+                invalid: invalid.length,
+                plan: hardIssues.length,
+              })
+            : t('stories.readyToApprove')}
         </Notice>
       )}
       {(coverageGaps > 0 || untraced.length > 0 || outOfScope.length > 0) && (
@@ -105,9 +154,13 @@ export function UserStoriesView() {
           <CardBody className="space-y-1.5 text-sm">
             {uncovered.rules.length > 0 && <Gap label={t('stories.uncoveredRules')} items={uncovered.rules} />}
             {uncovered.screens.length > 0 && <Gap label={t('stories.uncoveredScreens')} items={uncovered.screens} />}
-            {uncovered.contracts.length > 0 && <Gap label={t('stories.uncoveredContracts')} items={uncovered.contracts} />}
+            {uncovered.contracts.length > 0 && (
+              <Gap label={t('stories.uncoveredContracts')} items={uncovered.contracts} />
+            )}
             {untraced.length > 0 && <Gap label={t('stories.untraced')} items={untraced.map((s) => s.id)} />}
-            {outOfScope.length > 0 && <Gap label={t('stories.outOfScope')} items={outOfScope.map((s) => s.id)} tone="neutral" />}
+            {outOfScope.length > 0 && (
+              <Gap label={t('stories.outOfScope')} items={outOfScope.map((s) => s.id)} tone="neutral" />
+            )}
           </CardBody>
         </Card>
       )}
@@ -115,9 +168,20 @@ export function UserStoriesView() {
       <div className="grid gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
         <Card>
           <div className="flex gap-2 border-b border-border p-3">
-            <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder={t('stories.search')} aria-label={t('stories.search')} className="h-9" />
+            <Input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder={t('stories.search')}
+              aria-label={t('stories.search')}
+              className="h-9"
+            />
             <div className="w-40 shrink-0">
-              <Select className="h-9" value={status} onChange={(e) => setStatus(e.target.value as typeof status)} aria-label={t('stories.filterStatus')}>
+              <Select
+                className="h-9"
+                value={status}
+                onChange={(e) => setStatus(e.target.value as typeof status)}
+                aria-label={t('stories.filterStatus')}
+              >
                 <option value="all">{t('stories.allStatuses')}</option>
                 {(['draft', 'inReview', 'question', 'approved', 'discarded'] as const).map((st) => (
                   <option key={st} value={st}>
@@ -138,17 +202,31 @@ export function UserStoriesView() {
                 <ul className="divide-y divide-border">
                   {items.map((s) => (
                     <li key={s.id}>
-                      <button onClick={() => setSelected(s.id)} className={cn('w-full px-4 py-2.5 text-left hover:bg-surface-2', selected === s.id && 'bg-surface-2')}>
+                      <button
+                        onClick={() => setSelected(s.id)}
+                        className={cn(
+                          'w-full px-4 py-2.5 text-left hover:bg-surface-2',
+                          selected === s.id && 'bg-surface-2',
+                        )}
+                      >
                         <div className="flex items-center gap-2">
                           <span className="font-mono text-xs text-info">{s.id}</span>
-                          {s.origin === 'user' && <UserRound size={12} className="text-muted" aria-label={t('stories.origin.user')} />}
-                          {!traced(s) && active(s) && <AlertTriangle size={12} className="text-warning" aria-label={t('stories.untraced')} />}
-                          {active(s) && validateCriteria(s.criteria).length > 0 && <AlertTriangle size={12} className="text-critical" aria-label={t('gherkin.invalidStory')} />}
+                          {s.origin === 'user' && (
+                            <UserRound size={12} className="text-muted" aria-label={t('stories.origin.user')} />
+                          )}
+                          {!traced(s) && active(s) && (
+                            <AlertTriangle size={12} className="text-warning" aria-label={t('stories.untraced')} />
+                          )}
+                          {active(s) && validateCriteria(s.criteria).length > 0 && (
+                            <AlertTriangle size={12} className="text-critical" aria-label={t('gherkin.invalidStory')} />
+                          )}
                           <Badge tone={storyStatusTone[s.status]} className="ml-auto">
                             {t(`stories.status.${s.status}`)}
                           </Badge>
                         </div>
-                        <div className={cn('mt-0.5 text-sm text-text', !active(s) && 'line-through opacity-60')}>{s.title}</div>
+                        <div className={cn('mt-0.5 text-sm text-text', !active(s) && 'line-through opacity-60')}>
+                          {s.title}
+                        </div>
                         <div className="text-xs text-muted">
                           {s.priority} · {t('stories.points', { count: s.points })} · {waveLabel(plan, s.id, t)}
                         </div>
@@ -170,16 +248,27 @@ export function UserStoriesView() {
                   <Badge tone={storyStatusTone[story.status]}>{t(`stories.status.${story.status}`)}</Badge>
                 </span>
               }
-              subtitle={t('stories.meta', { feature: storyFeatures.find((f) => f.id === story.feature)?.name, version: story.version, wave: waveLabel(plan, story.id, t) })}
+              subtitle={t('stories.meta', {
+                feature: storyFeatures.find((f) => f.id === story.feature)?.name,
+                version: story.version,
+                wave: waveLabel(plan, story.id, t),
+              })}
             />
             <CardBody className="space-y-4 text-sm">
               <p className="text-text">
-                {t('stories.asA')} <b>{story.asA}</b>, {t('stories.iWant')} <b>{story.iWant}</b>, {t('stories.soThat')} <b>{story.soThat}</b>.
+                {t('stories.asA')} <b>{story.asA}</b>, {t('stories.iWant')} <b>{story.iWant}</b>, {t('stories.soThat')}{' '}
+                <b>{story.soThat}</b>.
               </p>
               {story.status === 'discarded' && (
-                <Notice tone="warning">{t(story.outOfScope ? 'stories.discardedOos' : 'stories.discardedMsg', { reason: story.discardReason })}</Notice>
+                <Notice tone="warning">
+                  {t(story.outOfScope ? 'stories.discardedOos' : 'stories.discardedMsg', {
+                    reason: story.discardReason,
+                  })}
+                </Notice>
               )}
-              {story.status === 'merged' && <Notice tone="info">{t('stories.mergedMsg', { id: story.mergedInto })}</Notice>}
+              {story.status === 'merged' && (
+                <Notice tone="info">{t('stories.mergedMsg', { id: story.mergedInto })}</Notice>
+              )}
 
               <div>
                 <div className="mb-1 text-xs font-medium text-muted">{t('stories.criteria')}</div>
@@ -191,7 +280,9 @@ export function UserStoriesView() {
                       const issues = validateCriteria(story.criteria).filter((x) => x.scenario === i)
                       return (
                         <div key={i}>
-                          <Code className={cn('whitespace-pre-wrap', issues.length > 0 && 'ring-1 ring-critical')}>{c}</Code>
+                          <Code className={cn('whitespace-pre-wrap', issues.length > 0 && 'ring-1 ring-critical')}>
+                            {c}
+                          </Code>
                           {issues.length === 0 ? (
                             <div className="mt-1 flex items-center gap-1 text-xs text-good-ink">
                               <CheckCircle2 size={12} /> {t('gherkin.valid')}
@@ -249,7 +340,11 @@ export function UserStoriesView() {
                     <Button size="sm" disabled={!editable} onClick={() => setEditing(story)}>
                       <Pencil size={14} /> {t('stories.edit')}
                     </Button>
-                    <Button size="sm" disabled={!editable || story.criteria.length + story.rules.length < 2} onClick={() => setSplitting(true)}>
+                    <Button
+                      size="sm"
+                      disabled={!editable || story.criteria.length + story.rules.length < 2}
+                      onClick={() => setSplitting(true)}
+                    >
                       <Scissors size={14} /> {t('stories.split')}
                     </Button>
                     <Button size="sm" disabled={!editable} onClick={() => setMerging(true)}>
@@ -261,7 +356,11 @@ export function UserStoriesView() {
                   </>
                 ) : (
                   story.status === 'discarded' && (
-                    <Button size="sm" disabled={!editable} onClick={() => (restoreStory(story.id), toast(t('stories.restored')))}>
+                    <Button
+                      size="sm"
+                      disabled={!editable}
+                      onClick={() => (restoreStory(story.id), toast(t('stories.restored')))}
+                    >
                       <RotateCcw size={14} /> {t('stories.restore')}
                     </Button>
                   )
@@ -286,7 +385,8 @@ export function UserStoriesView() {
                         size="sm"
                         disabled={!editable}
                         onClick={() => {
-                          if (g.kind === 'missingCriterion') saveStory({ ...story, criteria: [...story.criteria, g.text] }, t('stories.historyAccepted'))
+                          if (g.kind === 'missingCriterion')
+                            saveStory({ ...story, criteria: [...story.criteria, g.text] }, t('stories.historyAccepted'))
                           else setSplitting(true)
                           dismissSuggestion(g.id)
                         }}
@@ -304,9 +404,17 @@ export function UserStoriesView() {
           )}
 
           <Card>
-            <CardHeader title={<span className="flex items-center gap-1.5"><History size={14} /> {t('stories.history')}</span>} />
+            <CardHeader
+              title={
+                <span className="flex items-center gap-1.5">
+                  <History size={14} /> {t('stories.history')}
+                </span>
+              }
+            />
             <ul className="divide-y divide-border">
-              {history.filter((h) => h.story === story.id).length === 0 && <li className="px-5 py-3 text-xs text-muted">{t('stories.noHistory')}</li>}
+              {history.filter((h) => h.story === story.id).length === 0 && (
+                <li className="px-5 py-3 text-xs text-muted">{t('stories.noHistory')}</li>
+              )}
               {history
                 .filter((h) => h.story === story.id)
                 .map((h, i) => (
@@ -322,9 +430,19 @@ export function UserStoriesView() {
         </div>
       </div>
 
-      {editing && <StoryForm key={editing.id} story={editing} stories={stories} onClose={() => setEditing(null)} onSaved={(id) => setSelected(id)} />}
+      {editing && (
+        <StoryForm
+          key={editing.id}
+          story={editing}
+          stories={stories}
+          onClose={() => setEditing(null)}
+          onSaved={(id) => setSelected(id)}
+        />
+      )}
       {splitting && <SplitForm story={story} onClose={() => setSplitting(false)} onDone={(id) => setSelected(id)} />}
-      {merging && <MergeForm story={story} stories={live.filter((s) => s.id !== story.id)} onClose={() => setMerging(false)} />}
+      {merging && (
+        <MergeForm story={story} stories={live.filter((s) => s.id !== story.id)} onClose={() => setMerging(false)} />
+      )}
       {discarding && <DiscardForm story={story} stories={live} onClose={() => setDiscarding(false)} />}
     </div>
   )
@@ -382,7 +500,11 @@ function GherkinIssues({ issues, numbered }: { issues: GherkinIssue[]; numbered?
           <span>
             {numbered && <b>{t('gherkin.scenario', { n: x.scenario + 1 })} · </b>}
             {x.code === 'outOfOrder'
-              ? t('gherkin.issue.outOfOrder', { line: x.line, detail: t(`gherkin.step.${x.detail}`), after: t(`gherkin.step.${x.after}`) })
+              ? t('gherkin.issue.outOfOrder', {
+                  line: x.line,
+                  detail: t(`gherkin.step.${x.detail}`),
+                  after: t(`gherkin.step.${x.after}`),
+                })
               : t(`gherkin.issue.${x.code}`, { line: x.line, detail: x.detail })}
           </span>
         </li>
@@ -400,7 +522,10 @@ function Links({ label, items }: { label: string; items: string[] }) {
       ) : (
         <div className="flex flex-wrap gap-1">
           {items.map((i) => (
-            <span key={i} className="inline-flex items-center gap-1 rounded bg-surface-2 px-1.5 py-0.5 font-mono text-xs text-text">
+            <span
+              key={i}
+              className="inline-flex items-center gap-1 rounded bg-surface-2 px-1.5 py-0.5 font-mono text-xs text-text"
+            >
               <Link2 size={10} className="text-muted" /> {i}
             </span>
           ))}
@@ -419,7 +544,17 @@ function Meta({ label, value }: { label: string; value: string }) {
   )
 }
 
-function StoryForm({ story, stories, onClose, onSaved }: { story: UserStory; stories: UserStory[]; onClose: () => void; onSaved: (id: string) => void }) {
+function StoryForm({
+  story,
+  stories,
+  onClose,
+  onSaved,
+}: {
+  story: UserStory
+  stories: UserStory[]
+  onClose: () => void
+  onSaved: (id: string) => void
+}) {
   const { t } = useTranslation()
   const isNew = story.version === 0
   const [draft, setDraft] = useState<UserStory>(story)
@@ -448,7 +583,10 @@ function StoryForm({ story, stories, onClose, onSaved }: { story: UserStory; sto
             disabled={!valid}
             onClick={() => {
               const saved = { ...draft, criteria: scenarios }
-              saveStory(isNew ? { ...saved, version: 0 } : saved, isNew ? t('stories.historyCreated') : t('stories.historyEdited'))
+              saveStory(
+                isNew ? { ...saved, version: 0 } : saved,
+                isNew ? t('stories.historyCreated') : t('stories.historyEdited'),
+              )
               toast(t('stories.saved'))
               onSaved(story.id)
               onClose()
@@ -519,14 +657,35 @@ function StoryForm({ story, stories, onClose, onSaved }: { story: UserStory; sto
           ))}
       </Field>
       <Field label={t('stories.rules')}>
-        <CheckboxGroup options={rules.map((r) => ({ id: r.id, label: <span><span className="font-mono text-xs">{r.id}</span> {r.name}</span> }))} value={draft.rules} onChange={(v) => upd({ rules: v })} />
+        <CheckboxGroup
+          options={rules.map((r) => ({
+            id: r.id,
+            label: (
+              <span>
+                <span className="font-mono text-xs">{r.id}</span> {r.name}
+              </span>
+            ),
+          }))}
+          value={draft.rules}
+          onChange={(v) => upd({ rules: v })}
+        />
       </Field>
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label={t('stories.screens')}>
-          <CheckboxGroup columns={1} options={screenSpecs.map((x) => ({ id: x.id, label: `${x.id} ${x.name}` }))} value={draft.screens} onChange={(v) => upd({ screens: v })} />
+          <CheckboxGroup
+            columns={1}
+            options={screenSpecs.map((x) => ({ id: x.id, label: `${x.id} ${x.name}` }))}
+            value={draft.screens}
+            onChange={(v) => upd({ screens: v })}
+          />
         </Field>
         <Field label={t('stories.contracts')}>
-          <CheckboxGroup columns={1} options={contracts.map((c) => ({ id: c.id, label: `${c.id} ${c.method} ${c.path}` }))} value={draft.contracts} onChange={(v) => upd({ contracts: v })} />
+          <CheckboxGroup
+            columns={1}
+            options={contracts.map((c) => ({ id: c.id, label: `${c.id} ${c.method} ${c.path}` }))}
+            value={draft.contracts}
+            onChange={(v) => upd({ contracts: v })}
+          />
         </Field>
       </div>
       <Field label={t('stories.dependsOn')} hint={t('stories.dependsOnHint')}>
@@ -538,7 +697,13 @@ function StoryForm({ story, stories, onClose, onSaved }: { story: UserStory; sto
                 <input
                   type="checkbox"
                   checked={!!d}
-                  onChange={() => upd({ dependsOn: d ? draft.dependsOn.filter((x) => x.story !== o.id) : [...draft.dependsOn, { story: o.id, kind: 'soft', reason: t('stories.depByUser') }] })}
+                  onChange={() =>
+                    upd({
+                      dependsOn: d
+                        ? draft.dependsOn.filter((x) => x.story !== o.id)
+                        : [...draft.dependsOn, { story: o.id, kind: 'soft', reason: t('stories.depByUser') }],
+                    })
+                  }
                   className="accent-[var(--series-1)]"
                   aria-label={o.id}
                 />
@@ -546,7 +711,18 @@ function StoryForm({ story, stories, onClose, onSaved }: { story: UserStory; sto
                 <span className="flex-1 truncate text-text">{o.title}</span>
                 {d && (
                   <div className="w-32">
-                    <Select className="h-8" value={d.kind} onChange={(e) => upd({ dependsOn: draft.dependsOn.map((x) => (x.story === o.id ? { ...x, kind: e.target.value as 'hard' | 'soft' } : x)) })} aria-label={t('stories.depKind')}>
+                    <Select
+                      className="h-8"
+                      value={d.kind}
+                      onChange={(e) =>
+                        upd({
+                          dependsOn: draft.dependsOn.map((x) =>
+                            x.story === o.id ? { ...x, kind: e.target.value as 'hard' | 'soft' } : x,
+                          ),
+                        })
+                      }
+                      aria-label={t('stories.depKind')}
+                    >
                       <option value="hard">{t('storyPlan.kind.hard')}</option>
                       <option value="soft">{t('storyPlan.kind.soft')}</option>
                     </Select>
@@ -557,13 +733,23 @@ function StoryForm({ story, stories, onClose, onSaved }: { story: UserStory; sto
           })}
         </ul>
       </Field>
-      {draft.rules.length + draft.screens.length + draft.contracts.length + draft.nodes.length === 0 && <Notice tone="warning">{t('stories.untracedHint')}</Notice>}
+      {draft.rules.length + draft.screens.length + draft.contracts.length + draft.nodes.length === 0 && (
+        <Notice tone="warning">{t('stories.untracedHint')}</Notice>
+      )}
       <Notice tone="info">{t('stories.auditNote')}</Notice>
     </Drawer>
   )
 }
 
-function SplitForm({ story, onClose, onDone }: { story: UserStory; onClose: () => void; onDone: (id: string) => void }) {
+function SplitForm({
+  story,
+  onClose,
+  onDone,
+}: {
+  story: UserStory
+  onClose: () => void
+  onDone: (id: string) => void
+}) {
   const { t } = useTranslation()
   const [title, setTitle] = useState(`${story.title} (2)`)
   const [criteria, setCriteria] = useState<string[]>([])
@@ -599,12 +785,24 @@ function SplitForm({ story, onClose, onDone }: { story: UserStory; onClose: () =
       </Field>
       {story.criteria.length > 0 && (
         <Field label={t('stories.moveCriteria')}>
-          <CheckboxGroup columns={1} options={story.criteria.map((c, i) => ({ id: String(i), label: <span className="text-xs">{c.split('\n')[0]}</span> }))} value={criteria} onChange={setCriteria} />
+          <CheckboxGroup
+            columns={1}
+            options={story.criteria.map((c, i) => ({
+              id: String(i),
+              label: <span className="text-xs">{c.split('\n')[0]}</span>,
+            }))}
+            value={criteria}
+            onChange={setCriteria}
+          />
         </Field>
       )}
       {story.rules.length > 0 && (
         <Field label={t('stories.moveRules')}>
-          <CheckboxGroup options={story.rules.map((r) => ({ id: r, label: r }))} value={ruleIds} onChange={setRuleIds} />
+          <CheckboxGroup
+            options={story.rules.map((r) => ({ id: r, label: r }))}
+            value={ruleIds}
+            onChange={setRuleIds}
+          />
         </Field>
       )}
       <Notice tone="info">{t('stories.splitNote')}</Notice>
@@ -689,11 +887,22 @@ function DiscardForm({ story, stories, onClose }: { story: UserStory; stories: U
         <Textarea rows={3} value={reason} onChange={(e) => setReason(e.target.value)} />
       </Field>
       <label className="flex items-center gap-2 text-sm text-text">
-        <input type="checkbox" checked={outOfScope} onChange={(e) => setOutOfScope(e.target.checked)} className="accent-[var(--series-1)]" />
+        <input
+          type="checkbox"
+          checked={outOfScope}
+          onChange={(e) => setOutOfScope(e.target.checked)}
+          className="accent-[var(--series-1)]"
+        />
         {t('stories.markOutOfScope')}
       </label>
-      {orphanRules.length > 0 && <Notice tone="warning">{t('stories.discardRules', { rules: orphanRules.join(', ') })}</Notice>}
-      {dependents.length > 0 && <Notice tone="warning">{t('stories.discardDependents', { stories: dependents.map((s) => s.id).join(', ') })}</Notice>}
+      {orphanRules.length > 0 && (
+        <Notice tone="warning">{t('stories.discardRules', { rules: orphanRules.join(', ') })}</Notice>
+      )}
+      {dependents.length > 0 && (
+        <Notice tone="warning">
+          {t('stories.discardDependents', { stories: dependents.map((s) => s.id).join(', ') })}
+        </Notice>
+      )}
     </Drawer>
   )
 }

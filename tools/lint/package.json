@@ -1,0 +1,16 @@
+{
+  "name": "@nexti/lint",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "ESLint and Prettier for the TypeScript apps. Isolated because TypeScript 7 no longer ships the compiler API typescript-eslint needs; the apps still build with TypeScript 7.",
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.11.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "globals": "^17.12.0",
+    "prettier": "^3.9.9",
+    "typescript": "6.0.3",
+    "typescript-eslint": "^8.70.1"
+  }
+}

@@ -11,7 +11,9 @@ function keys(node: unknown, prefix = ''): string[] {
 function placeholders(node: unknown, prefix = '', out: Record<string, string[]> = {}) {
   if (typeof node === 'string') out[prefix] = [...node.matchAll(/\{\{(\w+)\}\}/g)].map((m) => m[1]).sort()
   else if (node && typeof node === 'object')
-    Object.entries(node as Record<string, unknown>).forEach(([k, v]) => placeholders(v, prefix ? `${prefix}.${k}` : k, out))
+    Object.entries(node as Record<string, unknown>).forEach(([k, v]) =>
+      placeholders(v, prefix ? `${prefix}.${k}` : k, out),
+    )
   return out
 }
 
@@ -33,8 +35,10 @@ describe('translation catalogs', () => {
   it('no Spanish value is left identical to English by mistake in long sentences', () => {
     const enFlat = placeholders(en)
     const same = Object.keys(enFlat).filter((k) => {
-      const a = k.split('.').reduce<any>((n, p) => n?.[p], en)
-      const b = k.split('.').reduce<any>((n, p) => n?.[p], es)
+      const at = (root: unknown) =>
+        k.split('.').reduce<unknown>((n, p) => (n as Record<string, unknown> | undefined)?.[p], root)
+      const a = at(en)
+      const b = at(es)
       return typeof a === 'string' && a.split(' ').length > 4 && a === b
     })
     expect(same).toEqual([])

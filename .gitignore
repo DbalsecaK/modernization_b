@@ -9,3 +9,8 @@ coverage/
 .DS_Store
 __pycache__/
 .venv/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+test-results/
+playwright-report/

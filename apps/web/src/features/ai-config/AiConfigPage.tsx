@@ -7,11 +7,35 @@ import { agents, connections as seedConnections, offerings, profiles as seedProf
 import type { Effort, ModelProfile, ProviderConnection } from '@/mocks/types'
 import { toast } from '@/components/ui/overlay'
 import { ConnectionForm, PriceVersionForm } from './AiForms'
-import { Badge, Button, Card, CardBody, CardHeader, Field, Input, PageHeader, Select, Table, Tabs, Td, Th, Toggle } from '@/components/ui/primitives'
+import {
+  Badge,
+  Button,
+  Card,
+  CardBody,
+  CardHeader,
+  Field,
+  Input,
+  PageHeader,
+  Select,
+  Table,
+  Tabs,
+  Td,
+  Th,
+  Toggle,
+} from '@/components/ui/primitives'
 import { agentName } from '@/features/catalog/AgentCard'
 import { Notice } from '@/features/projects/NewProjectWizard'
 
-const TABS = ['connections', 'catalog', 'profiles', 'assignment', 'pricing', 'policies', 'prompts', 'evaluations'] as const
+const TABS = [
+  'connections',
+  'catalog',
+  'profiles',
+  'assignment',
+  'pricing',
+  'policies',
+  'prompts',
+  'evaluations',
+] as const
 
 export function AiConfigPage() {
   const { t } = useTranslation()
@@ -52,7 +76,13 @@ function Connections() {
   }
   return (
     <div className="space-y-4">
-      <ConnectionForm key={form.initial?.id ?? 'new'} open={form.open} initial={form.initial} onClose={() => setForm({ open: false })} onSave={save} />
+      <ConnectionForm
+        key={form.initial?.id ?? 'new'}
+        open={form.open}
+        initial={form.initial}
+        onClose={() => setForm({ open: false })}
+        onSave={save}
+      />
       <div className="flex justify-end">
         <Button variant="primary" onClick={() => setForm({ open: true })}>
           <Plus size={16} /> {t('ai.addConnection')}
@@ -68,7 +98,11 @@ function Connections() {
                   <div className="text-xs text-muted">{t(`providers.${c.provider}`)}</div>
                 </div>
                 <Badge tone={c.status === 'connected' ? 'good' : c.status === 'error' ? 'critical' : 'neutral'}>
-                  {c.status === 'connected' ? <CheckCircle2 size={12} /> : c.status === 'error' ? <XCircle size={12} /> : null}
+                  {c.status === 'connected' ? (
+                    <CheckCircle2 size={12} />
+                  ) : c.status === 'error' ? (
+                    <XCircle size={12} />
+                  ) : null}
                   {t(`ai.connectionStatus.${c.status}`)}
                 </Badge>
               </div>
@@ -99,9 +133,19 @@ function Connections() {
                     window.setTimeout(() => setTesting(null), 1200)
                   }}
                 >
-                  {testing === c.id ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />} {t('ai.testConnection')}
+                  {testing === c.id ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}{' '}
+                  {t('ai.testConnection')}
                 </Button>
-                <Button size="sm" variant="ghost" onClick={() => setForm({ open: true, initial: c.status === 'notConfigured' ? { ...c, status: 'notConfigured' } : c })}>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() =>
+                    setForm({
+                      open: true,
+                      initial: c.status === 'notConfigured' ? { ...c, status: 'notConfigured' } : c,
+                    })
+                  }
+                >
                   {c.status === 'notConfigured' ? t('ai.configure') : t('common.edit')}
                 </Button>
               </div>
@@ -172,7 +216,12 @@ function Catalog() {
 
 const effortParam: Record<string, Record<Effort, string>> = {
   Claude: { low: 'effort = low', medium: 'effort = medium', high: 'effort = high', max: 'effort = max' },
-  GPT: { low: 'reasoning_effort = low', medium: 'reasoning_effort = medium', high: 'reasoning_effort = high', max: 'reasoning_effort = high (+ max tokens)' },
+  GPT: {
+    low: 'reasoning_effort = low',
+    medium: 'reasoning_effort = medium',
+    high: 'reasoning_effort = high',
+    max: 'reasoning_effort = high (+ max tokens)',
+  },
 }
 
 function Profiles() {
@@ -195,7 +244,14 @@ function Profiles() {
               size="sm"
               onClick={() => {
                 const id = `profile-${list.length + 1}`
-                const created: ModelProfile = { id, name: t('aiForms.untitledProfile'), offeringId: offerings[0].id, effort: 'medium', providerParameter: 'effort = medium', maxOutputTokens: 16000 }
+                const created: ModelProfile = {
+                  id,
+                  name: t('aiForms.untitledProfile'),
+                  offeringId: offerings[0].id,
+                  effort: 'medium',
+                  providerParameter: 'effort = medium',
+                  maxOutputTokens: 16000,
+                }
                 profiles.push(created)
                 setList([...profiles])
                 setEditing(id)
@@ -265,7 +321,8 @@ function Profiles() {
               ))}
             </div>
             <p className="mt-2 text-xs text-muted">
-              {t('ai.providerParameter')}: <span className="font-mono text-text">{effortParam[offering.family]?.[effort] ?? '—'}</span>
+              {t('ai.providerParameter')}:{' '}
+              <span className="font-mono text-text">{effortParam[offering.family]?.[effort] ?? '—'}</span>
             </p>
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
@@ -290,7 +347,13 @@ function Profiles() {
           <Button
             variant="primary"
             onClick={() => {
-              const updated = { ...profile, name: profileName, offeringId, effort, providerParameter: effortParam[offering.family]?.[effort] ?? profile.providerParameter }
+              const updated = {
+                ...profile,
+                name: profileName,
+                offeringId,
+                effort,
+                providerParameter: effortParam[offering.family]?.[effort] ?? profile.providerParameter,
+              }
               const i = profiles.findIndex((p) => p.id === profile.id)
               profiles[i] = updated
               setList([...profiles])
@@ -329,7 +392,11 @@ function Assignment() {
                 <tr key={a.id}>
                   <Td className="text-text">
                     {agentName(a, i18n.language)}
-                    {a.mandatory && <Badge tone="brand" className="ml-2">{t('agents.mandatory')}</Badge>}
+                    {a.mandatory && (
+                      <Badge tone="brand" className="ml-2">
+                        {t('agents.mandatory')}
+                      </Badge>
+                    )}
                   </Td>
                   <Td className="text-xs">{a.phases.map((ph) => t(`phases.${ph}`)).join(', ')}</Td>
                   <Td>
@@ -341,7 +408,9 @@ function Assignment() {
                       ))}
                     </Select>
                   </Td>
-                  <Td className="text-xs">{fb ? `${fb.model} ${fb.version} — ${connectionName(fb.connectionId)}` : '—'}</Td>
+                  <Td className="text-xs">
+                    {fb ? `${fb.model} ${fb.version} — ${connectionName(fb.connectionId)}` : '—'}
+                  </Td>
                 </tr>
               )
             })}
@@ -403,23 +472,54 @@ function Pricing() {
 
 function Policies() {
   const { t } = useTranslation()
-  const [flags, setFlags] = useState({ bedrock: true, foundry: true, openai: false, local: false, differentVerifier: true, noTraining: true })
+  const [flags, setFlags] = useState({
+    bedrock: true,
+    foundry: true,
+    openai: false,
+    local: false,
+    differentVerifier: true,
+    noTraining: true,
+  })
   return (
     <div className="grid gap-6 lg:grid-cols-2">
       <Card>
         <CardHeader title={t('ai.allowedProviders')} subtitle="Andes Bank" />
         <CardBody className="space-y-3">
-          <Toggle checked={flags.bedrock} onChange={(v) => setFlags({ ...flags, bedrock: v })} label={`${t('providers.awsBedrock')} — us-east-1`} />
-          <Toggle checked={flags.foundry} onChange={(v) => setFlags({ ...flags, foundry: v })} label={`${t('providers.azureFoundry')} — eastus2`} />
-          <Toggle checked={flags.openai} onChange={(v) => setFlags({ ...flags, openai: v })} label={t('providers.openai')} />
-          <Toggle checked={flags.local} onChange={(v) => setFlags({ ...flags, local: v })} label={t('ai.localModels')} />
+          <Toggle
+            checked={flags.bedrock}
+            onChange={(v) => setFlags({ ...flags, bedrock: v })}
+            label={`${t('providers.awsBedrock')} — us-east-1`}
+          />
+          <Toggle
+            checked={flags.foundry}
+            onChange={(v) => setFlags({ ...flags, foundry: v })}
+            label={`${t('providers.azureFoundry')} — eastus2`}
+          />
+          <Toggle
+            checked={flags.openai}
+            onChange={(v) => setFlags({ ...flags, openai: v })}
+            label={t('providers.openai')}
+          />
+          <Toggle
+            checked={flags.local}
+            onChange={(v) => setFlags({ ...flags, local: v })}
+            label={t('ai.localModels')}
+          />
         </CardBody>
       </Card>
       <Card>
         <CardHeader title={t('ai.rules')} />
         <CardBody className="space-y-3">
-          <Toggle checked={flags.differentVerifier} onChange={(v) => setFlags({ ...flags, differentVerifier: v })} label={t('ai.differentVerifier')} />
-          <Toggle checked={flags.noTraining} onChange={(v) => setFlags({ ...flags, noTraining: v })} label={t('ai.noTraining')} />
+          <Toggle
+            checked={flags.differentVerifier}
+            onChange={(v) => setFlags({ ...flags, differentVerifier: v })}
+            label={t('ai.differentVerifier')}
+          />
+          <Toggle
+            checked={flags.noTraining}
+            onChange={(v) => setFlags({ ...flags, noTraining: v })}
+            label={t('ai.noTraining')}
+          />
           <Field label={t('ai.monthlyLimit')}>
             <Input type="number" defaultValue={10000} />
           </Field>

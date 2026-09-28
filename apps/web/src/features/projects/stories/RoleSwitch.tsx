@@ -9,7 +9,12 @@ export function RoleSwitch() {
   const { role } = useStories()
   return (
     <div className="w-60">
-      <Select className="h-8" value={role} onChange={(e) => setRole(e.target.value as StoryRole)} aria-label={t('stories.actingAs')}>
+      <Select
+        className="h-8"
+        value={role}
+        onChange={(e) => setRole(e.target.value as StoryRole)}
+        aria-label={t('stories.actingAs')}
+      >
         {(['productOwner', 'techLead', 'executive'] as const).map((r) => (
           <option key={r} value={r}>
             {t('stories.actingAs')}: {t(`stories.roles.${r}`)}

@@ -1,2 +1,10 @@
 packages:
   - "apps/web"
+  - "tools/lint"
+  - "tools/codegen"
+
+# Supply-chain hardening (spec 15.7): no transitive dependencies from untrusted sources, no package versions
+# younger than 7 days, and no updates that downgrade their publishing trust.
+blockExoticSubdeps: true
+minimumReleaseAge: 10080
+trustPolicy: no-downgrade

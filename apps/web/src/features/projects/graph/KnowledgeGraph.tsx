@@ -3,7 +3,16 @@ import { hierarchy, pack } from 'd3-hierarchy'
 import { useTranslation } from 'react-i18next'
 import { ChevronLeft, ChevronRight, Maximize2, Minus, Plus, Search, X } from 'lucide-react'
 import { cn } from '@/lib/cn'
-import { businessFlows, edgeGroup, graphEdges, graphNodes, rules, type GraphNode, type GraphNodeType, type MigrationState } from '@/mocks/data'
+import {
+  businessFlows,
+  edgeGroup,
+  graphEdges,
+  graphNodes,
+  rules,
+  type GraphNode,
+  type GraphNodeType,
+  type MigrationState,
+} from '@/mocks/data'
 import { Badge, Button, Card, CardBody, CardHeader, StatTile } from '@/components/ui/primitives'
 
 // Interactive knowledge graph (spec section 5): relation filters, orphan/isolated filter, business-flow
@@ -21,8 +30,17 @@ const relationStyle: Record<Relation, { color: string; dash?: string }> = {
   writes: { color: 'var(--series-2)' },
   includes: { color: 'var(--text-muted)', dash: '4 3' },
 }
-const domainColor: Record<GraphNode['domain'], string> = { Accounts: 'var(--series-1)', Cards: 'var(--series-2)', Authorizations: 'var(--series-3)' }
-const stateColor: Record<MigrationState, string> = { verified: 'var(--good)', generated: 'var(--info)', inProgress: 'var(--warning)', pending: 'var(--text-muted)' }
+const domainColor: Record<GraphNode['domain'], string> = {
+  Accounts: 'var(--series-1)',
+  Cards: 'var(--series-2)',
+  Authorizations: 'var(--series-3)',
+}
+const stateColor: Record<MigrationState, string> = {
+  verified: 'var(--good)',
+  generated: 'var(--info)',
+  inProgress: 'var(--warning)',
+  pending: 'var(--text-muted)',
+}
 const NODE_W = 140
 const NODE_H = 36
 
@@ -30,7 +48,9 @@ function layout(nodes: GraphNode[]) {
   const cols: Record<number, GraphNode[]> = {}
   nodes.forEach((n) => (cols[COLUMNS[n.type]] ??= []).push(n))
   const pos: Record<string, { x: number; y: number }> = {}
-  Object.entries(cols).forEach(([c, list]) => list.forEach((n, i) => (pos[n.id] = { x: 90 + Number(c) * 200, y: 50 + i * 62 })))
+  Object.entries(cols).forEach(([c, list]) =>
+    list.forEach((n, i) => (pos[n.id] = { x: 90 + Number(c) * 200, y: 50 + i * 62 })),
+  )
   return pos
 }
 
@@ -41,19 +61,29 @@ const PACK_SIZE = 760
 
 function packLayout(nodes: GraphNode[], dataLabel: string, systemLabel: string) {
   type Datum = { id: string; label: string; value?: number; children?: Datum[] }
-  const size = (n: GraphNode) => (n.loc ? Math.max(60, n.loc / 12) : n.type === 'file' ? 70 : n.type === 'copybook' ? 55 : 60)
+  const size = (n: GraphNode) =>
+    n.loc ? Math.max(60, n.loc / 12) : n.type === 'file' ? 70 : n.type === 'copybook' ? 55 : 60
   const domains = [...new Set(nodes.filter((n) => n.type !== 'file').map((n) => n.domain))]
   const children: Datum[] = domains.map((d) => ({
     id: `group:${d}`,
     label: d,
-    children: nodes.filter((n) => n.domain === d && n.type !== 'file').map((n) => ({ id: n.id, label: n.id, value: size(n) })),
+    children: nodes
+      .filter((n) => n.domain === d && n.type !== 'file')
+      .map((n) => ({ id: n.id, label: n.id, value: size(n) })),
   }))
   const files = nodes.filter((n) => n.type === 'file')
-  if (files.length) children.push({ id: 'group:data', label: dataLabel, children: files.map((n) => ({ id: n.id, label: n.id, value: size(n) })) })
+  if (files.length)
+    children.push({
+      id: 'group:data',
+      label: dataLabel,
+      children: files.map((n) => ({ id: n.id, label: n.id, value: size(n) })),
+    })
   const root = hierarchy<Datum>({ id: 'root', label: systemLabel, children })
     .sum((d) => d.value ?? 0)
     .sort((a, b) => (b.value ?? 0) - (a.value ?? 0))
-  const packed = pack<Datum>().size([PACK_SIZE, PACK_SIZE]).padding((d) => (d.depth === 0 ? 28 : 10))(root)
+  const packed = pack<Datum>()
+    .size([PACK_SIZE, PACK_SIZE])
+    .padding((d) => (d.depth === 0 ? 28 : 10))(root)
   const pos: Record<string, { x: number; y: number; r: number }> = {}
   const groups: PackGroup[] = []
   packed.descendants().forEach((d) => {
@@ -91,6 +121,8 @@ export function KnowledgeGraph({ onCompare }: { onCompare: (ruleId: string) => v
   const svgRef = useRef<SVGSVGElement>(null)
   const boxRef = useRef<HTMLDivElement>(null)
   const drag = useRef<{ x: number; y: number } | null>(null)
+  // Set once the user zooms or pans, so a container resize no longer re-fits the view.
+  const touched = useRef(false)
   const [boxWidth, setBoxWidth] = useState(800)
 
   const flow = businessFlows.find((f) => f.id === flowId)
@@ -106,13 +138,16 @@ export function KnowledgeGraph({ onCompare }: { onCompare: (ruleId: string) => v
     return true
   })
   const ids = new Set(nodes.map((n) => n.id))
-  const edges = graphEdges.filter((e) => ids.has(e.from) && ids.has(e.to) && relations.includes(edgeGroup[e.kind] ?? 'calls'))
+  const edges = graphEdges.filter(
+    (e) => ids.has(e.from) && ids.has(e.to) && relations.includes(edgeGroup[e.kind] ?? 'calls'),
+  )
   const packed = useMemo(() => packLayout(nodes, t('graph.dataStores'), t('graph.system')), [nodes, t])
   const layered = useMemo(() => layout(nodes), [nodes])
   const pos: Record<string, { x: number; y: number; r?: number }> = mode === 'circles' ? packed.pos : layered
   const height = mode === 'circles' ? PACK_SIZE : Math.max(0, ...Object.values(pos).map((p) => p.y)) + 60
   // Fit the whole graph to the available width (on load and on reset).
-  const contentWidth = mode === 'circles' ? PACK_SIZE : Math.max(0, ...Object.values(pos).map((p) => p.x)) + NODE_W / 2 + 40
+  const contentWidth =
+    mode === 'circles' ? PACK_SIZE : Math.max(0, ...Object.values(pos).map((p) => p.x)) + NODE_W / 2 + 40
   const fitK = Math.min(1.2, Math.max(0.5, boxWidth / Math.max(contentWidth, 1)))
   const fit = { k: fitK, x: 0, y: 0 }
 
@@ -131,34 +166,50 @@ export function KnowledgeGraph({ onCompare }: { onCompare: (ruleId: string) => v
   // Rule focus: nodes implementing the rule plus their direct neighbours.
   const ruleNodes = new Set<string>()
   if (rule) {
-    graphNodes.filter((n) => n.rules.includes(rule.id)).forEach((n) => {
-      ruleNodes.add(n.id)
-      graphEdges.filter((e) => e.from === n.id || e.to === n.id).forEach((e) => (ruleNodes.add(e.from), ruleNodes.add(e.to)))
-    })
+    graphNodes
+      .filter((n) => n.rules.includes(rule.id))
+      .forEach((n) => {
+        ruleNodes.add(n.id)
+        graphEdges
+          .filter((e) => e.from === n.id || e.to === n.id)
+          .forEach((e) => (ruleNodes.add(e.from), ruleNodes.add(e.to)))
+      })
   }
 
   // Selected node: highlight it and its direct connections.
   const selNodes = new Set<string>()
   if (selected) {
     selNodes.add(selected)
-    graphEdges.filter((e) => e.from === selected || e.to === selected).forEach((e) => (selNodes.add(e.from), selNodes.add(e.to)))
+    graphEdges
+      .filter((e) => e.from === selected || e.to === selected)
+      .forEach((e) => (selNodes.add(e.from), selNodes.add(e.to)))
   }
 
   const q = query.trim().toLowerCase()
   const focusActive = !!flow || !!rule || q.length > 1 || !!selected
   const isFocused = (id: string) =>
-    flow ? flowNodes.has(id) : rule ? ruleNodes.has(id) : q.length > 1 ? id.toLowerCase().includes(q) : selected ? selNodes.has(id) : true
+    flow
+      ? flowNodes.has(id)
+      : rule
+        ? ruleNodes.has(id)
+        : q.length > 1
+          ? id.toLowerCase().includes(q)
+          : selected
+            ? selNodes.has(id)
+            : true
 
   // Everything that (transitively) depends on a node: what could break if it changes.
   function impactOf(id: string) {
     const out = new Set<string>()
     const walk = (x: string) =>
-      graphEdges.filter((e) => e.to === x).forEach((e) => {
-        if (!out.has(e.from)) {
-          out.add(e.from)
-          walk(e.from)
-        }
-      })
+      graphEdges
+        .filter((e) => e.to === x)
+        .forEach((e) => {
+          if (!out.has(e.from)) {
+            out.add(e.from)
+            walk(e.from)
+          }
+        })
     walk(id)
     return [...out]
   }
@@ -185,6 +236,8 @@ export function KnowledgeGraph({ onCompare }: { onCompare: (ruleId: string) => v
     return () => el.removeEventListener('wheel', onWheel)
   }, [])
 
+  // Restart the walkthrough when another flow is picked.
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => setStep(0), [flowId])
 
   useEffect(() => {
@@ -196,12 +249,13 @@ export function KnowledgeGraph({ onCompare }: { onCompare: (ruleId: string) => v
   }, [])
 
   // Re-fit when the container size changes, unless the user already zoomed or panned.
-  const touched = useRef(false)
   useEffect(() => {
     if (!touched.current) setView({ k: fitK, x: 0, y: 0 })
   }, [fitK])
   useEffect(() => {
     touched.current = false
+    // Switching between map and circles resets the zoom on purpose.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setView({ k: fitK, x: 0, y: 0 })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode])
@@ -242,7 +296,12 @@ export function KnowledgeGraph({ onCompare }: { onCompare: (ruleId: string) => v
             </div>
 
             <FilterGroup title={t('graph.flow')}>
-              <select value={flowId} onChange={(e) => (setFlowId(e.target.value), setRuleId(''))} className="h-9 w-full rounded-md border border-border bg-surface px-2 text-sm text-text" aria-label={t('graph.flow')}>
+              <select
+                value={flowId}
+                onChange={(e) => (setFlowId(e.target.value), setRuleId(''))}
+                className="h-9 w-full rounded-md border border-border bg-surface px-2 text-sm text-text"
+                aria-label={t('graph.flow')}
+              >
                 <option value="">{t('graph.none')}</option>
                 {businessFlows.map((f) => (
                   <option key={f.id} value={f.id}>
@@ -253,7 +312,12 @@ export function KnowledgeGraph({ onCompare }: { onCompare: (ruleId: string) => v
             </FilterGroup>
 
             <FilterGroup title={t('graph.rule')}>
-              <select value={ruleId} onChange={(e) => (setRuleId(e.target.value), setFlowId(''))} className="h-9 w-full rounded-md border border-border bg-surface px-2 text-sm text-text" aria-label={t('graph.rule')}>
+              <select
+                value={ruleId}
+                onChange={(e) => (setRuleId(e.target.value), setFlowId(''))}
+                className="h-9 w-full rounded-md border border-border bg-surface px-2 text-sm text-text"
+                aria-label={t('graph.rule')}
+              >
                 <option value="">{t('graph.none')}</option>
                 {rules.map((r) => (
                   <option key={r.id} value={r.id}>
@@ -266,9 +330,22 @@ export function KnowledgeGraph({ onCompare }: { onCompare: (ruleId: string) => v
             <FilterGroup title={t('graph.relations')}>
               {RELATIONS.map((r) => (
                 <label key={r} className="flex cursor-pointer items-center gap-2 text-sm text-text">
-                  <input type="checkbox" checked={relations.includes(r)} onChange={() => toggle(relations, r, setRelations)} className="accent-[var(--series-1)]" />
+                  <input
+                    type="checkbox"
+                    checked={relations.includes(r)}
+                    onChange={() => toggle(relations, r, setRelations)}
+                    className="accent-[var(--series-1)]"
+                  />
                   <svg width="22" height="6" aria-hidden>
-                    <line x1="0" y1="3" x2="22" y2="3" stroke={relationStyle[r].color} strokeWidth="2.5" strokeDasharray={relationStyle[r].dash} />
+                    <line
+                      x1="0"
+                      y1="3"
+                      x2="22"
+                      y2="3"
+                      stroke={relationStyle[r].color}
+                      strokeWidth="2.5"
+                      strokeDasharray={relationStyle[r].dash}
+                    />
                   </svg>
                   {t(`graph.relationNames.${r}`)}
                 </label>
@@ -276,12 +353,22 @@ export function KnowledgeGraph({ onCompare }: { onCompare: (ruleId: string) => v
             </FilterGroup>
 
             <FilterGroup title={t('graph.nodes')}>
-              <select value={visibility} onChange={(e) => setVisibility(e.target.value as Visibility)} className="h-9 w-full rounded-md border border-border bg-surface px-2 text-sm text-text" aria-label={t('graph.nodes')}>
+              <select
+                value={visibility}
+                onChange={(e) => setVisibility(e.target.value as Visibility)}
+                className="h-9 w-full rounded-md border border-border bg-surface px-2 text-sm text-text"
+                aria-label={t('graph.nodes')}
+              >
                 <option value="all">{t('graph.visibility.all')}</option>
                 <option value="orphans">{t('graph.visibility.orphans')}</option>
                 <option value="hideOrphans">{t('graph.visibility.hideOrphans')}</option>
               </select>
-              <select value={domain} onChange={(e) => setDomain(e.target.value as typeof domain)} className="h-9 w-full rounded-md border border-border bg-surface px-2 text-sm text-text" aria-label={t('inventory.domain')}>
+              <select
+                value={domain}
+                onChange={(e) => setDomain(e.target.value as typeof domain)}
+                className="h-9 w-full rounded-md border border-border bg-surface px-2 text-sm text-text"
+                aria-label={t('inventory.domain')}
+              >
                 <option value="all">{t('inventory.allDomains')}</option>
                 {Object.keys(domainColor).map((d) => (
                   <option key={d}>{d}</option>
@@ -293,7 +380,10 @@ export function KnowledgeGraph({ onCompare }: { onCompare: (ruleId: string) => v
                     key={ty}
                     onClick={() => toggle(types, ty, setTypes)}
                     aria-pressed={types.includes(ty)}
-                    className={cn('rounded-full border px-2 py-0.5 text-xs', types.includes(ty) ? 'border-series-1 bg-series-1/10 text-text' : 'border-border text-muted')}
+                    className={cn(
+                      'rounded-full border px-2 py-0.5 text-xs',
+                      types.includes(ty) ? 'border-series-1 bg-series-1/10 text-text' : 'border-border text-muted',
+                    )}
                   >
                     {t(`inventory.types.${ty}`)}
                   </button>
@@ -304,7 +394,15 @@ export function KnowledgeGraph({ onCompare }: { onCompare: (ruleId: string) => v
             <FilterGroup title={t('inventory.colorBy')}>
               <div className="flex rounded-md border border-border p-0.5 text-xs" role="group">
                 {(['domain', 'state'] as const).map((c) => (
-                  <button key={c} onClick={() => setColorBy(c)} aria-pressed={colorBy === c} className={cn('flex-1 rounded px-2 py-1', colorBy === c ? 'bg-brand text-brand-contrast' : 'text-muted')}>
+                  <button
+                    key={c}
+                    onClick={() => setColorBy(c)}
+                    aria-pressed={colorBy === c}
+                    className={cn(
+                      'flex-1 rounded px-2 py-1',
+                      colorBy === c ? 'bg-brand text-brand-contrast' : 'text-muted',
+                    )}
+                  >
                     {t(`inventory.colorModes.${c}`)}
                   </button>
                 ))}
@@ -328,17 +426,32 @@ export function KnowledgeGraph({ onCompare }: { onCompare: (ruleId: string) => v
             subtitle={t('graph.stats', { nodes: nodes.length, edges: edges.length })}
             action={
               <div className="flex items-center gap-1">
-                <div className="mr-2 flex rounded-md border border-border p-0.5 text-xs" role="group" aria-label={t('graph.layout')}>
+                <div
+                  className="mr-2 flex rounded-md border border-border p-0.5 text-xs"
+                  role="group"
+                  aria-label={t('graph.layout')}
+                >
                   {(['circles', 'layers'] as const).map((m) => (
-                    <button key={m} onClick={() => setMode(m)} aria-pressed={mode === m} className={cn('rounded px-2 py-1', mode === m ? 'bg-brand text-brand-contrast' : 'text-muted')}>
+                    <button
+                      key={m}
+                      onClick={() => setMode(m)}
+                      aria-pressed={mode === m}
+                      className={cn('rounded px-2 py-1', mode === m ? 'bg-brand text-brand-contrast' : 'text-muted')}
+                    >
                       {t(`graph.layouts.${m}`)}
                     </button>
                   ))}
                 </div>
-                <IconButton label={t('graph.zoomIn')} onClick={() => ((touched.current = true), setView((v) => ({ ...v, k: Math.min(2.5, v.k * 1.2) })))}>
+                <IconButton
+                  label={t('graph.zoomIn')}
+                  onClick={() => ((touched.current = true), setView((v) => ({ ...v, k: Math.min(2.5, v.k * 1.2) })))}
+                >
                   <Plus size={14} />
                 </IconButton>
-                <IconButton label={t('graph.zoomOut')} onClick={() => ((touched.current = true), setView((v) => ({ ...v, k: Math.max(0.4, v.k / 1.2) })))}>
+                <IconButton
+                  label={t('graph.zoomOut')}
+                  onClick={() => ((touched.current = true), setView((v) => ({ ...v, k: Math.max(0.4, v.k / 1.2) })))}
+                >
                   <Minus size={14} />
                 </IconButton>
                 <IconButton label={t('graph.reset')} onClick={() => ((touched.current = false), setView(fit))}>
@@ -360,19 +473,42 @@ export function KnowledgeGraph({ onCompare }: { onCompare: (ruleId: string) => v
                 drag.current = { x: e.clientX - view.x, y: e.clientY - view.y }
                 ;(e.target as Element).setPointerCapture?.(e.pointerId)
               }}
-              onPointerMove={(e) => drag.current && setView((v) => ({ ...v, x: e.clientX - drag.current!.x, y: e.clientY - drag.current!.y }))}
+              onPointerMove={(e) =>
+                drag.current &&
+                setView((v) => ({ ...v, x: e.clientX - drag.current!.x, y: e.clientY - drag.current!.y }))
+              }
               onPointerUp={() => (drag.current = null)}
               onClick={() => !flow && !rule && setSelected(null)}
-              onKeyDown={(e) => e.key === 'Escape' && ((touched.current = false), setView(fit), setFlowId(''), setRuleId(''), setSelected(null))}
+              onKeyDown={(e) =>
+                e.key === 'Escape' &&
+                ((touched.current = false), setView(fit), setFlowId(''), setRuleId(''), setSelected(null))
+              }
               tabIndex={0}
             >
               <defs>
                 {RELATIONS.map((r) => (
-                  <marker key={r} id={`arrow-${r}`} viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                  <marker
+                    key={r}
+                    id={`arrow-${r}`}
+                    viewBox="0 0 10 10"
+                    refX="9"
+                    refY="5"
+                    markerWidth="6"
+                    markerHeight="6"
+                    orient="auto-start-reverse"
+                  >
                     <path d="M0,0 L10,5 L0,10 z" fill={relationStyle[r].color} />
                   </marker>
                 ))}
-                <marker id="arrow-flow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                <marker
+                  id="arrow-flow"
+                  viewBox="0 0 10 10"
+                  refX="9"
+                  refY="5"
+                  markerWidth="6"
+                  markerHeight="6"
+                  orient="auto-start-reverse"
+                >
                   <path d="M0,0 L10,5 L0,10 z" fill="var(--text)" />
                 </marker>
               </defs>
@@ -384,7 +520,13 @@ export function KnowledgeGraph({ onCompare }: { onCompare: (ruleId: string) => v
                         cx={g.x}
                         cy={g.y}
                         r={g.r}
-                        fill={g.id === 'group:data' ? 'color-mix(in srgb, var(--series-3) 6%, transparent)' : g.depth === 0 ? 'transparent' : 'color-mix(in srgb, var(--text) 3%, transparent)'}
+                        fill={
+                          g.id === 'group:data'
+                            ? 'color-mix(in srgb, var(--series-3) 6%, transparent)'
+                            : g.depth === 0
+                              ? 'transparent'
+                              : 'color-mix(in srgb, var(--text) 3%, transparent)'
+                        }
                         stroke="var(--border)"
                         strokeWidth={g.depth === 0 ? 1.5 : 1}
                       />
@@ -407,11 +549,15 @@ export function KnowledgeGraph({ onCompare }: { onCompare: (ruleId: string) => v
                   const rel = edgeGroup[e.kind] ?? 'calls'
                   const inFlow = flowEdges.has(`${e.from}>${e.to}`)
                   const touchesSelected = !flow && !rule && !!selected && (e.from === selected || e.to === selected)
-                  const dim = focusActive && !inFlow && !touchesSelected && !(isFocused(e.from) && isFocused(e.to) && !selected)
+                  const dim =
+                    focusActive && !inFlow && !touchesSelected && !(isFocused(e.from) && isFocused(e.to) && !selected)
                   const sameCol = a.x === b.x
-                  const d = mode === 'circles' ? circleEdge(a as Circle, b as Circle) : sameCol
-                    ? `M${a.x + NODE_W / 2},${a.y} C${a.x + NODE_W / 2 + 50},${a.y} ${b.x + NODE_W / 2 + 50},${b.y} ${b.x + NODE_W / 2},${b.y}`
-                    : `M${a.x + NODE_W / 2},${a.y} C${a.x + 120},${a.y} ${b.x - 120},${b.y} ${b.x - NODE_W / 2 - 4},${b.y}`
+                  const d =
+                    mode === 'circles'
+                      ? circleEdge(a as Circle, b as Circle)
+                      : sameCol
+                        ? `M${a.x + NODE_W / 2},${a.y} C${a.x + NODE_W / 2 + 50},${a.y} ${b.x + NODE_W / 2 + 50},${b.y} ${b.x + NODE_W / 2},${b.y}`
+                        : `M${a.x + NODE_W / 2},${a.y} C${a.x + 120},${a.y} ${b.x - 120},${b.y} ${b.x - NODE_W / 2 - 4},${b.y}`
                   return (
                     <path
                       key={e.from + e.to + e.kind}
@@ -461,40 +607,67 @@ export function KnowledgeGraph({ onCompare }: { onCompare: (ruleId: string) => v
                           stepNo={stepNo}
                         />
                       ) : (
-                      <>
-                      <rect
-                        x={p.x - NODE_W / 2}
-                        y={p.y - NODE_H / 2}
-                        width={NODE_W}
-                        height={NODE_H}
-                        rx={n.type === 'transaction' || n.type === 'job' ? NODE_H / 2 : 6}
-                        fill={impact.includes(n.id) ? 'color-mix(in srgb, var(--critical) 12%, var(--surface))' : 'var(--surface)'}
-                        stroke={impact.includes(n.id) ? 'var(--critical)' : color(n)}
-                        strokeWidth={selected === n.id || inStep ? 3.5 : 2}
-                        strokeDasharray={orphanKind ? '5 3' : undefined}
-                      />
-                      <text x={p.x} y={p.y - 3} textAnchor="middle" fontSize={11} fontWeight={600} fill="var(--text)">
-                        {n.id}
-                      </text>
-                      <text x={p.x} y={p.y + 11} textAnchor="middle" fontSize={9} fill="var(--text-muted)">
-                        {orphanKind ? t(`graph.kind.${orphanKind}`) : t(`inventory.types.${n.type}`)}
-                      </text>
-                      {stepNo && (
-                        <g>
-                          <circle cx={p.x - NODE_W / 2 + 2} cy={p.y - NODE_H / 2 - 2} r={10} fill="var(--brand)" stroke="var(--surface)" strokeWidth={2} />
-                          <text x={p.x - NODE_W / 2 + 2} y={p.y - NODE_H / 2 + 2} textAnchor="middle" fontSize={10} fontWeight={700} fill="var(--brand-contrast)">
-                            {stepNo}
+                        <>
+                          <rect
+                            x={p.x - NODE_W / 2}
+                            y={p.y - NODE_H / 2}
+                            width={NODE_W}
+                            height={NODE_H}
+                            rx={n.type === 'transaction' || n.type === 'job' ? NODE_H / 2 : 6}
+                            fill={
+                              impact.includes(n.id)
+                                ? 'color-mix(in srgb, var(--critical) 12%, var(--surface))'
+                                : 'var(--surface)'
+                            }
+                            stroke={impact.includes(n.id) ? 'var(--critical)' : color(n)}
+                            strokeWidth={selected === n.id || inStep ? 3.5 : 2}
+                            strokeDasharray={orphanKind ? '5 3' : undefined}
+                          />
+                          <text
+                            x={p.x}
+                            y={p.y - 3}
+                            textAnchor="middle"
+                            fontSize={11}
+                            fontWeight={600}
+                            fill="var(--text)"
+                          >
+                            {n.id}
                           </text>
-                        </g>
-                      )}
-                      </>
+                          <text x={p.x} y={p.y + 11} textAnchor="middle" fontSize={9} fill="var(--text-muted)">
+                            {orphanKind ? t(`graph.kind.${orphanKind}`) : t(`inventory.types.${n.type}`)}
+                          </text>
+                          {stepNo && (
+                            <g>
+                              <circle
+                                cx={p.x - NODE_W / 2 + 2}
+                                cy={p.y - NODE_H / 2 - 2}
+                                r={10}
+                                fill="var(--brand)"
+                                stroke="var(--surface)"
+                                strokeWidth={2}
+                              />
+                              <text
+                                x={p.x - NODE_W / 2 + 2}
+                                y={p.y - NODE_H / 2 + 2}
+                                textAnchor="middle"
+                                fontSize={10}
+                                fontWeight={700}
+                                fill="var(--brand-contrast)"
+                              >
+                                {stepNo}
+                              </text>
+                            </g>
+                          )}
+                        </>
                       )}
                     </g>
                   )
                 })}
               </g>
             </svg>
-            <p className="pointer-events-none absolute bottom-2 left-1/2 -translate-x-1/2 rounded-full border border-border bg-surface px-3 py-1 text-xs text-muted">{t('graph.help')}</p>
+            <p className="pointer-events-none absolute bottom-2 left-1/2 -translate-x-1/2 rounded-full border border-border bg-surface px-3 py-1 text-xs text-muted">
+              {t('graph.help')}
+            </p>
           </div>
         </Card>
 
@@ -506,7 +679,11 @@ export function KnowledgeGraph({ onCompare }: { onCompare: (ruleId: string) => v
                 title={flow.name}
                 subtitle={t('graph.persona', { persona: flow.persona })}
                 action={
-                  <button onClick={() => setFlowId('')} className="rounded p-1 text-muted hover:text-text" aria-label={t('common.close')}>
+                  <button
+                    onClick={() => setFlowId('')}
+                    className="rounded p-1 text-muted hover:text-text"
+                    aria-label={t('common.close')}
+                  >
                     <X size={16} />
                   </button>
                 }
@@ -517,8 +694,21 @@ export function KnowledgeGraph({ onCompare }: { onCompare: (ruleId: string) => v
                 <ol className="space-y-1">
                   {flow.steps.map((s, i) => (
                     <li key={s.title}>
-                      <button onClick={() => setStep(i)} className={cn('flex w-full gap-3 rounded-md p-2 text-left', step === i ? 'bg-brand/10 dark:bg-accent/10' : 'hover:bg-surface-2')}>
-                        <span className={cn('flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold', step === i ? 'bg-brand text-brand-contrast' : 'bg-surface-2 text-muted')}>{i + 1}</span>
+                      <button
+                        onClick={() => setStep(i)}
+                        className={cn(
+                          'flex w-full gap-3 rounded-md p-2 text-left',
+                          step === i ? 'bg-brand/10 dark:bg-accent/10' : 'hover:bg-surface-2',
+                        )}
+                      >
+                        <span
+                          className={cn(
+                            'flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold',
+                            step === i ? 'bg-brand text-brand-contrast' : 'bg-surface-2 text-muted',
+                          )}
+                        >
+                          {i + 1}
+                        </span>
                         <span className="min-w-0">
                           <span className="block text-text">{s.title}</span>
                           <span className="block font-mono text-xs text-muted">{s.nodes.join(' → ')}</span>
@@ -558,7 +748,11 @@ export function KnowledgeGraph({ onCompare }: { onCompare: (ruleId: string) => v
                   {graphNodes
                     .filter((n) => n.rules.includes(rule.id))
                     .map((n) => (
-                      <button key={n.id} onClick={() => setSelected(n.id)} className="rounded border border-border px-2 py-0.5 font-mono text-xs text-text hover:bg-surface-2">
+                      <button
+                        key={n.id}
+                        onClick={() => setSelected(n.id)}
+                        className="rounded border border-border px-2 py-0.5 font-mono text-xs text-text hover:bg-surface-2"
+                      >
                         {n.id}
                       </button>
                     ))}
@@ -569,7 +763,10 @@ export function KnowledgeGraph({ onCompare }: { onCompare: (ruleId: string) => v
                     .filter((f) => f.rules.includes(rule.id))
                     .map((f) => (
                       <li key={f.id}>
-                        <button onClick={() => (setRuleId(''), setFlowId(f.id))} className="text-left text-info hover:underline">
+                        <button
+                          onClick={() => (setRuleId(''), setFlowId(f.id))}
+                          className="text-left text-info hover:underline"
+                        >
                           {f.name}
                         </button>
                       </li>
@@ -604,7 +801,10 @@ export function KnowledgeGraph({ onCompare }: { onCompare: (ruleId: string) => v
         <CardHeader title={t('inventory.impact')} subtitle={t('inventory.impactHint')} />
         <CardBody className="space-y-3">
           <div className="flex flex-wrap gap-2">
-            <Button size="sm" onClick={() => (setSelected('CVACT01Y'), setImpact(impactOf('CVACT01Y')), setOrder(null))}>
+            <Button
+              size="sm"
+              onClick={() => (setSelected('CVACT01Y'), setImpact(impactOf('CVACT01Y')), setOrder(null))}
+            >
               {t('inventory.impactCopybook')}
             </Button>
             <Button size="sm" onClick={() => (setDomain('Accounts'), setImpact([]), setOrder(null))}>
@@ -615,7 +815,11 @@ export function KnowledgeGraph({ onCompare }: { onCompare: (ruleId: string) => v
             </Button>
             <Button
               size="sm"
-              onClick={() => (setVisibility('all'), setImpact(graphNodes.filter((n) => n.type === 'program' && n.rules.length === 0).map((n) => n.id)), setOrder(null))}
+              onClick={() => (
+                setVisibility('all'),
+                setImpact(graphNodes.filter((n) => n.type === 'program' && n.rules.length === 0).map((n) => n.id)),
+                setOrder(null)
+              )}
             >
               {t('inventory.impactOrphans')}
             </Button>
@@ -629,7 +833,10 @@ export function KnowledgeGraph({ onCompare }: { onCompare: (ruleId: string) => v
               <ol className="flex flex-wrap gap-2 text-xs">
                 {order.map((id, i) => (
                   <li key={id}>
-                    <button onClick={() => setSelected(id)} className="rounded-md border border-border px-2 py-1 font-mono text-text hover:bg-surface-2">
+                    <button
+                      onClick={() => setSelected(id)}
+                      className="rounded-md border border-border px-2 py-1 font-mono text-text hover:bg-surface-2"
+                    >
                       {i + 1}. {id}
                     </button>
                   </li>
@@ -669,7 +876,11 @@ function NodeDetail({
   ]
   return (
     <>
-      <CardHeader title={node.id} subtitle={`${t(`inventory.types.${node.type}`)} · ${node.domain}`} action={kind ? <Badge tone="warning">{t(`graph.kind.${kind}`)}</Badge> : undefined} />
+      <CardHeader
+        title={node.id}
+        subtitle={`${t(`inventory.types.${node.type}`)} · ${node.domain}`}
+        action={kind ? <Badge tone="warning">{t(`graph.kind.${kind}`)}</Badge> : undefined}
+      />
       <CardBody className="space-y-4 text-sm">
         {node.description ? (
           <div>
@@ -683,7 +894,9 @@ function NodeDetail({
         <div className="flex flex-wrap gap-1.5">
           <Badge>{t('graph.fanIn', { count: incoming.length })}</Badge>
           <Badge>{t('graph.fanOut', { count: outgoing.length })}</Badge>
-          <Badge tone={node.state === 'verified' ? 'good' : node.state === 'pending' ? 'neutral' : 'info'}>{t(`inventory.states.${node.state}`)}</Badge>
+          <Badge tone={node.state === 'verified' ? 'good' : node.state === 'pending' ? 'neutral' : 'info'}>
+            {t(`inventory.states.${node.state}`)}
+          </Badge>
           {node.loc && <Badge>{t('graph.loc', { count: node.loc })}</Badge>}
         </div>
         {node.source && (
@@ -697,14 +910,19 @@ function NodeDetail({
           <p className="font-mono text-xs text-text">{node.target ?? '—'}</p>
         </div>
         <div>
-          <div className="mb-1 text-xs font-medium tracking-wide text-muted uppercase">{t('graph.connections', { count: connections.length })}</div>
+          <div className="mb-1 text-xs font-medium tracking-wide text-muted uppercase">
+            {t('graph.connections', { count: connections.length })}
+          </div>
           {connections.length === 0 ? (
             <p className="text-xs text-muted">—</p>
           ) : (
             <ul className="space-y-0.5">
               {connections.map((c) => (
                 <li key={c.dir + c.id + c.kind}>
-                  <button onClick={() => onSelect(c.id)} className="flex w-full items-baseline gap-2 rounded px-1.5 py-1 text-left hover:bg-surface-2">
+                  <button
+                    onClick={() => onSelect(c.id)}
+                    className="flex w-full items-baseline gap-2 rounded px-1.5 py-1 text-left hover:bg-surface-2"
+                  >
                     <span className="text-info" aria-label={t(`graph.dir.${c.dir}`)}>
                       {c.dir === 'out' ? '→' : '←'}
                     </span>
@@ -716,8 +934,16 @@ function NodeDetail({
             </ul>
           )}
         </div>
-        <Relations title={t('inventory.uses')} items={outgoing.map((e) => ({ id: e.to, kind: e.kind }))} onSelect={onSelect} />
-        <Relations title={t('inventory.usedBy')} items={incoming.map((e) => ({ id: e.from, kind: e.kind }))} onSelect={onSelect} />
+        <Relations
+          title={t('inventory.uses')}
+          items={outgoing.map((e) => ({ id: e.to, kind: e.kind }))}
+          onSelect={onSelect}
+        />
+        <Relations
+          title={t('inventory.usedBy')}
+          items={incoming.map((e) => ({ id: e.from, kind: e.kind }))}
+          onSelect={onSelect}
+        />
         <div className="space-y-2 border-t border-border pt-3">
           <Button size="sm" className="w-full" onClick={onImpact}>
             {t('inventory.showImpact')}
@@ -736,7 +962,11 @@ function NodeDetail({
             <div className="mb-1 text-xs font-medium tracking-wide text-muted uppercase">{t('inventory.rules')}</div>
             <div className="flex flex-wrap gap-1.5">
               {node.rules.map((r) => (
-                <button key={r} onClick={() => onCompare(r)} className="rounded-md border border-border px-2 py-0.5 font-mono text-xs text-info hover:bg-surface-2">
+                <button
+                  key={r}
+                  onClick={() => onCompare(r)}
+                  className="rounded-md border border-border px-2 py-0.5 font-mono text-xs text-info hover:bg-surface-2"
+                >
                   {r}
                 </button>
               ))}
@@ -753,7 +983,15 @@ function NodeDetail({
   )
 }
 
-function Relations({ title, items, onSelect }: { title: string; items: { id: string; kind: string }[]; onSelect: (id: string) => void }) {
+function Relations({
+  title,
+  items,
+  onSelect,
+}: {
+  title: string
+  items: { id: string; kind: string }[]
+  onSelect: (id: string) => void
+}) {
   const { t } = useTranslation()
   return (
     <div>
@@ -764,7 +1002,10 @@ function Relations({ title, items, onSelect }: { title: string; items: { id: str
         <ul className="space-y-0.5">
           {items.map((i) => (
             <li key={i.id + i.kind}>
-              <button onClick={() => onSelect(i.id)} className="flex w-full items-center justify-between rounded px-1.5 py-0.5 text-left hover:bg-surface-2">
+              <button
+                onClick={() => onSelect(i.id)}
+                className="flex w-full items-center justify-between rounded px-1.5 py-0.5 text-left hover:bg-surface-2"
+              >
                 <span className="font-mono text-xs text-text">{i.id}</span>
                 <span className="text-[10px] text-muted">{t(`graph.edgeKinds.${i.kind}`)}</span>
               </button>
@@ -787,7 +1028,12 @@ function FilterGroup({ title, children }: { title: string; children: ReactNode }
 
 function IconButton({ label, onClick, children }: { label: string; onClick: () => void; children: ReactNode }) {
   return (
-    <button onClick={onClick} aria-label={label} title={label} className="rounded-md border border-border p-1.5 text-muted hover:bg-surface-2 hover:text-text">
+    <button
+      onClick={onClick}
+      aria-label={label}
+      title={label}
+      className="rounded-md border border-border p-1.5 text-muted hover:bg-surface-2 hover:text-text"
+    >
       {children}
     </button>
   )
@@ -813,7 +1059,21 @@ function circleEdge(a: Circle, b: Circle) {
   return `M${start.x},${start.y} Q${cx},${cy} ${end.x},${end.y}`
 }
 
-function CircleNode({ node, p, color, strong, dashed, stepNo }: { node: GraphNode; p: Circle; color: string; strong: boolean; dashed: boolean; stepNo?: number }) {
+function CircleNode({
+  node,
+  p,
+  color,
+  strong,
+  dashed,
+  stepNo,
+}: {
+  node: GraphNode
+  p: Circle
+  color: string
+  strong: boolean
+  dashed: boolean
+  stepNo?: number
+}) {
   const inside = p.r >= 26
   const maxChars = Math.max(4, Math.floor((p.r * 2) / 7))
   const label = node.id.length > maxChars ? `${node.id.slice(0, maxChars - 1)}…` : node.id
@@ -841,8 +1101,22 @@ function CircleNode({ node, p, color, strong, dashed, stepNo }: { node: GraphNod
       </text>
       {stepNo && (
         <g>
-          <circle cx={p.x - p.r * 0.72} cy={p.y - p.r * 0.72} r={10} fill="var(--brand)" stroke="var(--surface)" strokeWidth={2} />
-          <text x={p.x - p.r * 0.72} y={p.y - p.r * 0.72 + 4} textAnchor="middle" fontSize={10} fontWeight={700} fill="var(--brand-contrast)">
+          <circle
+            cx={p.x - p.r * 0.72}
+            cy={p.y - p.r * 0.72}
+            r={10}
+            fill="var(--brand)"
+            stroke="var(--surface)"
+            strokeWidth={2}
+          />
+          <text
+            x={p.x - p.r * 0.72}
+            y={p.y - p.r * 0.72 + 4}
+            textAnchor="middle"
+            fontSize={10}
+            fontWeight={700}
+            fill="var(--brand-contrast)"
+          >
             {stepNo}
           </text>
         </g>

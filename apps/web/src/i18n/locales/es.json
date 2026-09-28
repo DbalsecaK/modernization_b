@@ -51,7 +51,8 @@
       "dark": "oscuro"
     },
     "notificationsCount_one": "Notificaciones ({{count}} sin leer)",
-    "notificationsCount_other": "Notificaciones ({{count}} sin leer)"
+    "notificationsCount_other": "Notificaciones ({{count}} sin leer)",
+    "noTenant": "Ningún cliente seleccionado"
   },
   "auth": {
     "heroTitle": "Moderniza sistemas legacy y construye nuevas funcionalidades con agentes de IA verificados.",
@@ -59,7 +60,7 @@
     "heroPoint1": "Guiado por especificación: cada línea generada se traza a una regla.",
     "heroPoint2": "Verificación independiente con un veredicto calculado por código.",
     "heroPoint3": "Multi-cliente, con tus datos dentro de tu perímetro.",
-    "securityNote": "Protegido con SSO, autenticación multifactor y auditoría completa.",
+    "securityNote": "Protegido por el proveedor de identidad de la plataforma, aislamiento por cliente y auditoría completa.",
     "signInTitle": "Iniciar sesión",
     "signInSubtitle": "Usa tu correo corporativo. Te llevaremos al método de inicio de sesión de tu organización.",
     "workEmail": "Correo corporativo",
@@ -86,7 +87,9 @@
     "backToSignIn": "Volver a iniciar sesión",
     "errors": {
       "invalidEmail": "Ingresa un correo válido.",
-      "invalidCredentials": "El correo o la contraseña no son correctos."
+      "invalidCredentials": "El correo o la contraseña no son correctos.",
+      "signInFailed": "El inicio de sesión no se completó. Vuelve a intentarlo.",
+      "noPlatformAccess": "Tu cuenta todavía no tiene acceso a la plataforma. Pide una invitación a tu administrador."
     },
     "mfa": {
       "title": "Verificación en dos pasos",
@@ -127,7 +130,13 @@
       "lower": "Una letra minúscula",
       "number": "Un número",
       "symbol": "Un símbolo"
-    }
+    },
+    "signInWithPlatform": "Iniciar sesión con tu cuenta de la plataforma",
+    "signInWithPlatformHint": "Ingresarás tu correo y contraseña en la página de inicio de sesión de la plataforma y volverás aquí.",
+    "devAuthTitle": "Inicio de sesión de desarrollo",
+    "devAuthHint": "Solo en desarrollo y pruebas: entra como un usuario sembrado sin contraseña. Cada inicio de sesión queda auditado como dev-auth.",
+    "signedInWithKeycloak": "Sesión iniciada con tu cuenta de la plataforma",
+    "signedInWithDevAuth": "Sesión iniciada con dev-auth (solo desarrollo)"
   },
   "account": {
     "title": "Cuenta y seguridad",
@@ -1070,7 +1079,8 @@
     "userStatus": {
       "active": "Activo",
       "invited": "Invitado",
-      "disabled": "Deshabilitado"
+      "disabled": "Deshabilitado",
+      "suspended": "Suspendido"
     },
     "rolesTitle": "Roles",
     "rolesHint": "Los roles son paquetes configurables de permisos granulares.",
@@ -1141,7 +1151,8 @@
       "lockout": "Bloqueo de cuenta",
       "failedAttempts": "Intentos fallidos antes del bloqueo",
       "lockoutMinutes": "Duración del bloqueo (minutos)",
-      "save": "Guardar configuración de autenticación"
+      "save": "Guardar configuración de autenticación",
+      "availableInM0b": "El inicio de sesión único, el MFA y las políticas de inicio de sesión por cliente llegan con el hito M0b. Esta pestaña muestra su diseño; en M0 las cuentas usan correo y contraseña en el proveedor de identidad de la plataforma."
     },
     "securityData": "Datos",
     "retention": "Retención de datos de proyectos",
@@ -1155,7 +1166,45 @@
     "allowedRanges": "Rangos permitidos (CIDR)",
     "integrationHint": "Repositorios, tickets y archivos de diseño",
     "auditTitle": "Auditoría",
-    "auditHint": "Inmutable y con hashes encadenados. Exportable para auditorías regulatorias."
+    "auditHint": "Inmutable y con hashes encadenados. Exportable para auditorías regulatorias.",
+    "tenantSlug": "Identificador",
+    "invitationsTitle": "Invitaciones",
+    "invitationsHint": "Quedan pendientes hasta que la persona inicia sesión por primera vez con el correo invitado.",
+    "expires": "Vence",
+    "resend": "Reenviar",
+    "revoke": "Revocar",
+    "suspend": "Suspender",
+    "reactivate": "Reactivar",
+    "removeMember": "Quitar",
+    "confirmRemove": "¿Quitar a {{name}} de este cliente? También se quitan sus roles aquí.",
+    "never": "Nunca",
+    "deleteRole": "Eliminar rol",
+    "adminHoldsAll": "El administrador del cliente tiene todos los permisos del cliente y de sus proyectos, salvo firmar sign-offs.",
+    "notApplicable": "No aplica a un rol de este alcance",
+    "auditLoadMore": "Cargar registros anteriores",
+    "auditVerify": "Verificar cadena",
+    "auditIntact_one": "La cadena está íntegra ({{count}} registro verificado).",
+    "auditIntact_other": "La cadena está íntegra ({{count}} registros verificados).",
+    "auditBroken": "La cadena está rota en el registro {{seq}} ({{reason}}).",
+    "outcome": "Resultado",
+    "noActiveTenant": "Selecciona un cliente en la barra superior para administrarlo.",
+    "empty": "Todavía no hay nada aquí.",
+    "tenantStatus": {
+      "active": "Activo",
+      "suspended": "Suspendido"
+    },
+    "invitationStatus": {
+      "pending": "Pendiente",
+      "accepted": "Aceptada",
+      "revoked": "Revocada",
+      "expired": "Vencida"
+    },
+    "outcomes": {
+      "success": "Éxito",
+      "failure": "Fallo",
+      "allowed": "Permitido",
+      "denied": "Denegado"
+    }
   },
   "platform": {
     "title": "Operación de plataforma",
@@ -1336,7 +1385,19 @@
     "addMapping": "Agregar mapeo",
     "keycloakNote": "Se guarda mediante la Admin API de Keycloak. La consola de Keycloak nunca se expone a los clientes.",
     "idpSaved": "Proveedor de identidad guardado.",
-    "authSaved": "Configuración de autenticación guardada."
+    "authSaved": "Configuración de autenticación guardada.",
+    "tenantSlug": "Identificador",
+    "tenantSlugHint": "Letras minúsculas, números y guiones. Identifica al cliente y no se puede cambiar después.",
+    "displayName": "Nombre (opcional)",
+    "role": "Rol",
+    "project": "Proyecto",
+    "actionFailed": "La acción falló: {{message}}",
+    "invitationResent": "Invitación enviada de nuevo.",
+    "invitationRevoked": "Invitación revocada.",
+    "memberUpdated": "Miembro actualizado.",
+    "memberRemoved": "Miembro quitado.",
+    "roleDeleted": "Rol eliminado.",
+    "invitePartial": "{{sent}} enviadas; no enviadas: {{errors}}"
   },
   "inputForms": {
     "hint": "Cada insumo se valida y analiza antes de que un agente lo lea.",

@@ -5,9 +5,15 @@ import { join } from 'node:path'
 const en = JSON.parse(readFileSync('src/i18n/locales/en.json', 'utf8'))
 const tops = new Set(Object.keys(en))
 const files = []
-const walk = (d) => readdirSync(d).forEach((f) => { const p = join(d, f); statSync(p).isDirectory() ? walk(p) : /\.tsx?$/.test(p) && files.push(p) })
+const walk = (d) =>
+  readdirSync(d).forEach((f) => {
+    const p = join(d, f)
+    statSync(p).isDirectory() ? walk(p) : /\.tsx?$/.test(p) && files.push(p)
+  })
 walk('src')
-const scanned = files.filter((f) => !f.includes('/mocks/'))
+// Normalize Windows separators so the excluded folders match on every OS. mocks/ holds sample data and api/
+// holds API identifiers (permission keys such as usage.view), not UI texts.
+const scanned = files.filter((f) => !/\/(mocks|api)\//.test(f.replaceAll('\\', '/')))
 
 const resolve = (key) => {
   let node = en

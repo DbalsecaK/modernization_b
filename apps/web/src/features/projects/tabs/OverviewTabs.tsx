@@ -5,7 +5,18 @@ import { cn } from '@/lib/cn'
 import { formatCompact, formatDateTime, formatUsd } from '@/lib/format'
 import type { Project } from '@/mocks/types'
 import { KnowledgeGraph } from '../graph/KnowledgeGraph'
-import { Badge, Button, Card, CardBody, CardHeader, Progress, StatTile, Table, Td, Th } from '@/components/ui/primitives'
+import {
+  Badge,
+  Button,
+  Card,
+  CardBody,
+  CardHeader,
+  Progress,
+  StatTile,
+  Table,
+  Td,
+  Th,
+} from '@/components/ui/primitives'
 import { PhaseStatusIcon } from '@/components/ui/status'
 import type { ProjectTab } from '../ProjectWorkspace'
 import { AddInputForm } from '../InputForms'
@@ -47,10 +58,22 @@ export function OverviewTab({ project, onOpen }: { project: Project; onOpen: (ta
       </Card>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatTile label={t('overview.progress')} value={`${project.progress}%`} hint={<Progress value={project.progress} />} />
-        <StatTile label={t('overview.rules')} value={`${project.rules.approved} / ${project.rules.total}`} hint={t('overview.rulesHint', { verified: project.rules.verified })} />
+        <StatTile
+          label={t('overview.progress')}
+          value={`${project.progress}%`}
+          hint={<Progress value={project.progress} />}
+        />
+        <StatTile
+          label={t('overview.rules')}
+          value={`${project.rules.approved} / ${project.rules.total}`}
+          hint={t('overview.rulesHint', { verified: project.rules.verified })}
+        />
         <StatTile label={t('overview.openQuestions')} value={project.openQuestions} />
-        <StatTile label={t('overview.tokens')} value={formatCompact(project.tokens)} hint={formatUsd(project.costUsd)} />
+        <StatTile
+          label={t('overview.tokens')}
+          value={formatCompact(project.tokens)}
+          hint={formatUsd(project.costUsd)}
+        />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
@@ -58,10 +81,20 @@ export function OverviewTab({ project, onOpen }: { project: Project; onOpen: (ta
           <CardHeader title={t('overview.nextSteps')} />
           <CardBody className="space-y-3 text-sm">
             {current?.status === 'waiting' && (
-              <NextStep text={t('overview.gateWaiting', { gate: current.gate, phase: t(`phases.${current.key}`) })} action={t('overview.review')} onClick={() => onOpen(current.key === 'ui' ? 'uiDesign' : 'specification')} />
+              <NextStep
+                text={t('overview.gateWaiting', { gate: current.gate, phase: t(`phases.${current.key}`) })}
+                action={t('overview.review')}
+                onClick={() => onOpen(current.key === 'ui' ? 'uiDesign' : 'specification')}
+              />
             )}
             {project.flow === 'modernization' && <StoriesStep />}
-            {project.openQuestions > 0 && <NextStep text={t('overview.answerQuestions', { count: project.openQuestions })} action={t('overview.open')} onClick={() => onOpen('specification')} />}
+            {project.openQuestions > 0 && (
+              <NextStep
+                text={t('overview.answerQuestions', { count: project.openQuestions })}
+                action={t('overview.open')}
+                onClick={() => onOpen('specification')}
+              />
+            )}
             <NextStep text={t('overview.checkRuns')} action={t('overview.open')} onClick={() => onOpen('runs')} />
           </CardBody>
         </Card>
@@ -96,9 +129,15 @@ function StoriesStep() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const { stories, approved } = useStories()
-  const pending = stories.filter((s) => s.status === 'draft' || s.status === 'inReview' || s.status === 'question').length
+  const pending = stories.filter(
+    (s) => s.status === 'draft' || s.status === 'inReview' || s.status === 'question',
+  ).length
   if (approved || pending === 0) return null
-  const open = (view: 'stories' | 'plan') => void navigate({ to: '.', search: ((prev: Record<string, unknown>) => ({ ...prev, tab: 'specification', view })) as never })
+  const open = (view: 'stories' | 'plan') =>
+    void navigate({
+      to: '.',
+      search: ((prev: Record<string, unknown>) => ({ ...prev, tab: 'specification', view })) as never,
+    })
   return (
     <div className="flex flex-wrap items-center gap-3 rounded-md border border-warning/60 bg-warning/5 p-3">
       <span className="flex-1 text-text-2">{t('overview.reviewStories', { count: pending })}</span>
@@ -125,15 +164,57 @@ function NextStep({ text, action, onClick }: { text: string; action: string; onC
 
 const inputs = {
   modernization: [
-    { name: 'carddemo-cics (main)', kind: 'git', size: '1,240 files', version: 'a41f9c2', at: '2026-09-18T14:00:00Z', status: 'scanned' },
+    {
+      name: 'carddemo-cics (main)',
+      kind: 'git',
+      size: '1,240 files',
+      version: 'a41f9c2',
+      at: '2026-09-18T14:00:00Z',
+      status: 'scanned',
+    },
     { name: 'db2-ddl.zip', kind: 'zip', size: '2.1 MB', version: 'v1', at: '2026-09-18T14:05:00Z', status: 'scanned' },
-    { name: 'golden-master-traces-2026-09.zip', kind: 'zip', size: '48 MB', version: 'v2', at: '2026-09-25T10:30:00Z', status: 'quarantined' },
+    {
+      name: 'golden-master-traces-2026-09.zip',
+      kind: 'zip',
+      size: '48 MB',
+      version: 'v2',
+      at: '2026-09-25T10:30:00Z',
+      status: 'quarantined',
+    },
   ],
   newFeature: [
-    { name: 'ONB-101 … ONB-142 (Jira)', kind: 'doc', size: '42 stories', version: 'sync 09-27', at: '2026-09-27T20:00:00Z', status: 'scanned' },
-    { name: 'onboarding.fig', kind: 'figma', size: '8 frames', version: 'v14', at: '2026-09-27T21:05:00Z', status: 'scanned' },
-    { name: 'user-manual-v3.pdf', kind: 'doc', size: '36 pages', version: 'v3', at: '2026-09-26T09:00:00Z', status: 'scanned' },
-    { name: 'current-onboarding-screens.png', kind: 'image', size: '6 images', version: 'v1', at: '2026-09-26T09:10:00Z', status: 'scanned' },
+    {
+      name: 'ONB-101 … ONB-142 (Jira)',
+      kind: 'doc',
+      size: '42 stories',
+      version: 'sync 09-27',
+      at: '2026-09-27T20:00:00Z',
+      status: 'scanned',
+    },
+    {
+      name: 'onboarding.fig',
+      kind: 'figma',
+      size: '8 frames',
+      version: 'v14',
+      at: '2026-09-27T21:05:00Z',
+      status: 'scanned',
+    },
+    {
+      name: 'user-manual-v3.pdf',
+      kind: 'doc',
+      size: '36 pages',
+      version: 'v3',
+      at: '2026-09-26T09:00:00Z',
+      status: 'scanned',
+    },
+    {
+      name: 'current-onboarding-screens.png',
+      kind: 'image',
+      size: '6 images',
+      version: 'v1',
+      at: '2026-09-26T09:10:00Z',
+      status: 'scanned',
+    },
   ],
 }
 
@@ -178,7 +259,9 @@ export function InputsTab({ project }: { project: Project }) {
                 <Td className="font-mono text-xs">{input.version}</Td>
                 <Td>{formatDateTime(input.at)}</Td>
                 <Td>
-                  <Badge tone={input.status === 'scanned' ? 'good' : 'warning'}>{t(`inputs.statuses.${input.status}`)}</Badge>
+                  <Badge tone={input.status === 'scanned' ? 'good' : 'warning'}>
+                    {t(`inputs.statuses.${input.status}`)}
+                  </Badge>
                 </Td>
               </tr>
             )

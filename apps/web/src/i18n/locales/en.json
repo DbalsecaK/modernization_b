@@ -51,7 +51,8 @@
       "dark": "dark"
     },
     "notificationsCount_one": "Notifications ({{count}} unread)",
-    "notificationsCount_other": "Notifications ({{count}} unread)"
+    "notificationsCount_other": "Notifications ({{count}} unread)",
+    "noTenant": "No customer selected"
   },
   "auth": {
     "heroTitle": "Modernize legacy systems and build new features with verified AI agents.",
@@ -59,7 +60,7 @@
     "heroPoint1": "Spec-driven: every line of generated code traces back to a rule.",
     "heroPoint2": "Independent verification with a verdict computed by code.",
     "heroPoint3": "Multi-customer, with your data kept inside your perimeter.",
-    "securityNote": "Protected by SSO, multi-factor authentication and full audit logging.",
+    "securityNote": "Protected by the platform's identity provider, per-customer isolation and full audit logging.",
     "signInTitle": "Sign in",
     "signInSubtitle": "Use your work email. We will route you to your organization's sign-in method.",
     "workEmail": "Work email",
@@ -86,7 +87,9 @@
     "backToSignIn": "Back to sign in",
     "errors": {
       "invalidEmail": "Enter a valid email address.",
-      "invalidCredentials": "The email or password is incorrect."
+      "invalidCredentials": "The email or password is incorrect.",
+      "signInFailed": "Sign-in did not complete. Try again.",
+      "noPlatformAccess": "Your account has no access to the platform yet. Ask your administrator for an invitation."
     },
     "mfa": {
       "title": "Two-step verification",
@@ -127,7 +130,13 @@
       "lower": "One lowercase letter",
       "number": "One number",
       "symbol": "One symbol"
-    }
+    },
+    "signInWithPlatform": "Sign in with your platform account",
+    "signInWithPlatformHint": "You will enter your email and password on the platform's sign-in page and come back here.",
+    "devAuthTitle": "Development sign-in",
+    "devAuthHint": "Development and test only: sign in as a seeded user without a password. Every sign-in is audited as dev-auth.",
+    "signedInWithKeycloak": "Signed in with your platform account",
+    "signedInWithDevAuth": "Signed in with dev-auth (development only)"
   },
   "account": {
     "title": "Account & security",
@@ -1070,7 +1079,8 @@
     "userStatus": {
       "active": "Active",
       "invited": "Invited",
-      "disabled": "Disabled"
+      "disabled": "Disabled",
+      "suspended": "Suspended"
     },
     "rolesTitle": "Roles",
     "rolesHint": "Roles are configurable bundles of granular permissions.",
@@ -1141,7 +1151,8 @@
       "lockout": "Account lockout",
       "failedAttempts": "Failed attempts before lockout",
       "lockoutMinutes": "Lockout duration (minutes)",
-      "save": "Save authentication settings"
+      "save": "Save authentication settings",
+      "availableInM0b": "Single sign-on, MFA and the per-customer sign-in policies arrive with milestone M0b. This tab shows their design; in M0 accounts use email and password in the platform's identity provider."
     },
     "securityData": "Data",
     "retention": "Project data retention",
@@ -1155,7 +1166,45 @@
     "allowedRanges": "Allowed ranges (CIDR)",
     "integrationHint": "Repositories, work items and design files",
     "auditTitle": "Audit log",
-    "auditHint": "Append-only and hash-chained. Exportable for regulatory audits."
+    "auditHint": "Append-only and hash-chained. Exportable for regulatory audits.",
+    "tenantSlug": "Identifier",
+    "invitationsTitle": "Invitations",
+    "invitationsHint": "Pending until the person signs in for the first time with the invited email.",
+    "expires": "Expires",
+    "resend": "Resend",
+    "revoke": "Revoke",
+    "suspend": "Suspend",
+    "reactivate": "Reactivate",
+    "removeMember": "Remove",
+    "confirmRemove": "Remove {{name}} from this customer? Their roles here are removed too.",
+    "never": "Never",
+    "deleteRole": "Delete role",
+    "adminHoldsAll": "The customer admin holds every permission of the customer and its projects, except signing sign-offs.",
+    "notApplicable": "Not applicable to a role of this scope",
+    "auditLoadMore": "Load older entries",
+    "auditVerify": "Verify chain",
+    "auditIntact_one": "The chain is intact ({{count}} entry checked).",
+    "auditIntact_other": "The chain is intact ({{count}} entries checked).",
+    "auditBroken": "The chain is broken at entry {{seq}} ({{reason}}).",
+    "outcome": "Outcome",
+    "noActiveTenant": "Select a customer in the top bar to manage it.",
+    "empty": "Nothing here yet.",
+    "tenantStatus": {
+      "active": "Active",
+      "suspended": "Suspended"
+    },
+    "invitationStatus": {
+      "pending": "Pending",
+      "accepted": "Accepted",
+      "revoked": "Revoked",
+      "expired": "Expired"
+    },
+    "outcomes": {
+      "success": "Success",
+      "failure": "Failure",
+      "allowed": "Allowed",
+      "denied": "Denied"
+    }
   },
   "platform": {
     "title": "Platform operations",
@@ -1336,7 +1385,19 @@
     "addMapping": "Add mapping",
     "keycloakNote": "Saved through the Keycloak Admin API. The Keycloak console is never exposed to customers.",
     "idpSaved": "Identity provider saved.",
-    "authSaved": "Authentication settings saved."
+    "authSaved": "Authentication settings saved.",
+    "tenantSlug": "Identifier",
+    "tenantSlugHint": "Lowercase letters, numbers and hyphens. It identifies the customer and cannot be changed later.",
+    "displayName": "Name (optional)",
+    "role": "Role",
+    "project": "Project",
+    "actionFailed": "The action failed: {{message}}",
+    "invitationResent": "Invitation sent again.",
+    "invitationRevoked": "Invitation revoked.",
+    "memberUpdated": "Member updated.",
+    "memberRemoved": "Member removed.",
+    "roleDeleted": "Role deleted.",
+    "invitePartial": "{{sent}} sent; not sent: {{errors}}"
   },
   "inputForms": {
     "hint": "Every input is validated and scanned before any agent reads it.",

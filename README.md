@@ -30,12 +30,60 @@ El producto es **nativamente en inglés**, con cambio completo a español.
   bugs, panel flotante de actividad de agentes, e historias de usuario editables con un plan de migración por
   olas sugerido por el sistema y modificable, validado contra las dependencias, con criterios de aceptación
   en Gherkin validados.
-- Siguiente paso: hito **M0 — Fundaciones** (Keycloak mínimo con cuentas locales, multi-tenant, usuarios y
-  permisos con OpenFGA, auditoría, CI). SSO con Entra ID, MFA y Organizations van en **M0b**.
+- **Hito M0 — Fundaciones terminado** (rama `m0-fundaciones`): API FastAPI con BFF y Keycloak (cuentas locales,
+  cookie `httpOnly`, CSRF, dev-auth solo en desarrollo), multi-tenant con RLS, usuarios, invitaciones, roles y
+  matriz de permisos con OpenFGA (outbox y reconciliación), auditoría inmutable con hash encadenado (incluidos los
+  eventos de Keycloak), la web conectada en sesión, menú, cliente, idioma y Administración, primitivas sobre Radix,
+  y CI con tests contra servicios reales, e2e con Playwright + axe, SAST, SCA y secret scanning. Criterios y
+  evidencia: [docs/planes/M0-fundaciones.md](docs/planes/M0-fundaciones.md) (sección 15); capturas en `docs/m0/`.
+  SSO con Entra ID, MFA y Organizations van en **M0b**.
+- Siguiente: **M1 — Configuración IA y consumo** (OpenRouter como primer proveedor, D-28).
 
-## Probar el prototipo
+## Probar la aplicación
+
+Con el entorno local levantado (ver Desarrollo):
 
 ```bash
-pnpm install
-pnpm web:dev      # http://localhost:5173
+pnpm api:dev      # API en http://localhost:8100
+pnpm web:dev      # web en http://localhost:5173 (proxy de /api y /auth hacia la API)
 ```
+
+El inicio de sesión va a Keycloak con los usuarios ficticios del realm (contraseña `KC_DEV_USER_PASSWORD` del
+`.env`), o en desarrollo con `dev-auth` eligiendo un usuario sembrado. Sesión, menú por permisos, selector de
+cliente e idioma usan la API real; el resto de las pantallas sigue con datos de ejemplo hasta su hito.
+
+## Desarrollo
+
+Requisitos: Node 24 con pnpm 10, Python 3.12 y [uv](https://docs.astral.sh/uv/).
+
+```bash
+pnpm install      # web y herramientas de lint
+uv sync --all-packages
+pnpm lint         # ESLint (apps/web)
+pnpm format:check # Prettier (apps/web)
+pnpm py:check     # Ruff, mypy estricto y pytest (apps/api, packages/)
+pnpm api:dev      # API en http://localhost:8100 (/api/v1/health/ready, docs en /api/v1/docs)
+```
+
+### Entorno local (Docker Compose)
+
+```bash
+python infra/docker-compose/init_env.py        # crea .env con secretos aleatorios (repetir tras cada pull)
+docker compose -f infra/docker-compose/compose.yaml up -d --wait
+python infra/docker-compose/smoke_check.py     # verifica servicios, realm de Keycloak y roles de BD
+pnpm db:migrate                                # esquema (Alembic, como platform_owner)
+pnpm db:seed                                   # datos ficticios de desarrollo (idempotente) + reconciliación OpenFGA
+pnpm fga:test                                  # tests del modelo de OpenFGA (infra/openfga)
+pnpm authz:reconcile                           # iguala OpenFGA a lo que implica PostgreSQL
+uv run python -m nexti_api.cli keycloak-events # copia los eventos de Keycloak a la auditoría (también en segundo plano)
+pnpm api:types                                 # regenera los tipos TypeScript de la web desde el OpenAPI de la API
+docker compose -f infra/docker-compose/compose.yaml --profile observability up -d --wait   # + Langfuse
+```
+
+Servicios en `127.0.0.1`: PostgreSQL 5440, Redis 6380, Keycloak 8180 (realm `nexti`), OpenFGA 8190,
+Mailpit 8025, MinIO 9100/9101, Neo4j 7476/7689 y Langfuse 3100. Los puertos se cambian en `.env`.
+Los usuarios de desarrollo del realm son ficticios (`admin@nexti.example`, `mtorres@andesbank.example`, …) y su
+contraseña es `KC_DEV_USER_PASSWORD` del `.env`.
+
+ESLint y Prettier viven en `tools/lint` con su propio TypeScript 6: TypeScript 7 (compilador nativo) ya no
+expone la API que usa typescript-eslint. La web sigue compilando con TypeScript 7.

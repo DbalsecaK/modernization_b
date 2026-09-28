@@ -66,7 +66,13 @@ export function ConnectionForm({
   const [values, setValues] = useState<Record<string, string>>({})
   const [test, setTest] = useState<'idle' | 'running' | 'ok'>(initial?.status === 'connected' ? 'ok' : 'idle')
   const [selected, setSelected] = useState<string[]>([])
-  const discovered: ModelOffering[] = offerings.filter((o) => (provider === 'openai' ? o.connectionId === 'c3' : provider === 'awsBedrock' ? o.connectionId === 'c2' : o.connectionId === 'c1'))
+  const discovered: ModelOffering[] = offerings.filter((o) =>
+    provider === 'openai'
+      ? o.connectionId === 'c3'
+      : provider === 'awsBedrock'
+        ? o.connectionId === 'c2'
+        : o.connectionId === 'c1',
+  )
   const editing = !!initial
 
   function runTest() {
@@ -163,7 +169,8 @@ export function ConnectionForm({
       {provider === 'azureFoundry' && <Notice tone="info">{t('aiForms.foundryHint')}</Notice>}
       <div className="flex items-center gap-3">
         <Button onClick={runTest} disabled={test === 'running'}>
-          {test === 'running' ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />} {t('ai.testConnection')}
+          {test === 'running' ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}{' '}
+          {t('ai.testConnection')}
         </Button>
         {test === 'ok' && (
           <span className="flex items-center gap-1.5 text-sm text-good-ink">

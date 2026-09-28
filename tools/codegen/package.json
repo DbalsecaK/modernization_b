@@ -1,0 +1,11 @@
+{
+  "name": "@nexti/codegen",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Code generation for the web client (TypeScript types from the API's OpenAPI). Isolated because openapi-typescript needs the TypeScript 5 compiler API; the apps build with TypeScript 7.",
+  "devDependencies": {
+    "openapi-typescript": "^7.13.0",
+    "typescript": "~5.9.3"
+  }
+}

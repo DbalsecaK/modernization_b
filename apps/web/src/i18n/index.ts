@@ -29,9 +29,17 @@ i18n.on('languageChanged', (lng) => {
 })
 document.documentElement.lang = i18n.language
 
-export function setLanguage(lng: Language) {
+// Saves the preference on the server for the signed-in user (registered by api/session.ts).
+let persistLanguage: ((lng: Language) => Promise<void>) | null = null
+
+export function registerLanguagePersister(persist: (lng: Language) => Promise<void>) {
+  persistLanguage = persist
+}
+
+export function setLanguage(lng: Language, options: { persist?: boolean } = {}) {
   writeStorage(KEY, lng)
-  void i18n.changeLanguage(lng)
+  if (i18n.language !== lng) void i18n.changeLanguage(lng)
+  if (options.persist !== false && persistLanguage) void persistLanguage(lng).catch(() => undefined)
 }
 
 export default i18n

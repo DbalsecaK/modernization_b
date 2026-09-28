@@ -10,7 +10,10 @@ export function PlatformPage() {
       <div className="space-y-6">
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <StatTile label={t('platform.queue')} value="37" hint={t('platform.queueHint')} />
-          <StatTile label={t('platform.workers')} value={`${workers.filter((w) => w.status !== 'offline').length} / ${workers.length}`} />
+          <StatTile
+            label={t('platform.workers')}
+            value={`${workers.filter((w) => w.status !== 'offline').length} / ${workers.length}`}
+          />
           <StatTile label={t('platform.errors')} value="2" hint={t('platform.errorsHint')} />
           <StatTile label={t('platform.sandboxes')} value="3" hint={t('platform.sandboxesHint')} />
         </div>
@@ -36,7 +39,9 @@ export function PlatformPage() {
                     <Progress value={w.cpu} tone={w.cpu > 85 ? 'warning' : 'brand'} />
                   </Td>
                   <Td>
-                    <Badge tone={w.status === 'busy' ? 'info' : w.status === 'idle' ? 'good' : 'critical'}>{t(`platform.status.${w.status}`)}</Badge>
+                    <Badge tone={w.status === 'busy' ? 'info' : w.status === 'idle' ? 'good' : 'critical'}>
+                      {t(`platform.status.${w.status}`)}
+                    </Badge>
                   </Td>
                 </tr>
               ))}

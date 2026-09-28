@@ -5,14 +5,30 @@ import { cn } from '@/lib/cn'
 import { formatDateTime } from '@/lib/format'
 import { bugLoop, workItems, type WorkItem, type WorkItemStatus, type WorkItemType } from '@/mocks/data'
 import type { Project } from '@/mocks/types'
-import { Badge, Button, Card, CardBody, CardHeader, Field, Input, Select, StatTile, Toggle } from '@/components/ui/primitives'
+import {
+  Badge,
+  Button,
+  Card,
+  CardBody,
+  CardHeader,
+  Field,
+  Input,
+  Select,
+  StatTile,
+  Toggle,
+} from '@/components/ui/primitives'
 import { toast } from '@/components/ui/overlay'
 import { Notice } from '../NewProjectWizard'
 
 // Work items synced with Jira or Azure DevOps (spec 7.6). Agents create and update items; the tester opens bugs
 // and the developer agent fixes them automatically within the project's autonomy and iteration limits.
 
-const typeIcon: Record<WorkItemType, typeof Layers> = { feature: Layers, story: SquareStack, task: CheckSquare, bug: Bug }
+const typeIcon: Record<WorkItemType, typeof Layers> = {
+  feature: Layers,
+  story: SquareStack,
+  task: CheckSquare,
+  bug: Bug,
+}
 const statusTone: Record<WorkItemStatus, 'neutral' | 'info' | 'warning' | 'good' | 'critical'> = {
   todo: 'neutral',
   inProgress: 'info',
@@ -47,12 +63,19 @@ export function BacklogTab({ project }: { project: Project }) {
         <StatTile label={t('backlog.types.story')} value={count('story')} />
         <StatTile label={t('backlog.types.task')} value={count('task')} />
         <StatTile label={t('backlog.openBugs')} value={openBugs} hint={t('backlog.openBugsHint')} />
-        <StatTile label={t('backlog.done')} value={`${workItems.filter((w) => w.status === 'done').length} / ${workItems.length}`} />
+        <StatTile
+          label={t('backlog.done')}
+          value={`${workItems.filter((w) => w.status === 'done').length} / ${workItems.length}`}
+        />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
-          <CardHeader title={t('backlog.connection')} subtitle={t('backlog.connectionHint')} action={<Badge tone="good">{t('common.connected')}</Badge>} />
+          <CardHeader
+            title={t('backlog.connection')}
+            subtitle={t('backlog.connectionHint')}
+            action={<Badge tone="good">{t('common.connected')}</Badge>}
+          />
           <CardBody className="space-y-4">
             <div className="grid gap-4 sm:grid-cols-2">
               <Field label={t('backlog.provider')}>
@@ -96,7 +119,11 @@ export function BacklogTab({ project }: { project: Project }) {
           <CardBody className="space-y-3">
             {RULES.map((r) => (
               <div key={r}>
-                <Toggle checked={rules[r]} onChange={(v) => setRules({ ...rules, [r]: v })} label={<span className="font-medium">{t(`backlog.rules.${r}.name`)}</span>} />
+                <Toggle
+                  checked={rules[r]}
+                  onChange={(v) => setRules({ ...rules, [r]: v })}
+                  label={<span className="font-medium">{t(`backlog.rules.${r}.name`)}</span>}
+                />
                 <p className="mt-0.5 ml-12 text-xs text-muted">{t(`backlog.rules.${r}.hint`)}</p>
               </div>
             ))}
@@ -111,20 +138,31 @@ export function BacklogTab({ project }: { project: Project }) {
           subtitle={t('backlog.itemsHint', { project: project.name })}
           action={
             <div className="w-44 shrink-0">
-            <Select className="h-9" value={type} onChange={(e) => setType(e.target.value as typeof type)} aria-label={t('backlog.filterType')}>
-              <option value="all">{t('backlog.allTypes')}</option>
-              {(['feature', 'story', 'task', 'bug'] as const).map((ty) => (
-                <option key={ty} value={ty}>
-                  {t(`backlog.types.${ty}`)}
-                </option>
-              ))}
-            </Select>
+              <Select
+                className="h-9"
+                value={type}
+                onChange={(e) => setType(e.target.value as typeof type)}
+                aria-label={t('backlog.filterType')}
+              >
+                <option value="all">{t('backlog.allTypes')}</option>
+                {(['feature', 'story', 'task', 'bug'] as const).map((ty) => (
+                  <option key={ty} value={ty}>
+                    {t(`backlog.types.${ty}`)}
+                  </option>
+                ))}
+              </Select>
             </div>
           }
         />
         <ul className="divide-y divide-border">
           {(type === 'all' ? roots.flatMap((r) => [r, ...descendants(r.key)]) : items).map((w) => (
-            <ItemRow key={w.key} item={w} depth={type === 'all' ? depthOf(w) : 0} onBug={() => setSelectedBug(w.key)} selected={selectedBug === w.key} />
+            <ItemRow
+              key={w.key}
+              item={w}
+              depth={type === 'all' ? depthOf(w) : 0}
+              onBug={() => setSelectedBug(w.key)}
+              selected={selectedBug === w.key}
+            />
           ))}
         </ul>
       </Card>
@@ -136,7 +174,13 @@ export function BacklogTab({ project }: { project: Project }) {
             {bugLoop.map((s) => (
               <li key={s.step} className="relative">
                 <span className="absolute top-0.5 -left-[31px] rounded-full bg-surface p-0.5">
-                  {s.step === 'detected' ? <Bug size={14} className="text-critical" /> : s.step === 'waitingReview' ? <Link2 size={14} className="text-warning" /> : <CheckCircle2 size={14} className="text-good" />}
+                  {s.step === 'detected' ? (
+                    <Bug size={14} className="text-critical" />
+                  ) : s.step === 'waitingReview' ? (
+                    <Link2 size={14} className="text-warning" />
+                  ) : (
+                    <CheckCircle2 size={14} className="text-good" />
+                  )}
                 </span>
                 <div className="flex flex-wrap items-baseline gap-x-2 text-sm">
                   <span className="text-xs text-muted tabular">{s.time}</span>
@@ -167,12 +211,32 @@ function depthOf(item: WorkItem): number {
   return d
 }
 
-function ItemRow({ item, depth, onBug, selected }: { item: WorkItem; depth: number; onBug: () => void; selected: boolean }) {
+function ItemRow({
+  item,
+  depth,
+  onBug,
+  selected,
+}: {
+  item: WorkItem
+  depth: number
+  onBug: () => void
+  selected: boolean
+}) {
   const { t } = useTranslation()
   const Icon = typeIcon[item.type]
   return (
-    <li className={cn('flex flex-wrap items-center gap-3 px-5 py-2.5', item.type === 'bug' && selected && 'bg-critical/5')} style={{ paddingLeft: 20 + depth * 24 }}>
-      <Icon size={16} className={cn(item.type === 'bug' ? 'text-critical' : item.type === 'feature' ? 'text-series-1' : 'text-muted')} aria-label={t(`backlog.types.${item.type}`)} />
+    <li
+      className={cn(
+        'flex flex-wrap items-center gap-3 px-5 py-2.5',
+        item.type === 'bug' && selected && 'bg-critical/5',
+      )}
+      style={{ paddingLeft: 20 + depth * 24 }}
+    >
+      <Icon
+        size={16}
+        className={cn(item.type === 'bug' ? 'text-critical' : item.type === 'feature' ? 'text-series-1' : 'text-muted')}
+        aria-label={t(`backlog.types.${item.type}`)}
+      />
       <span className="font-mono text-xs text-info">{item.key}</span>
       <span className="min-w-0 flex-1 truncate text-sm text-text">{item.title}</span>
       {item.rules.map((r) => (

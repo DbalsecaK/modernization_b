@@ -41,11 +41,33 @@ export function LineChart({
 
   return (
     <div className="relative" ref={ref}>
-      <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} className="block" role="img" aria-label={label}>
+      <svg
+        width={width}
+        height={height}
+        viewBox={`0 0 ${width} ${height}`}
+        className="block"
+        role="img"
+        aria-label={label}
+      >
         {ticks.map((tick) => (
           <g key={tick}>
-            <line x1={pad.left} x2={width - pad.right} y1={py(tick)} y2={py(tick)} stroke="var(--grid)" strokeWidth={1} />
-            <text x={pad.left - 8} y={py(tick)} textAnchor="end" dominantBaseline="middle" fontSize={11} fill="var(--text-muted)" className="tabular">
+            <line
+              x1={pad.left}
+              x2={width - pad.right}
+              y1={py(tick)}
+              y2={py(tick)}
+              stroke="var(--grid)"
+              strokeWidth={1}
+            />
+            <text
+              x={pad.left - 8}
+              y={py(tick)}
+              textAnchor="end"
+              dominantBaseline="middle"
+              fontSize={11}
+              fill="var(--text-muted)"
+              className="tabular"
+            >
               {format(tick)}
             </text>
           </g>
@@ -55,13 +77,27 @@ export function LineChart({
             {d.x}
           </text>
         ))}
-        <path d={path} fill="none" stroke="var(--series-1)" strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
+        <path
+          d={path}
+          fill="none"
+          stroke="var(--series-1)"
+          strokeWidth={2}
+          strokeLinejoin="round"
+          strokeLinecap="round"
+        />
         {hover !== null && (
           <line x1={px(hover)} x2={px(hover)} y1={pad.top} y2={pad.top + innerH} stroke="var(--axis)" strokeWidth={1} />
         )}
         {data.map((d, i) => (
           <g key={d.x}>
-            <circle cx={px(i)} cy={py(d.y)} r={hover === i ? 5 : 4} fill="var(--series-1)" stroke="var(--surface)" strokeWidth={2} />
+            <circle
+              cx={px(i)}
+              cy={py(d.y)}
+              r={hover === i ? 5 : 4}
+              fill="var(--series-1)"
+              stroke="var(--surface)"
+              strokeWidth={2}
+            />
             <rect
               x={px(i) - innerW / data.length / 2}
               y={pad.top}
@@ -74,7 +110,14 @@ export function LineChart({
           </g>
         ))}
         {data.length > 0 && (
-          <text x={px(data.length - 1)} y={py(data[data.length - 1].y) - 12} textAnchor="end" fontSize={12} fontWeight={600} fill="var(--text)">
+          <text
+            x={px(data.length - 1)}
+            y={py(data[data.length - 1].y) - 12}
+            textAnchor="end"
+            fontSize={12}
+            fontWeight={600}
+            fill="var(--text)"
+          >
             {format(data[data.length - 1].y)}
           </text>
         )}
@@ -109,7 +152,10 @@ export function BarList({
             <span className="shrink-0 font-medium text-text tabular">{format(d.value)}</span>
           </div>
           <div className="h-2 w-full rounded-full bg-surface-2">
-            <div className="h-full rounded-full bg-series-1 transition-opacity group-hover:opacity-80" style={{ width: `${(d.value / max) * 100}%` }} />
+            <div
+              className="h-full rounded-full bg-series-1 transition-opacity group-hover:opacity-80"
+              style={{ width: `${(d.value / max) * 100}%` }}
+            />
           </div>
           {d.hint && <div className="mt-0.5 text-xs text-muted">{d.hint}</div>}
         </li>

@@ -3,7 +3,19 @@ import { useTranslation } from 'react-i18next'
 import { Download, Table2 } from 'lucide-react'
 import { formatCompact, formatMonth, formatUsd } from '@/lib/format'
 import { costByProvider, monthlyCost, projects, tenants } from '@/mocks/data'
-import { Button, Card, CardBody, CardHeader, PageHeader, Progress, Select, StatTile, Table, Td, Th } from '@/components/ui/primitives'
+import {
+  Button,
+  Card,
+  CardBody,
+  CardHeader,
+  PageHeader,
+  Progress,
+  Select,
+  StatTile,
+  Table,
+  Td,
+  Th,
+} from '@/components/ui/primitives'
 import { BarList, LineChart } from '@/components/charts/charts'
 import { Notice } from '@/features/projects/NewProjectWizard'
 
@@ -37,7 +49,11 @@ export function UsagePage() {
           <StatTile label={t('usage.thisMonth')} value={formatUsd(total)} hint={t('usage.vsLastMonth', { pct: 45 })} />
           <StatTile label={t('usage.tokens')} value={formatCompact(tokens)} />
           <StatTile label={t('usage.costPerKloc')} value={formatUsd(4.8, 2)} hint={t('usage.unitHint')} />
-          <StatTile label={t('usage.costPerRule')} value={formatUsd(total / rulesExtracted, 2)} hint={t('usage.rulesExtracted', { count: rulesExtracted })} />
+          <StatTile
+            label={t('usage.costPerRule')}
+            value={formatUsd(total / rulesExtracted, 2)}
+            hint={t('usage.rulesExtracted', { count: rulesExtracted })}
+          />
         </div>
         <Card>
           <CardHeader
@@ -67,7 +83,11 @@ export function UsagePage() {
                 </tbody>
               </Table>
             ) : (
-              <LineChart data={monthlyCost.map((m) => ({ x: formatMonth(m.month), y: m.usd }))} format={(v) => formatUsd(v)} label={t('usage.trend')} />
+              <LineChart
+                data={monthlyCost.map((m) => ({ x: formatMonth(m.month), y: m.usd }))}
+                format={(v) => formatUsd(v)}
+                label={t('usage.trend')}
+              />
             )}
           </CardBody>
         </Card>
@@ -75,13 +95,19 @@ export function UsagePage() {
           <Card>
             <CardHeader title={t('usage.byTenant')} />
             <CardBody>
-              <BarList data={tenants.map((x) => ({ label: x.name, value: x.monthCostUsd }))} format={(v) => formatUsd(v)} />
+              <BarList
+                data={tenants.map((x) => ({ label: x.name, value: x.monthCostUsd }))}
+                format={(v) => formatUsd(v)}
+              />
             </CardBody>
           </Card>
           <Card>
             <CardHeader title={t('usage.byProvider')} />
             <CardBody>
-              <BarList data={costByProvider.map((c) => ({ label: t(`providers.${c.key}`), value: c.usd }))} format={(v) => formatUsd(v)} />
+              <BarList
+                data={costByProvider.map((c) => ({ label: t(`providers.${c.key}`), value: c.usd }))}
+                format={(v) => formatUsd(v)}
+              />
             </CardBody>
           </Card>
         </div>

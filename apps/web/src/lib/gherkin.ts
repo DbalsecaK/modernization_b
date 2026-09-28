@@ -29,7 +29,8 @@ export interface GherkinIssue {
 
 type Step = 'given' | 'when' | 'then'
 
-const SCENARIO = /^(Scenario Outline|Scenario Template|Esquema del escenario|Scenario|Escenario|Example|Ejemplo)\s*:\s*(.*)$/i
+const SCENARIO =
+  /^(Scenario Outline|Scenario Template|Esquema del escenario|Scenario|Escenario|Example|Ejemplo)\s*:\s*(.*)$/i
 const OUTLINE = /^(Scenario Outline|Scenario Template|Esquema del escenario)$/i
 const EXAMPLES = /^(Examples|Scenarios|Ejemplos)\s*:/i
 const STEP: [RegExp, Step | 'and'][] = [
@@ -42,7 +43,8 @@ const order: Record<Step, number> = { given: 0, when: 1, then: 2 }
 
 export function validateScenario(text: string, index = 0): GherkinIssue[] {
   const issues: GherkinIssue[] = []
-  const add = (line: number, code: GherkinIssueCode, detail?: string, after?: string) => issues.push({ scenario: index, line, code, detail, after })
+  const add = (line: number, code: GherkinIssueCode, detail?: string, after?: string) =>
+    issues.push({ scenario: index, line, code, detail, after })
   const lines = text.split('\n').map((l) => l.trim())
   const first = lines.findIndex((l) => l && !l.startsWith('#') && !l.startsWith('@'))
   const header = first === -1 ? null : SCENARIO.exec(lines[first])
@@ -65,7 +67,10 @@ export function validateScenario(text: string, index = 0): GherkinIssue[] {
     if (!l || l.startsWith('#') || l.startsWith('@')) continue
     if (examplesAt !== -1) {
       if (l.startsWith('|')) {
-        const cells = l.split('|').slice(1, -1).map((c) => c.trim())
+        const cells = l
+          .split('|')
+          .slice(1, -1)
+          .map((c) => c.trim())
         if (columns.length === 0) columns.push(...cells)
         else rows++
       } else add(i + 1, 'unknownLine', l)
@@ -102,13 +107,17 @@ export function validateScenario(text: string, index = 0): GherkinIssue[] {
   if (outline) {
     if (examplesAt === -1) add(end, 'outlineWithoutExamples')
     else if (rows === 0) add(examplesAt + 1, 'emptyExamples')
-    if (examplesAt !== -1) placeholders.filter((p) => !columns.includes(p.name)).forEach((p) => add(p.line, 'unknownPlaceholder', p.name))
+    if (examplesAt !== -1)
+      placeholders.filter((p) => !columns.includes(p.name)).forEach((p) => add(p.line, 'unknownPlaceholder', p.name))
   }
   return issues
 }
 
 export function scenarioName(text: string): string {
-  const l = text.split('\n').map((x) => x.trim()).find((x) => SCENARIO.test(x))
+  const l = text
+    .split('\n')
+    .map((x) => x.trim())
+    .find((x) => SCENARIO.test(x))
   return l ? SCENARIO.exec(l)![2].trim() : ''
 }
 
@@ -117,7 +126,8 @@ export function validateCriteria(criteria: string[]): GherkinIssue[] {
   const issues = criteria.flatMap((c, i) => validateScenario(c, i))
   const names = criteria.map((c) => scenarioName(c).toLowerCase())
   names.forEach((n, i) => {
-    if (n && names.slice(0, i).includes(n)) issues.push({ scenario: i, line: 1, code: 'duplicateName', detail: scenarioName(criteria[i]) })
+    if (n && names.slice(0, i).includes(n))
+      issues.push({ scenario: i, line: 1, code: 'duplicateName', detail: scenarioName(criteria[i]) })
   })
   return issues
 }

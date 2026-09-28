@@ -63,7 +63,7 @@ export const ssoDomains: Record<string, { provider: string; enforced: boolean }>
 
 export function discoverRealm(email: string) {
   const domain = email.split('@')[1]?.toLowerCase().trim()
-  return domain ? ssoDomains[domain] ?? null : null
+  return domain ? (ssoDomains[domain] ?? null) : null
 }
 
 // Pending password sign-in waiting for its second factor (mock of the server-side MFA challenge).

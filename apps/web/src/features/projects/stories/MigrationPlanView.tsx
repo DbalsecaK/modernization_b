@@ -1,6 +1,16 @@
 import { useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import { AlertTriangle, ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Ban, GripVertical, Plus, RotateCcw } from 'lucide-react'
+import {
+  AlertTriangle,
+  ArrowDown,
+  ArrowLeft,
+  ArrowRight,
+  ArrowUp,
+  Ban,
+  GripVertical,
+  Plus,
+  RotateCcw,
+} from 'lucide-react'
 import { cn } from '@/lib/cn'
 import type { UserStory } from '@/mocks/data'
 import { moveStory, planDiff, validatePlan, type PlanIssue } from '@/lib/migrationPlan'
@@ -49,7 +59,11 @@ export function MigrationPlanView() {
         <div className="ml-auto flex flex-wrap items-center gap-2">
           <RoleSwitch />
           <Toggle checked={showDiff} onChange={setShowDiff} label={t('storyPlan.showDiff')} />
-          <Button size="sm" disabled={!editable || diff.length === 0} onClick={() => (resetPlan(), setRejected([]), toast(t('storyPlan.resetDone')))}>
+          <Button
+            size="sm"
+            disabled={!editable || diff.length === 0}
+            onClick={() => (resetPlan(), setRejected([]), toast(t('storyPlan.resetDone')))}
+          >
             <RotateCcw size={14} /> {t('storyPlan.reset')}
           </Button>
         </div>
@@ -58,11 +72,18 @@ export function MigrationPlanView() {
 
       {rejected.length > 0 && (
         <Card className="border-critical">
-          <CardHeader title={<span className="flex items-center gap-1.5 text-critical-ink"><Ban size={14} /> {t('storyPlan.rejected', { id: rejected[0].story })}</span>} />
+          <CardHeader
+            title={
+              <span className="flex items-center gap-1.5 text-critical-ink">
+                <Ban size={14} /> {t('storyPlan.rejected', { id: rejected[0].story })}
+              </span>
+            }
+          />
           <CardBody className="space-y-1 text-sm">
             {rejected.map((i) => (
               <p key={i.story + i.dependency} className="text-text-2">
-                {t('storyPlan.hardIssue', { story: i.story, dependency: i.dependency })} <span className="text-muted">{i.reason}</span>
+                {t('storyPlan.hardIssue', { story: i.story, dependency: i.dependency })}{' '}
+                <span className="text-muted">{i.reason}</span>
               </p>
             ))}
           </CardBody>
@@ -74,10 +95,7 @@ export function MigrationPlanView() {
           const items = wave.map((id) => byId.get(id)).filter(Boolean) as UserStory[]
           const isNew = w === plan.length
           return (
-            <Card
-              key={w}
-              className={cn('flex flex-col', dragging && 'border-dashed', isNew && 'opacity-80')}
-            >
+            <Card key={w} className={cn('flex flex-col', dragging && 'border-dashed', isNew && 'opacity-80')}>
               <div
                 className="flex-1"
                 onDragOver={(e) => editable && e.preventDefault()}
@@ -89,11 +107,23 @@ export function MigrationPlanView() {
                 }}
               >
                 <CardHeader
-                  title={isNew ? <span className="flex items-center gap-1.5"><Plus size={14} /> {t('storyPlan.newWave')}</span> : t('storyPlan.wave', { n: w + 1 })}
+                  title={
+                    isNew ? (
+                      <span className="flex items-center gap-1.5">
+                        <Plus size={14} /> {t('storyPlan.newWave')}
+                      </span>
+                    ) : (
+                      t('storyPlan.wave', { n: w + 1 })
+                    )
+                  }
                   subtitle={
                     isNew
                       ? t('storyPlan.newWaveHint')
-                      : t('storyPlan.waveSummary', { count: items.length, points: items.reduce((a, s) => a + s.points, 0), rules: new Set(items.flatMap((s) => s.rules)).size })
+                      : t('storyPlan.waveSummary', {
+                          count: items.length,
+                          points: items.reduce((a, s) => a + s.points, 0),
+                          rules: new Set(items.flatMap((s) => s.rules)).size,
+                        })
                   }
                 />
                 <ul className="space-y-2 p-3">
@@ -111,7 +141,11 @@ export function MigrationPlanView() {
                         onDragEnd={() => setDragging(null)}
                         className={cn(
                           'rounded-md border bg-surface p-2.5 text-sm',
-                          own.some((x) => x.kind === 'hard') ? 'border-critical' : own.length ? 'border-warning' : 'border-border',
+                          own.some((x) => x.kind === 'hard')
+                            ? 'border-critical'
+                            : own.length
+                              ? 'border-warning'
+                              : 'border-border',
                           editable && 'cursor-grab',
                           dragging === s.id && 'opacity-50',
                         )}
@@ -127,15 +161,25 @@ export function MigrationPlanView() {
                         <div className="mt-1 flex flex-wrap gap-x-2 text-xs text-muted">
                           <span>{s.priority}</span>
                           <span>{t('stories.points', { count: s.points })}</span>
-                          {s.dependsOn.length > 0 && <span>{t('storyPlan.needs', { ids: s.dependsOn.map((x) => x.story).join(', ') })}</span>}
+                          {s.dependsOn.length > 0 && (
+                            <span>{t('storyPlan.needs', { ids: s.dependsOn.map((x) => x.story).join(', ') })}</span>
+                          )}
                         </div>
                         {showDiff && d && (
                           <div className="mt-1 text-xs text-info">
-                            {d.from === -1 ? t('storyPlan.notInSuggestion') : t('storyPlan.diff', { from: d.from + 1, to: d.to + 1 })}
+                            {d.from === -1
+                              ? t('storyPlan.notInSuggestion')
+                              : t('storyPlan.diff', { from: d.from + 1, to: d.to + 1 })}
                           </div>
                         )}
                         {own.map((x) => (
-                          <div key={x.dependency} className={cn('mt-1 flex items-start gap-1 text-xs', x.kind === 'hard' ? 'text-critical-ink' : 'text-warning-ink')}>
+                          <div
+                            key={x.dependency}
+                            className={cn(
+                              'mt-1 flex items-start gap-1 text-xs',
+                              x.kind === 'hard' ? 'text-critical-ink' : 'text-warning-ink',
+                            )}
+                          >
                             <AlertTriangle size={12} className="mt-0.5 shrink-0" />
                             {x.problem === 'missing'
                               ? t('storyPlan.missing', { dependency: x.dependency })
@@ -146,16 +190,39 @@ export function MigrationPlanView() {
                         ))}
                         {editable && (
                           <div className="mt-2 flex gap-1">
-                            <IconBtn label={t('storyPlan.prevWave')} disabled={w === 0} onClick={() => move(s.id, w - 1)} icon={<ArrowLeft size={12} />} />
-                            <IconBtn label={t('storyPlan.nextWave')} onClick={() => move(s.id, w + 1)} icon={<ArrowRight size={12} />} />
-                            <IconBtn label={t('storyPlan.up')} disabled={i === 0} onClick={() => move(s.id, w, i - 1)} icon={<ArrowUp size={12} />} />
-                            <IconBtn label={t('storyPlan.down')} disabled={i === items.length - 1} onClick={() => move(s.id, w, i + 1)} icon={<ArrowDown size={12} />} />
+                            <IconBtn
+                              label={t('storyPlan.prevWave')}
+                              disabled={w === 0}
+                              onClick={() => move(s.id, w - 1)}
+                              icon={<ArrowLeft size={12} />}
+                            />
+                            <IconBtn
+                              label={t('storyPlan.nextWave')}
+                              onClick={() => move(s.id, w + 1)}
+                              icon={<ArrowRight size={12} />}
+                            />
+                            <IconBtn
+                              label={t('storyPlan.up')}
+                              disabled={i === 0}
+                              onClick={() => move(s.id, w, i - 1)}
+                              icon={<ArrowUp size={12} />}
+                            />
+                            <IconBtn
+                              label={t('storyPlan.down')}
+                              disabled={i === items.length - 1}
+                              onClick={() => move(s.id, w, i + 1)}
+                              icon={<ArrowDown size={12} />}
+                            />
                           </div>
                         )}
                       </li>
                     )
                   })}
-                  {items.length === 0 && <li className="rounded-md border border-dashed border-border p-4 text-center text-xs text-muted">{t('storyPlan.dropHere')}</li>}
+                  {items.length === 0 && (
+                    <li className="rounded-md border border-dashed border-border p-4 text-center text-xs text-muted">
+                      {t('storyPlan.dropHere')}
+                    </li>
+                  )}
                 </ul>
               </div>
             </Card>
@@ -171,9 +238,16 @@ export function MigrationPlanView() {
               <p className="text-good-ink">{t('storyPlan.noIssues')}</p>
             ) : (
               issues.map((x) => (
-                <p key={x.story + x.dependency} className={x.kind === 'hard' ? 'text-critical-ink' : 'text-warning-ink'}>
+                <p
+                  key={x.story + x.dependency}
+                  className={x.kind === 'hard' ? 'text-critical-ink' : 'text-warning-ink'}
+                >
                   <b className="font-mono">{x.story}</b> →{' '}
-                  {x.problem === 'missing' ? t('storyPlan.missing', { dependency: x.dependency }) : x.kind === 'hard' ? t('storyPlan.hardIssue', { story: x.story, dependency: x.dependency }) : t('storyPlan.softIssue', { dependency: x.dependency })}{' '}
+                  {x.problem === 'missing'
+                    ? t('storyPlan.missing', { dependency: x.dependency })
+                    : x.kind === 'hard'
+                      ? t('storyPlan.hardIssue', { story: x.story, dependency: x.dependency })
+                      : t('storyPlan.softIssue', { dependency: x.dependency })}{' '}
                   <span className="text-muted">{x.reason}</span>
                 </p>
               ))
@@ -188,7 +262,10 @@ export function MigrationPlanView() {
             ) : (
               diff.map((d) => (
                 <p key={d.story} className="text-text-2">
-                  <b className="font-mono text-text">{d.story}</b> {d.from === -1 ? t('storyPlan.notInSuggestion') : t('storyPlan.diff', { from: d.from + 1, to: d.to + 1 })}
+                  <b className="font-mono text-text">{d.story}</b>{' '}
+                  {d.from === -1
+                    ? t('storyPlan.notInSuggestion')
+                    : t('storyPlan.diff', { from: d.from + 1, to: d.to + 1 })}
                 </p>
               ))
             )}
@@ -199,9 +276,26 @@ export function MigrationPlanView() {
   )
 }
 
-function IconBtn({ label, icon, onClick, disabled }: { label: string; icon: ReactNode; onClick: () => void; disabled?: boolean }) {
+function IconBtn({
+  label,
+  icon,
+  onClick,
+  disabled,
+}: {
+  label: string
+  icon: ReactNode
+  onClick: () => void
+  disabled?: boolean
+}) {
   return (
-    <button type="button" onClick={onClick} disabled={disabled} aria-label={label} title={label} className="rounded border border-border p-1 text-muted hover:bg-surface-2 hover:text-text disabled:opacity-40">
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      aria-label={label}
+      title={label}
+      className="rounded border border-border p-1 text-muted hover:bg-surface-2 hover:text-text disabled:opacity-40"
+    >
       {icon}
     </button>
   )

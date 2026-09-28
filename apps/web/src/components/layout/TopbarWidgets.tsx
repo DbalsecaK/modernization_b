@@ -25,16 +25,41 @@ export function GlobalSearch() {
     return [
       ...projects
         .filter((p) => match(p.name, ...p.sources))
-        .map((p) => ({ kind: 'project' as const, id: p.id, label: p.name, hint: t(`flows.${p.flow}`), go: () => navigate({ to: '/projects/$projectId', params: { projectId: p.id } }) })),
+        .map((p) => ({
+          kind: 'project' as const,
+          id: p.id,
+          label: p.name,
+          hint: t(`flows.${p.flow}`),
+          go: () => navigate({ to: '/projects/$projectId', params: { projectId: p.id } }),
+        })),
       ...rules
         .filter((r) => match(r.id, r.name, r.source, r.domain))
-        .map((r) => ({ kind: 'rule' as const, id: r.id, label: `${r.id} · ${r.name}`, hint: r.source, go: () => navigate({ to: '/projects/$projectId', params: { projectId: 'p1' }, search: { tab: 'specification' } }) })),
+        .map((r) => ({
+          kind: 'rule' as const,
+          id: r.id,
+          label: `${r.id} · ${r.name}`,
+          hint: r.source,
+          go: () =>
+            navigate({ to: '/projects/$projectId', params: { projectId: 'p1' }, search: { tab: 'specification' } }),
+        })),
       ...agents
         .filter((a) => match(a.name, a.nameEs ?? ''))
-        .map((a) => ({ kind: 'agent' as const, id: a.id, label: agentName(a, i18n.language), hint: t(`agentGroups.${a.group}`), go: () => navigate({ to: '/catalog', search: { tab: 'agents' } }) })),
+        .map((a) => ({
+          kind: 'agent' as const,
+          id: a.id,
+          label: agentName(a, i18n.language),
+          hint: t(`agentGroups.${a.group}`),
+          go: () => navigate({ to: '/catalog', search: { tab: 'agents' } }),
+        })),
       ...skills
         .filter((s) => match(s.name, s.description))
-        .map((s) => ({ kind: 'skill' as const, id: s.id, label: s.name, hint: t(`skillTypes.${s.type}`), go: () => navigate({ to: '/catalog', search: { tab: 'skills' } }) })),
+        .map((s) => ({
+          kind: 'skill' as const,
+          id: s.id,
+          label: s.name,
+          hint: t(`skillTypes.${s.type}`),
+          go: () => navigate({ to: '/catalog', search: { tab: 'skills' } }),
+        })),
     ].slice(0, 10)
   }, [query, t, i18n.language, navigate])
 
@@ -76,7 +101,10 @@ export function GlobalSearch() {
         }}
       />
       {open && query.trim().length >= 2 && (
-        <div className="absolute top-11 right-0 left-0 z-30 rounded-lg border border-border bg-surface p-1 shadow-lg" role="listbox">
+        <div
+          className="absolute top-11 right-0 left-0 z-30 rounded-lg border border-border bg-surface p-1 shadow-lg"
+          role="listbox"
+        >
           {results.length === 0 ? (
             <p className="px-3 py-3 text-sm text-muted">{t('search.noResults', { query })}</p>
           ) : (
@@ -89,7 +117,10 @@ export function GlobalSearch() {
                   aria-selected={i === active}
                   onMouseEnter={() => setActive(i)}
                   onClick={() => choose(r)}
-                  className={cn('flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm', i === active && 'bg-surface-2')}
+                  className={cn(
+                    'flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm',
+                    i === active && 'bg-surface-2',
+                  )}
                 >
                   <Icon size={16} className="shrink-0 text-muted" />
                   <span className="min-w-0 flex-1">
@@ -129,7 +160,10 @@ export function NotificationsMenu() {
         <div className="absolute right-0 z-30 mt-2 w-80 rounded-lg border border-border bg-surface shadow-lg sm:w-96">
           <div className="flex items-center justify-between border-b border-border px-4 py-3">
             <span className="text-sm font-semibold text-text">{t('topbar.notifications')}</span>
-            <button className="text-xs font-medium text-info hover:underline" onClick={() => setRead(notifications.map((n) => n.id))}>
+            <button
+              className="text-xs font-medium text-info hover:underline"
+              onClick={() => setRead(notifications.map((n) => n.id))}
+            >
               {t('notifications.markAllRead')}
             </button>
           </div>
@@ -143,11 +177,22 @@ export function NotificationsMenu() {
                     onClick={() => {
                       setRead([...read, n.id])
                       setOpen(false)
-                      if (n.projectId) void navigate({ to: '/projects/$projectId', params: { projectId: n.projectId }, search: { tab: n.tab ?? undefined } })
+                      if (n.projectId)
+                        void navigate({
+                          to: '/projects/$projectId',
+                          params: { projectId: n.projectId },
+                          search: { tab: n.tab ?? undefined },
+                        })
                       else void navigate({ to: '/ai-config' })
                     }}
                   >
-                    <span className={cn('mt-1.5 h-2 w-2 shrink-0 rounded-full', isUnread ? 'bg-series-1' : 'bg-transparent')} aria-hidden />
+                    <span
+                      className={cn(
+                        'mt-1.5 h-2 w-2 shrink-0 rounded-full',
+                        isUnread ? 'bg-series-1' : 'bg-transparent',
+                      )}
+                      aria-hidden
+                    />
                     <span className="min-w-0">
                       <span className="block text-sm text-text">{n.text}</span>
                       <span className="mt-0.5 block text-xs text-muted">

@@ -1,0 +1,141 @@
+{
+  "realm": "nexti",
+  "displayName": "NexTI Platform",
+  "enabled": true,
+  "sslRequired": "external",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "registrationEmailAsUsername": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": true,
+  "rememberMe": false,
+  "verifyEmail": false,
+  "editUsernameAllowed": false,
+  "internationalizationEnabled": true,
+  "supportedLocales": ["en", "es"],
+  "defaultLocale": "en",
+  "passwordPolicy": "length(12) and notUsername and notEmail and passwordHistory(3)",
+  "bruteForceProtected": true,
+  "permanentLockout": false,
+  "failureFactor": 5,
+  "waitIncrementSeconds": 900,
+  "maxFailureWaitSeconds": 900,
+  "minimumQuickLoginWaitSeconds": 60,
+  "quickLoginCheckMilliSeconds": 1000,
+  "maxDeltaTimeSeconds": 43200,
+  "ssoSessionIdleTimeout": 1800,
+  "ssoSessionMaxLifespan": 43200,
+  "accessTokenLifespan": 300,
+  "revokeRefreshToken": true,
+  "refreshTokenMaxReuse": 0,
+  "actionTokenGeneratedByUserLifespan": 1800,
+  "eventsEnabled": true,
+  "eventsExpiration": 604800,
+  "eventsListeners": ["jboss-logging"],
+  "adminEventsEnabled": true,
+  "adminEventsDetailsEnabled": true,
+  "smtpServer": {
+    "host": "mailpit",
+    "port": "1025",
+    "from": "no-reply@nexti.example",
+    "fromDisplayName": "NexTI Platform",
+    "auth": "false",
+    "ssl": "false",
+    "starttls": "false"
+  },
+  "clients": [
+    {
+      "clientId": "nexti-bff",
+      "name": "NexTI platform BFF",
+      "description": "Confidential client of the API/BFF: authorization code with PKCE. The browser never receives tokens.",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "${KC_BFF_CLIENT_SECRET}",
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "frontchannelLogout": false,
+      "redirectUris": ["${WEB_ORIGIN}/auth/callback"],
+      "webOrigins": [],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "${WEB_ORIGIN}/*",
+        "use.refresh.tokens": "true"
+      },
+      "defaultClientScopes": ["web-origins", "acr", "profile", "roles", "basic", "email"],
+      "optionalClientScopes": []
+    },
+    {
+      "clientId": "nexti-admin",
+      "name": "NexTI platform admin service account",
+      "description": "Least-privilege service account used by the API for invitations (create users) and to read events for the audit log.",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "${KC_ADMIN_CLIENT_SECRET}",
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true
+    }
+  ],
+  "users": [
+    {
+      "username": "service-account-nexti-admin",
+      "enabled": true,
+      "serviceAccountClientId": "nexti-admin",
+      "clientRoles": {
+        "realm-management": ["manage-users", "view-users", "query-users", "view-events"]
+      }
+    },
+    {
+      "username": "admin@nexti.example",
+      "email": "admin@nexti.example",
+      "firstName": "Platform",
+      "lastName": "Admin",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [{ "type": "password", "value": "${KC_DEV_USER_PASSWORD}", "temporary": false }]
+    },
+    {
+      "username": "cruiz@nexti.example",
+      "email": "cruiz@nexti.example",
+      "firstName": "Carlos",
+      "lastName": "Ruiz",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [{ "type": "password", "value": "${KC_DEV_USER_PASSWORD}", "temporary": false }]
+    },
+    {
+      "username": "mtorres@andesbank.example",
+      "email": "mtorres@andesbank.example",
+      "firstName": "María",
+      "lastName": "Torres",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [{ "type": "password", "value": "${KC_DEV_USER_PASSWORD}", "temporary": false }]
+    },
+    {
+      "username": "landrade@andesbank.example",
+      "email": "landrade@andesbank.example",
+      "firstName": "Luis",
+      "lastName": "Andrade",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [{ "type": "password", "value": "${KC_DEV_USER_PASSWORD}", "temporary": false }]
+    },
+    {
+      "username": "avelez@pacificcu.example",
+      "email": "avelez@pacificcu.example",
+      "firstName": "Ana",
+      "lastName": "Vélez",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [{ "type": "password", "value": "${KC_DEV_USER_PASSWORD}", "temporary": false }]
+    }
+  ]
+}

@@ -1,10 +1,8 @@
 import { createRootRoute, createRoute, createRouter, Outlet, redirect } from '@tanstack/react-router'
-import { getSession } from '@/lib/session'
+import { queryClient } from '@/api/queryClient'
+import { canOpen, meQuery, type NavKey } from '@/api/session'
 import { AppShell } from '@/components/layout/AppShell'
 import { LoginPage } from '@/features/auth/LoginPage'
-import { MfaPage } from '@/features/auth/MfaPage'
-import { ForgotPasswordPage } from '@/features/auth/ForgotPasswordPage'
-import { AcceptInvitePage } from '@/features/auth/AcceptInvitePage'
 import { DashboardPage } from '@/features/dashboard/DashboardPage'
 import { ProjectsPage } from '@/features/projects/ProjectsPage'
 import { NewProjectWizard } from '@/features/projects/NewProjectWizard'
@@ -26,32 +24,43 @@ const tabSearch = (search: Record<string, unknown>): { tab?: string; rule?: stri
 
 const rootRoute = createRootRoute({ component: Outlet, notFoundComponent: NotFoundPage })
 
-// Public authentication routes.
+// Sign-in page. In M0 the credentials are entered on Keycloak's own pages; the prototype's MFA, password reset
+// and invitation screens (features/auth) become the Keycloak theme in M0b (D-27) and are not routed.
 const loginRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/login',
-  validateSearch: (search: Record<string, unknown>): { redirect?: string } => ({
+  validateSearch: (search: Record<string, unknown>): { redirect?: string; error?: string } => ({
     redirect: typeof search.redirect === 'string' ? search.redirect : undefined,
+    error: typeof search.error === 'string' ? search.error : undefined,
   }),
   component: LoginPage,
 })
-const mfaRoute = createRoute({ getParentRoute: () => rootRoute, path: '/login/mfa', component: MfaPage })
-const forgotRoute = createRoute({ getParentRoute: () => rootRoute, path: '/forgot-password', component: ForgotPasswordPage })
-const inviteRoute = createRoute({ getParentRoute: () => rootRoute, path: '/accept-invite', component: AcceptInvitePage })
 
-// Authenticated area.
+// Authenticated area: the API says whether there is a session (httpOnly cookie).
 const appRoute = createRoute({
   getParentRoute: () => rootRoute,
   id: 'app',
-  beforeLoad: ({ location }) => {
-    if (!getSession()) throw redirect({ to: '/login', search: { redirect: location.href } })
+  beforeLoad: async ({ location }) => {
+    const me = await queryClient.ensureQueryData(meQuery)
+    if (!me) throw redirect({ to: '/login', search: { redirect: location.href } })
+    return { me }
   },
   component: AppShell,
 })
 
+// Sections the user has no permission for redirect to the dashboard (the API denies the calls anyway).
+const guard = (key: NavKey) => async () => {
+  const me = await queryClient.ensureQueryData(meQuery)
+  if (!canOpen(me, key)) throw redirect({ to: '/' })
+}
+
 const dashboardRoute = createRoute({ getParentRoute: () => appRoute, path: '/', component: DashboardPage })
 const projectsRoute = createRoute({ getParentRoute: () => appRoute, path: '/projects', component: ProjectsPage })
-const newProjectRoute = createRoute({ getParentRoute: () => appRoute, path: '/projects/new', component: NewProjectWizard })
+const newProjectRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: '/projects/new',
+  component: NewProjectWizard,
+})
 const projectRoute = createRoute({
   getParentRoute: () => appRoute,
   path: '/projects/$projectId',
@@ -59,18 +68,47 @@ const projectRoute = createRoute({
   component: ProjectWorkspace,
 })
 const tasksRoute = createRoute({ getParentRoute: () => appRoute, path: '/tasks', component: TasksPage })
-const usageRoute = createRoute({ getParentRoute: () => appRoute, path: '/usage', component: UsagePage })
-const aiConfigRoute = createRoute({ getParentRoute: () => appRoute, path: '/ai-config', validateSearch: tabSearch, component: AiConfigPage })
-const catalogRoute = createRoute({ getParentRoute: () => appRoute, path: '/catalog', validateSearch: tabSearch, component: CatalogPage })
-const adminRoute = createRoute({ getParentRoute: () => appRoute, path: '/admin', validateSearch: tabSearch, component: AdminPage })
-const platformRoute = createRoute({ getParentRoute: () => appRoute, path: '/platform', component: PlatformPage })
-const accountRoute = createRoute({ getParentRoute: () => appRoute, path: '/account', validateSearch: tabSearch, component: AccountPage })
+const usageRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: '/usage',
+  beforeLoad: guard('usage'),
+  component: UsagePage,
+})
+const aiConfigRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: '/ai-config',
+  beforeLoad: guard('aiConfig'),
+  validateSearch: tabSearch,
+  component: AiConfigPage,
+})
+const catalogRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: '/catalog',
+  validateSearch: tabSearch,
+  component: CatalogPage,
+})
+const adminRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: '/admin',
+  beforeLoad: guard('admin'),
+  validateSearch: tabSearch,
+  component: AdminPage,
+})
+const platformRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: '/platform',
+  beforeLoad: guard('platform'),
+  component: PlatformPage,
+})
+const accountRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: '/account',
+  validateSearch: tabSearch,
+  component: AccountPage,
+})
 
 const routeTree = rootRoute.addChildren([
   loginRoute,
-  mfaRoute,
-  forgotRoute,
-  inviteRoute,
   appRoute.addChildren([
     dashboardRoute,
     projectsRoute,

@@ -1,4 +1,12 @@
-import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode, SelectHTMLAttributes } from 'react'
+import {
+  useId,
+  useRef,
+  type ButtonHTMLAttributes,
+  type InputHTMLAttributes,
+  type ReactNode,
+  type SelectHTMLAttributes,
+} from 'react'
+import * as Switch from '@radix-ui/react-switch'
 import { cn } from '@/lib/cn'
 
 type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger'
@@ -29,7 +37,15 @@ export function Card({ className, children }: { className?: string; children: Re
   return <div className={cn('rounded-lg border border-border bg-surface', className)}>{children}</div>
 }
 
-export function CardHeader({ title, subtitle, action }: { title: ReactNode; subtitle?: ReactNode; action?: ReactNode }) {
+export function CardHeader({
+  title,
+  subtitle,
+  action,
+}: {
+  title: ReactNode
+  subtitle?: ReactNode
+  action?: ReactNode
+}) {
   return (
     <div className="flex items-start justify-between gap-4 border-b border-border px-5 py-4">
       <div className="min-w-0">
@@ -47,7 +63,15 @@ export function CardBody({ className, children }: { className?: string; children
 
 type Tone = 'neutral' | 'info' | 'good' | 'warning' | 'critical' | 'brand' | 'accent'
 
-export function Badge({ tone = 'neutral', children, className }: { tone?: Tone; children: ReactNode; className?: string }) {
+export function Badge({
+  tone = 'neutral',
+  children,
+  className,
+}: {
+  tone?: Tone
+  children: ReactNode
+  className?: string
+}) {
   return (
     <span
       className={cn(
@@ -67,7 +91,15 @@ export function Badge({ tone = 'neutral', children, className }: { tone?: Tone; 
   )
 }
 
-export function PageHeader({ title, description, actions }: { title: ReactNode; description?: ReactNode; actions?: ReactNode }) {
+export function PageHeader({
+  title,
+  description,
+  actions,
+}: {
+  title: ReactNode
+  description?: ReactNode
+  actions?: ReactNode
+}) {
   return (
     <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
       <div className="min-w-0">
@@ -92,7 +124,13 @@ export function StatTile({ label, value, hint }: { label: ReactNode; value: Reac
 export function Progress({ value, tone = 'brand' }: { value: number; tone?: 'brand' | 'warning' | 'critical' }) {
   const clamped = Math.max(0, Math.min(100, value))
   return (
-    <div className="h-1.5 w-full overflow-hidden rounded-full bg-surface-2" role="progressbar" aria-valuenow={clamped} aria-valuemin={0} aria-valuemax={100}>
+    <div
+      className="h-1.5 w-full overflow-hidden rounded-full bg-surface-2"
+      role="progressbar"
+      aria-valuenow={clamped}
+      aria-valuemin={0}
+      aria-valuemax={100}
+    >
       <div
         className={cn(
           'h-full rounded-full',
@@ -106,6 +144,8 @@ export function Progress({ value, tone = 'brand' }: { value: number; tone?: 'bra
   )
 }
 
+// WAI-ARIA tabs: one tab stop, arrows/Home/End move between tabs. The panels are rendered by the caller, so
+// Radix Tabs (which needs the panels inside its root for aria-controls) is not used here.
 export function Tabs<T extends string>({
   tabs,
   value,
@@ -115,18 +155,43 @@ export function Tabs<T extends string>({
   value: T
   onChange: (id: T) => void
 }) {
+  const refs = useRef<(HTMLButtonElement | null)[]>([])
+  const move = (index: number) => {
+    const next = (index + tabs.length) % tabs.length
+    refs.current[next]?.focus()
+    onChange(tabs[next].id)
+  }
   return (
-    <div className="mb-5 overflow-x-auto border-b border-border" role="tablist">
-      <div className="flex min-w-max gap-1">
-        {tabs.map((tab) => (
+    <div className="mb-5 overflow-x-auto border-b border-border">
+      <div className="flex min-w-max gap-1" role="tablist">
+        {tabs.map((tab, i) => (
           <button
             key={tab.id}
+            ref={(el) => {
+              refs.current[i] = el
+            }}
             role="tab"
+            type="button"
             aria-selected={tab.id === value}
+            tabIndex={tab.id === value ? 0 : -1}
             onClick={() => onChange(tab.id)}
+            onKeyDown={(e) => {
+              const keys: Record<string, number> = {
+                ArrowRight: i + 1,
+                ArrowLeft: i - 1,
+                Home: 0,
+                End: tabs.length - 1,
+              }
+              if (e.key in keys) {
+                e.preventDefault()
+                move(keys[e.key])
+              }
+            }}
             className={cn(
               '-mb-px border-b-2 px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors',
-              tab.id === value ? 'border-brand text-text dark:border-accent' : 'border-transparent text-muted hover:text-text',
+              tab.id === value
+                ? 'border-brand text-text dark:border-accent'
+                : 'border-transparent text-muted hover:text-text',
             )}
           >
             {tab.label}
@@ -147,7 +212,16 @@ export function Table({ children }: { children: ReactNode }) {
 }
 
 export function Th({ children, className }: { children?: ReactNode; className?: string }) {
-  return <th className={cn('border-b border-border px-4 py-2.5 text-xs font-medium tracking-wide text-muted uppercase', className)}>{children}</th>
+  return (
+    <th
+      className={cn(
+        'border-b border-border px-4 py-2.5 text-xs font-medium tracking-wide text-muted uppercase',
+        className,
+      )}
+    >
+      {children}
+    </th>
+  )
 }
 
 export function Td({ children, className }: { children?: ReactNode; className?: string }) {
@@ -179,25 +253,52 @@ export function Select({ children, ...props }: SelectHTMLAttributes<HTMLSelectEl
   )
 }
 
-export function Toggle({ checked, onChange, label, disabled }: { checked: boolean; onChange: (v: boolean) => void; label: ReactNode; disabled?: boolean }) {
+// On Radix Switch (D-14): role="switch", Space/Enter toggle, label associated for screen readers.
+export function Toggle({
+  checked,
+  onChange,
+  label,
+  disabled,
+}: {
+  checked: boolean
+  onChange: (v: boolean) => void
+  label: ReactNode
+  disabled?: boolean
+}) {
+  const id = useId()
   return (
-    <label className={cn('flex w-fit items-center gap-3 text-sm text-text', disabled && 'opacity-60')}>
-      <button
-        type="button"
-        role="switch"
-        aria-checked={checked}
+    <div className={cn('flex w-fit items-center gap-3 text-sm text-text', disabled && 'opacity-60')}>
+      <Switch.Root
+        id={id}
+        checked={checked}
+        onCheckedChange={onChange}
         disabled={disabled}
-        onClick={() => onChange(!checked)}
-        className={cn('relative h-5 w-9 rounded-full transition-colors', checked ? 'bg-series-1' : 'bg-border')}
+        className={cn(
+          'relative h-5 w-9 shrink-0 rounded-full transition-colors',
+          checked ? 'bg-series-1' : 'bg-border',
+        )}
       >
-        <span className={cn('absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-all', checked ? 'left-4.5' : 'left-0.5')} />
-      </button>
-      {label}
-    </label>
+        <Switch.Thumb
+          className={cn(
+            'absolute top-0.5 block h-4 w-4 rounded-full bg-white shadow transition-all',
+            checked ? 'left-4.5' : 'left-0.5',
+          )}
+        />
+      </Switch.Root>
+      <label htmlFor={id}>{label}</label>
+    </div>
   )
 }
 
-export function EmptyState({ title, description, action }: { title: ReactNode; description?: ReactNode; action?: ReactNode }) {
+export function EmptyState({
+  title,
+  description,
+  action,
+}: {
+  title: ReactNode
+  description?: ReactNode
+  action?: ReactNode
+}) {
   return (
     <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-border px-6 py-12 text-center">
       <p className="font-medium text-text">{title}</p>
@@ -217,7 +318,12 @@ export function Avatar({ initials }: { initials: string }) {
 
 export function Code({ children, className }: { children: ReactNode; className?: string }) {
   return (
-    <pre className={cn('overflow-x-auto rounded-md bg-surface-2 p-3 font-mono text-xs leading-relaxed text-text', className)}>
+    <pre
+      className={cn(
+        'overflow-x-auto rounded-md bg-surface-2 p-3 font-mono text-xs leading-relaxed text-text',
+        className,
+      )}
+    >
       {children}
     </pre>
   )

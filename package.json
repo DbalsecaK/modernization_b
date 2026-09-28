@@ -4,7 +4,19 @@
   "scripts": {
     "web:dev": "pnpm --filter @nexti/web dev",
     "web:build": "pnpm --filter @nexti/web build",
-    "web:test": "pnpm --filter @nexti/web test"
+    "web:test": "pnpm --filter @nexti/web test",
+    "lint": "node tools/lint/node_modules/eslint/bin/eslint.js apps/web",
+    "format": "node tools/lint/node_modules/prettier/bin/prettier.cjs --write apps/web",
+    "format:check": "node tools/lint/node_modules/prettier/bin/prettier.cjs --check apps/web",
+    "api:dev": "uv run uvicorn --factory nexti_api.main:create_app --reload --port 8100",
+    "py:check": "uv run ruff check . && uv run ruff format --check . && uv run mypy apps/api/src apps/api/tests packages/core/src packages/core/tests && uv run pytest",
+    "db:migrate": "uv run alembic -c apps/api/alembic.ini upgrade head",
+    "db:seed": "uv run python -m nexti_api.cli seed-dev",
+    "fga:test": "docker run --rm -v ./infra/openfga:/model openfga/cli:v0.8.1 model test --tests /model/model.tests.yaml",
+    "authz:reconcile": "uv run python -m nexti_api.cli reconcile",
+    "api:types": "uv run python -m nexti_api.cli openapi apps/api/openapi.json && node tools/codegen/node_modules/openapi-typescript/bin/cli.js apps/api/openapi.json -o apps/web/src/api/schema.d.ts",
+    "web:e2e": "pnpm --filter @nexti/web e2e"
   },
-  "packageManager": "pnpm@10.33.0"
+  "packageManager": "pnpm@10.33.0",
+  "type": "module"
 }
