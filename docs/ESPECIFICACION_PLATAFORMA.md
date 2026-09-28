@@ -1347,8 +1347,10 @@ restringido.
 
 ### 19.4 Modelo de datos relacional (entidades principales)
 
-- **Identidad y tenancy:** `tenant`, `user`, `membership`, `role`, `permission`, `role_permission`,
-  `project_member`, `identity_provider`, `license`, `deployment`.
+- **Identidad y tenancy:** `tenant`, `app_user` (global, sin `tenant_id`, D-29), `membership`, `role` (por tenant,
+  copia de los roles base), `permission` y `permission_scope` (catálogo), `role_permission`, `role_assignment`
+  (rol de tenant o de proyecto; reemplaza a `project_member`), `invitation`, `platform_role_assignment`,
+  `authz_outbox`, `keycloak_event_cursor`; más adelante `identity_provider`, `license`, `deployment`.
 - **Proyectos:** `project`, `project_config` (versionada), `pipeline_template`, `input_artifact`
   (insumo, con hash y versión), `integration`.
 - **Ejecución:** `run`, `phase_run`, `agent_invocation`, `gate`, `approval`, `question`, `verdict`,
@@ -1371,7 +1373,8 @@ restringido.
 - **Consumo:** `usage_ledger` (append-only), `budget`, `budget_alert`.
 - **Auditoría:** `audit_log` (append-only, hash encadenado).
 
-Todas las tablas de negocio llevan `tenant_id` con RLS.
+Todas las tablas de negocio llevan `tenant_id` con RLS; las excepciones (identidad global, catálogo, roles de
+plataforma) están en [ADR-0006](adr/0006-identidad-global-sin-tenant-id.md).
 
 ### 19.5 API (esbozo)
 
@@ -1637,6 +1640,7 @@ Sybase SP (M4) → BMS (M5) → CICS (M6) → ASPX (M8).
 | D-20 | Keycloak: **un realm con una Organization por tenant** en el SaaS compartido; realm o instancia dedicada en despliegues dedicados o si un cliente exige políticas por realm; versión fijada 26+ ([ADR-0002](adr/0002-keycloak-organizations-por-tenant.md)) |
 | D-27 | Autenticación **por etapas**: Keycloak mínimo desde M0 (cuentas locales en Keycloak, BFF, `dev-auth` solo en desarrollo) y SSO/MFA/Organizations/Keycloakify en **M0b**; la plataforma nunca guarda contraseñas ([ADR-0004](adr/0004-autenticacion-por-etapas.md)) |
 | D-18 | Producto nativamente en inglés (UI, prompts, skills, catálogo); español como traducción completa; idioma de artefactos configurable por proyecto (inglés por defecto) |
+| D-29 | Identidad global: `app_user`, el catálogo de permisos y los roles de plataforma sin `tenant_id`, con visibilidad por RLS y membresía; toda otra tabla de negocio lleva `tenant_id` con RLS forzado ([ADR-0006](adr/0006-identidad-global-sin-tenant-id.md)) |
 | D-28 | **OpenRouter** como primer proveedor de modelos (M1): conexión por tenant usable en desarrollo, pruebas o producción según decida cada cliente, con proveedor de enrutamiento y versión fijados y políticas de ZDR y proveedores permitidos; Foundry, Bedrock y OpenAI después sobre el mismo modelo de datos ([ADR-0005](adr/0005-openrouter-proveedor-inicial.md)) |
 
 ### 22.2 Pendientes

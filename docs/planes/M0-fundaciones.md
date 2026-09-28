@@ -1,6 +1,7 @@
 # Plan del hito M0 — Fundaciones
 
-- **Estado:** aprobado el 2026-09-28 como **plan mixto**: este documento más tres enmiendas (ver abajo).
+- **Estado:** **terminado** el 2026-09-28 (ver sección 15). Aprobado como **plan mixto**: este documento más tres
+  enmiendas (ver abajo).
 - **Fuente:** `docs/ESPECIFICACION_PLATAFORMA.md` (secciones 14, 15, 16, 18.7, 19, 20) y ADR-0001 a 0004.
 - **Rama de trabajo:** `m0-fundaciones`, un commit por paso, PR a `main` al terminar.
 
@@ -366,7 +367,7 @@ cliente TypeScript generado desde él para la web.
 | 11 ✅ | Web: Administración conectada (usuarios, invitaciones, roles, matriz, auditoría); reemplazo de mocks | e2e de invitar, asignar rol y ver auditoría |
 | 12 ✅ | Primitivas sobre Radix + Playwright/axe | Tests de accesibilidad en verde, sin cambios en imports de pantallas |
 | 13 ✅ | CI completo (jobs de la sección 10) | Pipeline verde en el PR |
-| 14 | Cierre: recorrido de todos los criterios, actualización de spec/README/CLAUDE.md, capturas | Checklist de la sección 11 completo |
+| 14 ✅ | Cierre: recorrido de todos los criterios, actualización de spec/README/CLAUDE.md, capturas | Checklist de la sección 11 completo |
 
 ## 13. Decisiones menores a confirmar antes de empezar
 
@@ -389,3 +390,39 @@ cliente TypeScript generado desde él para la web.
 | Endpoint sin autorización | Test que recorre las rutas registradas y exige `require(...)` o marca explícita de público |
 | Secretos en el repo | `.env` en `.gitignore`, gitleaks en CI, realm de dev sin secretos reales |
 | Alcance de M0 crece (SSO, MFA) | Fuera de alcance explícito: M0b |
+
+## 15. Cierre de M0 (2026-09-28)
+
+Todos los criterios de aceptación de la sección 20 de la especificación se cumplen con tests automatizados, que
+corren en CI (`.github/workflows/ci.yml`) contra los servicios reales.
+
+| Criterio | Evidencia (tests) | Estado |
+|---|---|---|
+| Un usuario de un tenant no ve datos de otro (SQL) | `apps/api/tests/integration/test_rls.py` (cada tabla, escrituras cruzadas, sin tenant no hay filas) y `test_schema.py` (RLS forzado en toda tabla con `tenant_id`) | ✅ |
+| … (API) | `test_endpoints_authz.py::test_an_admin_of_one_tenant_reaches_nothing_of_another`, `test_invitations.py`, `test_audit.py` (aislamiento) | ✅ |
+| Login con cuenta local de Keycloak y logout | `test_auth_flow.py::test_login_me_switch_locale_logout` y `apps/web/e2e/auth.spec.ts` (Keycloak real, navegador real) | ✅ |
+| Ningún token llega al navegador | `test_auth_flow.py` (cookies, cabeceras y cuerpos) y `auth.spec.ts` (almacenamiento, cookies visibles para JS, respuestas) | ✅ |
+| La plataforma no guarda contraseñas | `test_schema.py::test_no_column_can_hold_credentials` | ✅ |
+| La API no arranca con dev-auth fuera de desarrollo/test | `apps/api/tests/test_dev_auth_guard.py` (`create_app` y proceso de uvicorn) | ✅ |
+| Cada endpoint con test de autorización permitido y denegado contra OpenFGA | `test_endpoints_authz.py` (matriz de todas las rutas + meta-test que exige autorización y caso por ruta) e `infra/openfga/model.tests.yaml` | ✅ |
+| Un cambio de rol se refleja en OpenFGA; la reconciliación corrige una diferencia forzada | `test_authz.py::test_a_role_change_reaches_openfga` y `::test_reconciliation_corrects_a_forced_difference` | ✅ |
+| Toda acción sensible (incluidos los eventos de Keycloak) queda en la auditoría | `test_endpoints_authz.py` (cada mutación deja registro), `test_keycloak_events.py`, `test_audit.py` (cadena inmutable y verificable) | ✅ |
+| La web arranca en inglés; al cambiar a español no queda texto sin traducir | `apps/web/src/i18n/i18n.test.ts` (paridad de claves), `scripts/check-i18n-keys.mjs` y `e2e/i18n.spec.ts` | ✅ |
+| La preferencia de idioma persiste entre sesiones | `e2e/i18n.spec.ts` (otro navegador, sin almacenamiento local) y `test_auth_flow.py` | ✅ |
+| Las primitivas migradas pasan los tests de accesibilidad | `e2e/admin.spec.ts` (axe sobre Drawer, Toast, Switch y Tabs, foco y teclado) | ✅ |
+
+**Capturas** en `docs/m0/`: login con dev-auth, usuarios, matriz de roles, auditoría verificada y el drawer de
+invitación.
+
+**Limitaciones conocidas (pasan a hitos posteriores)**
+
+- El superadministrador crea tenants, pero la invitación del primer administrador de un tenant nuevo exige ser
+  miembro de ese tenant: hoy se hace con `seed-dev` o directamente en la base. Resolverlo junto con la consola de
+  plataforma (invitar como superadministrador a cualquier tenant).
+- dev-auth no actualiza `last_login_at` (solo el login con Keycloak).
+- Cambios al realm de Keycloak (`infra/keycloak/realm-nexti.json`) no se reimportan sobre un realm existente
+  (estrategia `IGNORE_EXISTING`): en local, recrear la base `keycloak`. La configuración por Admin API es M0b.
+- Keycloak 26 pide completar nombre y apellido al primer login de una cuenta invitada (perfil declarativo).
+- SSO, MFA, Organizations, Keycloakify y políticas por tenant: **M0b** (D-27).
+- Las demás pantallas del prototipo siguen con datos de ejemplo hasta su hito.
+

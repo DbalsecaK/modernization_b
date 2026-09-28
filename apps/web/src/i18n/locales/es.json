@@ -60,7 +60,7 @@
     "heroPoint1": "Guiado por especificación: cada línea generada se traza a una regla.",
     "heroPoint2": "Verificación independiente con un veredicto calculado por código.",
     "heroPoint3": "Multi-cliente, con tus datos dentro de tu perímetro.",
-    "securityNote": "Protegido con SSO, autenticación multifactor y auditoría completa.",
+    "securityNote": "Protegido por el proveedor de identidad de la plataforma, aislamiento por cliente y auditoría completa.",
     "signInTitle": "Iniciar sesión",
     "signInSubtitle": "Usa tu correo corporativo. Te llevaremos al método de inicio de sesión de tu organización.",
     "workEmail": "Correo corporativo",

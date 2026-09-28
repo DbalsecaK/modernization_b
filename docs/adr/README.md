@@ -11,5 +11,6 @@ reemplaza y se marca el anterior como "Reemplazado por ADR-NNNN".
 | [0003](0003-componentes-ui-shadcn-radix.md) | D-14 — Componentes UI con shadcn/ui sobre Radix | Aceptada |
 | [0004](0004-autenticacion-por-etapas.md) | D-27 — Autenticación por etapas (Keycloak mínimo en M0, SSO/MFA en M0b) | Aceptada |
 | [0005](0005-openrouter-proveedor-inicial.md) | D-28 — OpenRouter como primer proveedor de modelos | Aceptada |
+| [0006](0006-identidad-global-sin-tenant-id.md) | D-29 — Identidad global sin `tenant_id`, con visibilidad por RLS | Aceptada |
 
 Plantilla: contexto, decisión, alternativas consideradas, consecuencias y cómo se valida.

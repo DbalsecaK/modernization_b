@@ -60,7 +60,7 @@
     "heroPoint1": "Spec-driven: every line of generated code traces back to a rule.",
     "heroPoint2": "Independent verification with a verdict computed by code.",
     "heroPoint3": "Multi-customer, with your data kept inside your perimeter.",
-    "securityNote": "Protected by SSO, multi-factor authentication and full audit logging.",
+    "securityNote": "Protected by the platform's identity provider, per-customer isolation and full audit logging.",
     "signInTitle": "Sign in",
     "signInSubtitle": "Use your work email. We will route you to your organization's sign-in method.",
     "workEmail": "Work email",

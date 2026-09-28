@@ -30,8 +30,14 @@ El producto es **nativamente en inglés**, con cambio completo a español.
   bugs, panel flotante de actividad de agentes, e historias de usuario editables con un plan de migración por
   olas sugerido por el sistema y modificable, validado contra las dependencias, con criterios de aceptación
   en Gherkin validados.
-- Siguiente paso: hito **M0 — Fundaciones** (Keycloak mínimo con cuentas locales, multi-tenant, usuarios y
-  permisos con OpenFGA, auditoría, CI). SSO con Entra ID, MFA y Organizations van en **M0b**.
+- **Hito M0 — Fundaciones terminado** (rama `m0-fundaciones`): API FastAPI con BFF y Keycloak (cuentas locales,
+  cookie `httpOnly`, CSRF, dev-auth solo en desarrollo), multi-tenant con RLS, usuarios, invitaciones, roles y
+  matriz de permisos con OpenFGA (outbox y reconciliación), auditoría inmutable con hash encadenado (incluidos los
+  eventos de Keycloak), la web conectada en sesión, menú, cliente, idioma y Administración, primitivas sobre Radix,
+  y CI con tests contra servicios reales, e2e con Playwright + axe, SAST, SCA y secret scanning. Criterios y
+  evidencia: [docs/planes/M0-fundaciones.md](docs/planes/M0-fundaciones.md) (sección 15); capturas en `docs/m0/`.
+  SSO con Entra ID, MFA y Organizations van en **M0b**.
+- Siguiente: **M1 — Configuración IA y consumo** (OpenRouter como primer proveedor, D-28).
 
 ## Probar la aplicación
 

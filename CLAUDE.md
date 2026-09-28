@@ -47,6 +47,7 @@ pnpm install            # en la raíz del repo
 pnpm web:dev            # servidor de desarrollo (http://localhost:5173)
 pnpm web:build          # typecheck + build
 pnpm web:test           # tests (paridad de catálogos i18n) + chequeo de claves usadas
+pnpm web:e2e            # Playwright + axe contra la API y Keycloak reales (entorno local levantado)
 pnpm lint               # ESLint; pnpm format:check para Prettier
 pnpm api:types          # regenera apps/web/src/api/schema.d.ts desde el OpenAPI de la API
 ```
@@ -63,7 +64,8 @@ pnpm db:seed            # datos ficticios de desarrollo
 
 ## Reglas no negociables
 
-1. **Multi-tenant siempre:** toda tabla de negocio lleva `tenant_id` con Row-Level Security. El tenant se
+1. **Multi-tenant siempre:** toda tabla de negocio lleva `tenant_id` con Row-Level Security (excepciones acotadas:
+   identidad global y catálogo, `docs/adr/0006`). El tenant se
    deriva de la sesión, nunca de un parámetro del cliente. Todo acceso a Neo4j pasa por `packages/graph`.
 2. **Ninguna llamada a un modelo fuera de `packages/model_gateway`.** El gateway aplica política, perfil,
    fallback, presupuesto y registra el consumo.
