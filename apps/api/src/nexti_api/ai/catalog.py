@@ -23,8 +23,8 @@ from nexti_core.db.models import (
     ModelVersion,
     PriceVersion,
 )
-from nexti_model_gateway.openrouter import Pricing
 from nexti_model_gateway.rules import OfferingFacts, Policy, policy_denial
+from nexti_model_gateway.service import Pricing
 
 router = APIRouter(prefix="/api/v1/ai", tags=["ai"])
 SuperAdmin = Annotated[Authorized, Depends(require_platform("superAdmin"))]

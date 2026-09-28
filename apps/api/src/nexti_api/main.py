@@ -26,8 +26,7 @@ from nexti_api.keycloak_admin import KeycloakAdmin
 from nexti_api.observability import RequestLogMiddleware, configure_logging, log
 from nexti_api.resources import Resources
 from nexti_api.settings import Settings, get_settings
-from nexti_model_gateway.secrets import SecretsConfig
-from nexti_model_gateway.service import GatewayService
+from nexti_model_gateway.service import GatewayService, SecretsConfig
 
 
 async def _connect_fga(resources: Resources, settings: Settings) -> fga_module.OpenFga | None:

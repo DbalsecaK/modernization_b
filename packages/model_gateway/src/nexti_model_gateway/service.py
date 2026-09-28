@@ -13,6 +13,8 @@ from nexti_model_gateway.gateway import CallContext, Completion, ModelGateway
 from nexti_model_gateway.openrouter import BASE_URL, OpenRouterClient, Pricing, ProviderError
 from nexti_model_gateway.secrets import SecretsConfig, SecretStore, connection_path
 
+__all__ = ["ConnectionCheck", "GatewayService", "Pricing", "SecretsConfig"]
+
 
 @dataclass(frozen=True)
 class ConnectionCheck:
@@ -22,10 +24,10 @@ class ConnectionCheck:
 
 class GatewayService:
     def __init__(
-        self, engine: AsyncEngine, http: httpx.AsyncClient, secrets: SecretsConfig, openrouter_url: str = BASE_URL
+        self, engine: AsyncEngine, http: httpx.AsyncClient, secrets: SecretsConfig, openrouter_url: str | None = None
     ) -> None:
         self._secrets = SecretStore(secrets, http)
-        self._client = OpenRouterClient(http, openrouter_url)
+        self._client = OpenRouterClient(http, openrouter_url or BASE_URL)
         self.gateway = ModelGateway(engine, self._secrets, self._client)
 
     async def complete(self, ctx: CallContext, messages: list[dict[str, Any]], **extra: Any) -> Completion:
