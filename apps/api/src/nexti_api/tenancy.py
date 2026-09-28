@@ -5,8 +5,8 @@ import uuid
 from sqlalchemy import insert
 from sqlalchemy.ext.asyncio import AsyncConnection
 
-from nexti_api.db.models import Role, RolePermission, Tenant
 from nexti_core.authz_catalog import BASE_ROLES
+from nexti_core.db.models import Role, RolePermission, Tenant
 
 
 async def create_tenant(

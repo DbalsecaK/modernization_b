@@ -121,12 +121,22 @@ export function StatTile({ label, value, hint }: { label: ReactNode; value: Reac
   )
 }
 
-export function Progress({ value, tone = 'brand' }: { value: number; tone?: 'brand' | 'warning' | 'critical' }) {
+export function Progress({
+  value,
+  tone = 'brand',
+  label,
+}: {
+  value: number
+  tone?: 'brand' | 'warning' | 'critical'
+  /** Accessible name of the bar (WCAG: a progressbar needs one). */
+  label?: string
+}) {
   const clamped = Math.max(0, Math.min(100, value))
   return (
     <div
       className="h-1.5 w-full overflow-hidden rounded-full bg-surface-2"
       role="progressbar"
+      aria-label={label}
       aria-valuenow={clamped}
       aria-valuemin={0}
       aria-valuemax={100}

@@ -48,7 +48,7 @@ def test_default_checks_fail_when_not_configured() -> None:
     with TestClient(create_app(settings)) as c:
         res = c.get("/api/v1/health/ready")
     assert res.status_code == 503
-    assert set(res.json()["checks"]) == {"postgres", "redis", "keycloak", "openfga"}
+    assert set(res.json()["checks"]) == {"postgres", "redis", "keycloak", "openfga", "secrets"}
 
 
 def test_request_id_is_echoed_or_generated() -> None:

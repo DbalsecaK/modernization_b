@@ -142,6 +142,20 @@ services:
       <<: *healthcheck
       test: ["CMD", "mc", "ready", "local"]
 
+  openbao:
+    # Secrets store with the Vault API (ADR-0007). Dev mode keeps secrets in memory: recreating the container
+    # means entering the provider API keys again. Production uses Vault or OpenBao with persistent storage.
+    image: docker.io/openbao/openbao:2.7.0
+    command: ["server", "-dev", "-dev-listen-address=0.0.0.0:8200"]
+    environment:
+      BAO_DEV_ROOT_TOKEN_ID: ${OPENBAO_DEV_ROOT_SECRET:?set in .env}
+    cap_add: [IPC_LOCK]
+    ports:
+      - 127.0.0.1:${OPENBAO_PORT:-8210}:8200
+    healthcheck:
+      <<: *healthcheck
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:8200/v1/sys/health || exit 1"]
+
   mailpit:
     # Captures outgoing mail (Keycloak invitations and password actions) in development.
     image: docker.io/axllent/mailpit:v1.31.3

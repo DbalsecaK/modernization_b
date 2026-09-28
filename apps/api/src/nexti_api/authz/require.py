@@ -15,9 +15,9 @@ from nexti_api.audit import AuditEvent, record
 from nexti_api.auth.session import CurrentSession, require_session
 from nexti_api.authz import names
 from nexti_api.authz.fga import OpenFga
-from nexti_api.db.session import DbScope, scoped_connection
 from nexti_api.errors import ProblemError
 from nexti_core.authz_catalog import permission_scopes
+from nexti_core.db.session import DbScope, scoped_connection
 
 
 @dataclass(frozen=True)

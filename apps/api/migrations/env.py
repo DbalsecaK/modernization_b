@@ -4,8 +4,8 @@ from alembic import context
 from sqlalchemy import create_engine
 from sqlalchemy.engine import make_url
 
-from nexti_api.db.models import Base
 from nexti_api.settings import Settings
+from nexti_core.db.models import Base
 
 config = context.config
 if config.config_file_name is not None:

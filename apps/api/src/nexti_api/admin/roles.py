@@ -12,10 +12,10 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 from nexti_api.admin.common import audit, not_found, transaction
 from nexti_api.authz.require import Authorized, authenticated, require_tenant
 from nexti_api.authz.sync import authz_change
-from nexti_api.db.models import Role, RoleAssignment, RolePermission
 from nexti_api.errors import ProblemError
 from nexti_api.schemas import ApiModel
 from nexti_core.authz_catalog import PERMISSIONS, permission_scopes
+from nexti_core.db.models import Role, RoleAssignment, RolePermission
 
 router = APIRouter(prefix="/api/v1", tags=["roles"])
 ManageUsers = Annotated[Authorized, Depends(require_tenant("users.manage"))]

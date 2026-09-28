@@ -11,9 +11,9 @@ from nexti_api.auth.routes import actor_kind
 from nexti_api.auth.session import AuthMethod, SessionStore
 from nexti_api.auth.users import TenantRef, load_profile, platform_roles, set_locale, user_tenants
 from nexti_api.authz.require import Authorized, authenticated, effective_tenant_permissions
-from nexti_api.db.session import DbScope, scoped_connection
 from nexti_api.errors import ProblemError
 from nexti_api.schemas import ApiModel
+from nexti_core.db.session import DbScope, scoped_connection
 
 router = APIRouter(prefix="/api/v1", tags=["session"])
 

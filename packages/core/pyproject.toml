@@ -1,9 +1,9 @@
 [project]
 name = "nexti-core"
 version = "0.1.0"
-description = "Shared domain types of the NexTI platform: tenancy identifiers and languages."
+description = "Shared domain of the NexTI platform: tenancy types, permission catalog and the database layer."
 requires-python = ">=3.12"
-dependencies = []
+dependencies = ["sqlalchemy[asyncio]>=2.1", "structlog>=26.1"]
 
 [build-system]
 requires = ["hatchling"]

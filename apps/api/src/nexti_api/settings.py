@@ -50,6 +50,12 @@ class Settings(BaseSettings):
     session_max_seconds: int = 43200
     # __Host- cookies must be Secure; browsers accept Secure cookies on http://localhost.
     session_cookie_secure: bool = True
+    # Secrets store with the Vault KV v2 API (OpenBao in development, ADR-0007).
+    secrets_url: str = ""
+    secrets_token: SecretStr = SecretStr("")
+    secrets_mount: str = "secret"
+    # OpenRouter API base; empty uses the gateway default (tests point it to a simulated server).
+    openrouter_url: str | None = None
     openfga_url: str = ""
     openfga_api_key: SecretStr = SecretStr("")
     # Outside development/test the store and model are pinned; locally they are created/updated from the repo.

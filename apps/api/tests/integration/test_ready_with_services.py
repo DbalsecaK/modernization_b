@@ -17,6 +17,6 @@ def test_ready_with_every_local_service() -> None:
         res = c.get("/api/v1/health/ready")
     assert res.json()["checks"] == {
         name: {"status": "ok", "latency_ms": res.json()["checks"][name]["latency_ms"]}
-        for name in ("postgres", "redis", "keycloak", "openfga")
+        for name in ("postgres", "redis", "keycloak", "openfga", "secrets")
     }
     assert res.status_code == 200

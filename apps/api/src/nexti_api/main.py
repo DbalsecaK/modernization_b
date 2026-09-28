@@ -7,8 +7,12 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
-from nexti_api import health, me
+from nexti_api import health, me, usage
 from nexti_api.admin import assignments, audit_log, invitations, projects, roles, tenants, users
+from nexti_api.ai import assignments as ai_assignments
+from nexti_api.ai import catalog as ai_catalog
+from nexti_api.ai import connections as ai_connections
+from nexti_api.ai import profiles as ai_profiles
 from nexti_api.audit.keycloak_events import pull_keycloak_events
 from nexti_api.auth import dev_auth
 from nexti_api.auth import routes as auth_routes
@@ -22,6 +26,7 @@ from nexti_api.keycloak_admin import KeycloakAdmin
 from nexti_api.observability import RequestLogMiddleware, configure_logging, log
 from nexti_api.resources import Resources
 from nexti_api.settings import Settings, get_settings
+from nexti_model_gateway.service import GatewayService, SecretsConfig
 
 
 async def _connect_fga(resources: Resources, settings: Settings) -> fga_module.OpenFga | None:
@@ -86,6 +91,16 @@ def create_app(settings: Settings | None = None, health_checks: dict[str, health
         # Without Redis or a session secret there are no sessions: session routes answer 503.
         configured = resources.redis is not None and settings.session_secret.get_secret_value()
         app.state.sessions = SessionStore(resources.redis, settings) if configured and resources.redis else None
+        app.state.gateway_service = (
+            GatewayService(
+                resources.engine,
+                resources.http,
+                SecretsConfig(settings.secrets_url, settings.secrets_token.get_secret_value(), settings.secrets_mount),
+                settings.openrouter_url,
+            )
+            if resources.engine is not None and settings.secrets_url
+            else None
+        )
         app.state.fga = await _connect_fga(resources, settings)
         app.state.relay = None
         stop = asyncio.Event()
@@ -134,6 +149,14 @@ def create_app(settings: Settings | None = None, health_checks: dict[str, health
     ):
         app.include_router(admin_router)
     app.include_router(audit_log.router)
+    for ai_router in (
+        ai_connections.router,
+        ai_catalog.router,
+        ai_profiles.router,
+        ai_assignments.router,
+        usage.router,
+    ):
+        app.include_router(ai_router)
     if settings.dev_auth_enabled:
         app.include_router(dev_auth.router)
     return app

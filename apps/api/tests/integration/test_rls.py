@@ -5,12 +5,21 @@ from sqlalchemy import text
 from sqlalchemy.exc import DBAPIError
 from sqlalchemy.ext.asyncio import AsyncEngine
 
-from nexti_api.db.session import DbScope, scoped_connection
+from nexti_core.db.session import DbScope, scoped_connection
 
 from .conftest import World
 
 TENANT_TABLES = ("membership", "role", "role_permission", "project", "role_assignment", "invitation", "authz_outbox")
-RLS_TABLES = ("tenant", "app_user", *TENANT_TABLES)
+AI_TABLES = (
+    "provider_connection",
+    "model_profile",
+    "model_assignment",
+    "model_policy",
+    "usage_ledger",
+    "budget",
+    "budget_alert",
+)
+RLS_TABLES = ("tenant", "app_user", *TENANT_TABLES, *AI_TABLES)
 
 
 async def ids(engine: AsyncEngine, scope: DbScope, sql: str) -> list[object]:

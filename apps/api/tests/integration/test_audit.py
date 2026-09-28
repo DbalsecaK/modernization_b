@@ -9,8 +9,8 @@ from sqlalchemy.exc import DBAPIError
 from sqlalchemy.ext.asyncio import AsyncEngine
 
 from nexti_api.audit import AuditEvent, record, verify
-from nexti_api.db.session import DbScope, scoped_connection
 from nexti_api.tenancy import create_tenant
+from nexti_core.db.session import DbScope, scoped_connection
 
 from .conftest import World
 

@@ -1428,6 +1428,8 @@ pasan los tests de accesibilidad.
 
 ### M1 — Configuración IA y consumo
 
+Plan detallado y cierre (criterios con sus tests): `docs/planes/M1-configuracion-ia.md`.
+
 - Conexión **OpenRouter** (primer proveedor, D-28) con "probar conexión" y secreto en Vault (dev: equivalente local),
   proveedor de enrutamiento fijado y políticas de ZDR y proveedores permitidos por tenant. Foundry, Bedrock y
   OpenAI se agregan después sobre el mismo modelo de datos (cuando un cliente lo requiera, antes de M9).
@@ -1640,6 +1642,7 @@ Sybase SP (M4) → BMS (M5) → CICS (M6) → ASPX (M8).
 | D-20 | Keycloak: **un realm con una Organization por tenant** en el SaaS compartido; realm o instancia dedicada en despliegues dedicados o si un cliente exige políticas por realm; versión fijada 26+ ([ADR-0002](adr/0002-keycloak-organizations-por-tenant.md)) |
 | D-27 | Autenticación **por etapas**: Keycloak mínimo desde M0 (cuentas locales en Keycloak, BFF, `dev-auth` solo en desarrollo) y SSO/MFA/Organizations/Keycloakify en **M0b**; la plataforma nunca guarda contraseñas ([ADR-0004](adr/0004-autenticacion-por-etapas.md)) |
 | D-18 | Producto nativamente en inglés (UI, prompts, skills, catálogo); español como traducción completa; idioma de artefactos configurable por proyecto (inglés por defecto) |
+| D-30 | Secretos con la **API de Vault** (KV v2) a través de un único módulo del gateway; **OpenBao** en desarrollo y CI, Vault u OpenBao en producción; la base solo guarda la ruta ([ADR-0007](adr/0007-almacen-de-secretos-openbao.md)) |
 | D-29 | Identidad global: `app_user`, el catálogo de permisos y los roles de plataforma sin `tenant_id`, con visibilidad por RLS y membresía; toda otra tabla de negocio lleva `tenant_id` con RLS forzado ([ADR-0006](adr/0006-identidad-global-sin-tenant-id.md)) |
 | D-28 | **OpenRouter** como primer proveedor de modelos (M1): conexión por tenant usable en desarrollo, pruebas o producción según decida cada cliente, con proveedor de enrutamiento y versión fijados y políticas de ZDR y proveedores permitidos; Foundry, Bedrock y OpenAI después sobre el mismo modelo de datos ([ADR-0005](adr/0005-openrouter-proveedor-inicial.md)) |
 

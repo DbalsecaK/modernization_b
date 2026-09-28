@@ -10,13 +10,14 @@ from alembic.migration import MigrationContext
 from sqlalchemy import Connection, text
 from sqlalchemy.ext.asyncio import AsyncEngine
 
-from nexti_api.db.models import Base
 from nexti_core.authz_catalog import PERMISSIONS
+from nexti_core.db.models import Base
 
 from .conftest import SETTINGS, Databases, create_database, drop_database, migrate
 
 # The platform never stores passwords, MFA secrets or tokens (spec 15.1, rule 11): they live in Keycloak/Redis.
-CREDENTIAL_COLUMN = re.compile(r"pass(word|wd)?|pwd|secret|otp|totp|mfa|recovery|credential|token|api_?key", re.I)
+# `token` as a credential (session_token, api_token...), not token counts such as input_tokens in the usage ledger.
+CREDENTIAL_COLUMN = re.compile(r"pass(word|wd)?|pwd|secret|otp|totp|mfa|recovery|credential|token$|api_?key", re.I)
 
 
 async def test_no_column_can_hold_credentials(owner_engine: AsyncEngine) -> None:

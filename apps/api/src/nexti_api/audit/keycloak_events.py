@@ -13,9 +13,9 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine
 
 from nexti_api.audit import AuditEvent, record
-from nexti_api.db.models import KeycloakEventCursor
-from nexti_api.db.session import DbScope, scoped_connection
 from nexti_api.keycloak_admin import KeycloakAdmin
+from nexti_core.db.models import KeycloakEventCursor
+from nexti_core.db.session import DbScope, scoped_connection
 
 PAGE = 100
 FIRST_RUN_LOOKBACK = timedelta(days=1)

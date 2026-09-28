@@ -18,6 +18,7 @@ El producto es **nativamente en inglés**, con cambio completo a español.
 - [Decisiones de arquitectura (ADR)](docs/adr/README.md): OpenFGA, Keycloak con Organizations, componentes
   UI y autenticación por etapas.
 - [Plan del hito M0](docs/planes/M0-fundaciones.md): pasos, tablas, endpoints y tests de las fundaciones.
+- [Plan del hito M1](docs/planes/M1-configuracion-ia.md): configuración IA, gateway de modelos y consumo.
 - [CLAUDE.md](CLAUDE.md): instrucciones para trabajar con Claude Code.
 
 ## Estado
@@ -37,7 +38,14 @@ El producto es **nativamente en inglés**, con cambio completo a español.
   y CI con tests contra servicios reales, e2e con Playwright + axe, SAST, SCA y secret scanning. Criterios y
   evidencia: [docs/planes/M0-fundaciones.md](docs/planes/M0-fundaciones.md) (sección 15); capturas en `docs/m0/`.
   SSO con Entra ID, MFA y Organizations van en **M0b**.
-- Siguiente: **M1 — Configuración IA y consumo** (OpenRouter como primer proveedor, D-28).
+- **Hito M1 — Configuración IA y consumo terminado** (rama `m1-configuracion-ia`): conexión OpenRouter por
+  cliente con la API key en OpenBao (nunca en la base ni en el navegador), catálogo sincronizado con proveedores
+  de destino y precios versionados, perfiles con esfuerzo normalizado y respaldo, cascada cliente → proyecto →
+  fase → rol, políticas (prohibir OpenRouter, proveedores permitidos, ZDR), **gateway único**
+  (`packages/model_gateway`) con libro de consumo append-only, presupuestos y alertas, y las pantallas de
+  Configuración IA y Consumo y costos conectadas. Criterios y evidencia:
+  [docs/planes/M1-configuracion-ia.md](docs/planes/M1-configuracion-ia.md) (sección 7); capturas en `docs/m1/`.
+- Siguiente: **M2 — Proyectos e insumos**.
 
 ## Probar la aplicación
 
@@ -50,7 +58,8 @@ pnpm web:dev      # web en http://localhost:5173 (proxy de /api y /auth hacia la
 
 El inicio de sesión va a Keycloak con los usuarios ficticios del realm (contraseña `KC_DEV_USER_PASSWORD` del
 `.env`), o en desarrollo con `dev-auth` eligiendo un usuario sembrado. Sesión, menú por permisos, selector de
-cliente e idioma usan la API real; el resto de las pantallas sigue con datos de ejemplo hasta su hito.
+cliente e idioma, Administración, Configuración IA y Consumo y costos usan la API real; el resto de las
+pantallas sigue con datos de ejemplo hasta su hito.
 
 ## Desarrollo
 
@@ -80,10 +89,14 @@ pnpm api:types                                 # regenera los tipos TypeScript d
 docker compose -f infra/docker-compose/compose.yaml --profile observability up -d --wait   # + Langfuse
 ```
 
-Servicios en `127.0.0.1`: PostgreSQL 5440, Redis 6380, Keycloak 8180 (realm `nexti`), OpenFGA 8190,
+Servicios en `127.0.0.1`: PostgreSQL 5440, Redis 6380, Keycloak 8180 (realm `nexti`), OpenFGA 8190, OpenBao 8210,
 Mailpit 8025, MinIO 9100/9101, Neo4j 7476/7689 y Langfuse 3100. Los puertos se cambian en `.env`.
 Los usuarios de desarrollo del realm son ficticios (`admin@nexti.example`, `mtorres@andesbank.example`, …) y su
 contraseña es `KC_DEV_USER_PASSWORD` del `.env`.
+
+Para el test con la API real de OpenRouter (`test_openrouter_live.py`, unas millonésimas de dólar por corrida)
+agrega `OPENROUTER_API_KEY_FOR_TESTS=<key>` al `.env` de `infra/docker-compose` (ignorado por git); sin ella el
+test se omite. En CI se toma del secreto del mismo nombre.
 
 ESLint y Prettier viven en `tools/lint` con su propio TypeScript 6: TypeScript 7 (compilador nativo) ya no
 expone la API que usa typescript-eslint. La web sigue compilando con TypeScript 7.

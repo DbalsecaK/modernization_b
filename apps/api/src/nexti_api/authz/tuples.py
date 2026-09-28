@@ -10,7 +10,8 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 
 from nexti_api.authz import names
 from nexti_api.authz.names import Tuple
-from nexti_api.db.models import (
+from nexti_core.authz_catalog import TENANT_ADMIN_ROLE, PlatformRole
+from nexti_core.db.models import (
     Membership,
     PlatformRoleAssignment,
     Project,
@@ -19,7 +20,6 @@ from nexti_api.db.models import (
     RolePermission,
     Tenant,
 )
-from nexti_core.authz_catalog import TENANT_ADMIN_ROLE, PlatformRole
 
 
 async def expected_tuples(conn: AsyncConnection, tenant_id: uuid.UUID) -> set[Tuple]:

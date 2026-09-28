@@ -18,7 +18,7 @@ concurrency:
 env:
   COMPOSE: docker compose -f infra/docker-compose/compose.yaml
   # The services the API needs (Neo4j, MinIO and Langfuse are not used in M0).
-  SERVICES: postgres redis keycloak openfga mailpit
+  SERVICES: postgres redis keycloak openfga openbao mailpit
 
 jobs:
   python-quality:
@@ -30,7 +30,7 @@ jobs:
       - run: uv sync --all-packages --locked
       - run: uv run ruff check .
       - run: uv run ruff format --check .
-      - run: uv run mypy apps/api/src apps/api/tests packages/core/src packages/core/tests
+      - run: uv run mypy apps/api/src apps/api/tests packages/core/src packages/core/tests packages/model_gateway/src packages/model_gateway/tests
 
   web:
     name: Web · lint, types, tests, build, generated types
@@ -80,6 +80,9 @@ jobs:
           # shellcheck disable=SC2086 # the list of services must be split
           $COMPOSE up -d --wait $SERVICES
       - run: uv run pytest
+        env:
+          # M1 acceptance against the real OpenRouter API (a few millionths of a dollar); skipped when empty.
+          OPENROUTER_API_KEY_FOR_TESTS: ${{ secrets.OPENROUTER_API_KEY_FOR_TESTS }}
       - name: Service logs on failure
         if: failure()
         run: $COMPOSE logs --tail 200

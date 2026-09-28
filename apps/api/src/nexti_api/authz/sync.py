@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 
 from nexti_api.authz.names import Tuple
 from nexti_api.authz.tuples import expected_tuples
-from nexti_api.db.models import AuthzOutbox
+from nexti_core.db.models import AuthzOutbox
 
 
 async def enqueue(conn: AsyncConnection, tenant_id: uuid.UUID | None, writes: set[Tuple], deletes: set[Tuple]) -> int:

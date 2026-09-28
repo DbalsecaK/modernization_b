@@ -58,7 +58,13 @@ def default_checks(resources: Resources, settings: Settings) -> dict[str, Check]
         res = await resources.http.get(f"{settings.openfga_url.rstrip('/')}/healthz")
         res.raise_for_status()
 
-    return {"postgres": postgres, "redis": redis, "keycloak": keycloak, "openfga": openfga}
+    async def secrets() -> None:
+        if not settings.secrets_url:
+            raise NotConfiguredError("SECRETS_URL is not set")
+        res = await resources.http.get(f"{settings.secrets_url.rstrip('/')}/v1/sys/health")
+        res.raise_for_status()
+
+    return {"postgres": postgres, "redis": redis, "keycloak": keycloak, "openfga": openfga, "secrets": secrets}
 
 
 async def _run(name: str, check: Check) -> CheckResult:
