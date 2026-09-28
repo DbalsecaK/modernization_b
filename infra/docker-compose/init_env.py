@@ -64,6 +64,7 @@ def write_api_env(env: dict[str, str], target: Path) -> None:
     """
     values = {
         "APP_ENV": "development",
+        "DEV_AUTH_ENABLED": "true",
         "DATABASE_URL": (
             f"postgresql+asyncpg://platform_app:{env['PLATFORM_APP_PASSWORD']}@127.0.0.1:{env['POSTGRES_PORT']}/platform"
         ),

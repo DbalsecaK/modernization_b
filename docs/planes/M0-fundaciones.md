@@ -321,7 +321,7 @@ cliente TypeScript generado desde él para la web.
 | 4 ✅ | Esquema con Alembic: tenancy, usuarios, roles, permisos, asignaciones, proyecto mínimo, invitaciones, outbox; RLS y roles de BD; datos sembrados | Tests SQL de aislamiento en verde |
 | 5 ✅ | Auditoría append-only con hash encadenado y verificación | Tests de inmutabilidad y cadena en verde |
 | 6 ✅ | BFF con Keycloak: login, callback, logout, sesión Redis, cookie, CSRF, `me`, cambio de tenant | Login real en local; test "ningún token en el navegador" |
-| 7 | `dev-auth` y arranque seguro | Test de arranque en producción falla como se espera |
+| 7 ✅ | `dev-auth` y arranque seguro | Test de arranque en producción falla como se espera |
 | 8 | OpenFGA: modelo y tests del modelo, cliente, `require(...)`, outbox y reconciliación | `fga model test` y tests de sincronización en verde |
 | 9 | Routers de administración (tenants, usuarios, invitaciones con Keycloak + Mailpit, roles, matriz, asignaciones, proyectos, auditoría) con tests permitido/denegado y aislamiento | Suite `authz` e `isolation` en verde |
 | 10 | Web: cliente de API, TanStack Query, sesión real, menú por permisos, selector de tenant | La web entra con Keycloak o dev-auth y muestra el menú según el rol |

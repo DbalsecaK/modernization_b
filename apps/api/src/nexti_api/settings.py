@@ -19,8 +19,9 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=API_DIR / ".env", extra="ignore")
 
     app_env: AppEnv = "production"
-    # Sign-in with a seeded user and no password (spec 15.1, D-27). Only allowed in development and test.
-    dev_auth: bool = False
+    # Sign-in with a seeded user and no password (spec 15.1, D-27). The API refuses to start with it enabled
+    # outside development and test (see main.create_app).
+    dev_auth_enabled: bool = False
     log_level: str = "INFO"
 
     # PostgreSQL as the runtime role (no BYPASSRLS): postgresql+asyncpg://platform_app:...@host:port/platform

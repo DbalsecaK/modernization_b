@@ -6,6 +6,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from nexti_api import health, me
+from nexti_api.auth import dev_auth
 from nexti_api.auth import routes as auth_routes
 from nexti_api.auth.oidc import OidcClient
 from nexti_api.auth.session import SessionStore
@@ -18,6 +19,8 @@ from nexti_api.settings import Settings, get_settings
 def create_app(settings: Settings | None = None, health_checks: dict[str, health.Check] | None = None) -> FastAPI:
     """Build the API. `health_checks` replaces the real dependency checks (tests only)."""
     settings = settings or get_settings()
+    # Before anything else: dev-auth outside development/test must not start (ADR-0004).
+    dev_auth.ensure_allowed(settings)
     configure_logging(json=not settings.is_local, level=settings.log_level)
 
     @asynccontextmanager
@@ -49,4 +52,6 @@ def create_app(settings: Settings | None = None, health_checks: dict[str, health
     app.include_router(health.router)
     app.include_router(auth_routes.router)
     app.include_router(me.router)
+    if settings.dev_auth_enabled:
+        app.include_router(dev_auth.router)
     return app
