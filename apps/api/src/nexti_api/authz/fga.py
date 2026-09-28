@@ -1,5 +1,6 @@
 """Small OpenFGA HTTP client: check, batch check, list objects, idempotent writes, read all, bootstrap."""
 
+import asyncio
 import json
 from collections.abc import Iterable
 from pathlib import Path
@@ -12,6 +13,8 @@ from nexti_api.settings import API_DIR, Settings
 
 MODEL_FILE = API_DIR.parents[1] / "infra" / "openfga" / "model.json"
 MAX_TUPLES_PER_WRITE = 100  # OpenFGA default limit per Write request
+# Relay and reconciler writing the same tuple at once: OpenFGA aborts one with 409; the retry is a no-op.
+WRITE_CONFLICT_RETRIES = 3
 
 
 class OpenFgaError(RuntimeError):
@@ -38,6 +41,11 @@ class OpenFga:
 
     async def _post(self, path: str, body: dict[str, Any]) -> dict[str, Any]:
         res = await self.http.post(f"{self.base}/{path}", json=body, headers=self.headers)
+        for attempt in range(WRITE_CONFLICT_RETRIES):
+            if not (path == "write" and res.status_code == 409):
+                break
+            await asyncio.sleep(0.05 * (attempt + 1))
+            res = await self.http.post(f"{self.base}/{path}", json=body, headers=self.headers)
         if res.status_code >= 400:
             raise OpenFgaError(f"OpenFGA {path} answered {res.status_code}: {res.text[:300]}")
         data: dict[str, Any] = res.json() if res.content else {}

@@ -778,11 +778,11 @@ async def test_the_api_key_goes_to_the_secrets_store_only(
 
     # The database keeps the path only; the key is in OpenBao, where the rotation replaced it.
     async with owner_engine.connect() as conn:
-        row = (
+        row: str = (
             await conn.execute(text("SELECT row_to_json(c)::text FROM provider_connection c WHERE id = :id"),
                                {"id": connection_id})
         ).scalar_one()  # fmt: skip
-        audit_rows = (
+        audit_rows: str = (
             await conn.execute(text("SELECT coalesce(string_agg(details::text, ''), '') FROM audit_log"))
         ).scalar_one()
     for value in (canary, rotated):

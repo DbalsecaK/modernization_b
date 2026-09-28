@@ -25,7 +25,7 @@ class AssignmentOptions(ApiModel):
     agent_roles: list[str]
 
 
-class AssignmentOut(ApiModel):
+class ModelAssignmentOut(ApiModel):
     id: uuid.UUID
     project_id: uuid.UUID | None
     phase: str | None
@@ -33,7 +33,7 @@ class AssignmentOut(ApiModel):
     profile_id: uuid.UUID
 
 
-class AssignmentIn(ApiModel):
+class ModelAssignmentIn(ApiModel):
     project_id: uuid.UUID | None = None
     phase: str | None = None
     agent_role: str | None = None
@@ -66,12 +66,12 @@ async def options(auth: ConfigureModels) -> AssignmentOptions:
     return AssignmentOptions(phases=list(PHASES), agent_roles=list(AGENT_ROLES))
 
 
-@router.get("/assignments", response_model=list[AssignmentOut])
+@router.get("/assignments", response_model=list[ModelAssignmentOut])
 async def list_assignments(
     request: Request,
     auth: ConfigureModels,
     project_id: Annotated[uuid.UUID | None, Query(alias="projectId")] = None,
-) -> list[AssignmentOut]:
+) -> list[ModelAssignmentOut]:
     """Tenant-wide rows, plus the rows of `projectId` when given."""
     query = select(ModelAssignment)
     query = (
@@ -82,13 +82,15 @@ async def list_assignments(
     async with transaction(request, auth) as conn:
         rows = (await conn.execute(query)).all()
     return [
-        AssignmentOut(id=r.id, project_id=r.project_id, phase=r.phase, agent_role=r.agent_role, profile_id=r.profile_id)
+        ModelAssignmentOut(
+            id=r.id, project_id=r.project_id, phase=r.phase, agent_role=r.agent_role, profile_id=r.profile_id
+        )
         for r in rows
     ]
 
 
-@router.put("/assignments", response_model=list[AssignmentOut])
-async def set_assignment(request: Request, body: AssignmentIn, auth: ConfigureModels) -> list[AssignmentOut]:
+@router.put("/assignments", response_model=list[ModelAssignmentOut])
+async def set_assignment(request: Request, body: ModelAssignmentIn, auth: ConfigureModels) -> list[ModelAssignmentOut]:
     if body.phase is not None and body.phase not in PHASES:
         raise ProblemError(422, "unknown_phase", f"Unknown phase: {body.phase}.")
     if body.agent_role is not None and body.agent_role not in AGENT_ROLES:

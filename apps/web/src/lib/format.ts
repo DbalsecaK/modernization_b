@@ -34,3 +34,14 @@ export function formatMonth(yyyyMm: string) {
   const [y, m] = yyyyMm.split('-').map(Number)
   return new Intl.DateTimeFormat(locale(), { month: 'short' }).format(new Date(Date.UTC(y, m - 1, 15)))
 }
+
+/** A price per million tokens: small values keep their significant decimals (0.075, 0.15, 15.00). */
+export function formatPrice(value: number | null) {
+  if (value == null) return '—'
+  return new Intl.NumberFormat(locale(), {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 4,
+  }).format(value)
+}

@@ -11,7 +11,7 @@ from typing import Any
 import httpx
 import pytest
 import respx
-from sqlalchemy import insert, select, text, update
+from sqlalchemy import func, insert, select, text, update
 from sqlalchemy.exc import DBAPIError
 from sqlalchemy.ext.asyncio import AsyncEngine
 
@@ -376,7 +376,9 @@ async def test_catalog_sync_and_offerings_with_versioned_prices(
                 "context_length": 8000,
                 "architecture": {"input_modalities": ["text"]},
                 "supported_parameters": ["reasoning"],
-            }
+            },
+            # A variant of the same model: OpenRouter lists both under one canonical slug.
+            {"id": f"{slug}:thinking", "canonical_slug": f"{slug}-20260928", "name": "Acme (thinking)"},
         ]
     }
     endpoints = {
@@ -402,6 +404,10 @@ async def test_catalog_sync_and_offerings_with_versioned_prices(
         client = OpenRouterClient(http)
         async with owner_engine.begin() as conn:
             await sync_catalog(conn, client)
+            same_canonical = (
+                await conn.execute(select(func.count()).where(ModelVersion.canonical_slug == f"{slug}-20260928"))
+            ).scalar_one()
+            assert same_canonical == 2
             version = (
                 await conn.execute(select(ModelVersion.id).where(ModelVersion.provider_slug == slug))
             ).scalar_one()

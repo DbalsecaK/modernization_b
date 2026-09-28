@@ -243,7 +243,8 @@ class ModelVersion(Base):
     id: Mapped[uuid.UUID] = _uuid_pk()
     family_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("model_family.id"), nullable=False)
     provider_slug: Mapped[str] = mapped_column(Text, nullable=False, unique=True)
-    canonical_slug: Mapped[str] = mapped_column(Text, nullable=False, unique=True)
+    # Aliases and variants (":thinking", ":free") share the canonical slug of the version they point to.
+    canonical_slug: Mapped[str] = mapped_column(Text, nullable=False, index=True)
     name: Mapped[str] = mapped_column(Text, nullable=False)
     context_window: Mapped[int | None] = mapped_column(Integer)
     capabilities: Mapped[list[str]] = mapped_column(ARRAY(Text), nullable=False, server_default=text("'{}'"))

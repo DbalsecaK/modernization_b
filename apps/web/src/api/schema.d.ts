@@ -872,23 +872,44 @@ export interface components {
              */
             userId: string;
         };
-        /** AssignmentIn */
-        AssignmentIn: {
-            /** Agentrole */
-            agentRole?: string | null;
-            /** Phase */
-            phase?: string | null;
-            /** Profileid */
-            profileId: string | null;
-            /** Projectid */
-            projectId?: string | null;
-        };
         /** AssignmentOptions */
         AssignmentOptions: {
             /** Agentroles */
             agentRoles: string[];
             /** Phases */
             phases: string[];
+        };
+        /** AssignmentOut */
+        AssignmentOut: {
+            /**
+             * Createdat
+             * Format: date-time
+             */
+            createdAt: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Projectid */
+            projectId: string | null;
+            /**
+             * Roleid
+             * Format: uuid
+             */
+            roleId: string;
+            /** Rolekey */
+            roleKey: string;
+            /**
+             * Scope
+             * @enum {string}
+             */
+            scope: "tenant" | "project";
+            /**
+             * Userid
+             * Format: uuid
+             */
+            userId: string;
         };
         /** AuditEntryOut */
         AuditEntryOut: {
@@ -1246,6 +1267,36 @@ export interface components {
              * @enum {string}
              */
             status: "active" | "suspended";
+        };
+        /** ModelAssignmentIn */
+        ModelAssignmentIn: {
+            /** Agentrole */
+            agentRole?: string | null;
+            /** Phase */
+            phase?: string | null;
+            /** Profileid */
+            profileId: string | null;
+            /** Projectid */
+            projectId?: string | null;
+        };
+        /** ModelAssignmentOut */
+        ModelAssignmentOut: {
+            /** Agentrole */
+            agentRole: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Phase */
+            phase: string | null;
+            /**
+             * Profileid
+             * Format: uuid
+             */
+            profileId: string;
+            /** Projectid */
+            projectId: string | null;
         };
         /** OfferingOut */
         OfferingOut: {
@@ -1734,57 +1785,6 @@ export interface components {
              */
             status: "available" | "deprecated";
         };
-        /** AssignmentOut */
-        nexti_api__admin__assignments__AssignmentOut: {
-            /**
-             * Createdat
-             * Format: date-time
-             */
-            createdAt: string;
-            /**
-             * Id
-             * Format: uuid
-             */
-            id: string;
-            /** Projectid */
-            projectId: string | null;
-            /**
-             * Roleid
-             * Format: uuid
-             */
-            roleId: string;
-            /** Rolekey */
-            roleKey: string;
-            /**
-             * Scope
-             * @enum {string}
-             */
-            scope: "tenant" | "project";
-            /**
-             * Userid
-             * Format: uuid
-             */
-            userId: string;
-        };
-        /** AssignmentOut */
-        nexti_api__ai__assignments__AssignmentOut: {
-            /** Agentrole */
-            agentRole: string | null;
-            /**
-             * Id
-             * Format: uuid
-             */
-            id: string;
-            /** Phase */
-            phase: string | null;
-            /**
-             * Profileid
-             * Format: uuid
-             */
-            profileId: string;
-            /** Projectid */
-            projectId: string | null;
-        };
     };
     responses: never;
     parameters: never;
@@ -1831,7 +1831,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["nexti_api__ai__assignments__AssignmentOut"][];
+                    "application/json": components["schemas"]["ModelAssignmentOut"][];
                 };
             };
             /** @description Validation Error */
@@ -1854,7 +1854,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["AssignmentIn"];
+                "application/json": components["schemas"]["ModelAssignmentIn"];
             };
         };
         responses: {
@@ -1864,7 +1864,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["nexti_api__ai__assignments__AssignmentOut"][];
+                    "application/json": components["schemas"]["ModelAssignmentOut"][];
                 };
             };
             /** @description Validation Error */
@@ -2962,7 +2962,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["nexti_api__admin__assignments__AssignmentOut"][];
+                    "application/json": components["schemas"]["AssignmentOut"][];
                 };
             };
             /** @description Validation Error */
@@ -2995,7 +2995,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["nexti_api__admin__assignments__AssignmentOut"];
+                    "application/json": components["schemas"]["AssignmentOut"];
                 };
             };
             /** @description Validation Error */

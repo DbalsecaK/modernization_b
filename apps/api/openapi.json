@@ -47,61 +47,6 @@
         "title": "AssignmentCreate",
         "type": "object"
       },
-      "AssignmentIn": {
-        "properties": {
-          "agentRole": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Agentrole"
-          },
-          "phase": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Phase"
-          },
-          "profileId": {
-            "anyOf": [
-              {
-                "format": "uuid",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Profileid"
-          },
-          "projectId": {
-            "anyOf": [
-              {
-                "format": "uuid",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Projectid"
-          }
-        },
-        "required": [
-          "profileId"
-        ],
-        "title": "AssignmentIn",
-        "type": "object"
-      },
       "AssignmentOptions": {
         "properties": {
           "agentRoles": {
@@ -124,6 +69,65 @@
           "agentRoles"
         ],
         "title": "AssignmentOptions",
+        "type": "object"
+      },
+      "AssignmentOut": {
+        "properties": {
+          "createdAt": {
+            "format": "date-time",
+            "title": "Createdat",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "projectId": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Projectid"
+          },
+          "roleId": {
+            "format": "uuid",
+            "title": "Roleid",
+            "type": "string"
+          },
+          "roleKey": {
+            "title": "Rolekey",
+            "type": "string"
+          },
+          "scope": {
+            "enum": [
+              "tenant",
+              "project"
+            ],
+            "title": "Scope",
+            "type": "string"
+          },
+          "userId": {
+            "format": "uuid",
+            "title": "Userid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "userId",
+          "roleId",
+          "roleKey",
+          "scope",
+          "projectId",
+          "createdAt"
+        ],
+        "title": "AssignmentOut",
         "type": "object"
       },
       "AuditEntryOut": {
@@ -1117,6 +1121,118 @@
           "status"
         ],
         "title": "MemberUpdate",
+        "type": "object"
+      },
+      "ModelAssignmentIn": {
+        "properties": {
+          "agentRole": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agentrole"
+          },
+          "phase": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phase"
+          },
+          "profileId": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profileid"
+          },
+          "projectId": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Projectid"
+          }
+        },
+        "required": [
+          "profileId"
+        ],
+        "title": "ModelAssignmentIn",
+        "type": "object"
+      },
+      "ModelAssignmentOut": {
+        "properties": {
+          "agentRole": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agentrole"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "phase": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phase"
+          },
+          "profileId": {
+            "format": "uuid",
+            "title": "Profileid",
+            "type": "string"
+          },
+          "projectId": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Projectid"
+          }
+        },
+        "required": [
+          "id",
+          "projectId",
+          "phase",
+          "agentRole",
+          "profileId"
+        ],
+        "title": "ModelAssignmentOut",
         "type": "object"
       },
       "OfferingOut": {
@@ -2414,122 +2530,6 @@
         ],
         "title": "VersionOut",
         "type": "object"
-      },
-      "nexti_api__admin__assignments__AssignmentOut": {
-        "properties": {
-          "createdAt": {
-            "format": "date-time",
-            "title": "Createdat",
-            "type": "string"
-          },
-          "id": {
-            "format": "uuid",
-            "title": "Id",
-            "type": "string"
-          },
-          "projectId": {
-            "anyOf": [
-              {
-                "format": "uuid",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Projectid"
-          },
-          "roleId": {
-            "format": "uuid",
-            "title": "Roleid",
-            "type": "string"
-          },
-          "roleKey": {
-            "title": "Rolekey",
-            "type": "string"
-          },
-          "scope": {
-            "enum": [
-              "tenant",
-              "project"
-            ],
-            "title": "Scope",
-            "type": "string"
-          },
-          "userId": {
-            "format": "uuid",
-            "title": "Userid",
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "userId",
-          "roleId",
-          "roleKey",
-          "scope",
-          "projectId",
-          "createdAt"
-        ],
-        "title": "AssignmentOut",
-        "type": "object"
-      },
-      "nexti_api__ai__assignments__AssignmentOut": {
-        "properties": {
-          "agentRole": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Agentrole"
-          },
-          "id": {
-            "format": "uuid",
-            "title": "Id",
-            "type": "string"
-          },
-          "phase": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Phase"
-          },
-          "profileId": {
-            "format": "uuid",
-            "title": "Profileid",
-            "type": "string"
-          },
-          "projectId": {
-            "anyOf": [
-              {
-                "format": "uuid",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Projectid"
-          }
-        },
-        "required": [
-          "id",
-          "projectId",
-          "phase",
-          "agentRole",
-          "profileId"
-        ],
-        "title": "AssignmentOut",
-        "type": "object"
       }
     }
   },
@@ -2589,7 +2589,7 @@
               "application/json": {
                 "schema": {
                   "items": {
-                    "$ref": "#/components/schemas/nexti_api__ai__assignments__AssignmentOut"
+                    "$ref": "#/components/schemas/ModelAssignmentOut"
                   },
                   "title": "Response List Assignments Api V1 Ai Assignments Get",
                   "type": "array"
@@ -2620,7 +2620,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/AssignmentIn"
+                "$ref": "#/components/schemas/ModelAssignmentIn"
               }
             }
           },
@@ -2632,7 +2632,7 @@
               "application/json": {
                 "schema": {
                   "items": {
-                    "$ref": "#/components/schemas/nexti_api__ai__assignments__AssignmentOut"
+                    "$ref": "#/components/schemas/ModelAssignmentOut"
                   },
                   "title": "Response Set Assignment Api V1 Ai Assignments Put",
                   "type": "array"
@@ -4284,7 +4284,7 @@
               "application/json": {
                 "schema": {
                   "items": {
-                    "$ref": "#/components/schemas/nexti_api__admin__assignments__AssignmentOut"
+                    "$ref": "#/components/schemas/AssignmentOut"
                   },
                   "title": "Response List Assignments Api V1 Role Assignments Get",
                   "type": "array"
@@ -4326,7 +4326,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/nexti_api__admin__assignments__AssignmentOut"
+                  "$ref": "#/components/schemas/AssignmentOut"
                 }
               }
             },
