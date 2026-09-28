@@ -78,6 +78,7 @@ def write_api_env(env: dict[str, str], target: Path) -> None:
         "KEYCLOAK_URL": f"http://127.0.0.1:{env['KEYCLOAK_PORT']}",
         "KEYCLOAK_PUBLIC_URL": f"http://localhost:{env['KEYCLOAK_PORT']}",
         "OIDC_CLIENT_SECRET": env["KC_BFF_CLIENT_SECRET"],
+        "KEYCLOAK_ADMIN_CLIENT_SECRET": env["KC_ADMIN_CLIENT_SECRET"],
         "WEB_ORIGIN": env["WEB_ORIGIN"],
         "SESSION_SECRET": env["SESSION_SECRET"],
         "OPENFGA_URL": f"http://127.0.0.1:{env['OPENFGA_HTTP_PORT']}",

@@ -4,6 +4,7 @@ CLAUDE.md), every route declares its authorization, and every sensitive action l
 import uuid
 from collections.abc import Awaitable, Callable, Iterator
 from dataclasses import dataclass
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import pytest
@@ -15,7 +16,15 @@ from sqlalchemy.ext.asyncio import AsyncEngine
 
 from nexti_api.authz.fga import OpenFga
 from nexti_api.authz.reconcile import reconcile
-from nexti_api.db.models import AppUser, AuditLog, Membership, PlatformRoleAssignment, Role, RoleAssignment
+from nexti_api.db.models import (
+    AppUser,
+    AuditLog,
+    Invitation,
+    Membership,
+    PlatformRoleAssignment,
+    Role,
+    RoleAssignment,
+)
 from nexti_api.main import create_app
 from nexti_api.settings import Settings
 
@@ -99,6 +108,25 @@ class Ctx:
             ).scalar_one()
         return role_id
 
+    async def invitation(self) -> uuid.UUID:
+        role_id = await self.role("auditor")
+        async with self.owner.begin() as conn:
+            found: uuid.UUID = (
+                await conn.execute(
+                    insert(Invitation)
+                    .values(
+                        tenant_id=self.world.tenant_a,
+                        email=f"m0test-{uuid.uuid4().hex[:10]}@example.test",
+                        role_id=role_id,
+                        role_scope="tenant",
+                        invited_by=self.world.a_user,
+                        expires_at=datetime.now(UTC) + timedelta(days=1),
+                    )
+                    .returning(Invitation.id)
+                )
+            ).scalar_one()
+        return found
+
     async def assignment(self) -> uuid.UUID:
         user_id = await self.member()
         role_id = await self.role("finance")
@@ -146,6 +174,19 @@ async def _remove_member(ctx: Ctx) -> Request:
     return f"/api/v1/users/{await ctx.member()}/membership", None
 
 
+async def _invite(ctx: Ctx) -> Request:
+    email = f"m0test-{uuid.uuid4().hex[:10]}@example.test"
+    return "/api/v1/invitations", {"email": email, "roleId": str(await ctx.role("auditor"))}
+
+
+async def _resend(ctx: Ctx) -> Request:
+    return f"/api/v1/invitations/{await ctx.invitation()}:resend", None
+
+
+async def _revoke(ctx: Ctx) -> Request:
+    return f"/api/v1/invitations/{await ctx.invitation()}", None
+
+
 async def _new_role(ctx: Ctx) -> Request:
     return "/api/v1/roles", {"key": f"r{uuid.uuid4().hex[:10]}", "name": "Reviewer", "scope": "tenant"}
 
@@ -181,6 +222,10 @@ CASES = [
     Case("GET", "/api/v1/users/{user_id}", "admin", "member", fixed("/api/v1/users/{shared}")),
     Case("PATCH", "/api/v1/users/{user_id}", "admin", "member", _patch_member),
     Case("DELETE", "/api/v1/users/{user_id}/membership", "admin", "member", _remove_member),
+    Case("GET", "/api/v1/invitations", "admin", "member", fixed("/api/v1/invitations")),
+    Case("POST", "/api/v1/invitations", "admin", "member", _invite),
+    Case("POST", "/api/v1/invitations/{invitation_id}:resend", "admin", "member", _resend),
+    Case("DELETE", "/api/v1/invitations/{invitation_id}", "admin", "member", _revoke),
     Case("GET", "/api/v1/permissions", "member", "anonymous", fixed("/api/v1/permissions")),
     Case("GET", "/api/v1/roles", "admin", "member", fixed("/api/v1/roles")),
     Case("POST", "/api/v1/roles", "admin", "member", _new_role),

@@ -127,6 +127,14 @@ async def callback(
     except SignInDeniedError as exc:
         return await fail(exc.code, tokens.claims.email)
 
+    if tokens.claims.email and tokens.claims.email_verified:
+        # Imported here: the administration package depends on this module.
+        from nexti_api.admin.invitations import accept_pending_invitations
+
+        if await accept_pending_invitations(engine, user.id, tokens.claims.email):
+            relay = getattr(request.app.state, "relay", None)
+            if relay is not None:
+                relay.wake()
     tenants = await user_tenants(engine, user.id)
     session_id, _ = await store.create(
         user_id=user.id,

@@ -229,3 +229,31 @@ async def world(owner_engine: AsyncEngine) -> World:
             ],
         )
     return World(tenant_a, tenant_b, a_user, b_user, shared, project_a, project_b, invitee)
+
+
+async def keycloak_admin_headers(http: httpx.AsyncClient) -> dict[str, str]:
+    res = await http.post(
+        f"{SETTINGS.keycloak_issuer}/protocol/openid-connect/token",
+        data={
+            "grant_type": "client_credentials",
+            "client_id": SETTINGS.keycloak_admin_client_id,
+            "client_secret": SETTINGS.keycloak_admin_client_secret.get_secret_value(),
+        },
+    )
+    res.raise_for_status()
+    return {"Authorization": f"Bearer {res.json()['access_token']}"}
+
+
+@pytest.fixture(scope="session", autouse=True)
+async def cleanup_keycloak_test_users() -> AsyncIterator[None]:
+    """Tests create Keycloak accounts named m0test-...; they are deleted at the end of the session."""
+    yield
+    if not SETTINGS.keycloak_admin_client_secret.get_secret_value():
+        return
+    base = f"{SETTINGS.keycloak_url}/admin/realms/{SETTINGS.keycloak_realm}"
+    async with httpx.AsyncClient(timeout=10) as http:
+        headers = await keycloak_admin_headers(http)
+        users = (await http.get(f"{base}/users", params={"search": "m0test-", "max": 500}, headers=headers)).json()
+        for user in users:
+            if str(user.get("email", "")).startswith("m0test-"):
+                await http.delete(f"{base}/users/{user['id']}", headers=headers)

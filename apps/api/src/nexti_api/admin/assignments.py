@@ -53,7 +53,7 @@ COLUMNS = (
 )
 
 
-async def _authorize(request: Request, auth: Authorized, project_id: uuid.UUID | None) -> None:
+async def authorize_role_change(request: Request, auth: Authorized, project_id: uuid.UUID | None) -> None:
     fga = request.app.state.fga
     if fga is None:
         raise ProblemError(503, "authorization_unavailable", "Authorization is not available.")
@@ -98,7 +98,7 @@ async def list_assignments(
 @router.post("", response_model=AssignmentOut, status_code=201)
 async def assign(request: Request, body: AssignmentCreate, auth: TenantMember) -> AssignmentOut:
     assert auth.tenant_id is not None  # noqa: S101
-    await _authorize(request, auth, body.project_id)
+    await authorize_role_change(request, auth, body.project_id)
     async with transaction(request, auth) as conn:
         role = (await conn.execute(select(Role.id, Role.scope, Role.key).where(Role.id == body.role_id))).one_or_none()
         if role is None:
@@ -145,7 +145,7 @@ async def unassign(request: Request, assignment_id: uuid.UUID, auth: TenantMembe
     assert auth.tenant_id is not None  # noqa: S101
     async with transaction(request, auth) as conn:
         assignment = await _load(conn, assignment_id)
-    await _authorize(request, auth, assignment.project_id)
+    await authorize_role_change(request, auth, assignment.project_id)
     async with transaction(request, auth) as conn:
         async with authz_change(conn, auth.tenant_id):
             result = await conn.execute(delete(RoleAssignment).where(RoleAssignment.id == assignment_id))

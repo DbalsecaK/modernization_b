@@ -35,6 +35,10 @@ class Settings(BaseSettings):
     keycloak_realm: str = "nexti"
     oidc_client_id: str = "nexti-bff"
     oidc_client_secret: SecretStr = SecretStr("")
+    # Least-privilege service account for the Admin REST API (invitations, events): manage-users, view-events.
+    keycloak_admin_client_id: str = "nexti-admin"
+    keycloak_admin_client_secret: SecretStr = SecretStr("")
+    invitation_days: int = 7
     # Origin of the web app; the OIDC callback goes through it (Vite proxy in development).
     web_origin: str = "http://localhost:5173"
 

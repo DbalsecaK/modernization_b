@@ -8,7 +8,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from nexti_api import health, me
-from nexti_api.admin import assignments, audit_log, projects, roles, tenants, users
+from nexti_api.admin import assignments, audit_log, invitations, projects, roles, tenants, users
 from nexti_api.auth import dev_auth
 from nexti_api.auth import routes as auth_routes
 from nexti_api.auth.oidc import OidcClient
@@ -17,6 +17,7 @@ from nexti_api.authz import fga as fga_module
 from nexti_api.authz.reconcile import reconcile
 from nexti_api.authz.relay import OutboxRelay
 from nexti_api.errors import install_error_handlers
+from nexti_api.keycloak_admin import KeycloakAdmin
 from nexti_api.observability import RequestLogMiddleware, configure_logging, log
 from nexti_api.resources import Resources
 from nexti_api.settings import Settings, get_settings
@@ -63,6 +64,11 @@ def create_app(settings: Settings | None = None, health_checks: dict[str, health
         app.state.resources = resources
         app.state.health_checks = health_checks or health.default_checks(resources, settings)
         app.state.oidc = OidcClient(settings, resources.http)
+        app.state.keycloak_admin = (
+            KeycloakAdmin(settings, resources.http)
+            if settings.keycloak_admin_client_secret.get_secret_value()
+            else None
+        )
         # Without Redis or a session secret there are no sessions: session routes answer 503.
         configured = resources.redis is not None and settings.session_secret.get_secret_value()
         app.state.sessions = SessionStore(resources.redis, settings) if configured and resources.redis else None
@@ -100,7 +106,14 @@ def create_app(settings: Settings | None = None, health_checks: dict[str, health
     app.include_router(health.router)
     app.include_router(auth_routes.router)
     app.include_router(me.router)
-    for admin_router in (tenants.router, users.router, roles.router, assignments.router, projects.router):
+    for admin_router in (
+        tenants.router,
+        users.router,
+        invitations.router,
+        roles.router,
+        assignments.router,
+        projects.router,
+    ):
         app.include_router(admin_router)
     app.include_router(audit_log.router)
     if settings.dev_auth_enabled:
