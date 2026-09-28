@@ -157,7 +157,7 @@ export interface RunEvent {
 export interface Task {
   id: string
   projectId: string
-  kind: 'approveSpec' | 'reviewPrototype' | 'answerQuestion' | 'escalation' | 'signOff' | 'approveArchitecture'
+  kind: 'approveSpec' | 'reviewStories' | 'reviewPrototype' | 'answerQuestion' | 'escalation' | 'signOff' | 'approveArchitecture'
   title: string
   due: string
   priority: 'high' | 'normal'

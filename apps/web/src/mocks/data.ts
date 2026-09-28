@@ -299,6 +299,7 @@ export const runEvents: RunEvent[] = [
 
 export const tasks: Task[] = [
   { id: 'k1', projectId: 'p1', kind: 'approveSpec', title: 'Approve 51 rules in Authorizations and Billing', due: '2026-09-30', priority: 'high' },
+  { id: 'k7', projectId: 'p1', kind: 'reviewStories', title: 'Review 9 user stories and the migration plan before the migration starts', due: '2026-09-30', priority: 'high' },
   { id: 'k2', projectId: 'p1', kind: 'answerQuestion', title: 'RULE-003: is card expiry inclusive of the last day?', due: '2026-09-29', priority: 'normal' },
   { id: 'k3', projectId: 'p1', kind: 'escalation', title: 'RULE-031: judges disagree on the rounding mode', due: '2026-09-29', priority: 'high' },
   { id: 'k4', projectId: 'p4', kind: 'reviewPrototype', title: 'Review 8 onboarding prototypes and the design system', due: '2026-10-02', priority: 'normal' },
@@ -1014,4 +1015,270 @@ export const activitySeed: ActivityEvent[] = [
   { id: 'ev-1', startedAt: '2026-09-28T09:20:02Z', endedAt: '2026-09-28T09:27:40Z', agent: 'Business rules extractor', projectId: 'p1', message: 'Extracted 23 rules from shard AUTH', status: 'succeeded', costUsd: 5.16, tokens: 1_240_000 },
   { id: 'ev-2', startedAt: '2026-09-28T09:28:10Z', endedAt: '2026-09-28T09:28:12Z', agent: 'Test engineer', projectId: 'p1', message: 'Test failed → bug CARDS-107 created in Jira', status: 'succeeded', costUsd: 0.04, tokens: 9_000 },
   { id: 'ev-3', startedAt: '2026-09-28T09:32:00Z', endedAt: '2026-09-28T09:33:10Z', agent: 'Equivalence validator', projectId: 'p2', message: 'Fresh input F03 differs from legacy', status: 'failed', costUsd: 0.31, tokens: 41_000, error: { code: 'EQUIVALENCE_DIFF', message: 'Output differs at line 1, byte 4', detail: 'legacy INT=0.51, new INT=0.50 (mask: none, tolerance: none)' } },
+]
+
+// User stories derived from the specification (spec 7.2, 7.7). In flow 1 they are built from the rules,
+// screens and contracts extracted from the legacy; in flow 2 from documents, Figma and Jira. People can edit,
+// create, split, merge and discard them before gate C1; after C1 every change is a scope change.
+export type StoryStatus = 'draft' | 'inReview' | 'approved' | 'question' | 'discarded' | 'merged'
+export type StoryOrigin = 'extracted' | 'document' | 'jira' | 'user'
+export type DependencyKind = 'hard' | 'soft'
+
+export interface StoryDependency {
+  story: string
+  kind: DependencyKind
+  reason: string
+}
+
+export interface UserStory {
+  id: string
+  feature: string
+  title: string
+  asA: string
+  iWant: string
+  soThat: string
+  criteria: string[]
+  rules: string[]
+  screens: string[]
+  contracts: string[]
+  nodes: string[]
+  origin: StoryOrigin
+  source: string
+  status: StoryStatus
+  priority: 'P0' | 'P1' | 'P2'
+  points: number
+  dependsOn: StoryDependency[]
+  version: number
+  discardReason?: string
+  outOfScope?: boolean
+  mergedInto?: string
+}
+
+export const storyFeatures = [
+  { id: 'FEAT-DATA', name: 'Data foundation' },
+  { id: 'FEAT-ACC', name: 'Account maintenance' },
+  { id: 'FEAT-AUTH', name: 'Card authorizations' },
+  { id: 'FEAT-CARD', name: 'Card management' },
+  { id: 'FEAT-BILL', name: 'Interest and billing' },
+]
+
+export const userStories: UserStory[] = [
+  {
+    id: 'US-001',
+    feature: 'FEAT-DATA',
+    title: 'Account master data in PostgreSQL',
+    asA: 'platform operator',
+    iWant: 'the account master file migrated to the account table with the same keys and values',
+    soThat: 'every new service reads the same accounts the legacy reads',
+    criteria: [
+      'Scenario: Every account is migrated\n  Given the ACCTDAT extract of 2026-09-18\n  When the migration job runs\n  Then the account table has the same number of rows and the same checksum per column',
+    ],
+    rules: [],
+    screens: [],
+    contracts: [],
+    nodes: ['ACCTDAT', 'CVACT01Y'],
+    origin: 'extracted',
+    source: 'ACCTDAT (VSAM KSDS), copybook CVACT01Y',
+    status: 'approved',
+    priority: 'P0',
+    points: 5,
+    dependsOn: [],
+    version: 2,
+  },
+  {
+    id: 'US-002',
+    feature: 'FEAT-DATA',
+    title: 'Card master data in PostgreSQL',
+    asA: 'platform operator',
+    iWant: 'the card file migrated to the card table linked to its account',
+    soThat: 'card services can validate cards without calling the mainframe',
+    criteria: [
+      'Scenario: Cards keep their account\n  Given a card 4000 0000 0000 0002 of account 00000000011\n  When the migration job runs\n  Then the card row references account 00000000011',
+    ],
+    rules: [],
+    screens: [],
+    contracts: [],
+    nodes: ['CARDDAT', 'CVCRD01Y'],
+    origin: 'extracted',
+    source: 'CARDDAT (VSAM KSDS), copybook CVCRD01Y',
+    status: 'inReview',
+    priority: 'P0',
+    points: 3,
+    dependsOn: [{ story: 'US-001', kind: 'hard', reason: 'The card table has a foreign key to account.' }],
+    version: 1,
+  },
+  {
+    id: 'US-003',
+    feature: 'FEAT-ACC',
+    title: 'View and update an account',
+    asA: 'back-office agent',
+    iWant: 'to open an account, edit its limit, status and holder names and save them',
+    soThat: 'I can serve customers without the 3270 screen',
+    criteria: [
+      'Scenario: Save a valid change\n  Given account 00000000011 is active\n  When I change the credit limit to 6,000.00 and save\n  Then the account shows a credit limit of 6,000.00',
+      'Scenario: Reject a non-alphabetic last name\n  Given the update-account screen\n  When I enter last name "O2" and save\n  Then I see "Last name must be alphabetic"',
+    ],
+    rules: ['RULE-006'],
+    screens: ['SCR-001'],
+    contracts: ['API-001', 'API-002'],
+    nodes: ['CAUP', 'COACTUPC', 'COACTUP'],
+    origin: 'extracted',
+    source: 'Transaction CAUP → COACTUPC → map COACTUP',
+    status: 'approved',
+    priority: 'P0',
+    points: 8,
+    dependsOn: [{ story: 'US-001', kind: 'hard', reason: 'Reads and rewrites the account table.' }],
+    version: 3,
+  },
+  {
+    id: 'US-004',
+    feature: 'FEAT-ACC',
+    title: 'Suspend, reactivate or close an account',
+    asA: 'back-office agent',
+    iWant: 'to change the status of an account following the allowed transitions',
+    soThat: 'accounts never reach an invalid state',
+    criteria: [
+      'Scenario: Reactivate a suspended account\n  Given a suspended account\n  When a reactivation is requested\n  Then the account becomes active',
+    ],
+    rules: ['RULE-005'],
+    screens: ['SCR-001'],
+    contracts: ['API-002'],
+    nodes: ['COACTUPC'],
+    origin: 'extracted',
+    source: 'COACTUPC.cbl:640-702',
+    status: 'inReview',
+    priority: 'P1',
+    points: 3,
+    dependsOn: [{ story: 'US-003', kind: 'soft', reason: 'Uses the update-account screen; a status-only endpoint works without it.' }],
+    version: 1,
+  },
+  {
+    id: 'US-005',
+    feature: 'FEAT-AUTH',
+    title: 'Authorize a card purchase',
+    asA: 'card holder',
+    iWant: 'my purchase approved or declined in real time against my credit limit',
+    soThat: 'I can pay without exceeding my limit',
+    criteria: [
+      'Scenario: Decline over the limit\n  Given an account with limit 5,000.00 and balance 4,900.00\n  When a purchase of 150.00 is authorized\n  Then the purchase is declined with reason code 51',
+    ],
+    rules: ['RULE-001'],
+    screens: [],
+    contracts: ['API-003'],
+    nodes: ['CAUT', 'COAUTHPC'],
+    origin: 'extracted',
+    source: 'Transaction CAUT → COAUTHPC',
+    status: 'approved',
+    priority: 'P0',
+    points: 8,
+    dependsOn: [
+      { story: 'US-001', kind: 'hard', reason: 'Reads balance and limit from the account table.' },
+      { story: 'US-002', kind: 'hard', reason: 'Reads the card to reject expired cards.' },
+      { story: 'US-003', kind: 'soft', reason: 'Holds the authorized amount through COACTUPC; an ACL can call the legacy meanwhile.' },
+    ],
+    version: 2,
+  },
+  {
+    id: 'US-006',
+    feature: 'FEAT-CARD',
+    title: 'Card detail and activation',
+    asA: 'back-office agent',
+    iWant: 'to see a card, change the name on it and activate it before it expires',
+    soThat: 'customers can use their new cards',
+    criteria: [
+      'Scenario: Reject activation after expiry\n  Given a card expiring 2026-08\n  When activation is requested on 2026-09-02\n  Then activation is rejected',
+    ],
+    rules: ['RULE-003'],
+    screens: ['SCR-002'],
+    contracts: ['API-004'],
+    nodes: ['CCUP', 'COCRDUPC', 'COCRDUP'],
+    origin: 'extracted',
+    source: 'Transaction CCUP → COCRDUPC → map COCRDUP',
+    status: 'question',
+    priority: 'P1',
+    points: 5,
+    dependsOn: [{ story: 'US-002', kind: 'hard', reason: 'Reads and rewrites the card table.' }],
+    version: 1,
+  },
+  {
+    id: 'US-007',
+    feature: 'FEAT-BILL',
+    title: 'Nightly interest accrual',
+    asA: 'finance operator',
+    iWant: 'daily interest posted on every account each night',
+    soThat: 'balances match the legacy to the cent',
+    criteria: [
+      'Scenario: Accrue daily interest\n  Given a balance of 12,345.67 and an annual rate of 18.5%\n  When the nightly accrual runs\n  Then interest of 6.34 is posted',
+    ],
+    rules: ['RULE-002'],
+    screens: [],
+    contracts: [],
+    nodes: ['INTCALC', 'CBACT04C'],
+    origin: 'extracted',
+    source: 'Job INTCALC → CBACT04C',
+    status: 'approved',
+    priority: 'P0',
+    points: 5,
+    dependsOn: [{ story: 'US-001', kind: 'hard', reason: 'Reads and rewrites every account balance.' }],
+    version: 1,
+  },
+  {
+    id: 'US-008',
+    feature: 'FEAT-BILL',
+    title: 'Late fee on missed minimum payment',
+    asA: 'finance operator',
+    iWant: 'a late fee charged when the minimum payment is not received by the due date',
+    soThat: 'the billing policy is applied the same way as today',
+    criteria: [
+      'Scenario: Charge the late fee\n  Given a statement with minimum payment 80.00 due 2026-09-10\n  When no payment is received by 2026-09-10\n  Then a late fee of 25.00 is posted on 2026-09-11',
+    ],
+    rules: ['RULE-004'],
+    screens: [],
+    contracts: ['API-005'],
+    nodes: ['STMTJOB', 'CBSTM03A', 'STMTFILE'],
+    origin: 'extracted',
+    source: 'Job STMTJOB → CBSTM03A',
+    status: 'inReview',
+    priority: 'P0',
+    points: 5,
+    dependsOn: [
+      { story: 'US-001', kind: 'hard', reason: 'Reads accounts and payments.' },
+      { story: 'US-007', kind: 'soft', reason: 'The statement uses the balance after the nightly interest.' },
+    ],
+    version: 1,
+  },
+  {
+    id: 'US-009',
+    feature: 'FEAT-ACC',
+    title: 'Export accounts for reconciliation',
+    asA: 'auditor',
+    iWant: 'a CSV export of accounts with balance and status',
+    soThat: 'I can reconcile balances with the general ledger',
+    criteria: [],
+    rules: [],
+    screens: [],
+    contracts: [],
+    nodes: [],
+    origin: 'user',
+    source: 'Created by María Torres (PO) on 2026-09-27',
+    status: 'draft',
+    priority: 'P2',
+    points: 2,
+    dependsOn: [{ story: 'US-001', kind: 'hard', reason: 'Reads the account table.' }],
+    version: 1,
+  },
+]
+
+// Suggestions from the functional analyst agent. They are never applied without a person accepting them.
+export const storySuggestions = [
+  { id: 'SG-1', story: 'US-009', kind: 'missingCriterion', text: 'Scenario: Export only active accounts\n  Given 3 active and 1 closed account\n  When I export accounts\n  Then the file has 3 rows' },
+  { id: 'SG-2', story: 'US-003', kind: 'tooBig', text: 'Split "View and update an account" into "View an account" and "Update an account": 8 points and two screens actions.' },
+  { id: 'SG-3', story: 'US-006', kind: 'missingCriterion', text: 'Scenario: Card detail masks the number\n  Given card 4000 0000 0000 0002\n  When I open the card detail\n  Then I see **** **** **** 0002' },
+]
+
+export const storyHistorySeed = [
+  { story: 'US-003', version: 3, by: 'María Torres', at: '2026-09-27T16:20:00Z', change: 'Added the scenario for non-alphabetic last names.' },
+  { story: 'US-003', version: 2, by: 'Functional analyst (agent)', at: '2026-09-26T10:05:00Z', change: 'Linked contract API-001.' },
+  { story: 'US-001', version: 2, by: 'Carlos Rivas', at: '2026-09-26T09:12:00Z', change: 'Checksum per column instead of per row.' },
+  { story: 'US-005', version: 2, by: 'María Torres', at: '2026-09-25T18:40:00Z', change: 'Priority P1 → P0.' },
 ]

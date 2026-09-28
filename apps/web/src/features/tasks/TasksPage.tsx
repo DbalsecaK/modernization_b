@@ -13,6 +13,7 @@ import { updateDecisions, useDecisions } from '@/features/decisions/store'
 
 const tabFor: Record<Task['kind'], string> = {
   approveSpec: 'specification',
+  reviewStories: 'specification',
   reviewPrototype: 'uiDesign',
   answerQuestion: 'specification',
   escalation: 'runs',
@@ -67,7 +68,7 @@ export function TasksPage() {
                 <Link
                   to="/projects/$projectId"
                   params={{ projectId: project.id }}
-                  search={{ tab: tabFor[task.kind] }}
+                  search={{ tab: tabFor[task.kind], view: task.kind === 'reviewStories' ? 'stories' : undefined }}
                   className="flex flex-wrap items-center gap-3 px-5 py-4 hover:bg-surface-2"
                 >
                   <Badge tone={task.priority === 'high' ? 'critical' : 'neutral'}>{t(`tasks.kinds.${task.kind}`)}</Badge>

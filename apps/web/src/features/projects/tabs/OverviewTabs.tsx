@@ -9,6 +9,8 @@ import { Badge, Button, Card, CardBody, CardHeader, Progress, StatTile, Table, T
 import { PhaseStatusIcon } from '@/components/ui/status'
 import type { ProjectTab } from '../ProjectWorkspace'
 import { AddInputForm } from '../InputForms'
+import { useNavigate } from '@tanstack/react-router'
+import { useStories } from '../stories/store'
 
 export function OverviewTab({ project, onOpen }: { project: Project; onOpen: (tab: ProjectTab) => void }) {
   const { t } = useTranslation()
@@ -58,6 +60,7 @@ export function OverviewTab({ project, onOpen }: { project: Project; onOpen: (ta
             {current?.status === 'waiting' && (
               <NextStep text={t('overview.gateWaiting', { gate: current.gate, phase: t(`phases.${current.key}`) })} action={t('overview.review')} onClick={() => onOpen(current.key === 'ui' ? 'uiDesign' : 'specification')} />
             )}
+            {project.flow === 'modernization' && <StoriesStep />}
             {project.openQuestions > 0 && <NextStep text={t('overview.answerQuestions', { count: project.openQuestions })} action={t('overview.open')} onClick={() => onOpen('specification')} />}
             <NextStep text={t('overview.checkRuns')} action={t('overview.open')} onClick={() => onOpen('runs')} />
           </CardBody>
@@ -84,6 +87,27 @@ export function OverviewTab({ project, onOpen }: { project: Project; onOpen: (ta
           </CardBody>
         </Card>
       </div>
+    </div>
+  )
+}
+
+// Before the migration starts, the user stories and the migration plan are reviewed and approved at C1 (spec 7.7).
+function StoriesStep() {
+  const { t } = useTranslation()
+  const navigate = useNavigate()
+  const { stories, approved } = useStories()
+  const pending = stories.filter((s) => s.status === 'draft' || s.status === 'inReview' || s.status === 'question').length
+  if (approved || pending === 0) return null
+  const open = (view: 'stories' | 'plan') => void navigate({ to: '.', search: ((prev: Record<string, unknown>) => ({ ...prev, tab: 'specification', view })) as never })
+  return (
+    <div className="flex flex-wrap items-center gap-3 rounded-md border border-warning/60 bg-warning/5 p-3">
+      <span className="flex-1 text-text-2">{t('overview.reviewStories', { count: pending })}</span>
+      <Button size="sm" onClick={() => open('stories')}>
+        {t('overview.openStories')}
+      </Button>
+      <Button size="sm" variant="ghost" onClick={() => open('plan')}>
+        {t('overview.openPlan')}
+      </Button>
     </div>
   )
 }

@@ -18,9 +18,10 @@ import { PlatformPage } from '@/features/platform/PlatformPage'
 import { AccountPage } from '@/features/auth/AccountPage'
 import { NotFoundPage } from '@/features/NotFoundPage'
 
-const tabSearch = (search: Record<string, unknown>): { tab?: string; rule?: string } => ({
+const tabSearch = (search: Record<string, unknown>): { tab?: string; rule?: string; view?: string } => ({
   tab: typeof search.tab === 'string' ? search.tab : undefined,
   rule: typeof search.rule === 'string' ? search.rule : undefined,
+  view: typeof search.view === 'string' ? search.view : undefined,
 })
 
 const rootRoute = createRootRoute({ component: Outlet, notFoundComponent: NotFoundPage })

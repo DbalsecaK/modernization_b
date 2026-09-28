@@ -11,18 +11,31 @@ import { toast } from '@/components/ui/overlay'
 import { AddInputForm } from '../InputForms'
 import { PrototypeChat } from '../PrototypeChat'
 import { DecisionList } from '@/features/decisions/DecisionCard'
+import { UserStoriesView } from '../stories/UserStoriesView'
+import { MigrationPlanView } from '../stories/MigrationPlanView'
+import { useStories } from '../stories/store'
 import { updateDecisions, useDecisions } from '@/features/decisions/store'
 
 const ruleStatusTone = { approved: 'good', inReview: 'info', question: 'warning', draft: 'neutral' } as const
 
-const SPEC_VIEWS = ['rules', 'screens', 'contracts', 'questions'] as const
+const SPEC_VIEWS = ['rules', 'stories', 'plan', 'screens', 'contracts', 'questions'] as const
 
 export function SpecificationTab({ project }: { project: Project }) {
   const { t } = useTranslation()
   const decisions = useDecisions(project.id)
   const open = decisions.filter((d) => d.status === 'open').length
-  const [view, setView] = useState<(typeof SPEC_VIEWS)[number]>('rules')
-  const counts = { rules: rules.length, screens: screenSpecs.length, contracts: contracts.length, questions: open }
+  const search = useSearch({ strict: false }) as { view?: string }
+  const initial = SPEC_VIEWS.find((v) => v === search.view) ?? 'rules'
+  const [view, setView] = useState<(typeof SPEC_VIEWS)[number]>(initial)
+  const { stories, plan } = useStories()
+  const counts = {
+    rules: rules.length,
+    stories: stories.filter((s) => s.status !== 'discarded' && s.status !== 'merged').length,
+    plan: plan.length,
+    screens: screenSpecs.length,
+    contracts: contracts.length,
+    questions: open,
+  }
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap gap-1 rounded-lg border border-border bg-surface p-1" role="tablist">
@@ -39,6 +52,8 @@ export function SpecificationTab({ project }: { project: Project }) {
         ))}
       </div>
       {view === 'rules' && <RulesView project={project} />}
+      {view === 'stories' && <UserStoriesView />}
+      {view === 'plan' && <MigrationPlanView />}
       {view === 'screens' && <ScreensView />}
       {view === 'contracts' && <ContractsView />}
       {view === 'questions' && <DecisionList decisions={decisions} onChange={updateDecisions} />}
