@@ -18,7 +18,7 @@ from nexti_api.schemas import ApiModel
 router = APIRouter(prefix="/api/v1", tags=["session"])
 
 
-class TenantOut(ApiModel):
+class SessionTenantOut(ApiModel):
     id: uuid.UUID
     slug: str
     name: str
@@ -33,8 +33,8 @@ class UserOut(ApiModel):
 
 class MeOut(ApiModel):
     user: UserOut
-    active_tenant: TenantOut | None
-    tenants: list[TenantOut]
+    active_tenant: SessionTenantOut | None
+    tenants: list[SessionTenantOut]
     platform_roles: list[str]
     # Effective tenant permissions in the active tenant (from OpenFGA), for the menu.
     permissions: list[str]
@@ -58,8 +58,8 @@ def _engine(request: Request) -> AsyncEngine:
     return engine
 
 
-def _tenant_out(t: TenantRef) -> TenantOut:
-    return TenantOut(id=t.id, slug=t.slug, name=t.name)
+def _tenant_out(t: TenantRef) -> SessionTenantOut:
+    return SessionTenantOut(id=t.id, slug=t.slug, name=t.name)
 
 
 @router.get("/me", response_model=MeOut)
@@ -98,10 +98,10 @@ async def update_me(request: Request, body: MeUpdate, auth: Annotated[Authorized
     await set_locale(_engine(request), auth.user_id, body.locale)
 
 
-@router.put("/session/tenant", response_model=TenantOut)
+@router.put("/session/tenant", response_model=SessionTenantOut)
 async def switch_tenant(
     request: Request, body: ActiveTenantIn, auth: Annotated[Authorized, Depends(authenticated())]
-) -> TenantOut:
+) -> SessionTenantOut:
     """Change the active tenant. Only tenants with an active membership; every other call derives the
     tenant from the session, never from a parameter."""
     engine = _engine(request)

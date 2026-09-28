@@ -569,7 +569,7 @@
           "activeTenant": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/nexti_api__me__TenantOut"
+                "$ref": "#/components/schemas/SessionTenantOut"
               },
               {
                 "type": "null"
@@ -604,7 +604,7 @@
           },
           "tenants": {
             "items": {
-              "$ref": "#/components/schemas/nexti_api__me__TenantOut"
+              "$ref": "#/components/schemas/SessionTenantOut"
             },
             "title": "Tenants",
             "type": "array"
@@ -975,6 +975,30 @@
         "title": "RoleUpdate",
         "type": "object"
       },
+      "SessionTenantOut": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "slug",
+          "name"
+        ],
+        "title": "SessionTenantOut",
+        "type": "object"
+      },
       "TenantCreate": {
         "properties": {
           "defaultLanguage": {
@@ -1014,6 +1038,65 @@
           "name"
         ],
         "title": "TenantCreate",
+        "type": "object"
+      },
+      "TenantOut": {
+        "properties": {
+          "createdAt": {
+            "format": "date-time",
+            "title": "Createdat",
+            "type": "string"
+          },
+          "defaultLanguage": {
+            "enum": [
+              "en",
+              "es"
+            ],
+            "title": "Defaultlanguage",
+            "type": "string"
+          },
+          "deploymentModel": {
+            "enum": [
+              "sharedSaas",
+              "dedicatedSaas",
+              "customerCloud",
+              "onPrem"
+            ],
+            "title": "Deploymentmodel",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "active",
+              "suspended"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "slug",
+          "name",
+          "status",
+          "deploymentModel",
+          "defaultLanguage",
+          "createdAt"
+        ],
+        "title": "TenantOut",
         "type": "object"
       },
       "TenantUpdate": {
@@ -1153,89 +1236,6 @@
           "type"
         ],
         "title": "ValidationError",
-        "type": "object"
-      },
-      "nexti_api__admin__tenants__TenantOut": {
-        "properties": {
-          "createdAt": {
-            "format": "date-time",
-            "title": "Createdat",
-            "type": "string"
-          },
-          "defaultLanguage": {
-            "enum": [
-              "en",
-              "es"
-            ],
-            "title": "Defaultlanguage",
-            "type": "string"
-          },
-          "deploymentModel": {
-            "enum": [
-              "sharedSaas",
-              "dedicatedSaas",
-              "customerCloud",
-              "onPrem"
-            ],
-            "title": "Deploymentmodel",
-            "type": "string"
-          },
-          "id": {
-            "format": "uuid",
-            "title": "Id",
-            "type": "string"
-          },
-          "name": {
-            "title": "Name",
-            "type": "string"
-          },
-          "slug": {
-            "title": "Slug",
-            "type": "string"
-          },
-          "status": {
-            "enum": [
-              "active",
-              "suspended"
-            ],
-            "title": "Status",
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "slug",
-          "name",
-          "status",
-          "deploymentModel",
-          "defaultLanguage",
-          "createdAt"
-        ],
-        "title": "TenantOut",
-        "type": "object"
-      },
-      "nexti_api__me__TenantOut": {
-        "properties": {
-          "id": {
-            "format": "uuid",
-            "title": "Id",
-            "type": "string"
-          },
-          "name": {
-            "title": "Name",
-            "type": "string"
-          },
-          "slug": {
-            "title": "Slug",
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "slug",
-          "name"
-        ],
-        "title": "TenantOut",
         "type": "object"
       }
     }
@@ -2159,7 +2159,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/nexti_api__me__TenantOut"
+                  "$ref": "#/components/schemas/SessionTenantOut"
                 }
               }
             },
@@ -2191,7 +2191,7 @@
               "application/json": {
                 "schema": {
                   "items": {
-                    "$ref": "#/components/schemas/nexti_api__admin__tenants__TenantOut"
+                    "$ref": "#/components/schemas/TenantOut"
                   },
                   "title": "Response List Tenants Api V1 Tenants Get",
                   "type": "array"
@@ -2223,7 +2223,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/nexti_api__admin__tenants__TenantOut"
+                  "$ref": "#/components/schemas/TenantOut"
                 }
               }
             },
@@ -2266,7 +2266,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/nexti_api__admin__tenants__TenantOut"
+                  "$ref": "#/components/schemas/TenantOut"
                 }
               }
             },
@@ -2317,7 +2317,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/nexti_api__admin__tenants__TenantOut"
+                  "$ref": "#/components/schemas/TenantOut"
                 }
               }
             },

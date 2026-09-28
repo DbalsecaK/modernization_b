@@ -1079,7 +1079,8 @@
     "userStatus": {
       "active": "Active",
       "invited": "Invited",
-      "disabled": "Disabled"
+      "disabled": "Disabled",
+      "suspended": "Suspended"
     },
     "rolesTitle": "Roles",
     "rolesHint": "Roles are configurable bundles of granular permissions.",
@@ -1150,7 +1151,8 @@
       "lockout": "Account lockout",
       "failedAttempts": "Failed attempts before lockout",
       "lockoutMinutes": "Lockout duration (minutes)",
-      "save": "Save authentication settings"
+      "save": "Save authentication settings",
+      "availableInM0b": "Single sign-on, MFA and the per-customer sign-in policies arrive with milestone M0b. This tab shows their design; in M0 accounts use email and password in the platform's identity provider."
     },
     "securityData": "Data",
     "retention": "Project data retention",
@@ -1164,7 +1166,45 @@
     "allowedRanges": "Allowed ranges (CIDR)",
     "integrationHint": "Repositories, work items and design files",
     "auditTitle": "Audit log",
-    "auditHint": "Append-only and hash-chained. Exportable for regulatory audits."
+    "auditHint": "Append-only and hash-chained. Exportable for regulatory audits.",
+    "tenantSlug": "Identifier",
+    "invitationsTitle": "Invitations",
+    "invitationsHint": "Pending until the person signs in for the first time with the invited email.",
+    "expires": "Expires",
+    "resend": "Resend",
+    "revoke": "Revoke",
+    "suspend": "Suspend",
+    "reactivate": "Reactivate",
+    "removeMember": "Remove",
+    "confirmRemove": "Remove {{name}} from this customer? Their roles here are removed too.",
+    "never": "Never",
+    "deleteRole": "Delete role",
+    "adminHoldsAll": "The customer admin holds every permission of the customer and its projects, except signing sign-offs.",
+    "notApplicable": "Not applicable to a role of this scope",
+    "auditLoadMore": "Load older entries",
+    "auditVerify": "Verify chain",
+    "auditIntact_one": "The chain is intact ({{count}} entry checked).",
+    "auditIntact_other": "The chain is intact ({{count}} entries checked).",
+    "auditBroken": "The chain is broken at entry {{seq}} ({{reason}}).",
+    "outcome": "Outcome",
+    "noActiveTenant": "Select a customer in the top bar to manage it.",
+    "empty": "Nothing here yet.",
+    "tenantStatus": {
+      "active": "Active",
+      "suspended": "Suspended"
+    },
+    "invitationStatus": {
+      "pending": "Pending",
+      "accepted": "Accepted",
+      "revoked": "Revoked",
+      "expired": "Expired"
+    },
+    "outcomes": {
+      "success": "Success",
+      "failure": "Failure",
+      "allowed": "Allowed",
+      "denied": "Denied"
+    }
   },
   "platform": {
     "title": "Platform operations",
@@ -1345,7 +1385,19 @@
     "addMapping": "Add mapping",
     "keycloakNote": "Saved through the Keycloak Admin API. The Keycloak console is never exposed to customers.",
     "idpSaved": "Identity provider saved.",
-    "authSaved": "Authentication settings saved."
+    "authSaved": "Authentication settings saved.",
+    "tenantSlug": "Identifier",
+    "tenantSlugHint": "Lowercase letters, numbers and hyphens. It identifies the customer and cannot be changed later.",
+    "displayName": "Name (optional)",
+    "role": "Role",
+    "project": "Project",
+    "actionFailed": "The action failed: {{message}}",
+    "invitationResent": "Invitation sent again.",
+    "invitationRevoked": "Invitation revoked.",
+    "memberUpdated": "Member updated.",
+    "memberRemoved": "Member removed.",
+    "roleDeleted": "Role deleted.",
+    "invitePartial": "{{sent}} sent; not sent: {{errors}}"
   },
   "inputForms": {
     "hint": "Every input is validated and scanned before any agent reads it.",

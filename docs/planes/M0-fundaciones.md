@@ -299,6 +299,13 @@ cliente TypeScript generado desde él para la web.
 - **Administración conectada a la API:** usuarios, invitaciones, roles, matriz de permisos, auditoría. Las
   pestañas de identidad, SSO y políticas quedan con aviso "disponible en M0b".
 - **Selector de cliente** de la barra superior conectado a `PUT /session/tenant`.
+- **Implementado (paso 11):** Administración usa la API real: tenants (solo superAdmin, alta con identificador),
+  usuarios del cliente activo con sus roles, suspender/reactivar y quitar, invitaciones (varias a la vez, con rol y
+  proyecto; reenviar y revocar), roles con alta de roles propios y borrado, matriz de permisos editable (el
+  administrador del cliente se muestra sin editar porque hereda todo; las celdas que no aplican al alcance del rol
+  están deshabilitadas) y auditoría paginada con verificación de la cadena y exportación NDJSON. Las pestañas se
+  muestran según permisos; Autenticación, Seguridad e Integraciones siguen como diseño (Autenticación con aviso de
+  M0b).
 - **Primitivas sobre Radix (D-14):** `Drawer`, `Select`, `Tabs`, `Tooltip`, `Toast` (y Combobox cuando se
   toque), sin cambiar su API.
 - **Calidad:** ESLint + Prettier (configuración nueva), Vitest (tests actuales), **Playwright** e2e y **axe**.
@@ -349,7 +356,7 @@ cliente TypeScript generado desde él para la web.
 | 8 ✅ | OpenFGA: modelo y tests del modelo, cliente, `require(...)`, outbox y reconciliación | `fga model test` y tests de sincronización en verde |
 | 9 ✅ | Routers de administración (tenants, usuarios, invitaciones con Keycloak + Mailpit, roles, matriz, asignaciones, proyectos, auditoría) con tests permitido/denegado y aislamiento | Suite `authz` e `isolation` en verde |
 | 10 ✅ | Web: cliente de API, TanStack Query, sesión real, menú por permisos, selector de tenant | La web entra con Keycloak o dev-auth y muestra el menú según el rol |
-| 11 | Web: Administración conectada (usuarios, invitaciones, roles, matriz, auditoría); reemplazo de mocks | e2e de invitar, asignar rol y ver auditoría |
+| 11 ✅ | Web: Administración conectada (usuarios, invitaciones, roles, matriz, auditoría); reemplazo de mocks | e2e de invitar, asignar rol y ver auditoría |
 | 12 | Primitivas sobre Radix + Playwright/axe | Tests de accesibilidad en verde, sin cambios en imports de pantallas |
 | 13 | CI completo (jobs de la sección 10) | Pipeline verde en el PR |
 | 14 | Cierre: recorrido de todos los criterios, actualización de spec/README/CLAUDE.md, capturas | Checklist de la sección 11 completo |

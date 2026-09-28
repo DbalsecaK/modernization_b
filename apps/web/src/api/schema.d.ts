@@ -740,7 +740,7 @@ export interface components {
         };
         /** MeOut */
         MeOut: {
-            activeTenant: components["schemas"]["nexti_api__me__TenantOut"] | null;
+            activeTenant: components["schemas"]["SessionTenantOut"] | null;
             /**
              * Authmethod
              * @enum {string}
@@ -753,7 +753,7 @@ export interface components {
             /** Platformroles */
             platformRoles: string[];
             /** Tenants */
-            tenants: components["schemas"]["nexti_api__me__TenantOut"][];
+            tenants: components["schemas"]["SessionTenantOut"][];
             user: components["schemas"]["UserOut"];
         };
         /** MeUpdate */
@@ -900,6 +900,18 @@ export interface components {
             /** Name */
             name: string;
         };
+        /** SessionTenantOut */
+        SessionTenantOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
+            /** Slug */
+            slug: string;
+        };
         /** TenantCreate */
         TenantCreate: {
             /**
@@ -918,6 +930,38 @@ export interface components {
             name: string;
             /** Slug */
             slug: string;
+        };
+        /** TenantOut */
+        TenantOut: {
+            /**
+             * Createdat
+             * Format: date-time
+             */
+            createdAt: string;
+            /**
+             * Defaultlanguage
+             * @enum {string}
+             */
+            defaultLanguage: "en" | "es";
+            /**
+             * Deploymentmodel
+             * @enum {string}
+             */
+            deploymentModel: "sharedSaas" | "dedicatedSaas" | "customerCloud" | "onPrem";
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
+            /** Slug */
+            slug: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "active" | "suspended";
         };
         /** TenantUpdate */
         TenantUpdate: {
@@ -959,50 +1003,6 @@ export interface components {
             msg: string;
             /** Error Type */
             type: string;
-        };
-        /** TenantOut */
-        nexti_api__admin__tenants__TenantOut: {
-            /**
-             * Createdat
-             * Format: date-time
-             */
-            createdAt: string;
-            /**
-             * Defaultlanguage
-             * @enum {string}
-             */
-            defaultLanguage: "en" | "es";
-            /**
-             * Deploymentmodel
-             * @enum {string}
-             */
-            deploymentModel: "sharedSaas" | "dedicatedSaas" | "customerCloud" | "onPrem";
-            /**
-             * Id
-             * Format: uuid
-             */
-            id: string;
-            /** Name */
-            name: string;
-            /** Slug */
-            slug: string;
-            /**
-             * Status
-             * @enum {string}
-             */
-            status: "active" | "suspended";
-        };
-        /** TenantOut */
-        nexti_api__me__TenantOut: {
-            /**
-             * Id
-             * Format: uuid
-             */
-            id: string;
-            /** Name */
-            name: string;
-            /** Slug */
-            slug: string;
         };
     };
     responses: never;
@@ -1622,7 +1622,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["nexti_api__me__TenantOut"];
+                    "application/json": components["schemas"]["SessionTenantOut"];
                 };
             };
             /** @description Validation Error */
@@ -1651,7 +1651,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["nexti_api__admin__tenants__TenantOut"][];
+                    "application/json": components["schemas"]["TenantOut"][];
                 };
             };
         };
@@ -1675,7 +1675,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["nexti_api__admin__tenants__TenantOut"];
+                    "application/json": components["schemas"]["TenantOut"];
                 };
             };
             /** @description Validation Error */
@@ -1706,7 +1706,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["nexti_api__admin__tenants__TenantOut"];
+                    "application/json": components["schemas"]["TenantOut"];
                 };
             };
             /** @description Validation Error */
@@ -1741,7 +1741,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["nexti_api__admin__tenants__TenantOut"];
+                    "application/json": components["schemas"]["TenantOut"];
                 };
             };
             /** @description Validation Error */
