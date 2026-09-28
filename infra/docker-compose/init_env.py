@@ -81,6 +81,8 @@ def write_api_env(env: dict[str, str], target: Path) -> None:
         "KEYCLOAK_ADMIN_CLIENT_SECRET": env["KC_ADMIN_CLIENT_SECRET"],
         "WEB_ORIGIN": env["WEB_ORIGIN"],
         "SESSION_SECRET": env["SESSION_SECRET"],
+        "SECRETS_URL": f"http://127.0.0.1:{env['OPENBAO_PORT']}",
+        "SECRETS_TOKEN": env["OPENBAO_DEV_ROOT_SECRET"],
         "OPENFGA_URL": f"http://127.0.0.1:{env['OPENFGA_HTTP_PORT']}",
         "OPENFGA_API_KEY": env["OPENFGA_API_KEY"],
     }

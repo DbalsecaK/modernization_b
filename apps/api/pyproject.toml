@@ -18,10 +18,12 @@ dependencies = [
   "structlog>=26.1",
   "uvicorn[standard]>=0.37",
   "nexti-core",
+  "nexti-model-gateway",
 ]
 
 [tool.uv.sources]
 nexti-core = { workspace = true }
+nexti-model-gateway = { workspace = true }
 
 [build-system]
 requires = ["hatchling"]

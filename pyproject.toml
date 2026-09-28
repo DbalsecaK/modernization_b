@@ -1,12 +1,13 @@
 # Python workspace (uv). Members: the API and the shared packages (spec 19.3).
 [tool.uv.workspace]
-members = ["apps/api", "packages/core"]
+members = ["apps/api", "packages/core", "packages/model_gateway"]
 
 [dependency-groups]
 dev = [
   "mypy>=1.18",
   "pytest>=8.4",
   "pytest-asyncio>=1.2",
+  "respx>=0.23",
   "ruff>=0.13",
 ]
 
@@ -18,7 +19,7 @@ target-version = "py312"
 select = ["E", "F", "W", "I", "B", "UP", "S", "C4", "SIM", "RUF", "ASYNC", "PT"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["nexti_api", "nexti_core"]
+known-first-party = ["nexti_api", "nexti_core", "nexti_model_gateway"]
 
 [tool.ruff.lint.per-file-ignores]
 "**/tests/**" = ["S101"]
@@ -26,12 +27,12 @@ known-first-party = ["nexti_api", "nexti_core"]
 [tool.mypy]
 python_version = "3.12"
 strict = true
-mypy_path = ["apps/api/src", "packages/core/src"]
+mypy_path = ["apps/api/src", "packages/core/src", "packages/model_gateway/src"]
 explicit_package_bases = true
 plugins = ["pydantic.mypy"]
 
 [tool.pytest.ini_options]
-testpaths = ["apps/api/tests", "packages/core/tests"]
+testpaths = ["apps/api/tests", "packages/core/tests", "packages/model_gateway/tests"]
 addopts = ["--import-mode=importlib", "-ra"]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "session"
