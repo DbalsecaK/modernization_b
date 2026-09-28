@@ -1,0 +1,118 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+/* Design tokens. Brand: NexTI navy + green. Chart and status colors follow the validated data-viz palette. */
+:root {
+  color-scheme: light;
+  --page: #f6f7f9;
+  --surface: #ffffff;
+  --surface-2: #f1f3f6;
+  --border: #e3e6eb;
+  --text: #0b1220;
+  --text-2: #4a5263;
+  --text-muted: #7a8295;
+  --brand: #052158;
+  --brand-contrast: #ffffff;
+  --accent: #05e194;
+  --accent-ink: #03734c;
+  --focus: #2a78d6;
+  --sidebar: #052158;
+  --sidebar-text: #c9d3ea;
+  --sidebar-active: rgba(5, 225, 148, 0.14);
+  --series-1: #2a78d6;
+  --series-2: #eb6834;
+  --series-3: #1baf7a;
+  --grid: #e1e0d9;
+  --axis: #c3c2b7;
+  --good: #0ca30c;
+  --good-ink: #006300;
+  --warning: #fab219;
+  --warning-ink: #8a5a00;
+  --serious: #ec835a;
+  --critical: #d03b3b;
+  --critical-ink: #b42323;
+  --info: #2a78d6;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --page: #0d0f14;
+  --surface: #161a22;
+  --surface-2: #1d2230;
+  --border: #2a3040;
+  --text: #f4f6fb;
+  --text-2: #c3c8d6;
+  --text-muted: #8a91a3;
+  --brand: #3d6fd8;
+  --brand-contrast: #ffffff;
+  --accent: #05e194;
+  --accent-ink: #05e194;
+  --focus: #3987e5;
+  --sidebar: #0a1330;
+  --sidebar-text: #b7c1da;
+  --sidebar-active: rgba(5, 225, 148, 0.16);
+  --series-1: #3987e5;
+  --series-2: #d95926;
+  --series-3: #199e70;
+  --grid: #2c2c2a;
+  --axis: #383835;
+  --good: #0ca30c;
+  --good-ink: #0ca30c;
+  --warning: #fab219;
+  --warning-ink: #fab219;
+  --serious: #ec835a;
+  --critical: #d03b3b;
+  --critical-ink: #ef6b6b;
+  --info: #3987e5;
+}
+
+@theme inline {
+  --color-page: var(--page);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-border: var(--border);
+  --color-text: var(--text);
+  --color-text-2: var(--text-2);
+  --color-muted: var(--text-muted);
+  --color-brand: var(--brand);
+  --color-brand-contrast: var(--brand-contrast);
+  --color-accent: var(--accent);
+  --color-accent-ink: var(--accent-ink);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-text: var(--sidebar-text);
+  --color-sidebar-active: var(--sidebar-active);
+  --color-good: var(--good);
+  --color-good-ink: var(--good-ink);
+  --color-warning: var(--warning);
+  --color-warning-ink: var(--warning-ink);
+  --color-serious: var(--serious);
+  --color-critical: var(--critical);
+  --color-critical-ink: var(--critical-ink);
+  --color-info: var(--info);
+  --color-series-1: var(--series-1);
+  --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: ui-monospace, "SFMono-Regular", "Cascadia Code", Menlo, monospace;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  background: var(--page);
+  color: var(--text);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}

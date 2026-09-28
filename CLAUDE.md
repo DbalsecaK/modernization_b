@@ -26,6 +26,18 @@ el mismo cambio y registra la decisión (sección 22 o un ADR en `docs/adr/`).
 - Workers: `apps/worker` (LangGraph + LangChain).
 - Paquetes Python compartidos en `packages/` (workspace `uv`). Ver estructura completa en la sección 19.3.
 - Entorno local con `infra/docker-compose/`.
+- **Prototipo del frontend ya construido** en `apps/web` (sección 18.7): todas las pantallas con datos
+  simulados en `apps/web/src/mocks/`. Al implementar cada hito, reemplaza los mocks por la API real
+  manteniendo los tipos; no reescribas las pantallas desde cero.
+
+## Comandos del frontend
+
+```bash
+pnpm install            # en la raíz del repo
+pnpm web:dev            # servidor de desarrollo (http://localhost:5173)
+pnpm web:build          # typecheck + build
+pnpm web:test           # tests (paridad de catálogos i18n) + chequeo de claves usadas
+```
 
 ## Reglas no negociables
 

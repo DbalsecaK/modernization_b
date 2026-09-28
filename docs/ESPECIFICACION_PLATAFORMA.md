@@ -718,11 +718,47 @@ en la nube del cliente**. Dedicado sale de lo anterior. Air-gapped cuando haya u
 Estándar objetivo: **OWASP ASVS nivel 2** como mínimo (nivel 3 en autenticación, autorización y manejo
 de datos del cliente).
 
-### 15.1 Identidad
+### 15.1 Identidad y módulo de autenticación
 
-- OIDC con SSO del cliente (Entra ID, Okta, Keycloak); **MFA obligatorio**.
+La plataforma soporta **dos métodos de inicio de sesión**, habilitables por tenant (uno o ambos):
+
+1. **SSO** con el proveedor de identidad del cliente: OIDC o SAML 2.0 (Microsoft Entra ID, Okta,
+   Google Workspace, Keycloak u otro compatible). El MFA lo exige el proveedor.
+2. **Cuentas de la plataforma** (módulo de autenticación propio): correo + contraseña, **siempre con MFA**.
+
+**Flujo de login**
+
+- **Home-realm discovery:** el usuario escribe su correo; si el dominio pertenece a un tenant con SSO,
+  se le redirige a su proveedor. Si el tenant marca "solo SSO", el acceso con contraseña queda deshabilitado
+  para ese dominio.
+- Botones directos de SSO (Entra ID, Okta, Google) y "otro SSO" por dominio de empresa.
+- Contraseña → segundo factor: TOTP (app de autenticación), **passkeys (WebAuthn)** o códigos de
+  recuperación. SMS solo como último recurso (desaconsejado por robo de SIM).
+- **Invitación:** el usuario invitado activa su cuenta, define su contraseña según la política y configura MFA.
+- **Recuperación de contraseña:** enlace de un solo uso con vencimiento (30 min); el mensaje es el mismo
+  exista o no la cuenta (evita enumeración). Las cuentas SSO se recuperan en su proveedor.
+
+**Configuración por tenant (Administración → Autenticación)**
+
+- Métodos habilitados (SSO, cuentas propias; al menos uno obligatorio).
+- Proveedores de identidad: protocolo, issuer/metadata URL, client ID, secreto (en Vault), dominios,
+  modo (solo SSO u opcional), **mapeo de grupos a roles**, aprovisionamiento **JIT** y **SCIM**.
+- Política de contraseñas: longitud mínima (12 por defecto), complejidad, historial, vencimiento
+  (0 = sin vencimiento forzado cuando hay MFA), rechazo de contraseñas filtradas.
+- Política de MFA: obligatoria para todos; métodos permitidos.
+- Sesiones: inactividad (30 min por defecto), duración máxima (12 h), sesiones simultáneas.
+- Bloqueo: intentos fallidos (5) y duración (15 min).
+
+**Cuenta del usuario (Cuenta y seguridad):** perfil e idioma, cambio de contraseña (solo cuentas propias),
+métodos MFA y passkeys, regeneración de códigos de recuperación, sesiones activas con revocación.
+
+**Implementación**
+
 - **Patrón BFF:** el token nunca vive en el navegador; sesión en cookie `httpOnly`, `Secure`, `SameSite`.
 - Sesiones cortas, rotación y revocación inmediata. Protección CSRF.
+- Contraseñas con **Argon2id**; WebAuthn para passkeys; TOTP según RFC 6238.
+- Toda autenticación (éxito, fallo, bloqueo, cambio de MFA) queda en la auditoría.
+- Decisión pendiente D-19: módulo propio en FastAPI vs Keycloak como broker/IdP embebido.
 
 ### 15.2 Perímetro
 
@@ -877,6 +913,10 @@ de permisos de administrador. Toda configuración es versionada y auditable.
 
 ### 18.4 Otras secciones
 
+- **Autenticación (pantallas públicas):** login con home-realm discovery y SSO, segundo factor (MFA),
+  recuperación de contraseña y activación de invitación (sección 15.1).
+- **Cuenta y seguridad:** perfil, idioma, contraseña, MFA/passkeys y sesiones activas.
+
 - **Mis tareas / Aprobaciones:** bandeja transversal (specs, prototipos, preguntas, escalamientos, sign-offs).
 - **Consumo y costos:** consolidado, economía unitaria, presupuestos, proyecciones, exportación.
 - **Configuración IA:** conexiones, catálogo, perfiles, matriz por defecto, precios, políticas, prompts,
@@ -922,6 +962,19 @@ elección del usuario.
 
 - Agentes, skills, plantillas de pipeline y design systems: nombre y descripción en inglés, con traducción
   opcional al español (si falta, se muestra el inglés).
+
+### 18.7 Prototipo navegable (`apps/web`)
+
+Existe un prototipo de todas las pantallas de esta sección en `apps/web`, construido con el stack
+definitivo del frontend (React + TypeScript + Vite + Tailwind + TanStack Router + i18next), en inglés
+nativo con cambio a español y tema claro/oscuro.
+
+- Los datos vienen de `apps/web/src/mocks/` (tipos en `types.ts`, datos en `data.ts`). Los tipos reflejan
+  las entidades de la sección 19.4 para que los mocks se reemplacen por llamadas a la API con la misma forma.
+- La sesión es simulada (`src/lib/session.ts`); en el sistema real la emite el BFF en una cookie `httpOnly`.
+- La recomendación de agentes y skills y las reglas de compatibilidad son deterministas
+  (`src/lib/recommend.ts`) y deben migrar al backend manteniendo el mismo comportamiento.
+- Cómo correrlo: ver `apps/web/README.md`.
 
 ---
 
@@ -1037,11 +1090,14 @@ Cada hito termina con: código en la rama, tests pasando en CI, documentación a
 - FastAPI con OIDC (patrón BFF, cookies), sesión, CSRF.
 - Tenants, usuarios, membresías, RLS, OpenFGA con roles base.
 - Audit log append-only.
-- Web: layout, login, menú por permisos, tema.
+- Módulo de autenticación: SSO (OIDC/SAML) + cuentas propias con MFA, home-realm discovery,
+  invitaciones, recuperación de contraseña, políticas por tenant (sección 15.1).
+- Web: conectar el prototipo de `apps/web` (sección 18.7) a la API real: login, layout, menú por permisos, tema.
 - i18n: inglés como idioma fuente y por defecto; catálogo en español; selector de idioma (18.6).
 
 **Aceptación:** un usuario de un tenant no puede ver datos de otro (test automatizado a nivel API y SQL);
-login con MFA en Keycloak local; toda acción sensible queda en la auditoría.
+login con SSO (Keycloak local como IdP de prueba) y con cuenta propia + MFA; un dominio con "solo SSO"
+no puede entrar con contraseña; toda acción sensible queda en la auditoría.
 La web arranca en inglés; al cambiar a español no queda ningún texto sin traducir (test automatizado
 que compara las claves de ambos catálogos); la preferencia persiste entre sesiones.
 
@@ -1203,6 +1259,7 @@ Sybase SP (M4) → BMS (M5) → CICS (M6) → ASPX (M8).
 | D-15 | OpenFGA vs Casbin |
 | D-16 | Modelo de licenciamiento (por proyecto, por líneas, por tenant) |
 | D-17 | Primer cliente para despliegue en nube propia: ¿AWS o Azure? |
+| D-19 | Módulo de autenticación: implementación propia en FastAPI vs Keycloak como broker/IdP embebido |
 
 Las decisiones nuevas se agregan como ADR en `docs/adr/` y se reflejan aquí.
 

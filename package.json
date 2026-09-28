@@ -1,0 +1,10 @@
+{
+  "name": "nexti-modernization-platform",
+  "private": true,
+  "scripts": {
+    "web:dev": "pnpm --filter @nexti/web dev",
+    "web:build": "pnpm --filter @nexti/web build",
+    "web:test": "pnpm --filter @nexti/web test"
+  },
+  "packageManager": "pnpm@10.33.0"
+}
