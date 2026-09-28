@@ -11,13 +11,16 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import asyncpg
+import httpx
 import pytest
 from alembic import command
 from alembic.config import Config
+from pydantic import SecretStr
 from sqlalchemy import insert
 from sqlalchemy.engine import URL, make_url
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine, create_async_engine
 
+from nexti_api.authz.fga import OpenFga, ensure_store, load_model
 from nexti_api.db.models import AppUser, AuthzOutbox, Invitation, Membership, Project, Role, RoleAssignment
 from nexti_api.settings import API_DIR, Settings
 from nexti_api.tenancy import create_tenant
@@ -96,6 +99,32 @@ def compose_env(name: str) -> str:
 
 def _relay_password() -> str:
     return compose_env("AUTHZ_RELAY_PASSWORD")
+
+
+@pytest.fixture(scope="session")
+async def fga() -> AsyncIterator[OpenFga]:
+    """A throwaway OpenFGA store with the repository model, deleted at the end of the session."""
+    key = SETTINGS.openfga_api_key.get_secret_value()
+    async with httpx.AsyncClient(timeout=10) as http:
+        client = await ensure_store(http, SETTINGS.openfga_url, key, f"test-{uuid.uuid4().hex[:12]}", load_model())
+        try:
+            yield client
+        finally:
+            await http.delete(f"{SETTINGS.openfga_url}/stores/{client.store_id}", headers=client.headers)
+
+
+@pytest.fixture(scope="session")
+def api_settings(databases: Databases, fga: OpenFga) -> Settings:
+    """Settings of an API that uses only the throwaway database and OpenFGA store (never the dev ones)."""
+    return Settings(
+        app_env="test",
+        database_url=SecretStr(databases.app_url.render_as_string(hide_password=False)),
+        authz_relay_database_url=SecretStr(databases.relay_url.render_as_string(hide_password=False)),
+        openfga_store_id=fga.store_id,
+        openfga_model_id=fga.model_id,
+        relay_poll_seconds=0.2,
+        reconcile_interval_seconds=0,
+    )
 
 
 @pytest.fixture(scope="session")

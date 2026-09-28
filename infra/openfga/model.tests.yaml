@@ -1,0 +1,130 @@
+# Allowed/denied cases of the authorization model. Run: fga model test --tests infra/openfga/model.tests.yaml
+name: NexTI platform authorization model
+model_file: ./model.fga
+
+# Tenant "andes" (projects p1, p2) and tenant "pacific" (project p4).
+#   root     NexTI super administrator
+#   support  NexTI support operator
+#   maria    tenant administrator of andes, no project role
+#   luis     architect in p1 only
+#   jorge    auditor of andes
+#   ana      project owner in p4 (pacific)
+#   carlos   developer in p1, member of andes
+tuples:
+  - { user: user:root, relation: super_admin, object: platform:nexti }
+  - { user: user:support, relation: support_operator, object: platform:nexti }
+
+  - { user: platform:nexti, relation: platform, object: tenant:andes }
+  - { user: platform:nexti, relation: platform, object: tenant:pacific }
+  - { user: tenant:andes, relation: tenant, object: project:p1 }
+  - { user: tenant:andes, relation: tenant, object: project:p2 }
+  - { user: tenant:pacific, relation: tenant, object: project:p4 }
+
+  - { user: user:maria, relation: member, object: tenant:andes }
+  - { user: user:maria, relation: admin, object: tenant:andes }
+  - { user: user:luis, relation: member, object: tenant:andes }
+  - { user: user:jorge, relation: member, object: tenant:andes }
+  - { user: user:carlos, relation: member, object: tenant:andes }
+  - { user: user:ana, relation: member, object: tenant:pacific }
+
+  # Auditor bundle of andes: audit_view, usage_view, code_view.
+  - { user: user:jorge, relation: assignee, object: role:andes-auditor }
+  - { user: role:andes-auditor#assignee, relation: audit_view, object: tenant:andes }
+  - { user: role:andes-auditor#assignee, relation: usage_view, object: tenant:andes }
+  - { user: role:andes-auditor#assignee, relation: code_view, object: tenant:andes }
+
+  # Architect bundle, bound per project (p1 and p2 both have the binding objects; luis only in p1).
+  - { user: user:luis, relation: assignee, object: role_binding:p1_architect }
+  - { user: role_binding:p1_architect#assignee, relation: member, object: project:p1 }
+  - { user: role_binding:p1_architect#assignee, relation: gate_c3_approve, object: project:p1 }
+  - { user: role_binding:p1_architect#assignee, relation: signoff_sign, object: project:p1 }
+  - { user: role_binding:p1_architect#assignee, relation: code_view, object: project:p1 }
+  - { user: role_binding:p2_architect#assignee, relation: member, object: project:p2 }
+  - { user: role_binding:p2_architect#assignee, relation: gate_c3_approve, object: project:p2 }
+  - { user: role_binding:p2_architect#assignee, relation: signoff_sign, object: project:p2 }
+
+  # Developer bundle in p1.
+  - { user: user:carlos, relation: assignee, object: role_binding:p1_developer }
+  - { user: role_binding:p1_developer#assignee, relation: member, object: project:p1 }
+  - { user: role_binding:p1_developer#assignee, relation: code_view, object: project:p1 }
+  - { user: role_binding:p1_developer#assignee, relation: code_download, object: project:p1 }
+  - { user: role_binding:p1_developer#assignee, relation: code_push, object: project:p1 }
+
+  # Project owner bundle in p4.
+  - { user: user:ana, relation: assignee, object: role_binding:p4_owner }
+  - { user: role_binding:p4_owner#assignee, relation: member, object: project:p4 }
+  - { user: role_binding:p4_owner#assignee, relation: project_configure, object: project:p4 }
+  - { user: role_binding:p4_owner#assignee, relation: signoff_sign, object: project:p4 }
+
+tests:
+  - name: a project role applies only to the project where it was assigned
+    check:
+      - user: user:luis
+        object: project:p1
+        assertions: { gate_c3_approve: true, signoff_sign: true, code_view: true, viewer: true, code_push: false }
+      - user: user:luis
+        object: project:p2
+        assertions: { gate_c3_approve: false, signoff_sign: false, code_view: false, viewer: false }
+    list_objects:
+      - user: user:luis
+        type: project
+        assertions: { viewer: [project:p1], gate_c3_approve: [project:p1] }
+
+  - name: the tenant administrator can do everything in its projects except signing sign-offs
+    check:
+      - user: user:maria
+        object: project:p1
+        assertions:
+          { project_configure: true, gate_c1_approve: true, gate_c3_approve: true, code_push: true, viewer: true, signoff_sign: false }
+      - user: user:maria
+        object: tenant:andes
+        assertions: { users_manage: true, audit_view: true, cost_view: true, project_create: true }
+    list_objects:
+      - user: user:maria
+        type: project
+        assertions: { viewer: [project:p1, project:p2] }
+
+  - name: nobody reaches another tenant
+    check:
+      - user: user:maria
+        object: project:p4
+        assertions: { viewer: false, project_configure: false, code_view: false }
+      - user: user:maria
+        object: tenant:pacific
+        assertions: { viewer: false, users_manage: false }
+      - user: user:ana
+        object: project:p1
+        assertions: { viewer: false, code_view: false }
+      - user: user:ana
+        object: tenant:andes
+        assertions: { viewer: false }
+
+  - name: the auditor reads everything of its tenant and changes nothing
+    check:
+      - user: user:jorge
+        object: tenant:andes
+        assertions: { audit_view: true, usage_view: true, users_manage: false, cost_view: false }
+      - user: user:jorge
+        object: project:p2
+        assertions: { viewer: true, code_view: true, usage_view: true, code_download: false, gate_c1_approve: false }
+
+  - name: a plain member only sees the tenant
+    check:
+      - user: user:carlos
+        object: tenant:andes
+        assertions: { viewer: true, users_manage: false, audit_view: false, code_view: false }
+      - user: user:carlos
+        object: project:p2
+        assertions: { viewer: false, code_view: false }
+
+  - name: platform roles
+    check:
+      - user: user:root
+        object: tenant:pacific
+        assertions: { admin: true, users_manage: true }
+      - user: user:root
+        object: project:p4
+        assertions: { project_configure: true, signoff_sign: false }
+      - user: user:support
+        object: tenant:andes
+        assertions: { viewer: true, users_manage: false, audit_view: false }

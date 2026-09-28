@@ -5,23 +5,18 @@ from collections.abc import Iterator
 
 import pytest
 from fastapi.testclient import TestClient
-from pydantic import SecretStr
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine
 
 from nexti_api.main import create_app
 from nexti_api.settings import Settings
 
-from .conftest import SETTINGS, Databases, World
+from .conftest import SETTINGS, World
 
 
 @pytest.fixture
-def client(databases: Databases) -> Iterator[TestClient]:
-    settings = Settings(
-        app_env="test",
-        dev_auth_enabled=True,
-        database_url=SecretStr(databases.app_url.render_as_string(hide_password=False)),
-    )
+def client(api_settings: Settings) -> Iterator[TestClient]:
+    settings = api_settings.model_copy(update={"dev_auth_enabled": True})
     with TestClient(create_app(settings), base_url="https://testserver") as c:
         yield c
 

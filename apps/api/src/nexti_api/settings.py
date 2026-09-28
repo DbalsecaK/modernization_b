@@ -46,6 +46,14 @@ class Settings(BaseSettings):
     session_cookie_secure: bool = True
     openfga_url: str = ""
     openfga_api_key: SecretStr = SecretStr("")
+    # Outside development/test the store and model are pinned; locally they are created/updated from the repo.
+    openfga_store_name: str = "nexti"
+    openfga_store_id: str = ""
+    openfga_model_id: str = ""
+    # OpenFGA outbox relay (role authz_relay) and periodic reconciliation (0 disables it).
+    authz_relay_database_url: SecretStr = SecretStr("")
+    relay_poll_seconds: float = 1.0
+    reconcile_interval_seconds: int = 600
 
     @property
     def is_local(self) -> bool:

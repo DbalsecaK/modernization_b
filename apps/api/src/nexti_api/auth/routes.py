@@ -15,10 +15,10 @@ from nexti_api.auth.session import (
     CurrentSession,
     SessionStore,
     login_cookie_name,
-    require_session,
     session_cookie_name,
 )
 from nexti_api.auth.users import SignInDeniedError, sign_in, user_tenants
+from nexti_api.authz.require import Authorized, authenticated
 from nexti_api.db.session import DbScope, scoped_connection
 from nexti_api.observability import log
 from nexti_api.settings import Settings
@@ -149,7 +149,8 @@ async def callback(
 
 
 @router.post("/logout", status_code=204, summary="End the session here and in Keycloak")
-async def logout(request: Request, current: Annotated[CurrentSession, Depends(require_session)]) -> Response:
+async def logout(request: Request, auth: Annotated[Authorized, Depends(authenticated())]) -> Response:
+    current = auth.session
     settings: Settings = request.app.state.settings
     store: SessionStore = request.app.state.sessions
     oidc: OidcClient = request.app.state.oidc

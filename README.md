@@ -60,7 +60,9 @@ python infra/docker-compose/init_env.py        # crea .env con secretos aleatori
 docker compose -f infra/docker-compose/compose.yaml up -d --wait
 python infra/docker-compose/smoke_check.py     # verifica servicios, realm de Keycloak y roles de BD
 pnpm db:migrate                                # esquema (Alembic, como platform_owner)
-pnpm db:seed                                   # datos ficticios de desarrollo (idempotente)
+pnpm db:seed                                   # datos ficticios de desarrollo (idempotente) + reconciliación OpenFGA
+pnpm fga:test                                  # tests del modelo de OpenFGA (infra/openfga)
+pnpm authz:reconcile                           # iguala OpenFGA a lo que implica PostgreSQL
 docker compose -f infra/docker-compose/compose.yaml --profile observability up -d --wait   # + Langfuse
 ```
 

@@ -235,6 +235,15 @@ type project
   el usuario y el tenant de la sesión; una denegación devuelve 403 con código estable y se audita.
 - **Listados:** `ListObjects` para "¿qué proyectos puede ver este usuario?".
 - **Tests del modelo** en `model.tests.yaml`, ejecutados en CI con `fga model test`.
+- **Implementado (paso 8):** `expected_tuples()` deriva desde PostgreSQL el estado deseado de cada tenant (solo
+  membresías activas producen tuplas, así suspender revoca todo). `authz_change()` calcula ese estado antes y
+  después de cada cambio y guarda la diferencia en el outbox en la misma transacción. El relay (tarea de fondo de
+  la API, rol `authz_relay`) publica en orden y se detiene en el primer fallo; las escrituras son idempotentes
+  (`on_duplicate`/`on_missing`). La reconciliación (periódica y `pnpm authz:reconcile`) compara todo el store y
+  audita cada corrección. `model.json` se genera del `.fga` con la CLI y se versiona; en desarrollo el store se
+  crea o actualiza al arrancar, fuera de él se fijan `OPENFGA_STORE_ID` y `OPENFGA_MODEL_ID`.
+  Dependencias: `require_tenant`, `require_project`, `require_platform` y `authenticated` (marcadas para el
+  meta-test del paso 9); `/me.permissions` sale de un batch check.
 
 ## 7. Endpoints de M0 (`/api/v1`)
 
@@ -322,7 +331,7 @@ cliente TypeScript generado desde él para la web.
 | 5 ✅ | Auditoría append-only con hash encadenado y verificación | Tests de inmutabilidad y cadena en verde |
 | 6 ✅ | BFF con Keycloak: login, callback, logout, sesión Redis, cookie, CSRF, `me`, cambio de tenant | Login real en local; test "ningún token en el navegador" |
 | 7 ✅ | `dev-auth` y arranque seguro | Test de arranque en producción falla como se espera |
-| 8 | OpenFGA: modelo y tests del modelo, cliente, `require(...)`, outbox y reconciliación | `fga model test` y tests de sincronización en verde |
+| 8 ✅ | OpenFGA: modelo y tests del modelo, cliente, `require(...)`, outbox y reconciliación | `fga model test` y tests de sincronización en verde |
 | 9 | Routers de administración (tenants, usuarios, invitaciones con Keycloak + Mailpit, roles, matriz, asignaciones, proyectos, auditoría) con tests permitido/denegado y aislamiento | Suite `authz` e `isolation` en verde |
 | 10 | Web: cliente de API, TanStack Query, sesión real, menú por permisos, selector de tenant | La web entra con Keycloak o dev-auth y muestra el menú según el rol |
 | 11 | Web: Administración conectada (usuarios, invitaciones, roles, matriz, auditoría); reemplazo de mocks | e2e de invitar, asignar rol y ver auditoría |

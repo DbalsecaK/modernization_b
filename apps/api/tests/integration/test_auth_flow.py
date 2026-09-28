@@ -12,7 +12,6 @@ from urllib.parse import urlsplit
 import httpx
 import pytest
 from fastapi.testclient import TestClient
-from pydantic import SecretStr
 from sqlalchemy import insert, text
 from sqlalchemy.ext.asyncio import AsyncEngine
 
@@ -20,7 +19,7 @@ from nexti_api.db.models import AppUser, Membership
 from nexti_api.main import create_app
 from nexti_api.settings import Settings
 
-from .conftest import SETTINGS, Databases, World, compose_env
+from .conftest import SETTINGS, World, compose_env
 
 JWT = re.compile(r"eyJ[A-Za-z0-9_-]{5,}\.[A-Za-z0-9_-]{5,}\.")
 TOKEN_WORDS = re.compile(r"access_token|refresh_token|id_token", re.I)
@@ -92,9 +91,8 @@ async def luis(owner_engine: AsyncEngine, world: World) -> uuid.UUID:
 
 
 @pytest.fixture
-def browser(databases: Databases) -> Iterator[Browser]:
-    settings = Settings(app_env="test", database_url=SecretStr(databases.app_url.render_as_string(hide_password=False)))
-    with TestClient(create_app(settings), base_url="https://testserver") as client:
+def browser(api_settings: Settings) -> Iterator[Browser]:
+    with TestClient(create_app(api_settings), base_url="https://testserver") as client:
         yield Browser(client, [])
 
 
@@ -190,12 +188,11 @@ async def test_email_already_linked_to_another_account_is_refused(browser: Brows
 
 
 def test_a_callback_replayed_in_another_browser_is_refused(
-    browser: Browser, databases: Databases, luis: uuid.UUID
+    browser: Browser, api_settings: Settings, luis: uuid.UUID
 ) -> None:
     start = browser.get("/auth/login")
     callback = keycloak_sign_in(start.headers["location"], "landrade@andesbank.example", PASSWORD)
-    settings = Settings(app_env="test", database_url=SecretStr(databases.app_url.render_as_string(hide_password=False)))
-    with TestClient(create_app(settings), base_url="https://testserver") as other:
+    with TestClient(create_app(api_settings), base_url="https://testserver") as other:
         res = other.get(as_local_path(callback), follow_redirects=False)
     assert res.headers["location"] == f"{SETTINGS.web_origin}/login?error=sign_in_failed"
 

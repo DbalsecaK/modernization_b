@@ -1,5 +1,7 @@
 """Application factory. Run with: uvicorn --factory nexti_api.main:create_app"""
 
+import asyncio
+import contextlib
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
@@ -10,10 +12,41 @@ from nexti_api.auth import dev_auth
 from nexti_api.auth import routes as auth_routes
 from nexti_api.auth.oidc import OidcClient
 from nexti_api.auth.session import SessionStore
+from nexti_api.authz import fga as fga_module
+from nexti_api.authz.reconcile import reconcile
+from nexti_api.authz.relay import OutboxRelay
 from nexti_api.errors import install_error_handlers
-from nexti_api.observability import RequestLogMiddleware, configure_logging
+from nexti_api.observability import RequestLogMiddleware, configure_logging, log
 from nexti_api.resources import Resources
 from nexti_api.settings import Settings, get_settings
+
+
+async def _connect_fga(resources: Resources, settings: Settings) -> fga_module.OpenFga | None:
+    """OpenFGA unavailable at startup does not stop the API: protected endpoints answer 503 until restart."""
+    if not settings.openfga_url:
+        return None
+    try:
+        return await fga_module.connect(resources.http, settings)
+    except Exception as exc:
+        log.error("openfga_unavailable", error=type(exc).__name__, detail=str(exc)[:200])
+        return None
+
+
+async def _reconcile_periodically(
+    resources: Resources, fga: fga_module.OpenFga, settings: Settings, stop: asyncio.Event
+) -> None:
+    assert resources.engine is not None  # noqa: S101 (checked by the caller)
+    while not stop.is_set():
+        with contextlib.suppress(TimeoutError):
+            await asyncio.wait_for(stop.wait(), timeout=settings.reconcile_interval_seconds)
+        if stop.is_set():
+            return
+        try:
+            report = await reconcile(resources.engine, fga)
+            if not report.in_sync:
+                log.warning("authz_reconciled", written=len(report.missing), deleted=len(report.extra))
+        except Exception as exc:
+            log.warning("authz_reconcile_failed", error=type(exc).__name__, detail=str(exc)[:200])
 
 
 def create_app(settings: Settings | None = None, health_checks: dict[str, health.Check] | None = None) -> FastAPI:
@@ -32,9 +65,23 @@ def create_app(settings: Settings | None = None, health_checks: dict[str, health
         # Without Redis or a session secret there are no sessions: session routes answer 503.
         configured = resources.redis is not None and settings.session_secret.get_secret_value()
         app.state.sessions = SessionStore(resources.redis, settings) if configured and resources.redis else None
+        app.state.fga = await _connect_fga(resources, settings)
+        app.state.relay = None
+        stop = asyncio.Event()
+        tasks: list[asyncio.Task[None]] = []
+        if app.state.fga is not None and resources.relay_engine is not None:
+            app.state.relay = OutboxRelay(resources.relay_engine, app.state.fga)
+            tasks.append(asyncio.create_task(app.state.relay.run_forever(stop, settings.relay_poll_seconds)))
+        if app.state.fga is not None and resources.engine is not None and settings.reconcile_interval_seconds > 0:
+            tasks.append(asyncio.create_task(_reconcile_periodically(resources, app.state.fga, settings, stop)))
         try:
             yield
         finally:
+            stop.set()
+            for task in tasks:
+                task.cancel()
+                with contextlib.suppress(asyncio.CancelledError):
+                    await task
             await resources.close()
 
     # Interactive docs only where there is no real data; the OpenAPI document is always available.

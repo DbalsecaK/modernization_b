@@ -71,6 +71,9 @@ def write_api_env(env: dict[str, str], target: Path) -> None:
         "MIGRATION_DATABASE_URL": (
             f"postgresql+asyncpg://platform_owner:{env['PLATFORM_OWNER_PASSWORD']}@127.0.0.1:{env['POSTGRES_PORT']}/platform"
         ),
+        "AUTHZ_RELAY_DATABASE_URL": (
+            f"postgresql+asyncpg://authz_relay:{env['AUTHZ_RELAY_PASSWORD']}@127.0.0.1:{env['POSTGRES_PORT']}/platform"
+        ),
         "REDIS_URL": f"redis://:{env['REDIS_PASSWORD']}@127.0.0.1:{env['REDIS_PORT']}/0",
         "KEYCLOAK_URL": f"http://127.0.0.1:{env['KEYCLOAK_PORT']}",
         "KEYCLOAK_PUBLIC_URL": f"http://localhost:{env['KEYCLOAK_PORT']}",
