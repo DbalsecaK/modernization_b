@@ -1,6 +1,6 @@
 import pytest
 
-from nexti_api.audit.writer import _reject_secrets
+from nexti_core.audit import _reject_secrets
 
 
 @pytest.mark.parametrize(

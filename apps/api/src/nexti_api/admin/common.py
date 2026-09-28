@@ -8,9 +8,9 @@ from fastapi import Request
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine
 
 from nexti_api.audit import AuditEvent, record
-from nexti_api.audit.writer import Outcome
 from nexti_api.authz.require import Authorized
 from nexti_api.errors import ProblemError
+from nexti_core.audit import Outcome
 from nexti_core.db.session import scoped_connection
 
 

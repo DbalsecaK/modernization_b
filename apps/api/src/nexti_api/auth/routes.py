@@ -8,7 +8,6 @@ from fastapi.responses import RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncEngine
 
 from nexti_api.audit import AuditEvent, record
-from nexti_api.audit.writer import ActorKind
 from nexti_api.auth.oidc import OidcClient, OidcError
 from nexti_api.auth.session import (
     LOGIN_STATE_TTL_SECONDS,
@@ -21,6 +20,7 @@ from nexti_api.auth.users import SignInDeniedError, sign_in, user_tenants
 from nexti_api.authz.require import Authorized, authenticated
 from nexti_api.observability import log
 from nexti_api.settings import Settings
+from nexti_core.audit import ActorKind
 from nexti_core.db.session import DbScope, scoped_connection
 
 router = APIRouter(prefix="/auth", tags=["auth"])
