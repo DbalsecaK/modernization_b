@@ -80,6 +80,9 @@ jobs:
           # shellcheck disable=SC2086 # the list of services must be split
           $COMPOSE up -d --wait $SERVICES
       - run: uv run pytest
+        env:
+          # M1 acceptance against the real OpenRouter API (a few millionths of a dollar); skipped when empty.
+          OPENROUTER_API_KEY_FOR_TESTS: ${{ secrets.OPENROUTER_API_KEY_FOR_TESTS }}
       - name: Service logs on failure
         if: failure()
         run: $COMPOSE logs --tail 200

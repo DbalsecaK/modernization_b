@@ -1428,6 +1428,8 @@ pasan los tests de accesibilidad.
 
 ### M1 — Configuración IA y consumo
 
+Plan detallado y cierre (criterios con sus tests): `docs/planes/M1-configuracion-ia.md`.
+
 - Conexión **OpenRouter** (primer proveedor, D-28) con "probar conexión" y secreto en Vault (dev: equivalente local),
   proveedor de enrutamiento fijado y políticas de ZDR y proveedores permitidos por tenant. Foundry, Bedrock y
   OpenAI se agregan después sobre el mismo modelo de datos (cuando un cliente lo requiera, antes de M9).

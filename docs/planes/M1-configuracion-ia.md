@@ -1,6 +1,6 @@
 # Plan del hito M1 — Configuración IA y consumo
 
-- **Estado:** en ejecución (2026-09-28). Se avanza de corrido; solo se detiene ante una decisión importante.
+- **Estado:** terminado (2026-09-28). Criterios y evidencia en la sección 7.
 - **Fuente:** `docs/ESPECIFICACION_PLATAFORMA.md` secciones 12, 13 y 20 (M1); ADR-0005 (D-28, OpenRouter).
 - **Rama:** `m1-configuracion-ia`, un commit por paso, PR a `main` al terminar.
 
@@ -64,7 +64,7 @@
 
 | Criterio | Test |
 |---|---|
-| Una llamada de prueba por OpenRouter queda registrada con tokens y costo correctos, y el costo coincide con el informado | Integración con OpenRouter simulado (respuestas reales grabadas) y, con `OPENROUTER_API_KEY`, un test con la API real |
+| Una llamada de prueba por OpenRouter queda registrada con tokens y costo correctos, y el costo coincide con el informado | Integración con OpenRouter simulado (respuestas reales grabadas) y, con `OPENROUTER_API_KEY_FOR_TESTS`, un test con la API real |
 | Una política que prohíbe OpenRouter o exige ZDR se respeta | Gateway: llamada rechazada y registrada; la solicitud lleva `zdr: true` y el proveedor fijado |
 | Superar un presupuesto pausa la ejecución | Gateway: al alcanzar el tope la siguiente llamada se rechaza (`BudgetExceeded`), alertas 80 % y 100 % una vez por periodo |
 | Un agente no puede llamar a un proveedor sin pasar por el gateway | Test de arquitectura: fuera de `packages/model_gateway` no hay clientes de proveedores ni lecturas de la API key |
@@ -83,3 +83,48 @@
 | 8 | Web: Configuración IA conectada |
 | 9 | Web: Consumo y costos conectado |
 | 10 | Llamada real a OpenRouter (con la API key), CI y cierre |
+
+Los diez pasos están hechos, un commit por paso en la rama `m1-configuracion-ia`.
+
+## 7. Cierre de M1 (2026-09-28)
+
+Los criterios de aceptación de la sección 20 de la especificación se cumplen con tests automatizados que corren
+en CI contra los servicios reales (PostgreSQL, OpenBao, OpenFGA, Keycloak).
+
+| Criterio | Evidencia (tests) | Estado |
+|---|---|---|
+| Una llamada de prueba por OpenRouter queda registrada con tokens y costo correctos, y el costo coincide con el informado | `apps/api/tests/integration/test_openrouter_live.py` (API real: libro con tokens, versión de precio y costo calculado igual al de OpenRouter) y `test_gateway.py` (respuestas reales grabadas) | ✅ |
+| Una política que prohíbe OpenRouter o exige ZDR se respeta | `test_gateway.py` (ZDR: respaldo en Azure con `zdr: true` y proveedor fijado; OpenRouter prohibido: ninguna llamada, fila bloqueada y auditoría) y `test_endpoints_authz.py::test_the_catalog_shows_prices_and_the_tenant_policy` | ✅ |
+| Superar un presupuesto pausa la ejecución | `test_gateway.py` (alertas 80 % y 100 % una vez por periodo; la llamada siguiente se rechaza con `BudgetExceeded` y queda registrada) | ✅ |
+| Un agente no puede llamar a un proveedor sin pasar por el gateway | `apps/api/tests/test_architecture.py` (fuera de `packages/model_gateway` solo se importa la fachada; nadie más habla con OpenRouter ni con OpenBao) | ✅ |
+| Cada endpoint con test permitido y denegado, y aislamiento entre tenants (regla de CLAUDE.md) | `test_endpoints_authz.py` (matriz de todas las rutas nuevas, meta-test de cobertura y `test_ai_configuration_and_usage_of_another_tenant_are_unreachable`) y `test_rls.py` (tablas de IA) | ✅ |
+| La API key nunca vuelve al navegador ni queda en la base | `test_endpoints_authz.py::test_the_api_key_goes_to_the_secrets_store_only` (respuestas, fila y auditoría sin la key; OpenBao con la rotada; borrada al eliminar) y `e2e/ai-config.spec.ts` | ✅ |
+| Tokens sin dinero para quien no tiene `cost.view` | `test_endpoints_authz.py::test_tokens_without_cost_view_come_without_money` y `e2e/usage.spec.ts` | ✅ |
+| Pantallas de Configuración IA y Consumo y costos conectadas, en inglés y español, accesibles | `e2e/ai-config.spec.ts` y `e2e/usage.spec.ts` (API real y axe), `scripts/check-i18n-keys.mjs` e `i18n.test.ts` | ✅ |
+
+**Capturas** en `docs/m1/`: conexión probada, catálogo con proveedores y precios, perfil probado con una llamada
+real (14 tokens de entrada y 1 de salida, USD 0,000003), asignación resuelta y consumo del mes.
+
+**Cambios respecto del plan**
+
+- Migración **0005**: `model_version.canonical_slug` deja de ser único. La sincronización con el catálogo real de
+  OpenRouter mostró que alias y variantes (`:thinking`, `:free`, el id sin fecha) comparten el slug canónico de
+  la versión a la que apuntan; `provider_slug` sigue siendo único.
+- La API usa solo la fachada del gateway (`nexti_model_gateway.service`, que también expone `Pricing` y
+  `SecretsConfig`), `gateway` (contexto y errores) y `rules`; la URL de OpenRouter por defecto vive solo en el
+  gateway.
+- Probar un perfil queda auditado (`ai.profile_test`): hace una llamada real y gasta en la cuenta del cliente.
+- Cliente de OpenFGA: reintento ante 409 cuando el relay y el reconciliador escriben la misma tupla a la vez
+  (apareció como test intermitente).
+- La variable del test real es `OPENROUTER_API_KEY_FOR_TESTS` (en el `.env` de Compose, ignorado por git, o como
+  secreto de CI); sin ella el test se omite.
+
+**Limitaciones conocidas (pasan a hitos posteriores)**
+
+- Solo OpenRouter; Foundry, Bedrock y las API directas llegan cuando un cliente lo requiera, sobre el mismo modelo.
+- Las pestañas *Prompts* y *Evaluaciones* siguen con datos de ejemplo (M3, con los agentes).
+- La pausa de ejecuciones al llegar al presupuesto la hace el orquestador en M3 al recibir `BudgetExceeded`; en
+  M1 el gateway rechaza la llamada y la registra.
+- La capa LangChain sobre el gateway se agrega en M3 (decisión 4).
+- `Field` (primitiva de UI) envuelve el control en su `<label>`: el nombre accesible incluye la ayuda y el valor
+  elegido. Conviene asociar etiqueta y ayuda por `id` al revisar las primitivas.

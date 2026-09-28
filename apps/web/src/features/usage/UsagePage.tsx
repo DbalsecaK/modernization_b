@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Download, Pencil, Plus, Table2, Trash2 } from 'lucide-react'
-import { formatCompact, formatDate, formatNumber, formatUsd } from '@/lib/format'
+import { formatCompact, formatCost, formatDay, formatNumber, formatUsd } from '@/lib/format'
 import { can, useMe } from '@/api/session'
 import { useBudgets, useDeleteBudget, usd, useUsage, type Budget, type GroupBy, type UsageRow } from '@/api/ai'
 import { toast } from '@/components/ui/overlay'
@@ -31,14 +31,16 @@ const RANGES = ['monthToDate', 'last30', 'last90'] as const
 type Range = (typeof RANGES)[number]
 const BREAKDOWNS: GroupBy[] = ['project', 'model', 'phase', 'agentRole', 'provider']
 
-const iso = (d: Date) => d.toISOString().slice(0, 10)
+// Calendar days of the user (the ledger is summarized by UTC day; a few hours of difference at the edges).
+const iso = (d: Date) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 
 function dateRange(range: Range): { since: string; until: string } {
   const today = new Date()
   const until = iso(today)
   if (range === 'monthToDate') return { since: `${until.slice(0, 8)}01`, until }
   const since = new Date(today)
-  since.setUTCDate(since.getUTCDate() - (range === 'last30' ? 29 : 89))
+  since.setDate(since.getDate() - (range === 'last30' ? 29 : 89))
   return { since: iso(since), until }
 }
 
@@ -58,7 +60,7 @@ export function UsagePage() {
   const total = daily.data?.total
   // Money when the user may see it (cost.view); tokens otherwise (spec 13.5).
   const measure = (r: UsageRow) => (costVisible ? (usd(r.costUsd) ?? 0) : tokens(r))
-  const format = (v: number) => (costVisible ? formatUsd(v, 2) : formatCompact(v))
+  const format = (v: number) => (costVisible ? formatCost(v) : formatCompact(v))
   const label = useGroupLabel()
 
   if (!me?.activeTenant) return <Notice tone="info">{t('admin.noActiveTenant')}</Notice>
@@ -96,8 +98,8 @@ export function UsagePage() {
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <StatTile
             label={t('usage.spend')}
-            value={costVisible && total ? formatUsd(usd(total.costUsd) ?? 0, 2) : '—'}
-            hint={t('usage.rangeHint', { since: formatDate(since), until: formatDate(until) })}
+            value={costVisible && total ? formatCost(usd(total.costUsd) ?? 0) : '—'}
+            hint={t('usage.rangeHint', { since: formatDay(since), until: formatDay(until) })}
           />
           <StatTile label={t('usage.tokens')} value={total ? formatCompact(tokens(total)) : '—'} />
           <StatTile label={t('usage.calls')} value={total ? formatNumber(total.calls) : '—'} />
@@ -171,7 +173,7 @@ export function UsagePage() {
                   <Td className="text-right tabular">{formatNumber(r.outputTokens)}</Td>
                   <Td className="text-right tabular">{formatNumber(r.reasoningTokens)}</Td>
                   <Td className="text-right tabular">{formatNumber(r.cacheReadTokens)}</Td>
-                  {costVisible && <Td className="text-right tabular">{formatUsd(usd(r.costUsd) ?? 0, 4)}</Td>}
+                  {costVisible && <Td className="text-right tabular">{formatCost(usd(r.costUsd) ?? 0)}</Td>}
                 </tr>
               ))}
             </tbody>
@@ -242,7 +244,7 @@ function Trend({
             <tbody>
               {points.map((r) => (
                 <tr key={r.key}>
-                  <Td>{formatDate(`${r.key}T12:00:00Z`)}</Td>
+                  <Td>{formatDay(r.key ?? '')}</Td>
                   <Td className="text-right tabular">{format(measure(r))}</Td>
                 </tr>
               ))}
@@ -250,7 +252,7 @@ function Trend({
           </Table>
         ) : (
           <LineChart
-            data={points.map((r) => ({ x: formatDate(`${r.key}T12:00:00Z`), y: measure(r) }))}
+            data={points.map((r) => ({ x: formatDay(r.key ?? ''), y: measure(r) }))}
             format={format}
             label={title}
           />
@@ -339,7 +341,7 @@ function Budgets({ canEdit }: { canEdit: boolean }) {
                     <div className="mt-1 text-xs text-muted tabular">{pct}%</div>
                   </Td>
                   <Td className="text-right tabular">
-                    {formatUsd(spent, 2)} / {formatUsd(amount, 2)}
+                    {formatCost(spent)} / {formatUsd(amount, 2)}
                   </Td>
                   <Td>
                     <div className="flex flex-wrap gap-1">
