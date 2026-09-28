@@ -19,4 +19,14 @@ El producto es **nativamente en inglés**, con cambio completo a español.
 
 ## Estado
 
-Especificación inicial. La implementación comienza por el hito **M0 — Fundaciones**.
+- Especificación maestra y decisiones registradas (`docs/ESPECIFICACION_PLATAFORMA.md`).
+- Prototipo navegable de todas las pantallas en `apps/web` (inglés nativo, español, tema claro/oscuro), con
+  datos simulados. Capturas en `docs/prototipo/`.
+- Siguiente paso: hito **M0 — Fundaciones** (Keycloak, multi-tenant, RBAC, auditoría, CI).
+
+## Probar el prototipo
+
+```bash
+pnpm install
+pnpm web:dev      # http://localhost:5173
+```

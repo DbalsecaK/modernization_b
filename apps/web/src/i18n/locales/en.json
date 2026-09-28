@@ -383,7 +383,8 @@
     "showImpact": "Show impact",
     "impactResult_one": "{{count}} item depends on it: {{items}}",
     "impactResult_other": "{{count}} items depend on it: {{items}}",
-    "openCompare": "Compare source ↔ target"
+    "openCompare": "Compare source ↔ target",
+    "impactUnused": "Programs, copybooks and files nobody uses"
   },
   "spec": {
     "filterStatus": "Filter by status",
@@ -1392,5 +1393,71 @@
     "sampling": "Random review sample (%)",
     "samplingHint": "Share of auto-approved items a person still reviews.",
     "keepsWorking": "While a question waits, agents keep working on everything that does not depend on it."
+  },
+  "graph": {
+    "orphans": "Orphans and isolated",
+    "orphansHint": "Candidates for dead code or unused data",
+    "search": "Search modules, stores, jobs…",
+    "flow": "Business flow walkthrough",
+    "rule": "Business rule",
+    "none": "— None —",
+    "relations": "Relations",
+    "relationNames": {
+      "calls": "Calls / starts",
+      "reads": "Reads",
+      "writes": "Writes",
+      "includes": "Includes (copybooks, maps)"
+    },
+    "nodes": "Nodes",
+    "visibility": {
+      "all": "All nodes",
+      "orphans": "Only orphans and isolated",
+      "hideOrphans": "Hide orphans and isolated"
+    },
+    "stats": "{{nodes}} nodes · {{edges}} relations",
+    "zoomIn": "Zoom in",
+    "zoomOut": "Zoom out",
+    "reset": "Reset view",
+    "help": "Scroll to zoom · drag to pan · click a node · double-click to zoom in · Esc to reset",
+    "persona": "Persona: {{persona}}",
+    "steps": "Steps",
+    "implementedIn": "Implemented in",
+    "inFlows": "Part of these business flows",
+    "emptyPanel": "Pick a business flow to see it step by step on the graph, pick a rule to see where it lives, or click any node.",
+    "tryFlow": "Walk through a business flow",
+    "kind": {
+      "orphan": "orphan",
+      "isolated": "isolated"
+    },
+    "kindHint": {
+      "orphan": "Nothing calls or uses this element. It may be dead code: confirm before migrating it.",
+      "isolated": "This element has no relations at all. It may be unused data or a missing reference in the inventory."
+    },
+    "writtenBy": "Written by the legacy analyst agent from a source excerpt and the node's connections.",
+    "noDescription": "No description yet: it is written during the inventory phase.",
+    "fanIn_one": "fan-in {{count}}",
+    "fanIn_other": "fan-in {{count}}",
+    "fanOut_one": "fan-out {{count}}",
+    "fanOut_other": "fan-out {{count}}",
+    "loc_one": "{{count}} line",
+    "loc_other": "{{count}} lines",
+    "source": "Source",
+    "connections_one": "Connections ({{count}})",
+    "connections_other": "Connections ({{count}})",
+    "dir": {
+      "out": "outgoing",
+      "in": "incoming"
+    },
+    "edgeKinds": {
+      "STARTS": "starts",
+      "RUNS": "runs",
+      "CALLS": "calls",
+      "READS": "reads",
+      "WRITES": "writes",
+      "COPIES": "copies",
+      "USES_MAP": "uses map"
+    },
+    "orderTitle": "Suggested migration order",
+    "orderHint": "Data and shared layouts first, then programs with the fewest dependents, entry points last. Orphans are left out until confirmed."
   }
 }

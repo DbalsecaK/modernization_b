@@ -29,6 +29,9 @@ el mismo cambio y registra la decisión (sección 22 o un ADR en `docs/adr/`).
 - **Prototipo del frontend ya construido** en `apps/web` (sección 18.7): todas las pantallas con datos
   simulados en `apps/web/src/mocks/`. Al implementar cada hito, reemplaza los mocks por la API real
   manteniendo los tipos; no reescribas las pantallas desde cero.
+  - Formularios de alta/edición: panel lateral `Drawer` y avisos `toast` de `apps/web/src/components/ui/overlay.tsx`.
+  - Preguntas del human in the loop: `apps/web/src/features/decisions/` (sección 10.4).
+  - Grafo de conocimiento: `apps/web/src/features/projects/graph/` (sección 5.2.1).
 
 ## Comandos del frontend
 

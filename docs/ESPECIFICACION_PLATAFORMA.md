@@ -159,7 +159,8 @@ web y en archivos exportables (Markdown, Gherkin `.feature`, OpenAPI YAML, JSON)
 | **Requisito no funcional** | id, categoría (seguridad, auditoría, rendimiento, disponibilidad), criterio medible |
 | **Restricción de arquitectura** | id, regla (capas, dependencias, nombres), fitness function asociada |
 | **Caso de prueba** | id, tipo (aceptación, caracterización, golden master, contrato, visual), entrada, salida esperada, reglas que verifica |
-| **Pregunta abierta** | id, texto, elementos afectados, responsable, estado, respuesta |
+| **Pregunta abierta** | id, pregunta, contexto, evidencia, motivo, impacto (alto/bajo), opciones con justificación y confianza, opción recomendada, elementos afectados, responsable, estado, respuesta, quién respondió (sección 10.4) |
+| **Flujo de negocio** | id, nombre, persona, resumen, reglas involucradas, pasos ordenados (título, nodos del grafo que recorre, regla que aplica), origen (reconstruido del grafo y de las reglas, validado por negocio) |
 
 ### 4.2 Origen trazable (obligatorio en todo elemento)
 
@@ -213,6 +214,27 @@ referencias a archivo y línea; el fuente vive en el object storage.
 - Reglas dispersas: "¿qué reglas de varios programas afectan al mismo campo de salida?"
 - Orden de migración: ordenamiento topológico con peso por complejidad.
 - Completitud (ver 11.5).
+- Huérfanos y aislados: "¿qué programas, copybooks o archivos no usa nadie?" (candidatos a código muerto o
+  datos sin uso) y "¿qué elementos no tienen ninguna relación?" (posibles referencias faltantes).
+- Flujos de negocio: "¿qué recorrido hace el flujo X, en qué orden y qué reglas aplica en cada paso?"
+
+### 5.2.1 Visualización del grafo (pestaña Inventario)
+
+- **Recorrido de flujos de negocio:** combobox con los flujos identificados (nombre + persona). Al elegir uno,
+  el grafo resalta su recorrido con pasos numerados y atenúa el resto; un panel lateral lista los pasos (nodos
+  que recorre y regla que aplica), permite avanzar y retroceder y enlaza cada regla con la vista
+  Origen ↔ destino.
+- **Foco por regla de negocio:** combobox con las reglas extraídas; resalta los nodos que la implementan y sus
+  vecinos directos, y muestra en qué flujos participa.
+- **Filtros de relaciones:** llamadas/inicios, lecturas, escrituras e inclusiones (copybooks, mapas), cada una
+  con su estilo de línea y dirección (flechas).
+- **Filtro de nodos:** todos, **solo huérfanos y aislados**, u ocultarlos; además, filtro por tipo de nodo.
+  Los huérfanos y aislados se marcan con borde punteado y una explicación en el detalle.
+- **Color** por dominio o por estado de migración (verificado, generado, en curso, pendiente), con leyenda.
+- **Buscador** de módulos, datos y jobs; **zoom** con la rueda o botones, **arrastre** para mover, ajuste
+  automático al ancho y restablecer con Esc.
+- **Detalle del nodo:** tipo, dominio, estado, líneas de código, destino, relaciones (usa / lo usan), reglas y
+  análisis de impacto.
 
 ### 5.3 Aislamiento
 
@@ -958,7 +980,7 @@ de permisos de administrador. Toda configuración es versionada y auditable.
 |---|---|
 | Resumen | Pipeline visual, próximos pasos, riesgos, veredicto, costo |
 | Insumos | Código, repos, documentos, Figma, capturas, con versiones |
-| Inventario / Mapa | **Grafo interactivo** del legacy: filtros por tipo y dominio, color por dominio o por estado de migración, panel de detalle del nodo (usa / lo usan, reglas, destino), **análisis de impacto** y acceso directo a la comparación |
+| Inventario / Mapa | **Grafo interactivo** del legacy (sección 5.2.1): recorrido de flujos de negocio paso a paso, foco por regla, filtros de relaciones, filtro de huérfanos y aislados, color por dominio o estado, buscador, zoom y arrastre, detalle del nodo, **análisis de impacto** y acceso directo a la comparación |
 | Especificación | Subvistas: reglas, pantallas (campos, validaciones, acciones, estados), contratos y **preguntas** (tarjetas de decisión, sección 10.4) |
 | Diseño UI | Design system, prototipos navegables con comentarios, legacy ↔ prototipo |
 | Arquitectura | Bounded contexts, OpenAPI, ADR, fitness functions |
@@ -1035,8 +1057,10 @@ nativo con cambio a español y tema claro/oscuro.
   (`src/lib/recommend.ts`) y deben migrar al backend manteniendo el mismo comportamiento.
 - Incluye los formularios de alta y edición (agentes, skills, conexiones IA, perfiles, precios, clientes,
   invitaciones, roles y matriz de permisos, proveedores de identidad, insumos), el buscador global, las
-  notificaciones, el detalle de cada invocación de agente, el grafo interactivo, la comparación
-  origen ↔ destino y las tarjetas de decisión del human in the loop.
+  notificaciones, el detalle de cada invocación de agente, el grafo interactivo con recorrido de flujos de
+  negocio, foco por regla y filtro de huérfanos, la comparación origen ↔ destino y las tarjetas de decisión del
+  human in the loop.
+- Capturas de referencia en `docs/prototipo/`.
 - Cómo correrlo: ver `apps/web/README.md`.
 
 ---

@@ -383,7 +383,8 @@
     "showImpact": "Ver impacto",
     "impactResult_one": "{{count}} elemento depende de esto: {{items}}",
     "impactResult_other": "{{count}} elementos dependen de esto: {{items}}",
-    "openCompare": "Comparar origen ↔ destino"
+    "openCompare": "Comparar origen ↔ destino",
+    "impactUnused": "Programas, copybooks y archivos que nadie usa"
   },
   "spec": {
     "filterStatus": "Filtrar por estado",
@@ -1392,5 +1393,71 @@
     "sampling": "Muestra aleatoria de revisión (%)",
     "samplingHint": "Porcentaje de lo aprobado automáticamente que igual revisa una persona.",
     "keepsWorking": "Mientras una pregunta espera, los agentes siguen trabajando en todo lo que no depende de ella."
+  },
+  "graph": {
+    "orphans": "Huérfanos y aislados",
+    "orphansHint": "Candidatos a código muerto o datos sin uso",
+    "search": "Buscar módulos, datos, jobs…",
+    "flow": "Recorrido de un flujo de negocio",
+    "rule": "Regla de negocio",
+    "none": "— Ninguno —",
+    "relations": "Relaciones",
+    "relationNames": {
+      "calls": "Llama / inicia",
+      "reads": "Lee",
+      "writes": "Escribe",
+      "includes": "Incluye (copybooks, mapas)"
+    },
+    "nodes": "Nodos",
+    "visibility": {
+      "all": "Todos los nodos",
+      "orphans": "Solo huérfanos y aislados",
+      "hideOrphans": "Ocultar huérfanos y aislados"
+    },
+    "stats": "{{nodes}} nodos · {{edges}} relaciones",
+    "zoomIn": "Acercar",
+    "zoomOut": "Alejar",
+    "reset": "Restablecer vista",
+    "help": "Rueda para zoom · arrastra para mover · clic en un nodo · doble clic para acercar · Esc para restablecer",
+    "persona": "Persona: {{persona}}",
+    "steps": "Pasos",
+    "implementedIn": "Implementada en",
+    "inFlows": "Forma parte de estos flujos de negocio",
+    "emptyPanel": "Elige un flujo de negocio para verlo paso a paso en el grafo, una regla para ver dónde vive, o haz clic en cualquier nodo.",
+    "tryFlow": "Recorrer un flujo de negocio",
+    "kind": {
+      "orphan": "huérfano",
+      "isolated": "aislado"
+    },
+    "kindHint": {
+      "orphan": "Nada llama ni usa este elemento. Puede ser código muerto: confírmalo antes de migrarlo.",
+      "isolated": "Este elemento no tiene ninguna relación. Puede ser un dato sin uso o una referencia faltante en el inventario."
+    },
+    "writtenBy": "Escrita por el agente analista legacy a partir de un extracto del código y las conexiones del nodo.",
+    "noDescription": "Aún sin descripción: se escribe durante la fase de inventario.",
+    "fanIn_one": "fan-in {{count}}",
+    "fanIn_other": "fan-in {{count}}",
+    "fanOut_one": "fan-out {{count}}",
+    "fanOut_other": "fan-out {{count}}",
+    "loc_one": "{{count}} línea",
+    "loc_other": "{{count}} líneas",
+    "source": "Fuente",
+    "connections_one": "Conexiones ({{count}})",
+    "connections_other": "Conexiones ({{count}})",
+    "dir": {
+      "out": "saliente",
+      "in": "entrante"
+    },
+    "edgeKinds": {
+      "STARTS": "inicia",
+      "RUNS": "ejecuta",
+      "CALLS": "llama",
+      "READS": "lee",
+      "WRITES": "escribe",
+      "COPIES": "incluye",
+      "USES_MAP": "usa mapa"
+    },
+    "orderTitle": "Orden de migración sugerido",
+    "orderHint": "Primero datos y layouts compartidos, luego los programas con menos dependientes y al final los puntos de entrada. Los huérfanos quedan fuera hasta confirmarlos."
   }
 }

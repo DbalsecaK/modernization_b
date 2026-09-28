@@ -14,6 +14,21 @@ pnpm web:dev          # http://localhost:5173
 Sign in with any email. Domain `andesbank.example` shows the "SSO only" flow; any other email and a
 password of 8+ characters goes to the MFA step (any 6 digits).
 
+## What to try
+
+| Where | What |
+|---|---|
+| Login | Email-first sign-in with SSO detection, password + MFA, forgot password, invitation |
+| Projects → New project | 9-step wizard: recommended agent cards, skills with conflicts, models, autonomy level |
+| Project → Inventory | Knowledge graph: pick a **business flow** to walk it step by step, pick a **business rule** to focus it, filter relations, show **only orphans and isolated** nodes, zoom and pan |
+| Project → Source ↔ target | Legacy and target code side by side, the rule, and legacy vs new outputs |
+| Project → Specification | Rules, screens, contracts and questions |
+| My tasks → Questions | Decision cards: recommended answer pre-selected, alternatives, "Other answer…", bulk accept low-impact |
+| AI configuration | Add a Foundry / Bedrock / OpenAI connection, test it, discover models; profiles with effort |
+| Catalog | Agent cards; create an agent or a skill |
+| Administration | Customers, invitations, editable permission matrix, identity providers (Keycloak), policies |
+| Top bar | Global search, notifications, EN/ES and light/dark |
+
 ## Scripts
 
 | Command | What it does |
@@ -32,16 +47,20 @@ src/
 ├─ i18n/                       # i18next setup; locales/en.json (source) and es.json
 ├─ lib/                        # format, session (mock), theme, recommendation rules, URL tabs
 ├─ mocks/                      # Sample data and domain types — replace with API calls
-├─ components/                 # UI primitives, status badges, charts, app shell
+├─ components/                 # UI primitives, drawer/toasts (overlay), status badges, charts, app shell, top bar widgets
 └─ features/
    ├─ auth/                    # Login (SSO + password), MFA, forgot password, invitation, account
    ├─ dashboard/               # Executive / delivery / admin perspectives
    ├─ projects/                # List, new-project wizard (agents & skills), workspace with 13 tabs
+   │  ├─ graph/                # Knowledge graph: flows walkthrough, rule focus, filters, orphans, zoom
+   │  ├─ tabs/                 # Workspace tabs
+   │  └─ InputForms.tsx        # Add inputs (files, Git, Figma, Jira) with security checks
+   ├─ decisions/               # Human-in-the-loop decision cards and their shared store
    ├─ tasks/                   # Cross-project approvals inbox
    ├─ usage/                   # Tokens and costs
-   ├─ ai-config/               # Connections, catalog, profiles & effort, assignment, pricing, policies
-   ├─ catalog/                 # Agent cards, skills, adapters, packs, compatibility, templates
-   ├─ admin/                   # Customers, users, roles, authentication, security, integrations, audit
+   ├─ ai-config/               # Connections (+ form), catalog, profiles & effort, assignment, pricing, policies
+   ├─ catalog/                 # Agent cards, skills (+ create forms), adapters, packs, compatibility, templates
+   ├─ admin/                   # Customers, users, roles, authentication (+ forms), security, integrations, audit
    └─ platform/                # Platform operations (NexTI only)
 ```
 

@@ -717,23 +717,33 @@ export interface GraphNode {
   loc?: number
   rules: string[]
   target?: string
+  source?: string
+  // Business-language summary written by the legacy analyst agent from a source excerpt and the node's connections.
+  description?: string
 }
 
 export const graphNodes: GraphNode[] = [
-  { id: 'CAUP', type: 'transaction', domain: 'Accounts', state: 'inProgress', rules: [] },
+  { id: 'CAUP', type: 'transaction', domain: 'Accounts', state: 'inProgress', rules: [], source: 'CSD: transaction CAUP', description: 'Online transaction that opens the update-account screen. It starts program COACTUPC with an empty COMMAREA and returns to the menu on F3.' },
   { id: 'CCUP', type: 'transaction', domain: 'Cards', state: 'pending', rules: [] },
   { id: 'CAUT', type: 'transaction', domain: 'Authorizations', state: 'generated', rules: [] },
-  { id: 'COACTUPC', type: 'program', domain: 'Accounts', state: 'inProgress', loc: 4210, rules: ['RULE-005', 'RULE-006'], target: 'account-service' },
+  { id: 'COACTUPC', type: 'program', domain: 'Accounts', state: 'inProgress', loc: 4210, rules: ['RULE-005', 'RULE-006'], target: 'account-service', source: 'COACTUPC.cbl lines 1-4210', description: 'Handles the update-account screen in pseudo-conversational mode: sends map COACTUP, receives the edited fields, validates names (RULE-006) and status changes (RULE-005), and rewrites ACCTDAT. On a validation error it re-sends the map with the message in line 24; on success it commits with SYNCPOINT. Called from COAUTHPC to hold authorized amounts.' },
   { id: 'COCRDUPC', type: 'program', domain: 'Cards', state: 'pending', loc: 1830, rules: ['RULE-003'], target: 'card-service' },
-  { id: 'COAUTHPC', type: 'program', domain: 'Authorizations', state: 'generated', loc: 2690, rules: ['RULE-001'], target: 'authorization-service' },
-  { id: 'CBACT04C', type: 'program', domain: 'Accounts', state: 'verified', loc: 980, rules: ['RULE-002'], target: 'interest-batch' },
+  { id: 'COAUTHPC', type: 'program', domain: 'Authorizations', state: 'generated', loc: 2690, rules: ['RULE-001'], target: 'authorization-service', source: 'COAUTHPC.cbl lines 1-2690', description: 'Authorizes a card purchase: reads the card in CARDDAT and rejects expired cards (RULE-003), reads the account balance and limit from ACCTDAT through copybook CVACT01Y, and declines with code 51 when balance + amount exceeds the limit (RULE-001). On approval it links to COACTUPC to hold the amount.' },
+  { id: 'CBACT04C', type: 'program', domain: 'Accounts', state: 'verified', loc: 980, rules: ['RULE-002'], target: 'interest-batch', source: 'CBACT04C.cbl lines 1-980', description: 'Nightly batch that reads every account, computes daily interest as balance × rate ÷ 360 rounded half-up to two decimals (RULE-002) and rewrites the balance. Runs from job INTCALC.' },
   { id: 'COACTUP', type: 'map', domain: 'Accounts', state: 'inProgress', rules: [], target: 'UpdateAccountPage' },
   { id: 'COCRDUP', type: 'map', domain: 'Cards', state: 'pending', rules: [], target: 'CardDetailPage' },
   { id: 'CVACT01Y', type: 'copybook', domain: 'Accounts', state: 'verified', rules: [], target: 'Account (entity)' },
   { id: 'CVCRD01Y', type: 'copybook', domain: 'Cards', state: 'pending', rules: [], target: 'Card (entity)' },
-  { id: 'ACCTDAT', type: 'file', domain: 'Accounts', state: 'verified', rules: [], target: 'table account' },
+  { id: 'ACCTDAT', type: 'file', domain: 'Accounts', state: 'verified', rules: [], target: 'table account', source: 'VSAM KSDS ACCTDAT (layout CVACT01Y)', description: 'Account master file keyed by account number. Written by COACTUPC, CBACT04C and read by COAUTHPC, CBSTM03A and COUTIL01. Target: table account in PostgreSQL (ADR-003).' },
   { id: 'CARDDAT', type: 'file', domain: 'Cards', state: 'pending', rules: [], target: 'table card' },
   { id: 'INTCALC', type: 'job', domain: 'Accounts', state: 'verified', rules: ['RULE-002'], target: 'Step Functions: interest-accrual' },
+  { id: 'STMTJOB', type: 'job', domain: 'Accounts', state: 'pending', rules: ['RULE-004'], target: 'Step Functions: monthly-statement' },
+  { id: 'CBSTM03A', type: 'program', domain: 'Accounts', state: 'pending', loc: 1460, rules: ['RULE-004'], target: 'billing-service', source: 'CBSTM03A.cbl lines 1-1460', description: 'Monthly statement program: reads each account and its payments, charges a 25.00 late fee when the minimum payment was not received by the due date (RULE-004) and writes the statement record to STMTFILE. It does not check the account status (see question Q-003).' },
+  { id: 'STMTFILE', type: 'file', domain: 'Accounts', state: 'pending', rules: [], target: 'table statement' },
+  // Orphans and isolated nodes: candidates for dead code (nobody calls them) or unused data.
+  { id: 'COUTIL01', type: 'program', domain: 'Accounts', state: 'pending', loc: 620, rules: [], target: undefined, source: 'COUTIL01.cbl lines 1-620', description: 'Utility that dumps accounts to the spool. No transaction, job or program calls it: likely dead code kept from an old reconciliation process.' },
+  { id: 'CVOLD01Y', type: 'copybook', domain: 'Cards', state: 'pending', rules: [], target: undefined, source: 'CVOLD01Y.cpy lines 1-48', description: 'Old card record layout. No program copies it; CVCRD01Y replaced it.' },
+  { id: 'TMPWORK', type: 'file', domain: 'Authorizations', state: 'pending', rules: [], target: undefined, source: 'VSAM ESDS TMPWORK', description: 'Temporary work file defined in the CSD but never opened by any program in the inventory.' },
 ]
 
 export const graphEdges: { from: string; to: string; kind: string }[] = [
@@ -752,6 +762,89 @@ export const graphEdges: { from: string; to: string; kind: string }[] = [
   { from: 'INTCALC', to: 'CBACT04C', kind: 'RUNS' },
   { from: 'CBACT04C', to: 'ACCTDAT', kind: 'WRITES' },
   { from: 'CBACT04C', to: 'CVACT01Y', kind: 'COPIES' },
+  { from: 'COAUTHPC', to: 'COACTUPC', kind: 'CALLS' },
+  { from: 'STMTJOB', to: 'CBSTM03A', kind: 'RUNS' },
+  { from: 'CBSTM03A', to: 'ACCTDAT', kind: 'READS' },
+  { from: 'CBSTM03A', to: 'STMTFILE', kind: 'WRITES' },
+  { from: 'CBSTM03A', to: 'CVACT01Y', kind: 'COPIES' },
+  { from: 'COUTIL01', to: 'ACCTDAT', kind: 'READS' },
+]
+
+// Edge kinds grouped for the relation filters.
+export const edgeGroup: Record<string, 'calls' | 'reads' | 'writes' | 'includes'> = {
+  STARTS: 'calls',
+  RUNS: 'calls',
+  CALLS: 'calls',
+  READS: 'reads',
+  WRITES: 'writes',
+  COPIES: 'includes',
+  USES_MAP: 'includes',
+}
+
+export interface BusinessFlow {
+  id: string
+  name: string
+  persona: string
+  summary: string
+  rules: string[]
+  steps: { title: string; nodes: string[]; rule?: string }[]
+}
+
+// Business flows reconstructed from the graph and the extracted rules (walkthrough in the Inventory tab).
+export const businessFlows: BusinessFlow[] = [
+  {
+    id: 'BF-01',
+    name: 'Authorize a card purchase',
+    persona: 'Cardholder paying at a merchant',
+    summary: 'The authorization transaction validates the card, checks the balance against the credit limit and answers approve (00) or decline (51).',
+    rules: ['RULE-003', 'RULE-001'],
+    steps: [
+      { title: 'Receive the authorization request', nodes: ['CAUT', 'COAUTHPC'] },
+      { title: 'Validate the card and its expiry', nodes: ['COAUTHPC', 'CARDDAT'], rule: 'RULE-003' },
+      { title: 'Read the account balance and limit', nodes: ['COAUTHPC', 'CVACT01Y', 'ACCTDAT'] },
+      { title: 'Apply the credit limit check', nodes: ['COAUTHPC'], rule: 'RULE-001' },
+      { title: 'Update the account (hold the amount)', nodes: ['COAUTHPC', 'COACTUPC', 'ACCTDAT'] },
+    ],
+  },
+  {
+    id: 'BF-02',
+    name: 'Update customer and account data',
+    persona: 'Branch officer at the account screen',
+    summary: 'The officer edits names, limits and status on the COACTUP screen; the program validates and saves the account.',
+    rules: ['RULE-006', 'RULE-005'],
+    steps: [
+      { title: 'Open the update account screen', nodes: ['CAUP', 'COACTUPC', 'COACTUP'] },
+      { title: 'Validate mandatory names', nodes: ['COACTUPC', 'COACTUP'], rule: 'RULE-006' },
+      { title: 'Apply the status transition', nodes: ['COACTUPC', 'CVACT01Y'], rule: 'RULE-005' },
+      { title: 'Save the account', nodes: ['COACTUPC', 'ACCTDAT'] },
+    ],
+  },
+  {
+    id: 'BF-03',
+    name: 'Nightly interest accrual',
+    persona: 'Operations (batch schedule)',
+    summary: 'Every night the batch job computes daily interest on each account and posts it.',
+    rules: ['RULE-002'],
+    steps: [
+      { title: 'Start the nightly job', nodes: ['INTCALC', 'CBACT04C'] },
+      { title: 'Read every account', nodes: ['CBACT04C', 'CVACT01Y', 'ACCTDAT'] },
+      { title: 'Compute and round daily interest', nodes: ['CBACT04C'], rule: 'RULE-002' },
+      { title: 'Post the interest', nodes: ['CBACT04C', 'ACCTDAT'] },
+    ],
+  },
+  {
+    id: 'BF-04',
+    name: 'Monthly statement and late fee',
+    persona: 'Customer receiving the statement',
+    summary: 'The statement job reads accounts, charges the late fee when the minimum payment was missed and writes the statement.',
+    rules: ['RULE-004'],
+    steps: [
+      { title: 'Start the statement job', nodes: ['STMTJOB', 'CBSTM03A'] },
+      { title: 'Read the account and its payments', nodes: ['CBSTM03A', 'CVACT01Y', 'ACCTDAT'] },
+      { title: 'Charge the late fee if the minimum was missed', nodes: ['CBSTM03A'], rule: 'RULE-004' },
+      { title: 'Write the statement', nodes: ['CBSTM03A', 'STMTFILE'] },
+    ],
+  },
 ]
 
 // ---- Source ↔ target comparison (Traceability tab) ----
