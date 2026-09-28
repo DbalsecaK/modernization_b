@@ -1393,6 +1393,8 @@ Cada hito termina con: código en la rama, tests pasando en CI, documentación a
 
 ### M0 — Fundaciones
 
+Plan detallado (archivos, tablas, endpoints, tests y pasos): `docs/planes/M0-fundaciones.md`.
+
 - Monorepo (uv workspace + pnpm), CI (lint, tipos, tests, SAST, SCA, secret scanning).
 - Docker Compose local: PostgreSQL, Neo4j, Redis, MinIO, Keycloak, OpenFGA, Langfuse.
 - FastAPI con OIDC (patrón BFF, cookies), sesión, CSRF.

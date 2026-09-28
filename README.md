@@ -17,6 +17,7 @@ El producto es **nativamente en inglés**, con cambio completo a español.
   seguridad, RBAC, configuración IA, costos, frontend y roadmap por hitos.
 - [Decisiones de arquitectura (ADR)](docs/adr/README.md): OpenFGA, Keycloak con Organizations, componentes
   UI y autenticación por etapas.
+- [Plan del hito M0](docs/planes/M0-fundaciones.md): pasos, tablas, endpoints y tests de las fundaciones.
 - [CLAUDE.md](CLAUDE.md): instrucciones para trabajar con Claude Code.
 
 ## Estado
