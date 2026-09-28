@@ -376,3 +376,485 @@ export const deployments = [
   { id: 'd2', name: 'Andes Bank data plane (customer AWS)', model: 'customerCloud', version: '0.1.0', tenants: 1, status: 'healthy' },
   { id: 'd3', name: 'Staging', model: 'sharedSaas', version: '0.2.0-rc.1', tenants: 0, status: 'updating' },
 ]
+
+// ---- Specification: screens, contracts and open questions (spec section 4.1) ----
+
+export const screenSpecs = [
+  {
+    id: 'SCR-001',
+    name: 'Update account',
+    source: 'COACTUP.bms (map COACTUP)',
+    status: 'approved' as const,
+    fields: [
+      { name: 'accountNumber', label: 'Account number', type: 'text(fixed, 11)', required: true, validation: 'Numeric, 11 digits', readOnly: true },
+      { name: 'status', label: 'Active Y/N', type: 'enum(Y,N)', required: true, validation: 'Y or N', readOnly: false },
+      { name: 'creditLimit', label: 'Credit limit', type: 'decimal(11,2,signed)', required: true, validation: '0.00 – 99,999,999.99', readOnly: false },
+      { name: 'currentBalance', label: 'Current balance', type: 'decimal(11,2,signed)', required: false, validation: '—', readOnly: true },
+      { name: 'firstName', label: 'First name', type: 'text(var, 25)', required: true, validation: 'Alphabetic', readOnly: false },
+      { name: 'lastName', label: 'Last name', type: 'text(var, 25)', required: true, validation: 'Alphabetic (RULE-006)', readOnly: false },
+    ],
+    actions: ['ENTER → Save', 'F3 → Exit', 'F5 → Refresh', 'F12 → Cancel'],
+    states: ['empty', 'loading', 'error', 'success'],
+  },
+  {
+    id: 'SCR-002',
+    name: 'Card detail',
+    source: 'COCRDUP.bms (map COCRDUP)',
+    status: 'inReview' as const,
+    fields: [
+      { name: 'cardNumber', label: 'Card number', type: 'text(fixed, 16)', required: true, validation: 'Masked except last 4', readOnly: true },
+      { name: 'expiry', label: 'Expiry', type: 'date(YYYY-MM)', required: true, validation: 'RULE-003 (open question)', readOnly: false },
+      { name: 'embossedName', label: 'Name on card', type: 'text(var, 50)', required: true, validation: 'Uppercase letters and spaces', readOnly: false },
+    ],
+    actions: ['ENTER → Save', 'F3 → Exit'],
+    states: ['loading', 'error', 'success'],
+  },
+]
+
+export const contracts = [
+  { id: 'API-001', method: 'GET', path: '/accounts/{accountId}', service: 'account-service', rules: ['RULE-005'], status: 'approved' as const },
+  { id: 'API-002', method: 'PATCH', path: '/accounts/{accountId}', service: 'account-service', rules: ['RULE-001', 'RULE-006'], status: 'approved' as const },
+  { id: 'API-003', method: 'POST', path: '/authorizations', service: 'authorization-service', rules: ['RULE-001'], status: 'inReview' as const },
+  { id: 'API-004', method: 'GET', path: '/cards/{cardNumber}', service: 'card-service', rules: ['RULE-003'], status: 'draft' as const },
+  { id: 'API-005', method: 'POST', path: '/statements/{statementId}/late-fee', service: 'billing-service', rules: ['RULE-004'], status: 'draft' as const },
+]
+
+export interface DecisionOption {
+  id: string
+  label: string
+  rationale: string
+  confidence: 'high' | 'medium' | 'low'
+}
+
+export interface Decision {
+  id: string
+  projectId: string
+  question: string
+  context: string
+  raisedBy: string
+  reason: 'lowConfidence' | 'contradiction' | 'judgesDisagree' | 'missingInfo'
+  risk: 'high' | 'low'
+  evidence: { label: string; ref: string }[]
+  affects: string[]
+  options: DecisionOption[]
+  recommended: string
+  owner: string
+  status: 'open' | 'answered'
+  answer?: string
+  answeredBy?: string
+}
+
+// Questions raised by agents (spec 10.4 / 11.1). The first option is the platform's recommendation.
+export const openQuestions: Decision[] = [
+  {
+    id: 'Q-001',
+    projectId: 'p1',
+    question: 'Is the card expiry inclusive of the last day of the month?',
+    context: 'COCRDUPC compares the expiry month with the current month using ">" — a card expiring 2026-08 is rejected from 2026-09-01.',
+    raisedBy: 'Business rules extractor',
+    reason: 'lowConfidence',
+    risk: 'low',
+    evidence: [
+      { label: 'COCRDUPC.cbl:510-527', ref: 'code' },
+      { label: 'RULE-003', ref: 'rule' },
+    ],
+    affects: ['RULE-003', 'SCR-002', 'API-004'],
+    options: [
+      { id: 'a', label: 'Yes — the card is valid until the last day of its expiry month', rationale: 'Matches the legacy comparison and the card network convention.', confidence: 'high' },
+      { id: 'b', label: 'No — the card expires on the first day of its expiry month', rationale: 'Would change current behavior; needs a business decision.', confidence: 'low' },
+    ],
+    recommended: 'a',
+    owner: 'María Torres',
+    status: 'open',
+  },
+  {
+    id: 'Q-002',
+    projectId: 'p1',
+    question: 'Which rounding mode must daily interest use?',
+    context: 'Two judges disagree: the ROUNDED clause implies HALF_UP, but the compiler option TRUNC(STD) could change it. The golden master was recorded with HALF_UP.',
+    raisedBy: 'Rules verifier',
+    reason: 'judgesDisagree',
+    risk: 'high',
+    evidence: [
+      { label: 'CBACT04C.cbl:233-260', ref: 'code' },
+      { label: 'Golden master case C14', ref: 'test' },
+      { label: 'RULE-002, RULE-031', ref: 'rule' },
+    ],
+    affects: ['RULE-002', 'RULE-031', '12 tests'],
+    options: [
+      { id: 'a', label: 'HALF_UP (round half away from zero)', rationale: 'Consistent with the ROUNDED clause and the recorded golden master outputs.', confidence: 'high' },
+      { id: 'b', label: 'HALF_EVEN (banker’s rounding)', rationale: 'Common in finance, but differs from 3 recorded outputs.', confidence: 'low' },
+      { id: 'c', label: 'Truncate to 2 decimals', rationale: 'Only if the compiler option applies; no evidence in the traces.', confidence: 'low' },
+    ],
+    recommended: 'a',
+    owner: 'Luis Andrade',
+    status: 'open',
+  },
+  {
+    id: 'Q-003',
+    projectId: 'p1',
+    question: 'Should the late fee be waived when the account is suspended?',
+    context: 'CBSTM03A charges the fee without checking the account status. The user manual (p. 18) says suspended accounts are not charged.',
+    raisedBy: 'Business rules extractor',
+    reason: 'contradiction',
+    risk: 'high',
+    evidence: [
+      { label: 'CBSTM03A.cbl:118-141', ref: 'code' },
+      { label: 'User manual p. 18', ref: 'doc' },
+    ],
+    affects: ['RULE-004', 'API-005'],
+    options: [
+      { id: 'a', label: 'Keep legacy behavior: charge the fee (flag as suspected defect)', rationale: 'Equivalence first; the manual can be fixed or the change done after go-live.', confidence: 'medium' },
+      { id: 'b', label: 'Follow the manual: waive the fee for suspended accounts', rationale: 'Changes behavior; requires an approved difference in the verification.', confidence: 'medium' },
+    ],
+    recommended: 'a',
+    owner: 'María Torres',
+    status: 'open',
+  },
+  {
+    id: 'Q-004',
+    projectId: 'p1',
+    question: 'Who can see the FICO score on the account screen?',
+    context: 'The BMS map shows FICO to every user of the transaction. There is no role check in COACTUPC.',
+    raisedBy: 'UI analyst',
+    reason: 'missingInfo',
+    risk: 'low',
+    evidence: [{ label: 'COACTUP.bms: field FICOSCR', ref: 'code' }],
+    affects: ['SCR-001'],
+    options: [
+      { id: 'a', label: 'Only credit analysts and supervisors', rationale: 'Least privilege for sensitive data.', confidence: 'medium' },
+      { id: 'b', label: 'Everyone with access to the screen (as today)', rationale: 'Keeps current behavior.', confidence: 'medium' },
+    ],
+    recommended: 'a',
+    owner: 'María Torres',
+    status: 'answered',
+    answer: 'Only credit analysts and supervisors',
+    answeredBy: 'María Torres',
+  },
+]
+
+// ---- Flow 2 (new feature): Figma frames and detected gaps ----
+
+export const figmaFrames = [
+  { id: 'F-01', name: 'Welcome', node: '12:340', mapped: 'SCR-101', gaps: 0 },
+  { id: 'F-02', name: 'Personal data', node: '12:512', mapped: 'SCR-102', gaps: 2 },
+  { id: 'F-03', name: 'ID document upload', node: '14:088', mapped: 'SCR-103', gaps: 1 },
+  { id: 'F-04', name: 'Selfie check', node: '14:230', mapped: 'SCR-104', gaps: 1 },
+  { id: 'F-05', name: 'Product selection', node: '15:002', mapped: 'SCR-105', gaps: 0 },
+  { id: 'F-06', name: 'Terms and signature', node: '15:190', mapped: 'SCR-106', gaps: 0 },
+  { id: 'F-07', name: 'Success', node: '16:010', mapped: 'SCR-107', gaps: 0 },
+  { id: 'F-08', name: 'Error / retry', node: '—', mapped: '—', gaps: 1 },
+]
+
+export const detectedGaps = [
+  { id: 'G-01', kind: 'missingValidation', target: 'F-02 · Date of birth', detail: 'No minimum age in the stories; the manual says 18.' },
+  { id: 'G-02', kind: 'missingState', target: 'F-02 · Personal data', detail: 'No error state for an invalid national ID.' },
+  { id: 'G-03', kind: 'deadEnd', target: 'F-03 · "Upload later"', detail: 'The button does not navigate anywhere in the prototype.' },
+  { id: 'G-04', kind: 'contradiction', target: 'ONB-118 vs manual p. 12', detail: 'The story allows passports; the manual only national ID.' },
+  { id: 'G-05', kind: 'missingFrame', target: 'Error / retry', detail: 'Referenced by ONB-131 but no frame exists.' },
+]
+
+// ---- Notifications ----
+
+export const notifications = [
+  { id: 'n1', kind: 'gate', text: 'Gate C1 is waiting for your approval in Card Management.', time: '2026-09-28T09:41:00Z', unread: true, projectId: 'p1', tab: 'specification' },
+  { id: 'n2', kind: 'escalation', text: 'RULE-031 was escalated: judges disagree on the rounding mode.', time: '2026-09-28T09:30:00Z', unread: true, projectId: 'p1', tab: 'runs' },
+  { id: 'n3', kind: 'budget', text: 'Card Management reached 80% of its budget.', time: '2026-09-27T18:20:00Z', unread: true, projectId: 'p1', tab: 'costs' },
+  { id: 'n4', kind: 'verdict', text: 'Interest Accrual SP: verification finished — PARTLY PROVEN.', time: '2026-09-27T16:00:00Z', unread: false, projectId: 'p2', tab: 'validation' },
+  { id: 'n5', kind: 'connection', text: 'Connection "NexTI — Anthropic API" failed its last check (401).', time: '2026-09-28T06:58:00Z', unread: false, projectId: null, tab: null },
+]
+
+// ---- Agent invocation detail (Runs tab) ----
+
+export const invocationDetails: Record<string, { profile: string; model: string; iteration: string; durationS: number; inputTokens: number; outputTokens: number; costUsd: number; prompt: string; response: string; verification: string }> = {
+  e2: {
+    profile: 'Deep analysis',
+    model: 'Claude Sonnet 5 — Andes — Azure AI Foundry',
+    iteration: '1 / 3',
+    durationS: 458,
+    inputTokens: 1_120_000,
+    outputTokens: 120_000,
+    costUsd: 5.16,
+    prompt: 'System: business-rules-extractor v2.1.0 (+ skills: COBOL data semantics, EXEC CICS, Gherkin)\nContext: graph slice for shard AUTH — 9 programs, 14 copybooks, 3 files\nTask: extract business rules with exact file:line citations and concrete Given/When/Then.',
+    response: '23 candidate rules returned as structured JSON (rule cards). 2 flagged with medium confidence.',
+    verification: 'Deterministic checks passed (schema, citations exist). Sent to the rules verifier.',
+  },
+  e3: {
+    profile: 'Independent review',
+    model: 'GPT (large) — NexTI — OpenAI API',
+    iteration: '1 / 3',
+    durationS: 41,
+    inputTokens: 38_000,
+    outputTokens: 2_100,
+    costUsd: 0.23,
+    prompt: 'System: rules-verifier v1.3.0\nTask: check that RULE-017 is supported by its citation and explains the whole slice.',
+    response: 'FAIL — the cited line COCRDUPC.cbl:980 moves a status code; the threshold 500.00 is set at 1004-1011.',
+    verification: 'Verdict returned to the extractor for self-correction.',
+  },
+  e4: {
+    profile: 'Deep analysis',
+    model: 'Claude Sonnet 5 — Andes — Azure AI Foundry',
+    iteration: '2 / 3',
+    durationS: 46,
+    inputTokens: 80_000,
+    outputTokens: 4_000,
+    costUsd: 0.3,
+    prompt: 'System: business-rules-extractor v2.1.0\nTask: correct RULE-017 using the verifier finding.',
+    response: 'RULE-017 now cites COCRDUPC.cbl:1004-1011 with threshold 500.00.',
+    verification: 'Verifier re-check: PASS.',
+  },
+  e5: {
+    profile: 'Independent review',
+    model: 'GPT (large) — NexTI — OpenAI API',
+    iteration: '3 / 3',
+    durationS: 63,
+    inputTokens: 52_000,
+    outputTokens: 3_300,
+    costUsd: 0.33,
+    prompt: 'System: rules-verifier v1.3.0 (two-judge panel for P0)\nTask: confirm the rounding mode of RULE-031.',
+    response: 'Judge A: HALF_UP (ROUNDED clause). Judge B: HALF_EVEN (compiler option). No agreement.',
+    verification: 'Max iterations reached → escalated to a person (question Q-002).',
+  },
+}
+
+// ---- Generated code (Code tab) ----
+
+export const codeFiles: Record<string, string> = {
+  'Account.java': `package com.andesbank.account.domain;
+
+/** Aggregate root for an account. RULE-005 (status transitions). */
+public final class Account {
+  private final AccountId id;
+  private AccountStatus status;
+  private Money creditLimit;
+  private Money currentBalance;
+
+  public void suspend() {
+    if (status != AccountStatus.ACTIVE) throw new DomainException("ACCOUNT_NOT_ACTIVE");
+    status = AccountStatus.SUSPENDED;
+  }
+
+  public void reactivate() {
+    if (status != AccountStatus.SUSPENDED) throw new DomainException("ACCOUNT_NOT_SUSPENDED");
+    status = AccountStatus.ACTIVE;
+  }
+}`,
+  'CreditLimitPolicy.java': `package com.andesbank.account.domain;
+
+/**
+ * RULE-001 Credit limit check on purchase.
+ * Source: COCRDUPC.cbl:412-438
+ */
+public final class CreditLimitPolicy {
+
+  public Decision evaluate(Money balance, Money limit, Money purchase) {
+    if (balance.plus(purchase).isGreaterThan(limit)) {
+      return Decision.decline(ReasonCode.OVER_LIMIT); // 51
+    }
+    return Decision.approve();
+  }
+}`,
+  'UpdateAccountUseCase.java': `package com.andesbank.account.application;
+
+/** Use case behind PATCH /accounts/{accountId} (API-002). RULE-001, RULE-006. */
+public final class UpdateAccountUseCase {
+  private final AccountRepository accounts;
+  private final AuditPort audit;
+
+  public Account handle(UpdateAccountCommand command) {
+    Account account = accounts.findById(command.accountId()).orElseThrow(AccountNotFound::new);
+    account.rename(PersonName.of(command.firstName(), command.lastName())); // RULE-006
+    account.changeCreditLimit(command.creditLimit());
+    accounts.save(account);
+    audit.record("account.update", command.accountId());
+    return account;
+  }
+}`,
+  'AccountController.java': `package com.andesbank.account.adapters.web;
+
+@RestController
+@RequestMapping("/accounts")
+class AccountController {
+  private final UpdateAccountUseCase updateAccount;
+
+  @PatchMapping("/{accountId}")
+  AccountResponse update(@PathVariable String accountId, @Valid @RequestBody UpdateAccountRequest body) {
+    return AccountResponse.from(updateAccount.handle(body.toCommand(accountId)));
+  }
+}`,
+  'AccountJpaRepository.java': `package com.andesbank.account.adapters.persistence;
+
+/** PostgreSQL adapter for AccountRepository. ACCTDAT (VSAM) → table account (ADR-003). */
+interface AccountJpaRepository extends JpaRepository<AccountEntity, String> {}`,
+  'CreditLimitPolicyTest.java': `package com.andesbank.account.domain;
+
+class CreditLimitPolicyTest {
+
+  @Test
+  void rule001_declinesPurchaseOverLimit() {
+    var decision = new CreditLimitPolicy().evaluate(money("4900.00"), money("5000.00"), money("150.00"));
+    assertThat(decision.reason()).isEqualTo(ReasonCode.OVER_LIMIT);
+  }
+
+  @Test
+  void rule001_approvesPurchaseAtLimit() {
+    var decision = new CreditLimitPolicy().evaluate(money("4900.00"), money("5000.00"), money("100.00"));
+    assertThat(decision.approved()).isTrue();
+  }
+}`,
+}
+
+// ---- Knowledge graph sample (Inventory tab). The real view queries Neo4j through the API. ----
+
+export type GraphNodeType = 'transaction' | 'program' | 'map' | 'copybook' | 'file' | 'job'
+export type MigrationState = 'verified' | 'generated' | 'inProgress' | 'pending'
+
+export interface GraphNode {
+  id: string
+  type: GraphNodeType
+  domain: 'Accounts' | 'Cards' | 'Authorizations'
+  state: MigrationState
+  loc?: number
+  rules: string[]
+  target?: string
+}
+
+export const graphNodes: GraphNode[] = [
+  { id: 'CAUP', type: 'transaction', domain: 'Accounts', state: 'inProgress', rules: [] },
+  { id: 'CCUP', type: 'transaction', domain: 'Cards', state: 'pending', rules: [] },
+  { id: 'CAUT', type: 'transaction', domain: 'Authorizations', state: 'generated', rules: [] },
+  { id: 'COACTUPC', type: 'program', domain: 'Accounts', state: 'inProgress', loc: 4210, rules: ['RULE-005', 'RULE-006'], target: 'account-service' },
+  { id: 'COCRDUPC', type: 'program', domain: 'Cards', state: 'pending', loc: 1830, rules: ['RULE-003'], target: 'card-service' },
+  { id: 'COAUTHPC', type: 'program', domain: 'Authorizations', state: 'generated', loc: 2690, rules: ['RULE-001'], target: 'authorization-service' },
+  { id: 'CBACT04C', type: 'program', domain: 'Accounts', state: 'verified', loc: 980, rules: ['RULE-002'], target: 'interest-batch' },
+  { id: 'COACTUP', type: 'map', domain: 'Accounts', state: 'inProgress', rules: [], target: 'UpdateAccountPage' },
+  { id: 'COCRDUP', type: 'map', domain: 'Cards', state: 'pending', rules: [], target: 'CardDetailPage' },
+  { id: 'CVACT01Y', type: 'copybook', domain: 'Accounts', state: 'verified', rules: [], target: 'Account (entity)' },
+  { id: 'CVCRD01Y', type: 'copybook', domain: 'Cards', state: 'pending', rules: [], target: 'Card (entity)' },
+  { id: 'ACCTDAT', type: 'file', domain: 'Accounts', state: 'verified', rules: [], target: 'table account' },
+  { id: 'CARDDAT', type: 'file', domain: 'Cards', state: 'pending', rules: [], target: 'table card' },
+  { id: 'INTCALC', type: 'job', domain: 'Accounts', state: 'verified', rules: ['RULE-002'], target: 'Step Functions: interest-accrual' },
+]
+
+export const graphEdges: { from: string; to: string; kind: string }[] = [
+  { from: 'CAUP', to: 'COACTUPC', kind: 'STARTS' },
+  { from: 'CCUP', to: 'COCRDUPC', kind: 'STARTS' },
+  { from: 'CAUT', to: 'COAUTHPC', kind: 'STARTS' },
+  { from: 'COACTUPC', to: 'COACTUP', kind: 'USES_MAP' },
+  { from: 'COACTUPC', to: 'CVACT01Y', kind: 'COPIES' },
+  { from: 'COCRDUPC', to: 'COCRDUP', kind: 'USES_MAP' },
+  { from: 'COCRDUPC', to: 'CVCRD01Y', kind: 'COPIES' },
+  { from: 'COACTUPC', to: 'ACCTDAT', kind: 'WRITES' },
+  { from: 'COCRDUPC', to: 'CARDDAT', kind: 'WRITES' },
+  { from: 'COAUTHPC', to: 'ACCTDAT', kind: 'READS' },
+  { from: 'COAUTHPC', to: 'CARDDAT', kind: 'READS' },
+  { from: 'COAUTHPC', to: 'CVACT01Y', kind: 'COPIES' },
+  { from: 'INTCALC', to: 'CBACT04C', kind: 'RUNS' },
+  { from: 'CBACT04C', to: 'ACCTDAT', kind: 'WRITES' },
+  { from: 'CBACT04C', to: 'CVACT01Y', kind: 'COPIES' },
+]
+
+// ---- Source ↔ target comparison (Traceability tab) ----
+
+export interface CompareItem {
+  ruleId: string
+  program: string
+  legacyRef: string
+  legacy: string[]
+  legacyHighlight: number[]
+  targetRef: string
+  target: string[]
+  targetHighlight: number[]
+  outputs: { caseId: string; input: string; legacy: string; next: string; same: boolean }[]
+}
+
+export const compareItems: CompareItem[] = [
+  {
+    ruleId: 'RULE-001',
+    program: 'COAUTHPC',
+    legacyRef: 'COAUTHPC.cbl:412-422',
+    legacy: [
+      '       2100-CHECK-LIMIT.',
+      '           COMPUTE WS-NEW-BAL =',
+      '               ACCT-CURR-BAL + WS-TRAN-AMT',
+      '           IF WS-NEW-BAL > ACCT-CREDIT-LIMIT',
+      "               MOVE '51' TO WS-RESP-CODE",
+      '               SET TRAN-DECLINED TO TRUE',
+      '               GO TO 2100-EXIT',
+      '           END-IF.',
+      "           MOVE '00' TO WS-RESP-CODE.",
+    ],
+    legacyHighlight: [1, 2, 3, 4],
+    targetRef: 'CreditLimitPolicy.java:9-15',
+    target: [
+      'public Decision evaluate(Money balance,',
+      '    Money limit, Money purchase) {',
+      '  if (balance.plus(purchase).isGreaterThan(limit)) {',
+      '    return Decision.decline(ReasonCode.OVER_LIMIT); // 51',
+      '  }',
+      '  return Decision.approve(); // 00',
+      '}',
+    ],
+    targetHighlight: [2, 3],
+    outputs: [
+      { caseId: 'C01', input: 'balance 4,900.00 · limit 5,000.00 · purchase 150.00', legacy: 'RESP=51 DECLINED', next: 'RESP=51 DECLINED', same: true },
+      { caseId: 'C02', input: 'balance 4,900.00 · limit 5,000.00 · purchase 100.00', legacy: 'RESP=00 APPROVED', next: 'RESP=00 APPROVED', same: true },
+      { caseId: 'F07', input: 'balance 0.00 · limit 0.00 · purchase 0.01', legacy: 'RESP=51 DECLINED', next: 'RESP=51 DECLINED', same: true },
+    ],
+  },
+  {
+    ruleId: 'RULE-002',
+    program: 'CBACT04C',
+    legacyRef: 'CBACT04C.cbl:233-241',
+    legacy: [
+      '       1300-COMPUTE-INTEREST.',
+      '           COMPUTE WS-DAILY-INT ROUNDED =',
+      '               ACCT-CURR-BAL * DIS-INT-RATE / 36000',
+      '           ADD WS-DAILY-INT TO WS-TOTAL-INT.',
+    ],
+    legacyHighlight: [1, 2],
+    targetRef: 'InterestCalculator.java:18-22',
+    target: [
+      'Money dailyInterest(Money balance, Rate annual) {',
+      '  return balance.multiply(annual.asDecimal())',
+      '      .divide(DAYS_IN_YEAR, 2, RoundingMode.HALF_UP); // Q-002',
+      '}',
+    ],
+    targetHighlight: [1, 2],
+    outputs: [
+      { caseId: 'C14', input: 'balance 12,345.67 · rate 18.50%', legacy: 'INT=6.34', next: 'INT=6.34', same: true },
+      { caseId: 'C15', input: 'balance 1,000.05 · rate 12.00%', legacy: 'INT=0.33', next: 'INT=0.33', same: true },
+      { caseId: 'F03', input: 'balance 2,500.25 · rate 7.30%', legacy: 'INT=0.51', next: 'INT=0.50', same: false },
+    ],
+  },
+  {
+    ruleId: 'RULE-005',
+    program: 'COACTUPC',
+    legacyRef: 'COACTUPC.cbl:640-652',
+    legacy: [
+      '       3200-CHANGE-STATUS.',
+      "           EVALUATE TRUE ALSO WS-NEW-STATUS",
+      "             WHEN ACCT-ACTIVE ALSO 'S'",
+      "               MOVE 'S' TO ACCT-ACTIVE-STATUS",
+      "             WHEN ACCT-SUSPENDED ALSO 'A'",
+      "               MOVE 'Y' TO ACCT-ACTIVE-STATUS",
+      '             WHEN OTHER',
+      "               MOVE 'INVALID STATUS CHANGE' TO WS-MESSAGE",
+      '           END-EVALUATE.',
+    ],
+    legacyHighlight: [2, 3, 4, 5, 6, 7],
+    targetRef: 'Account.java:10-18',
+    target: [
+      'public void suspend() {',
+      '  if (status != AccountStatus.ACTIVE) throw new DomainException("ACCOUNT_NOT_ACTIVE");',
+      '  status = AccountStatus.SUSPENDED;',
+      '}',
+      'public void reactivate() {',
+      '  if (status != AccountStatus.SUSPENDED) throw new DomainException("ACCOUNT_NOT_SUSPENDED");',
+      '  status = AccountStatus.ACTIVE;',
+      '}',
+    ],
+    targetHighlight: [1, 2, 5, 6],
+    outputs: [{ caseId: 'C22', input: 'suspended account · reactivate', legacy: 'STATUS=Y', next: 'STATUS=ACTIVE (mapped Y)', same: true }],
+  },
+]

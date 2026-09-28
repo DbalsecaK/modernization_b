@@ -2,11 +2,12 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Plus } from 'lucide-react'
 import { useTab } from '@/lib/useTab'
-import { agents, skills } from '@/mocks/data'
-import type { AgentGroup, SkillType, SupportLevel } from '@/mocks/types'
+import { agents as seedAgents, skills as seedSkills } from '@/mocks/data'
+import type { AgentDefinition, AgentGroup, SkillDefinition, SkillType, SupportLevel } from '@/mocks/types'
 import { Badge, Button, Card, CardBody, CardHeader, PageHeader, Select, Table, Tabs, Td, Th } from '@/components/ui/primitives'
 import { LevelBadge } from '@/components/ui/status'
 import { AgentCard, agentName } from './AgentCard'
+import { AgentForm, SkillForm } from './CatalogForms'
 
 const TABS = ['agents', 'skills', 'adapters', 'packs', 'compatibility', 'templates'] as const
 
@@ -43,6 +44,10 @@ export function CatalogPage() {
   const [tab, setTab] = useTab(TABS, 'agents')
   const [group, setGroup] = useState<'all' | AgentGroup>('all')
   const [skillType, setSkillType] = useState<'all' | SkillType>('all')
+  // Local state so newly submitted agents and skills show up in the prototype.
+  const [agents, setAgents] = useState<AgentDefinition[]>(seedAgents)
+  const [skills, setSkills] = useState<SkillDefinition[]>(seedSkills)
+  const [form, setForm] = useState<'agent' | 'skill' | null>(null)
 
   return (
     <>
@@ -51,13 +56,15 @@ export function CatalogPage() {
         description={t('catalog.description')}
         actions={
           (tab === 'agents' || tab === 'skills') && (
-            <Button variant="primary">
+            <Button variant="primary" onClick={() => setForm(tab === 'agents' ? 'agent' : 'skill')}>
               <Plus size={16} /> {t(tab === 'agents' ? 'catalog.newAgent' : 'catalog.newSkill')}
             </Button>
           )
         }
       />
       <Tabs tabs={TABS.map((id) => ({ id, label: t(`catalog.tabs.${id}`) }))} value={tab} onChange={setTab} />
+      <AgentForm open={form === 'agent'} onClose={() => setForm(null)} onSave={(a) => setAgents([...agents, a])} />
+      <SkillForm open={form === 'skill'} onClose={() => setForm(null)} onSave={(sk) => setSkills([...skills, sk])} />
 
       {tab === 'agents' && (
         <>
@@ -121,7 +128,7 @@ export function CatalogPage() {
                     <Td>
                       <Badge>{t(`skillTypes.${s.type}`)}</Badge>
                     </Td>
-                    <Td className="text-xs">{s.appliesTo.map((id) => agentName(agents.find((a) => a.id === id)!, i18n.language)).join(', ')}</Td>
+                    <Td className="text-xs">{s.appliesTo.map((id) => agentName(agents.find((a) => a.id === id) ?? agents[0], i18n.language)).join(', ')}</Td>
                     <Td className="tabular">{s.evalScore === null ? '—' : `${Math.round(s.evalScore * 100)}%`}</Td>
                     <Td>
                       <Badge tone={s.status === 'published' ? 'good' : 'info'}>{t(`skillStatus.${s.status}`)}</Badge>

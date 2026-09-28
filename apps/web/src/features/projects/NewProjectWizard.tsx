@@ -49,6 +49,8 @@ export function NewProjectWizard() {
   const [template, setTemplate] = useState('bankStandard')
   const [budget, setBudget] = useState(5000)
   const [maxIterations, setMaxIterations] = useState(3)
+  const [autonomy, setAutonomy] = useState<'guided' | 'balanced' | 'autonomous'>('balanced')
+  const [sampling, setSampling] = useState(10)
   const [team, setTeam] = useState<{ userId: string; role: string }[]>([
     { userId: 'u2', role: 'projectOwner' },
     { userId: 'u3', role: 'architect' },
@@ -375,6 +377,31 @@ export function NewProjectWizard() {
                     <ChoiceCard key={tpl} selected={template === tpl} onClick={() => setTemplate(tpl)} title={t(`templates.${tpl}.name`)} body={t(`templates.${tpl}.body`)} />
                   ))}
                 </div>
+                <div>
+                  <div className="mb-2 text-sm font-medium text-text">{t('hitl.autonomyTitle')}</div>
+                  <div className="grid gap-3 md:grid-cols-3">
+                    {(['guided', 'balanced', 'autonomous'] as const).map((a) => (
+                      <ChoiceCard key={a} selected={autonomy === a} onClick={() => setAutonomy(a)} title={t(`hitl.levels.${a}.name`)} body={t(`hitl.levels.${a}.body`)} />
+                    ))}
+                  </div>
+                </div>
+                <div className="rounded-lg border border-border p-4">
+                  <div className="text-sm font-medium text-text">{t('hitl.whenTitle')}</div>
+                  <ul className="mt-2 space-y-1.5 text-sm text-text-2">
+                    <li>• {t('hitl.when.gates', { gates: autonomy === 'autonomous' ? 'C1, C4' : 'C1, C2, C3, C4' })}</li>
+                    <li>• {t('hitl.when.questions')}</li>
+                    <li>• {t(autonomy === 'guided' ? 'hitl.when.reviewAllP0' : 'hitl.when.reviewException', { pct: sampling })}</li>
+                    <li>• {t('hitl.when.escalations', { max: maxIterations })}</li>
+                  </ul>
+                  {autonomy !== 'guided' && (
+                    <div className="mt-3 max-w-xs">
+                      <Field label={t('hitl.sampling')} hint={t('hitl.samplingHint')}>
+                        <Input type="number" min={0} max={100} value={sampling} onChange={(e) => setSampling(Number(e.target.value))} />
+                      </Field>
+                    </div>
+                  )}
+                  <p className="mt-3 text-xs text-muted">{t('hitl.keepsWorking')}</p>
+                </div>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <Field label={t('wizard.budget')} hint={t('wizard.budgetHint')}>
                     <Input type="number" min={0} value={budget} onChange={(e) => setBudget(Number(e.target.value))} />
@@ -452,6 +479,7 @@ export function NewProjectWizard() {
                   <Summary label={t('wizard.budget')}>{formatUsd(budget)}</Summary>
                   <Summary label={t('wizard.estimate')}>{formatUsd(estimate)}</Summary>
                   <Summary label={t('wizard.stepNames.pipeline')}>{t(`templates.${template}.name`)}</Summary>
+                  <Summary label={t('hitl.autonomyTitle')}>{t(`hitl.levels.${autonomy}.name`)}</Summary>
                 </dl>
                 {warnings.map((w) => (
                   <Notice key={w} tone="warning">

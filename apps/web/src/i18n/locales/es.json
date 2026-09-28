@@ -21,7 +21,9 @@
     "save": "Guardar cambios",
     "search": "Buscar",
     "viewAll": "Ver todo",
-    "yes": "Sí"
+    "yes": "Sí",
+    "cancel": "Cancelar",
+    "discard": "Descartar cambios"
   },
   "nav": {
     "main": "Navegación principal",
@@ -44,7 +46,12 @@
     "language": "Idioma",
     "notifications": "Notificaciones",
     "switchTheme": "Cambiar a tema {{theme}}",
-    "theme": { "light": "claro", "dark": "oscuro" }
+    "theme": {
+      "light": "claro",
+      "dark": "oscuro"
+    },
+    "notificationsCount_one": "Notificaciones ({{count}} sin leer)",
+    "notificationsCount_other": "Notificaciones ({{count}} sin leer)"
   },
   "auth": {
     "heroTitle": "Moderniza sistemas legacy y construye nuevas funcionalidades con agentes de IA verificados.",
@@ -125,7 +132,11 @@
   "account": {
     "title": "Cuenta y seguridad",
     "description": "Tu perfil, idioma, métodos de inicio de sesión y sesiones activas.",
-    "tabs": { "profile": "Perfil", "security": "Seguridad", "sessions": "Sesiones" },
+    "tabs": {
+      "profile": "Perfil",
+      "security": "Seguridad",
+      "sessions": "Sesiones"
+    },
     "profile": "Perfil",
     "name": "Nombre",
     "email": "Correo",
@@ -157,7 +168,11 @@
     "title": "Dashboard",
     "description": "Avance, verificación y gasto de tus proyectos.",
     "perspective": "Perspectiva del dashboard",
-    "perspectives": { "executive": "Ejecutivo", "delivery": "Delivery", "admin": "Administrador" },
+    "perspectives": {
+      "executive": "Ejecutivo",
+      "delivery": "Delivery",
+      "admin": "Administrador"
+    },
     "activeProjects": "Proyectos activos",
     "ofTotal": "de {{total}} proyectos",
     "rulesVerified": "Reglas verificadas",
@@ -271,7 +286,7 @@
       "uiDesign": "Diseño UI",
       "architecture": "Arquitectura",
       "code": "Código",
-      "traceability": "Trazabilidad",
+      "traceability": "Origen ↔ destino",
       "validation": "Validación",
       "runs": "Ejecuciones",
       "costs": "Costos",
@@ -306,7 +321,10 @@
     "version": "Versión",
     "added": "Agregado",
     "status": "Estado",
-    "statuses": { "scanned": "Analizado", "quarantined": "En cuarentena" },
+    "statuses": {
+      "scanned": "Analizado",
+      "quarantined": "En cuarentena"
+    },
     "securityNote": "Los archivos subidos no son confiables: se revisan en busca de malware, path traversal y zip bombs, y las credenciales se enmascaran antes de que un modelo los vea."
   },
   "inventory": {
@@ -320,13 +338,52 @@
     "legend": "Dominios",
     "hoverHint": "Pasa el cursor sobre un nodo para ver sus relaciones.",
     "nodeDetail": "{{name}} · {{type}} · dominio {{domain}}",
-    "types": { "transaction": "transacción", "program": "programa", "map": "mapa BMS", "copybook": "copybook", "file": "archivo" },
+    "types": {
+      "transaction": "transacción",
+      "program": "programa",
+      "map": "mapa BMS",
+      "copybook": "copybook",
+      "file": "archivo",
+      "job": "job batch"
+    },
     "impact": "Preguntas al grafo",
     "impactHint": "Se responden directamente desde el grafo de conocimiento.",
     "impactCopybook": "¿Qué se rompe si cambio CVACT01Y?",
     "impactDomain": "¿Qué programas forman el dominio Cuentas?",
     "impactOrder": "¿Qué podemos migrar primero?",
-    "impactOrphans": "Párrafos de negocio sin regla"
+    "impactOrphans": "Párrafos de negocio sin regla",
+    "typesPlural": {
+      "transaction": "Transacciones",
+      "job": "Jobs batch",
+      "program": "Programas",
+      "map": "Mapas BMS",
+      "copybook": "Copybooks",
+      "file": "Archivos y tablas"
+    },
+    "domain": "Dominio",
+    "allDomains": "Todos los dominios",
+    "colorBy": "Colorear por",
+    "colorModes": {
+      "domain": "Dominio",
+      "state": "Estado de migración"
+    },
+    "states": {
+      "verified": "Verificado",
+      "generated": "Generado",
+      "inProgress": "En curso",
+      "pending": "Pendiente"
+    },
+    "clearImpact": "Limpiar impacto",
+    "migrationState": "Estado de migración",
+    "loc": "Líneas de código",
+    "target": "Destino",
+    "uses": "Usa",
+    "usedBy": "Lo usan",
+    "rules": "Reglas",
+    "showImpact": "Ver impacto",
+    "impactResult_one": "{{count}} elemento depende de esto: {{items}}",
+    "impactResult_other": "{{count}} elementos dependen de esto: {{items}}",
+    "openCompare": "Comparar origen ↔ destino"
   },
   "spec": {
     "filterStatus": "Filtrar por estado",
@@ -340,7 +397,34 @@
     "smeQuestion": "Pregunta para el experto",
     "approve": "Aprobar",
     "comment": "Comentar",
-    "reject": "Pedir cambio"
+    "reject": "Pedir cambio",
+    "views": {
+      "rules": "Reglas",
+      "screens": "Pantallas",
+      "contracts": "Contratos",
+      "questions": "Preguntas"
+    },
+    "screenSource": "Origen: {{source}}",
+    "field": "Campo",
+    "type": "Tipo",
+    "required": "Obligatorio",
+    "validationRule": "Validación",
+    "editable": "Editable",
+    "readOnly": "Solo lectura",
+    "editableYes": "Editable",
+    "actions": "Acciones",
+    "states": "Estados",
+    "stateNames": {
+      "empty": "Vacío",
+      "loading": "Cargando",
+      "error": "Error",
+      "success": "Éxito"
+    },
+    "contractsTitle": "Contratos",
+    "contractsHint": "Operaciones que serán el OpenAPI, cada una ligada a las reglas que atiende.",
+    "operation": "Operación",
+    "gateApproved": "Compuerta C1 aprobada. Puede empezar el diseño.",
+    "ruleApproved": "{{id}} aprobada."
   },
   "ruleStatus": {
     "approved": "Aprobada",
@@ -354,7 +438,11 @@
     "lifecycle": "Ciclo de vida",
     "policy": "Política"
   },
-  "confidence": { "high": "alta", "medium": "media", "low": "baja" },
+  "confidence": {
+    "high": "alta",
+    "medium": "media",
+    "low": "baja"
+  },
   "testStatus": {
     "tested": "Probada (corrió y pasó)",
     "namedNotRun": "Nombrada, aún sin correr",
@@ -372,7 +460,24 @@
     "designSystemHint": "Tokens y componentes base propuestos para este cliente",
     "comments": "Comentarios",
     "approve": "Aprobar UI (C2)",
-    "requestChanges": "Pedir cambios"
+    "requestChanges": "Pedir cambios",
+    "approved": "UI aprobada (compuerta C2).",
+    "figmaFrames": "Frames de Figma",
+    "missingFrame": "Frame faltante",
+    "gaps_one": "{{count}} hueco",
+    "gaps_other": "{{count}} huecos",
+    "gapsTitle": "Huecos y contradicciones",
+    "gapsHint": "Detectados al consolidar historias, Figma y el manual. Cada uno se convierte en una pregunta.",
+    "gapKind": "Tipo",
+    "gapWhere": "Dónde",
+    "gapDetail": "Detalle",
+    "gapKinds": {
+      "missingValidation": "Falta validación",
+      "missingState": "Falta estado",
+      "deadEnd": "Callejón sin salida",
+      "contradiction": "Contradicción",
+      "missingFrame": "Falta frame"
+    }
   },
   "architecture": {
     "contexts": "Bounded contexts",
@@ -381,7 +486,10 @@
     "services": "Servicios",
     "endpoints": "Endpoints",
     "adrs": "Decisiones de arquitectura",
-    "adrState": { "accepted": "Aceptada", "proposed": "Propuesta" },
+    "adrState": {
+      "accepted": "Aceptada",
+      "proposed": "Propuesta"
+    },
     "contract": "Contrato (OpenAPI)",
     "fitness": "Fitness functions",
     "fitnessDomain": "La capa de dominio no depende de ningún framework",
@@ -403,7 +511,24 @@
     "target": "Destino",
     "citationVerified": "Cita al legacy verificada",
     "implementationVerified": "Implementación encontrada en el destino",
-    "testNotRun": "Test nombrado pero aún sin correr"
+    "testNotRun": "Test nombrado pero aún sin correr",
+    "by": {
+      "rule": "Por regla",
+      "program": "Por programa"
+    },
+    "testPassed": "El test corrió y pasó",
+    "outputs": "Comportamiento: legacy vs nuevo",
+    "outputsHint": "Golden master e inputs frescos de esta regla, comparados byte a byte.",
+    "case": "Caso",
+    "input": "Entrada",
+    "legacyOutput": "Salida legacy",
+    "newOutput": "Salida nueva",
+    "same": "Igual",
+    "different": "Difiere",
+    "allSame": "Todos los casos coinciden",
+    "differs_one": "{{count}} caso difiere",
+    "differs_other": "{{count}} casos difieren",
+    "differenceNote": "Una diferencia es un hallazgo: se corrige el código o una persona la registra como diferencia aprobada. Nunca se oculta."
   },
   "validation": {
     "notYet": "La verificación corre después de la generación. En este proyecto todavía no se verificó nada.",
@@ -417,7 +542,12 @@
       "canary": "Canario",
       "source": "Fuente intacta"
     },
-    "state": { "pass": "Pasa", "gap": "Hueco", "fail": "Falla", "na": "No aplica" },
+    "state": {
+      "pass": "Pasa",
+      "gap": "Hueco",
+      "fail": "Falla",
+      "na": "No aplica"
+    },
     "doesNotProve": "Lo que esto no prueba",
     "limits": {
       "samples": "El comportamiento con inputs que nadie probó: los casos y los inputs frescos son muestras.",
@@ -432,7 +562,8 @@
     "comment": "Comentario",
     "commentPlaceholder": "Opcional",
     "sign": "Firmar verificación",
-    "signDisabled": "El sign-off se habilita cuando el veredicto es PROVEN."
+    "signDisabled": "El sign-off se habilita cuando el veredicto es PROVEN.",
+    "signed": "Verificación firmada."
   },
   "runs": {
     "currentRun": "Ejecución actual",
@@ -446,7 +577,21 @@
     "fanOutHint": "Extracción de reglas por módulo",
     "live": "En vivo",
     "timeline": "Línea de tiempo",
-    "tokens": "{{value}} tokens"
+    "tokens": "{{value}} tokens",
+    "detail": {
+      "open": "Ver detalle",
+      "profile": "Perfil de modelo",
+      "model": "Modelo",
+      "iteration": "Iteración",
+      "duration": "Duración",
+      "tokens": "Tokens",
+      "cost": "Costo",
+      "prompt": "Entrada (resumen)",
+      "response": "Salida (resumen)",
+      "verification": "Verificación",
+      "traceNote": "Los prompts y respuestas completos quedan en las trazas de observabilidad, con acceso controlado por rol.",
+      "noDetail": "No hay detalle registrado para este evento."
+    }
   },
   "runEvent": {
     "started": "inició",
@@ -620,8 +765,14 @@
     "evalScore": "{{score}}% en apps de referencia"
   },
   "templates": {
-    "bankStandard": { "name": "Estándar banco", "body": "Las cuatro compuertas son obligatorias: spec, UI, arquitectura y sign-off." },
-    "internalAgile": { "name": "Interno ágil", "body": "Spec y sign-off obligatorios; UI y arquitectura se revisan de forma asíncrona." }
+    "bankStandard": {
+      "name": "Estándar banco",
+      "body": "Las cuatro compuertas son obligatorias: spec, UI, arquitectura y sign-off."
+    },
+    "internalAgile": {
+      "name": "Interno ágil",
+      "body": "Spec y sign-off obligatorios; UI y arquitectura se revisan de forma asíncrona."
+    }
   },
   "tasks": {
     "title": "Mis tareas",
@@ -635,6 +786,10 @@
       "escalation": "Escalamiento",
       "signOff": "Sign-off",
       "approveArchitecture": "Aprobar arquitectura"
+    },
+    "tabs": {
+      "questions": "Preguntas para mí",
+      "approvals": "Aprobaciones y revisiones"
     }
   },
   "usage": {
@@ -681,7 +836,12 @@
     "longContext": "Contexto largo",
     "reasoning": "Razonamiento"
   },
-  "effort": { "low": "Bajo", "medium": "Medio", "high": "Alto", "max": "Máximo" },
+  "effort": {
+    "low": "Bajo",
+    "medium": "Medio",
+    "high": "Alto",
+    "max": "Máximo"
+  },
   "ai": {
     "title": "Configuración IA",
     "description": "Conexiones a proveedores, catálogo de modelos, perfiles con esfuerzo, asignación por fase, precios y políticas.",
@@ -696,7 +856,11 @@
       "evaluations": "Evaluaciones"
     },
     "addConnection": "Agregar conexión",
-    "connectionStatus": { "connected": "Conectada", "error": "Error", "notConfigured": "Sin configurar" },
+    "connectionStatus": {
+      "connected": "Conectada",
+      "error": "Error",
+      "notConfigured": "Sin configurar"
+    },
     "region": "Región",
     "models": "Modelos",
     "auth": "Autenticación",
@@ -714,7 +878,11 @@
     "context": "Contexto",
     "capabilities": "Capacidades",
     "status": "Estado",
-    "offeringStatus": { "available": "Disponible", "deprecated": "Obsoleta", "disabled": "Deshabilitada" },
+    "offeringStatus": {
+      "available": "Disponible",
+      "deprecated": "Obsoleta",
+      "disabled": "Deshabilitada"
+    },
     "profilesTitle": "Perfiles de modelo",
     "newProfile": "Nuevo perfil",
     "profileHint": "Una oferta con sus parámetros. El esfuerzo se normaliza y se traduce al parámetro de cada proveedor.",
@@ -850,13 +1018,21 @@
     "mfaPending": "Pendiente",
     "lastSeen": "Última actividad",
     "status": "Estado",
-    "userStatus": { "active": "Activo", "invited": "Invitado", "disabled": "Deshabilitado" },
+    "userStatus": {
+      "active": "Activo",
+      "invited": "Invitado",
+      "disabled": "Deshabilitado"
+    },
     "rolesTitle": "Roles",
     "rolesHint": "Los roles son paquetes configurables de permisos granulares.",
     "newRole": "Nuevo rol",
     "role": "Rol",
     "scope": "Alcance",
-    "scopes": { "platform": "Plataforma", "tenant": "Cliente", "project": "Proyecto" },
+    "scopes": {
+      "platform": "Plataforma",
+      "tenant": "Cliente",
+      "project": "Proyecto"
+    },
     "members": "Miembros",
     "permissions": "Permisos",
     "matrixTitle": "Matriz de permisos",
@@ -947,7 +1123,13 @@
     "pool": "Pool",
     "jobs": "Trabajos",
     "cpu": "CPU",
-    "status": { "busy": "Ocupado", "idle": "Libre", "offline": "Fuera de línea", "healthy": "Operativo", "updating": "Actualizando" },
+    "status": {
+      "busy": "Ocupado",
+      "idle": "Libre",
+      "offline": "Fuera de línea",
+      "healthy": "Operativo",
+      "updating": "Actualizando"
+    },
     "deployments": "Despliegues",
     "deploymentsHint": "Instancias y la versión de la plataforma que corre cada una.",
     "instance": "Instancia",
@@ -957,5 +1139,258 @@
     "title": "Página no encontrada",
     "body": "La página que buscas no existe o no tienes acceso a ella.",
     "home": "Ir al dashboard"
+  },
+  "search": {
+    "noResults": "Sin resultados para \"{{query}}\"",
+    "kinds": {
+      "project": "Proyecto",
+      "rule": "Regla",
+      "agent": "Agente",
+      "skill": "Skill"
+    }
+  },
+  "notifications": {
+    "markAllRead": "Marcar todas como leídas",
+    "kinds": {
+      "gate": "Compuerta",
+      "escalation": "Escalamiento",
+      "budget": "Presupuesto",
+      "verdict": "Veredicto",
+      "connection": "Conexión"
+    }
+  },
+  "tools": {
+    "readGraph": "Leer el grafo",
+    "readCode": "Leer código legacy",
+    "readInputs": "Leer insumos",
+    "readWorkspace": "Leer el workspace",
+    "writeWorkspace": "Escribir en el workspace",
+    "sandbox": "Ejecutar en el sandbox"
+  },
+  "catalogForms": {
+    "newAgentTitle": "Nuevo agente",
+    "newAgentHint": "Define el rol, lo que puede hacer y su modelo por defecto. Se evalúa en las apps de referencia antes de poder usarse.",
+    "nameEn": "Nombre (inglés)",
+    "nameEs": "Nombre (español)",
+    "optionalTranslation": "Opcional. Si falta, se muestra el inglés.",
+    "descriptionEn": "Descripción corta (inglés)",
+    "descriptionEs": "Descripción corta (español)",
+    "descriptionHint": "Se muestra en la card del agente. Hasta 200 caracteres.",
+    "phases": "Fases",
+    "capabilities": "Capacidades de modelo requeridas",
+    "capabilitiesHint": "Solo se podrán asignar perfiles de modelo compatibles.",
+    "tools": "Herramientas permitidas",
+    "toolsHint": "Lista blanca. Los agentes de análisis no deberían escribir ni ejecutar.",
+    "writeWarning": "Este agente puede escribir archivos o ejecutar código. Solo lo hará dentro del sandbox, sin acceso a red.",
+    "defaultProfile": "Perfil de modelo por defecto",
+    "systemPrompt": "Prompt de sistema (inglés)",
+    "systemPromptHint": "Versionado. Cada ejecución registra la versión que usó.",
+    "evaluationNotice": "Los agentes y skills nuevos empiezan como experimentales y se evalúan en las apps de referencia antes de publicarse.",
+    "submitForEvaluation": "Enviar a evaluación",
+    "agentSubmitted": "Agente \"{{name}}\" enviado a evaluación.",
+    "newSkillTitle": "Nueva skill",
+    "newSkillHint": "Un paquete de conocimiento (SKILL.md más recursos) que los agentes cargan cuando la tarea lo requiere.",
+    "skillName": "Nombre de la skill",
+    "skillDescriptionHint": "Los agentes siempre ven esta descripción; el contenido completo se carga solo cuando hace falta.",
+    "tags": "Aplica a tecnologías",
+    "tagsHint": "Separadas por coma, p. ej. COBOL CICS, Java Spring Boot. Usa * para cualquiera.",
+    "conflicts": "En conflicto con",
+    "addConflict": "Agregar una skill en conflicto…",
+    "package": "Paquete de la skill",
+    "packageHint": "SKILL.md o un .zip con SKILL.md y sus recursos.",
+    "choosePackage": "Elegir un archivo",
+    "scope": "Visibilidad",
+    "scopeTenant": "Solo este cliente",
+    "scopeGlobal": "Todos los clientes (NexTI)",
+    "skillSubmitted": "Skill \"{{name}}\" enviada a evaluación."
+  },
+  "aiForms": {
+    "editConnection": "Editar conexión",
+    "connectionHint": "Las credenciales se guardan en el vault y no se vuelven a mostrar. Prefiere acceso por roles.",
+    "provider": "Proveedor",
+    "connectionName": "Nombre de la conexión",
+    "secretHint": "Se guarda en el vault.",
+    "fields": {
+      "endpoint": "Endpoint",
+      "tenantId": "ID de tenant de Entra",
+      "clientId": "Client ID",
+      "clientSecret": "Client secret",
+      "roleArn": "ARN del rol IAM",
+      "externalId": "External ID",
+      "apiKey": "API key",
+      "organization": "ID de organización",
+      "projectId": "ID de proyecto",
+      "serviceAccount": "Llave de la cuenta de servicio"
+    },
+    "bedrockHint": "La plataforma asume este rol en la cuenta del cliente. Solo se descubrirán los modelos habilitados en esa región.",
+    "foundryHint": "Los modelos se usan mediante los deployments creados en el recurso de Foundry; la plataforma los lee tras la prueba.",
+    "testOk_one": "La conexión funciona. Se encontró {{count}} modelo.",
+    "testOk_other": "La conexión funciona. Se encontraron {{count}} modelos.",
+    "discovered": "Modelos para agregar al catálogo",
+    "discoveredHint": "Las versiones quedan fijas. Puedes agregar más después con \"Sincronizar\".",
+    "connectionSaved": "Conexión \"{{name}}\" guardada.",
+    "priceHint": "Una nueva versión de precios aplica desde su fecha; los costos pasados conservan el precio con que se calcularon.",
+    "cacheWritePrice": "Escritura de caché / 1M tokens",
+    "batchDiscount": "Aplica descuento batch",
+    "priceSaved": "Versión de precios guardada.",
+    "untitledProfile": "Nuevo perfil",
+    "profileName": "Nombre del perfil",
+    "profileSaved": "Perfil \"{{name}}\" guardado.",
+    "policiesSaved": "Políticas guardadas."
+  },
+  "adminForms": {
+    "tenantHint": "Crea el cliente, su organización en Keycloak y su primer administrador.",
+    "tenantName": "Nombre del cliente",
+    "dataRegion": "Región de datos",
+    "deploymentHint": {
+      "sharedSaas": "Corre en la plataforma compartida de NexTI, aislado por cliente.",
+      "dedicatedSaas": "Una instancia dedicada operada por NexTI.",
+      "customerCloud": "El plano de datos corre en la cuenta cloud del cliente.",
+      "onPrem": "Corre en el datacenter del cliente, sin acceso a internet."
+    },
+    "firstAdmin": "Primer administrador",
+    "firstAdminHint": "Recibe una invitación para activar la cuenta y configurar MFA.",
+    "emailDomain": "Dominio de correo",
+    "initialAuth": "Método de inicio de sesión inicial",
+    "authBoth": "SSO y cuentas de la plataforma",
+    "tenantProvisioning": "El cliente recibe su propia llave de cifrado, prefijo de almacenamiento y base de grafo.",
+    "createTenant": "Crear cliente",
+    "tenantCreated": "Cliente \"{{name}}\" creado. Invitación enviada al administrador.",
+    "inviteHint": "Las personas invitadas reciben un correo para activar su cuenta.",
+    "emails": "Correos",
+    "emailsHint": "Separados por comas o espacios.",
+    "invalidEmails": "Correos no válidos: {{emails}}",
+    "tenantRoles": "Roles en el cliente",
+    "tenantRolesHint": "Opcional. La mayoría solo necesita roles de proyecto.",
+    "projects": "Proyectos",
+    "projectRole": "Rol en los proyectos seleccionados",
+    "inviteFlow": "Si el dominio del correo usa SSO, la persona entra con su proveedor de identidad; si no, define contraseña y MFA.",
+    "sendInvites_one": "Enviar {{count}} invitación",
+    "sendInvites_other": "Enviar {{count}} invitaciones",
+    "invitesSent_one": "{{count}} invitación enviada.",
+    "invitesSent_other": "{{count}} invitaciones enviadas.",
+    "roleName": "Nombre del rol",
+    "startFrom": "Partir de",
+    "blankRole": "Rol en blanco",
+    "createRole": "Crear rol",
+    "roleCreated": "Rol \"{{name}}\" creado.",
+    "matrixSaved": "Matriz de permisos guardada como nueva versión.",
+    "idpHint": "Conecta el proveedor de identidad del cliente. Keycloak intermedia el inicio de sesión.",
+    "preset": "Proveedor",
+    "otherProvider": "Otro (OIDC o SAML)",
+    "metadataUrl": "URL de metadatos",
+    "entityId": "Entity ID",
+    "redirectUri": "Redirect URI a registrar en el proveedor",
+    "domainsHint": "Los usuarios con estos dominios de correo se dirigen a este proveedor.",
+    "enforceSso": "Solo SSO para estos dominios (deshabilita la contraseña)",
+    "idpGroup": "Grupo del proveedor",
+    "addMapping": "Agregar mapeo",
+    "keycloakNote": "Se guarda mediante la Admin API de Keycloak. La consola de Keycloak nunca se expone a los clientes.",
+    "idpSaved": "Proveedor de identidad guardado.",
+    "authSaved": "Configuración de autenticación guardada."
+  },
+  "inputForms": {
+    "hint": "Cada insumo se valida y analiza antes de que un agente lo lea.",
+    "sources": {
+      "files": "Subir archivos",
+      "git": "Repositorio Git",
+      "figma": "Figma",
+      "jira": "Jira"
+    },
+    "drop": "Suelta los archivos aquí o haz clic para elegir",
+    "acceptedCode": "Archivos zip o fuentes. Hasta 2 GB.",
+    "acceptedDocs": "PDF, Word, Excel, imágenes. Hasta 200 MB cada uno.",
+    "repoUrl": "URL del repositorio",
+    "branch": "Rama o tag",
+    "credentials": "Acceso",
+    "credentialsHint": "Usa una integración configurada; aquí no se escriben credenciales.",
+    "paths": "Rutas a incluir",
+    "pathsHint": "Opcional. Déjalo vacío para todo el repositorio.",
+    "figmaLink": "Link del archivo Figma",
+    "figmaHint": "Se lee con la API de Figma: frames, componentes, variables y navegación del prototipo.",
+    "figmaPages": "Páginas a incluir",
+    "jiraConnection": "Conexión Jira",
+    "jql": "Consulta (JQL)",
+    "jqlHint": "Las historias que cumplan esta consulta se sincronizan y se mantienen al día.",
+    "start": "Iniciar",
+    "checks": "Controles de seguridad",
+    "steps": {
+      "received": "Recibido",
+      "typeAndSize": "Tipos y tamaño de archivo",
+      "archiveSafety": "Zip bombs, path traversal y enlaces",
+      "malware": "Análisis de malware",
+      "secrets": "Credenciales detectadas y enmascaradas",
+      "versioned": "Hash y versión registrados"
+    },
+    "finished": "Todos los controles pasaron. El insumo está listo para los agentes.",
+    "done": "Listo",
+    "added": "Insumo agregado y versionado."
+  },
+  "decisions": {
+    "risk": {
+      "high": "Impacto alto",
+      "low": "Impacto bajo"
+    },
+    "reason": {
+      "lowConfidence": "Confianza baja",
+      "contradiction": "Contradicción",
+      "judgesDisagree": "Los jueces no coinciden",
+      "missingInfo": "Falta información"
+    },
+    "raisedBy": "Planteada por {{agent}}",
+    "yourAnswer": "Tu respuesta",
+    "recommendedPrefix": "Recomendada",
+    "otherAnswer": "Otra respuesta…",
+    "whyRecommended": "Por qué la plataforma recomienda esto",
+    "whyOption": "Sobre esta opción",
+    "confidence": "Confianza: {{level}}",
+    "customLabel": "Tu propia respuesta",
+    "customHint": "Sé específico: valores, condiciones y excepciones. Pasa a formar parte de la especificación.",
+    "comment": "Comentario (opcional)",
+    "commentPlaceholder": "Contexto para el equipo o el auditor",
+    "impact": "Afecta a: {{items}}",
+    "submit": "Responder",
+    "recorded": "Respuesta registrada. Los agentes retoman lo afectado: {{items}}.",
+    "answeredBy": "Respondida por {{name}}",
+    "filters": {
+      "open": "Abiertas",
+      "answered": "Respondidas",
+      "all": "Todas"
+    },
+    "acceptLowRisk_one": "Aceptar {{count}} recomendación de bajo impacto",
+    "acceptLowRisk_other": "Aceptar {{count}} recomendaciones de bajo impacto",
+    "bulkHint": "Las preguntas de impacto alto siempre requieren una respuesta individual.",
+    "bulkAccepted_one": "{{count}} recomendación aceptada.",
+    "bulkAccepted_other": "{{count}} recomendaciones aceptadas.",
+    "empty": "No hay nada aquí. Los agentes siguen trabajando y te preguntarán cuando te necesiten.",
+    "addComment": "+ Agregar un comentario"
+  },
+  "hitl": {
+    "autonomyTitle": "Nivel de autonomía",
+    "levels": {
+      "guided": {
+        "name": "Guiado",
+        "body": "Una persona aprueba cada compuerta y cada regla P0. Ideal para el primer proyecto con un cliente."
+      },
+      "balanced": {
+        "name": "Balanceado",
+        "body": "Compuertas C1–C4, preguntas y revisión por excepción. Recomendado."
+      },
+      "autonomous": {
+        "name": "Autónomo",
+        "body": "Solo las compuertas C1 y C4 más las preguntas escaladas. Para trabajo maduro y de bajo riesgo."
+      }
+    },
+    "whenTitle": "Cuándo intervienen las personas",
+    "when": {
+      "gates": "Compuertas: {{gates}}.",
+      "questions": "Preguntas: cuando un agente tiene confianza baja, encuentra una contradicción o dos jueces no coinciden. La plataforma siempre propone una respuesta.",
+      "reviewAllP0": "Revisión: cada regla P0 y todo lo que tenga confianza baja.",
+      "reviewException": "Revisión por excepción: reglas P0, confianza baja y una muestra aleatoria del {{pct}}% del resto.",
+      "escalations": "Escalamientos: tras {{max}} autocorrecciones fallidas, con el diagnóstico."
+    },
+    "sampling": "Muestra aleatoria de revisión (%)",
+    "samplingHint": "Porcentaje de lo aprobado automáticamente que igual revisa una persona.",
+    "keepsWorking": "Mientras una pregunta espera, los agentes siguen trabajando en todo lo que no depende de ella."
   }
 }

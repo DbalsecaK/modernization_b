@@ -2,9 +2,11 @@ import { useTranslation } from 'react-i18next'
 import { AlertTriangle, CheckCircle2, CircleDashed, GitBranch, RefreshCw, ShieldCheck, Split, XCircle } from 'lucide-react'
 import { cn } from '@/lib/cn'
 import { formatCompact, formatDateTime, formatUsd } from '@/lib/format'
-import { agents, auditLog, costByAgent, costByPhase, projects, runEvents } from '@/mocks/data'
+import { agents, auditLog, costByAgent, costByPhase, invocationDetails, projects, runEvents } from '@/mocks/data'
+import { useState } from 'react'
+import { Drawer, toast } from '@/components/ui/overlay'
 import type { Project, RunEvent } from '@/mocks/types'
-import { Badge, Button, Card, CardBody, CardHeader, Field, Input, Progress, StatTile, Table, Td, Th } from '@/components/ui/primitives'
+import { Badge, Button, Card, CardBody, CardHeader, Code, Field, Input, Progress, StatTile, Table, Td, Th } from '@/components/ui/primitives'
 import { VerdictBadge } from '@/components/ui/status'
 import { BarList } from '@/components/charts/charts'
 import { agentName } from '@/features/catalog/AgentCard'
@@ -89,7 +91,7 @@ export function ValidationTab({ project }: { project: Project }) {
             <Field label={t('validation.comment')}>
               <Input placeholder={t('validation.commentPlaceholder')} />
             </Field>
-            <Button variant="primary" disabled={project.verdict !== 'PROVEN'}>
+            <Button variant="primary" disabled={project.verdict !== 'PROVEN'} onClick={() => toast(t('validation.signed'))}>
               <ShieldCheck size={16} /> {t('validation.sign')}
             </Button>
             {project.verdict !== 'PROVEN' && <p className="text-xs text-muted">{t('validation.signDisabled')}</p>}
@@ -114,8 +116,49 @@ const shards = ['ACCT', 'CARD', 'AUTH', 'BILL', 'CUST', 'STMT', 'TRAN', 'USER', 
 
 export function RunsTab({ project }: { project: Project }) {
   const { t } = useTranslation()
+  const [detail, setDetail] = useState<RunEvent | null>(null)
+  const info = detail ? invocationDetails[detail.id] : undefined
   return (
     <div className="space-y-6">
+      <Drawer
+        open={!!detail}
+        onClose={() => setDetail(null)}
+        wide
+        title={detail ? `${detail.agent} · ${t(`runEvent.${detail.kind}`)}` : ''}
+        description={detail ? `${detail.time} · ${t(`phases.${detail.phase}`)}` : undefined}
+      >
+        {detail && (
+          <>
+            <p className="text-sm text-text">{detail.detail}</p>
+            {info ? (
+              <>
+                <dl className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-3">
+                  <DetailItem label={t('runs.detail.profile')} value={info.profile} />
+                  <DetailItem label={t('runs.detail.model')} value={info.model} />
+                  <DetailItem label={t('runs.detail.iteration')} value={info.iteration} />
+                  <DetailItem label={t('runs.detail.duration')} value={`${info.durationS} s`} />
+                  <DetailItem label={t('runs.detail.tokens')} value={`${formatCompact(info.inputTokens)} in · ${formatCompact(info.outputTokens)} out`} />
+                  <DetailItem label={t('runs.detail.cost')} value={formatUsd(info.costUsd, 2)} />
+                </dl>
+                <div>
+                  <div className="mb-1 text-xs font-medium text-muted uppercase">{t('runs.detail.prompt')}</div>
+                  <Code className="whitespace-pre-wrap">{info.prompt}</Code>
+                </div>
+                <div>
+                  <div className="mb-1 text-xs font-medium text-muted uppercase">{t('runs.detail.response')}</div>
+                  <Code className="whitespace-pre-wrap">{info.response}</Code>
+                </div>
+                <Notice tone={detail.kind === 'verificationFailed' || detail.kind === 'escalated' ? 'warning' : 'good'}>
+                  <strong>{t('runs.detail.verification')}:</strong> {info.verification}
+                </Notice>
+                <p className="text-xs text-muted">{t('runs.detail.traceNote')}</p>
+              </>
+            ) : (
+              <p className="text-sm text-muted">{t('runs.detail.noDetail')}</p>
+            )}
+          </>
+        )}
+      </Drawer>
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatTile label={t('runs.currentRun')} value="run-0007" hint={t('runs.startedAt', { time: '09:14' })} />
         <StatTile label={t('runs.subagents')} value="12" hint={t('runs.subagentsHint')} />
@@ -160,6 +203,9 @@ export function RunsTab({ project }: { project: Project }) {
                     {e.tokens && <span className="text-xs text-muted">· {t('runs.tokens', { value: formatCompact(e.tokens) })}</span>}
                   </div>
                   <p className="mt-0.5 text-sm text-text-2">{e.detail}</p>
+                  <button className="mt-1 text-xs font-medium text-info hover:underline" onClick={() => setDetail(e)}>
+                    {t('runs.detail.open')}
+                  </button>
                 </li>
               )
             })}
@@ -266,6 +312,7 @@ export function SettingsTab({ project }: { project: Project }) {
           <SettingRow label={t('projectSettings.skills')} value={t('wizard.skillsSelected', { count: 14 })} />
           <SettingRow label={t('projectSettings.models')} value={t('projectSettings.inherited')} />
           <SettingRow label={t('projectSettings.pipeline')} value={t('templates.bankStandard.name')} />
+          <SettingRow label={t('hitl.autonomyTitle')} value={t('hitl.levels.balanced.name')} />
           <SettingRow label={t('projectSettings.versions')} value={t('projectSettings.pinned')} />
           <p className="pt-2 text-xs text-muted">{t('projectSettings.changeNote', { count: other })}</p>
         </CardBody>
@@ -289,6 +336,15 @@ export function SettingsTab({ project }: { project: Project }) {
           ))}
         </CardBody>
       </Card>
+    </div>
+  )
+}
+
+function DetailItem({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <dt className="text-xs text-muted">{label}</dt>
+      <dd className="text-text">{value}</dd>
     </div>
   )
 }

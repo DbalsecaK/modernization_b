@@ -3,7 +3,10 @@ import { useTranslation } from 'react-i18next'
 import { Check, Plus, ShieldCheck } from 'lucide-react'
 import { useTab } from '@/lib/useTab'
 import { formatDateTime, formatUsd } from '@/lib/format'
-import { auditLog, identityProviders, permissionMatrix, roles, tenants, users } from '@/mocks/data'
+import { auditLog, identityProviders, permissionMatrix, roles, tenants as seedTenants, users } from '@/mocks/data'
+import type { Tenant } from '@/mocks/types'
+import { toast } from '@/components/ui/overlay'
+import { IdentityProviderForm, InviteForm, RoleForm, TenantForm } from './AdminForms'
 import { Badge, Button, Card, CardBody, CardHeader, Field, Input, PageHeader, Select, Table, Tabs, Td, Th, Toggle } from '@/components/ui/primitives'
 import { Notice } from '@/features/projects/NewProjectWizard'
 
@@ -29,9 +32,19 @@ export function AdminPage() {
 
 function Tenants() {
   const { t, i18n } = useTranslation()
+  const [tenants, setTenants] = useState<Tenant[]>(seedTenants)
+  const [open, setOpen] = useState(false)
   return (
     <Card>
-      <CardHeader title={t('admin.tenantsTitle')} action={<Button size="sm" variant="primary"><Plus size={14} /> {t('admin.newTenant')}</Button>} />
+      <TenantForm open={open} onClose={() => setOpen(false)} onSave={(x) => setTenants([...tenants, x])} />
+      <CardHeader
+        title={t('admin.tenantsTitle')}
+        action={
+          <Button size="sm" variant="primary" onClick={() => setOpen(true)}>
+            <Plus size={14} /> {t('admin.newTenant')}
+          </Button>
+        }
+      />
       <Table>
         <thead>
           <tr>
@@ -64,9 +77,18 @@ function Tenants() {
 
 function Users() {
   const { t } = useTranslation()
+  const [open, setOpen] = useState(false)
   return (
     <Card>
-      <CardHeader title={t('admin.usersTitle')} action={<Button size="sm" variant="primary"><Plus size={14} /> {t('admin.invite')}</Button>} />
+      <InviteForm open={open} onClose={() => setOpen(false)} />
+      <CardHeader
+        title={t('admin.usersTitle')}
+        action={
+          <Button size="sm" variant="primary" onClick={() => setOpen(true)}>
+            <Plus size={14} /> {t('admin.invite')}
+          </Button>
+        }
+      />
       <Table>
         <thead>
           <tr>
@@ -109,10 +131,27 @@ function Users() {
 function Roles() {
   const { t } = useTranslation()
   const shown = ['superAdmin', 'tenantAdmin', 'projectOwner', 'architect', 'analyst', 'businessReviewer', 'developer', 'auditor', 'finance']
+  const [open, setOpen] = useState(false)
+  // Editable copy of the matrix; changes are saved as a new version of the role bundles.
+  const [matrix, setMatrix] = useState(permissionMatrix.map((p) => ({ ...p, roles: [...p.roles] })))
+  const [dirty, setDirty] = useState(false)
+  const toggle = (permission: string, role: string) => {
+    setMatrix(matrix.map((p) => (p.permission !== permission ? p : { ...p, roles: p.roles.includes(role) ? p.roles.filter((r) => r !== role) : [...p.roles, role] })))
+    setDirty(true)
+  }
   return (
     <div className="space-y-6">
+      <RoleForm open={open} onClose={() => setOpen(false)} permissions={permissionMatrix.map((p) => p.permission)} />
       <Card>
-        <CardHeader title={t('admin.rolesTitle')} subtitle={t('admin.rolesHint')} action={<Button size="sm"><Plus size={14} /> {t('admin.newRole')}</Button>} />
+        <CardHeader
+          title={t('admin.rolesTitle')}
+          subtitle={t('admin.rolesHint')}
+          action={
+            <Button size="sm" onClick={() => setOpen(true)}>
+              <Plus size={14} /> {t('admin.newRole')}
+            </Button>
+          }
+        />
         <Table>
           <thead>
             <tr>
@@ -137,7 +176,20 @@ function Roles() {
         </Table>
       </Card>
       <Card>
-        <CardHeader title={t('admin.matrixTitle')} subtitle={t('admin.matrixHint')} />
+        <CardHeader
+          title={t('admin.matrixTitle')}
+          subtitle={t('admin.matrixHint')}
+          action={
+            <div className="flex gap-2">
+              <Button size="sm" variant="ghost" disabled={!dirty} onClick={() => { setMatrix(permissionMatrix.map((p) => ({ ...p, roles: [...p.roles] }))); setDirty(false) }}>
+                {t('common.discard')}
+              </Button>
+              <Button size="sm" variant="primary" disabled={!dirty} onClick={() => { setDirty(false); toast(t('adminForms.matrixSaved')) }}>
+                {t('common.save')}
+              </Button>
+            </div>
+          }
+        />
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
@@ -151,12 +203,19 @@ function Roles() {
               </tr>
             </thead>
             <tbody>
-              {permissionMatrix.map((p) => (
+              {matrix.map((p) => (
                 <tr key={p.permission}>
                   <Td className="font-mono text-xs text-text">{p.permission}</Td>
                   {shown.map((r) => (
-                    <Td key={r} className="text-center">
-                      {p.roles.includes(r) ? <Check size={14} className="mx-auto text-good" aria-label={t('common.yes')} /> : <span className="text-muted" aria-label={t('common.no')}>·</span>}
+                    <Td key={r} className="p-0 text-center">
+                      <button
+                        onClick={() => toggle(p.permission, r)}
+                        aria-pressed={p.roles.includes(r)}
+                        aria-label={`${p.permission} · ${t(`roles.${r}`)}`}
+                        className="flex h-10 w-full items-center justify-center hover:bg-surface-2"
+                      >
+                        {p.roles.includes(r) ? <Check size={14} className="text-good" /> : <span className="text-muted">·</span>}
+                      </button>
                     </Td>
                   ))}
                 </tr>
@@ -179,14 +238,13 @@ function Authentication() {
   const [breached, setBreached] = useState(true)
   const [mfaAll, setMfaAll] = useState(true)
   const [methods, setMethods] = useState({ totp: true, passkey: true, recovery: true, sms: false })
-  const [jit, setJit] = useState(true)
-  const [scim, setScim] = useState(false)
+  const [idpOpen, setIdpOpen] = useState(false)
 
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center gap-3">
         <Select className="max-w-xs" defaultValue="t1" aria-label={t('admin.tenant')}>
-          {tenants.map((x) => (
+          {seedTenants.map((x) => (
             <option key={x.id} value={x.id}>
               {x.name}
             </option>
@@ -215,7 +273,13 @@ function Authentication() {
       </Card>
 
       <Card>
-        <CardHeader title={t('admin.auth.providers')} subtitle={t('admin.auth.providersHint')} action={<Button size="sm" variant="primary" disabled={!sso}><Plus size={14} /> {t('admin.auth.addProvider')}</Button>} />
+        <CardHeader title={t('admin.auth.providers')} subtitle={t('admin.auth.providersHint')} action={
+            <Button size="sm" variant="primary" disabled={!sso} onClick={() => setIdpOpen(true)}>
+              <Plus size={14} /> {t('admin.auth.addProvider')}
+            </Button>
+          }
+        />
+        <IdentityProviderForm open={idpOpen} onClose={() => setIdpOpen(false)} />
         <Table>
           <thead>
             <tr>
@@ -240,30 +304,6 @@ function Authentication() {
             ))}
           </tbody>
         </Table>
-        <CardBody className="grid gap-4 border-t border-border md:grid-cols-2">
-          <Field label={t('admin.auth.protocol')}>
-            <Select defaultValue="oidc">
-              <option value="oidc">OpenID Connect</option>
-              <option value="saml">SAML 2.0</option>
-            </Select>
-          </Field>
-          <Field label={t('admin.auth.issuer')} hint={t('admin.auth.issuerHint')}>
-            <Input placeholder="https://login.microsoftonline.com/<tenant>/v2.0" />
-          </Field>
-          <Field label={t('admin.auth.clientId')}>
-            <Input placeholder="00000000-0000-0000-0000-000000000000" />
-          </Field>
-          <Field label={t('admin.auth.clientSecret')} hint={t('admin.auth.secretHint')}>
-            <Input type="password" placeholder="••••••••" />
-          </Field>
-          <Field label={t('admin.auth.groupMapping')} hint={t('admin.auth.groupMappingHint')}>
-            <Input placeholder="SG-Modernization-Architects → architect" />
-          </Field>
-          <div className="space-y-3 pt-6">
-            <Toggle checked={jit} onChange={setJit} label={t('admin.auth.jit')} />
-            <Toggle checked={scim} onChange={setScim} label={t('admin.auth.scim')} />
-          </div>
-        </CardBody>
       </Card>
 
       <div className="grid gap-6 lg:grid-cols-2">
@@ -331,7 +371,7 @@ function Authentication() {
         </Card>
       </div>
       <div className="flex justify-end">
-        <Button variant="primary">
+        <Button variant="primary" onClick={() => toast(t('adminForms.authSaved'))}>
           <ShieldCheck size={16} /> {t('admin.auth.save')}
         </Button>
       </div>

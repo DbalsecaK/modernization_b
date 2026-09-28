@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { Link, Outlet, useNavigate } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
 import {
-  Bell,
   BookOpen,
   Bot,
   Building2,
@@ -14,7 +13,6 @@ import {
   LogOut,
   Menu,
   Moon,
-  Search,
   Server,
   Settings2,
   Sun,
@@ -27,6 +25,8 @@ import { setTheme, useTheme } from '@/lib/theme'
 import { setLanguage } from '@/i18n'
 import { currentUser, tasks, tenants } from '@/mocks/data'
 import { Avatar } from '@/components/ui/primitives'
+import { Toaster } from '@/components/ui/overlay'
+import { GlobalSearch, NotificationsMenu } from './TopbarWidgets'
 
 const nav = [
   { to: '/', key: 'dashboard', Icon: LayoutDashboard },
@@ -189,22 +189,12 @@ export function AppShell() {
               ))}
             </select>
           </div>
-          <div className="relative hidden max-w-md flex-1 sm:block">
-            <Search size={16} className="absolute top-1/2 left-3 -translate-y-1/2 text-muted" />
-            <input
-              className="h-9 w-full rounded-md border border-border bg-surface-2 pr-3 pl-9 text-sm text-text placeholder:text-muted focus:outline-none"
-              placeholder={t('topbar.searchPlaceholder')}
-              aria-label={t('topbar.search')}
-            />
-          </div>
+          <GlobalSearch />
           <div className="ml-auto flex items-center gap-2">
             <span className="hidden rounded-full border border-warning/50 px-2 py-0.5 text-xs text-warning-ink xl:inline">{t('app.sampleData')}</span>
             <LanguageSwitcher />
             <ThemeToggle />
-            <button className="relative rounded-md p-2 text-muted hover:bg-surface-2 hover:text-text" aria-label={t('topbar.notifications')}>
-              <Bell size={18} />
-              <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-critical" />
-            </button>
+            <NotificationsMenu />
             <UserMenu />
           </div>
         </header>
@@ -213,6 +203,7 @@ export function AppShell() {
             <Outlet />
           </div>
         </main>
+        <Toaster />
       </div>
     </div>
   )

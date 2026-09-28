@@ -4,9 +4,11 @@ import { ArrowRight, FileArchive, FileText, GitBranch, Image, PenTool, Upload } 
 import { cn } from '@/lib/cn'
 import { formatCompact, formatDateTime, formatUsd } from '@/lib/format'
 import type { Project } from '@/mocks/types'
+import { graphEdges, graphNodes, type GraphNode, type GraphNodeType, type MigrationState } from '@/mocks/data'
 import { Badge, Button, Card, CardBody, CardHeader, Progress, StatTile, Table, Td, Th } from '@/components/ui/primitives'
 import { PhaseStatusIcon } from '@/components/ui/status'
 import type { ProjectTab } from '../ProjectWorkspace'
+import { AddInputForm } from '../InputForms'
 
 export function OverviewTab({ project, onOpen }: { project: Project; onOpen: (tab: ProjectTab) => void }) {
   const { t } = useTranslation()
@@ -115,13 +117,15 @@ const kindIcon = { git: GitBranch, zip: FileArchive, doc: FileText, figma: PenTo
 
 export function InputsTab({ project }: { project: Project }) {
   const { t } = useTranslation()
+  const [open, setOpen] = useState(false)
   return (
     <Card>
+      <AddInputForm open={open} onClose={() => setOpen(false)} flow={project.flow} />
       <CardHeader
         title={t('inputs.title')}
         subtitle={t('inputs.subtitle')}
         action={
-          <Button size="sm" variant="primary">
+          <Button size="sm" variant="primary" onClick={() => setOpen(true)}>
             <Upload size={14} /> {t('inputs.add')}
           </Button>
         }
@@ -164,107 +168,255 @@ export function InputsTab({ project }: { project: Project }) {
   )
 }
 
-// Small, fixed layout of the legacy graph. The real view renders the Neo4j graph (Cytoscape/Sigma).
-const graphNodes = [
-  { id: 'CAUP', label: 'CAUP (txn)', type: 'transaction', domain: 0, x: 80, y: 60 },
-  { id: 'CCUP', label: 'CCUP (txn)', type: 'transaction', domain: 1, x: 80, y: 200 },
-  { id: 'CAVW', label: 'CAVW (txn)', type: 'transaction', domain: 2, x: 80, y: 330 },
-  { id: 'COACTUPC', label: 'COACTUPC', type: 'program', domain: 0, x: 280, y: 60 },
-  { id: 'COCRDUPC', label: 'COCRDUPC', type: 'program', domain: 1, x: 280, y: 200 },
-  { id: 'COACTVWC', label: 'COACTVWC', type: 'program', domain: 2, x: 280, y: 330 },
-  { id: 'COACTUP', label: 'COACTUP (map)', type: 'map', domain: 0, x: 480, y: 30 },
-  { id: 'COCRDUP', label: 'COCRDUP (map)', type: 'map', domain: 1, x: 480, y: 170 },
-  { id: 'CVACT01Y', label: 'CVACT01Y (copybook)', type: 'copybook', domain: 0, x: 480, y: 110 },
-  { id: 'ACCTDAT', label: 'ACCTDAT (VSAM)', type: 'file', domain: 0, x: 680, y: 150 },
-  { id: 'CARDDAT', label: 'CARDDAT (VSAM)', type: 'file', domain: 1, x: 680, y: 260 },
-]
-const graphEdges: [string, string, string][] = [
-  ['CAUP', 'COACTUPC', 'STARTS'],
-  ['CCUP', 'COCRDUPC', 'STARTS'],
-  ['CAVW', 'COACTVWC', 'STARTS'],
-  ['COACTUPC', 'COACTUP', 'USES_MAP'],
-  ['COACTUPC', 'CVACT01Y', 'COPIES'],
-  ['COCRDUPC', 'COCRDUP', 'USES_MAP'],
-  ['COACTUPC', 'ACCTDAT', 'WRITES'],
-  ['COCRDUPC', 'CARDDAT', 'WRITES'],
-  ['COCRDUPC', 'ACCTDAT', 'READS'],
-  ['COACTVWC', 'ACCTDAT', 'READS'],
-  ['COACTVWC', 'CARDDAT', 'READS'],
-]
-const domainNames = ['Accounts', 'Cards', 'Account view']
-const domainColor = ['var(--series-1)', 'var(--series-2)', 'var(--series-3)']
+// Interactive sample of the knowledge graph (spec section 5). Layered layout: entry points → programs →
+// maps and copybooks → data. The real view renders Neo4j results with Cytoscape or Sigma.
+const COLUMNS: Record<GraphNodeType, number> = { transaction: 0, job: 0, program: 1, map: 2, copybook: 2, file: 3 }
+const domainColor: Record<GraphNode['domain'], string> = { Accounts: 'var(--series-1)', Cards: 'var(--series-2)', Authorizations: 'var(--series-3)' }
+const stateColor: Record<MigrationState, string> = { verified: 'var(--good)', generated: 'var(--info)', inProgress: 'var(--warning)', pending: 'var(--text-muted)' }
+const TYPES: GraphNodeType[] = ['transaction', 'job', 'program', 'map', 'copybook', 'file']
 
-export function InventoryTab() {
+function layout(nodes: GraphNode[]) {
+  const byCol: Record<number, GraphNode[]> = {}
+  nodes.forEach((n) => (byCol[COLUMNS[n.type]] ??= []).push(n))
+  const pos: Record<string, { x: number; y: number }> = {}
+  Object.entries(byCol).forEach(([col, list]) => {
+    list.forEach((n, i) => {
+      pos[n.id] = { x: 80 + Number(col) * 190, y: 40 + i * 58 }
+    })
+  })
+  return pos
+}
+
+export function InventoryTab({ onCompare }: { onCompare: (ruleId: string) => void }) {
   const { t } = useTranslation()
-  const [hover, setHover] = useState<string | null>(null)
-  const node = graphNodes.find((n) => n.id === hover)
-  const pos = (id: string) => graphNodes.find((n) => n.id === id)!
+  const [types, setTypes] = useState<GraphNodeType[]>(TYPES)
+  const [domain, setDomain] = useState<'all' | GraphNode['domain']>('all')
+  const [colorBy, setColorBy] = useState<'domain' | 'state'>('domain')
+  const [selected, setSelected] = useState<string | null>('COACTUPC')
+  const [impact, setImpact] = useState<string[]>([])
+
+  const nodes = graphNodes.filter((n) => types.includes(n.type) && (domain === 'all' || n.domain === domain))
+  const ids = new Set(nodes.map((n) => n.id))
+  const edges = graphEdges.filter((e) => ids.has(e.from) && ids.has(e.to))
+  const pos = layout(nodes)
+  const height = Math.max(...Object.values(pos).map((p) => p.y), 0) + 50
+  const node = graphNodes.find((n) => n.id === selected)
+  const uses = graphEdges.filter((e) => e.from === selected)
+  const usedBy = graphEdges.filter((e) => e.to === selected)
+  const color = (n: GraphNode) => (colorBy === 'domain' ? domainColor[n.domain] : stateColor[n.state])
+
+  // Everything that (transitively) depends on the node: what could break if it changes.
+  function impactOf(id: string) {
+    const out = new Set<string>()
+    const walk = (x: string) =>
+      graphEdges.filter((e) => e.to === x).forEach((e) => {
+        if (!out.has(e.from)) {
+          out.add(e.from)
+          walk(e.from)
+        }
+      })
+    walk(id)
+    return [...out]
+  }
+
+  const counts = TYPES.map((ty) => [ty, graphNodes.filter((n) => n.type === ty).length] as const)
 
   return (
     <div className="space-y-6">
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-        {[
-          ['programs', 44],
-          ['copybooks', 62],
-          ['maps', 21],
-          ['transactions', 19],
-          ['files', 14],
-        ].map(([k, v]) => (
-          <StatTile key={k} label={t(`inventory.${k}`)} value={v} />
+      <div className="grid gap-4 sm:grid-cols-3 xl:grid-cols-6">
+        {counts.map(([k, v]) => (
+          <StatTile key={k} label={t(`inventory.typesPlural.${k}`)} value={v} />
         ))}
       </div>
-      <Card>
-        <CardHeader title={t('inventory.map')} subtitle={t('inventory.mapHint')} />
-        <CardBody>
-          <div className="mb-3 flex flex-wrap gap-4 text-xs text-text-2" aria-label={t('inventory.legend')}>
-            {domainNames.map((d, i) => (
-              <span key={d} className="inline-flex items-center gap-1.5">
-                <span className="h-2.5 w-2.5 rounded-full" style={{ background: domainColor[i] }} /> {d}
-              </span>
-            ))}
-          </div>
-          <div className="relative overflow-x-auto">
-            <svg viewBox="0 0 800 380" className="min-w-[640px]" role="img" aria-label={t('inventory.map')}>
-              {graphEdges.map(([a, b, label]) => {
-                const from = pos(a)
-                const to = pos(b)
-                const active = hover === a || hover === b
-                return (
-                  <g key={a + b}>
-                    <line x1={from.x + 60} y1={from.y} x2={to.x - 60} y2={to.y} stroke={active ? 'var(--text-2)' : 'var(--axis)'} strokeWidth={active ? 2 : 1} />
-                    {active && (
-                      <text x={(from.x + to.x) / 2} y={(from.y + to.y) / 2 - 6} fontSize={10} textAnchor="middle" fill="var(--text-muted)">
-                        {label}
-                      </text>
-                    )}
-                  </g>
-                )
-              })}
-              {graphNodes.map((n) => (
-                <g key={n.id} onMouseEnter={() => setHover(n.id)} onMouseLeave={() => setHover(null)} className="cursor-pointer">
-                  <rect x={n.x - 60} y={n.y - 16} width={120} height={32} rx={n.type === 'transaction' ? 16 : 6} fill="var(--surface)" stroke={domainColor[n.domain]} strokeWidth={hover === n.id ? 3 : 2} />
-                  <text x={n.x} y={n.y} dominantBaseline="middle" textAnchor="middle" fontSize={11} fill="var(--text)">
-                    {n.label}
-                  </text>
-                </g>
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,3fr)_minmax(0,1fr)]">
+        <Card>
+          <CardHeader title={t('inventory.map')} subtitle={t('inventory.mapHint')} />
+          <CardBody className="space-y-3">
+            <div className="flex flex-wrap items-center gap-2">
+              {TYPES.map((ty) => (
+                <button
+                  key={ty}
+                  onClick={() => setTypes(types.includes(ty) ? types.filter((x) => x !== ty) : [...types, ty])}
+                  aria-pressed={types.includes(ty)}
+                  className={cn('rounded-full border px-2.5 py-1 text-xs', types.includes(ty) ? 'border-series-1 bg-series-1/10 text-text' : 'border-border text-muted')}
+                >
+                  {t(`inventory.types.${ty}`)}
+                </button>
               ))}
-            </svg>
-          </div>
-          <p className="mt-3 min-h-5 text-sm text-text-2">
-            {node ? t('inventory.nodeDetail', { name: node.id, type: t(`inventory.types.${node.type}`), domain: domainNames[node.domain] }) : t('inventory.hoverHint')}
-          </p>
-        </CardBody>
-      </Card>
-      <Card>
-        <CardHeader title={t('inventory.impact')} subtitle={t('inventory.impactHint')} />
-        <CardBody className="flex flex-wrap gap-2">
-          {['impactCopybook', 'impactDomain', 'impactOrder', 'impactOrphans'].map((q) => (
-            <Button key={q} size="sm">
-              {t(`inventory.${q}`)}
-            </Button>
+              <select className="ml-auto h-8 rounded-md border border-border bg-surface px-2 text-xs text-text" value={domain} onChange={(e) => setDomain(e.target.value as typeof domain)} aria-label={t('inventory.domain')}>
+                <option value="all">{t('inventory.allDomains')}</option>
+                {Object.keys(domainColor).map((d) => (
+                  <option key={d}>{d}</option>
+                ))}
+              </select>
+              <div className="flex rounded-md border border-border p-0.5 text-xs" role="group" aria-label={t('inventory.colorBy')}>
+                {(['domain', 'state'] as const).map((c) => (
+                  <button key={c} onClick={() => setColorBy(c)} aria-pressed={colorBy === c} className={cn('rounded px-2 py-1', colorBy === c ? 'bg-brand text-brand-contrast' : 'text-muted')}>
+                    {t(`inventory.colorModes.${c}`)}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-4 text-xs text-text-2" aria-label={t('inventory.legend')}>
+              {colorBy === 'domain'
+                ? Object.entries(domainColor).map(([d, c]) => (
+                    <span key={d} className="inline-flex items-center gap-1.5">
+                      <span className="h-2.5 w-2.5 rounded-full" style={{ background: c }} /> {d}
+                    </span>
+                  ))
+                : (Object.keys(stateColor) as MigrationState[]).map((st) => (
+                    <span key={st} className="inline-flex items-center gap-1.5">
+                      <span className="h-2.5 w-2.5 rounded-full" style={{ background: stateColor[st] }} /> {t(`inventory.states.${st}`)}
+                    </span>
+                  ))}
+              {impact.length > 0 && (
+                <button className="ml-auto text-info hover:underline" onClick={() => setImpact([])}>
+                  {t('inventory.clearImpact')}
+                </button>
+              )}
+            </div>
+            <div className="overflow-x-auto rounded-md border border-border bg-surface-2/40">
+              <svg width={740} height={height} className="block" role="img" aria-label={t('inventory.map')}>
+                {edges.map((e) => {
+                  const a = pos[e.from]
+                  const b = pos[e.to]
+                  const active = selected === e.from || selected === e.to
+                  return (
+                    <g key={e.from + e.to}>
+                      <path
+                        d={`M${a.x + 70},${a.y} C${a.x + 140},${a.y} ${b.x - 140},${b.y} ${b.x - 70},${b.y}`}
+                        fill="none"
+                        stroke={active ? 'var(--text-2)' : 'var(--axis)'}
+                        strokeWidth={active ? 2 : 1}
+                      />
+                      {active && (
+                        <text x={(a.x + b.x) / 2} y={(a.y + b.y) / 2 - 6} fontSize={10} textAnchor="middle" fill="var(--text-muted)">
+                          {e.kind}
+                        </text>
+                      )}
+                    </g>
+                  )
+                })}
+                {nodes.map((n) => {
+                  const p = pos[n.id]
+                  const isSel = selected === n.id
+                  const inImpact = impact.includes(n.id)
+                  return (
+                    <g
+                      key={n.id}
+                      className="cursor-pointer"
+                      onClick={() => setSelected(n.id)}
+                      role="button"
+                      tabIndex={0}
+                      aria-label={`${n.id} · ${t(`inventory.types.${n.type}`)}`}
+                      onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && setSelected(n.id)}
+                    >
+                      <rect
+                        x={p.x - 70}
+                        y={p.y - 18}
+                        width={140}
+                        height={36}
+                        rx={n.type === 'transaction' || n.type === 'job' ? 18 : 6}
+                        fill={inImpact ? 'color-mix(in srgb, var(--critical) 12%, var(--surface))' : 'var(--surface)'}
+                        stroke={inImpact ? 'var(--critical)' : color(n)}
+                        strokeWidth={isSel ? 3.5 : 2}
+                      />
+                      <text x={p.x} y={p.y - 3} textAnchor="middle" fontSize={11} fontWeight={600} fill="var(--text)">
+                        {n.id}
+                      </text>
+                      <text x={p.x} y={p.y + 11} textAnchor="middle" fontSize={9} fill="var(--text-muted)">
+                        {t(`inventory.types.${n.type}`)}
+                      </text>
+                    </g>
+                  )
+                })}
+              </svg>
+            </div>
+          </CardBody>
+        </Card>
+
+        <Card>
+          {node ? (
+            <>
+              <CardHeader title={node.id} subtitle={`${t(`inventory.types.${node.type}`)} · ${node.domain}`} />
+              <CardBody className="space-y-4 text-sm">
+                <dl className="grid grid-cols-2 gap-3">
+                  <div>
+                    <dt className="text-xs text-muted">{t('inventory.migrationState')}</dt>
+                    <dd className="flex items-center gap-1.5 text-text">
+                      <span className="h-2 w-2 rounded-full" style={{ background: stateColor[node.state] }} />
+                      {t(`inventory.states.${node.state}`)}
+                    </dd>
+                  </div>
+                  {node.loc && (
+                    <div>
+                      <dt className="text-xs text-muted">{t('inventory.loc')}</dt>
+                      <dd className="text-text tabular">{node.loc.toLocaleString()}</dd>
+                    </div>
+                  )}
+                  <div className="col-span-2">
+                    <dt className="text-xs text-muted">{t('inventory.target')}</dt>
+                    <dd className="font-mono text-xs text-text">{node.target ?? '—'}</dd>
+                  </div>
+                </dl>
+                <Relation title={t('inventory.uses')} items={uses.map((e) => ({ id: e.to, kind: e.kind }))} onSelect={setSelected} />
+                <Relation title={t('inventory.usedBy')} items={usedBy.map((e) => ({ id: e.from, kind: e.kind }))} onSelect={setSelected} />
+                <div>
+                  <div className="mb-1 text-xs font-medium text-muted uppercase">{t('inventory.rules')}</div>
+                  {node.rules.length === 0 ? (
+                    <p className="text-xs text-muted">—</p>
+                  ) : (
+                    <div className="flex flex-wrap gap-1.5">
+                      {node.rules.map((r) => (
+                        <button key={r} onClick={() => onCompare(r)} className="rounded-md border border-border px-2 py-0.5 font-mono text-xs text-info hover:bg-surface-2">
+                          {r}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <div className="flex flex-col gap-2 border-t border-border pt-4">
+                  <Button size="sm" onClick={() => setImpact(impactOf(node.id))}>
+                    {t('inventory.showImpact')}
+                  </Button>
+                  {impact.length > 0 && <p className="text-xs text-critical-ink">{t('inventory.impactResult', { count: impact.length, items: impact.join(', ') })}</p>}
+                  {node.rules[0] && (
+                    <Button size="sm" variant="primary" onClick={() => onCompare(node.rules[0])}>
+                      {t('inventory.openCompare')}
+                    </Button>
+                  )}
+                </div>
+              </CardBody>
+            </>
+          ) : (
+            <CardBody>
+              <p className="text-sm text-muted">{t('inventory.hoverHint')}</p>
+            </CardBody>
+          )}
+        </Card>
+      </div>
+    </div>
+  )
+}
+
+function Relation({ title, items, onSelect }: { title: string; items: { id: string; kind: string }[]; onSelect: (id: string) => void }) {
+  return (
+    <div>
+      <div className="mb-1 text-xs font-medium text-muted uppercase">{title}</div>
+      {items.length === 0 ? (
+        <p className="text-xs text-muted">—</p>
+      ) : (
+        <ul className="space-y-1">
+          {items.map((i) => (
+            <li key={i.id + i.kind}>
+              <button onClick={() => onSelect(i.id)} className="flex w-full items-center justify-between rounded px-1.5 py-0.5 text-left hover:bg-surface-2">
+                <span className="font-mono text-xs text-text">{i.id}</span>
+                <span className="text-[10px] text-muted">{i.kind}</span>
+              </button>
+            </li>
           ))}
-        </CardBody>
-      </Card>
+        </ul>
+      )}
     </div>
   )
 }

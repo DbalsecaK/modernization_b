@@ -506,12 +506,45 @@ Ejemplos de reglas que el asesor de arquitectura aplica y registra como ADR:
 - Todo lo que compila o ejecuta código corre en el **sandbox** (sección 15.5).
 - Eventos de progreso publicados en tiempo real (SSE/WebSocket) hacia la web.
 
-### 10.4 Autonomía
+### 10.4 Autonomía y human in the loop (decisión D-21)
 
-- Los agentes son autónomos **dentro de una fase**.
-- Entre fases hay **compuertas humanas** configurables por plantilla de pipeline (p. ej. "estándar banco"
-  exige C1–C4; "interno ágil" puede omitir C2).
-- Toda ejecución tiene presupuesto de tokens/costo, límite de iteraciones y timeout.
+Principio: **la persona interviene donde aporta, no en cada fase.** Aprobar todo cansa y termina en
+aprobaciones sin leer. Hay tres mecanismos:
+
+| Mecanismo | Cuándo interviene la persona |
+|---|---|
+| **Compuertas** (C1–C4) | En cuatro momentos: spec, UI, arquitectura y sign-off. La plantilla del proyecto decide cuáles son obligatorias. |
+| **Preguntas** | Cuando un agente tiene confianza baja, encuentra una contradicción, dos jueces no coinciden, falta información o agotó sus reintentos de autocorrección. |
+| **Revisión por excepción** | Solo lo riesgoso: reglas P0, confianza baja y una muestra aleatoria configurable (10% por defecto) del resto. |
+
+**Niveles de autonomía por proyecto:**
+
+- **Guiado:** todas las compuertas y todas las reglas P0 pasan por una persona (recomendado para el primer
+  proyecto con un cliente).
+- **Balanceado (por defecto):** C1–C4, preguntas y revisión por excepción.
+- **Autónomo:** solo C1 y C4 más las preguntas escaladas.
+
+**Formato de una pregunta (tarjeta de decisión):**
+
+- Pregunta, contexto y **evidencia** (líneas de código, documento, caso de prueba, regla).
+- Motivo (confianza baja, contradicción, jueces en desacuerdo, falta información) e **impacto** (alto/bajo).
+- **Combobox con la respuesta recomendada preseleccionada**, su justificación y nivel de confianza, más las
+  alternativas y la opción **"Otra respuesta…"** para que la persona escriba la suya.
+- Qué elementos afecta (reglas, pantallas, contratos, tests).
+- Comentario opcional para el equipo o el auditor.
+- **"Aceptar las recomendaciones de bajo impacto"** en bloque; las de impacto alto siempre requieren respuesta
+  individual.
+
+**Comportamiento:**
+
+- Mientras una pregunta espera, los agentes **siguen con todo lo que no depende de ella** (el grafo conoce las
+  dependencias); la plataforma no se detiene entera.
+- Cada respuesta queda como **decisión trazable** en la spec (quién, cuándo, qué opción, si fue la recomendada)
+  y reanuda solo los elementos afectados.
+- Las preguntas se responden desde el proyecto (Especificación → Preguntas) o desde **Mis tareas**, donde se
+  reúnen las de todos los proyectos.
+
+**Límites de ejecución:** toda ejecución tiene presupuesto de tokens/costo, límite de iteraciones y timeout.
 
 ### 10.5 Integración con el Claude Agent SDK (opcional)
 
@@ -925,12 +958,12 @@ de permisos de administrador. Toda configuración es versionada y auditable.
 |---|---|
 | Resumen | Pipeline visual, próximos pasos, riesgos, veredicto, costo |
 | Insumos | Código, repos, documentos, Figma, capturas, con versiones |
-| Inventario / Mapa | Grafo del legacy coloreado por dominio o estado; consultas de impacto |
-| Especificación | Reglas, tablas de decisión, pantallas, contratos, dominio, preguntas abiertas |
+| Inventario / Mapa | **Grafo interactivo** del legacy: filtros por tipo y dominio, color por dominio o por estado de migración, panel de detalle del nodo (usa / lo usan, reglas, destino), **análisis de impacto** y acceso directo a la comparación |
+| Especificación | Subvistas: reglas, pantallas (campos, validaciones, acciones, estados), contratos y **preguntas** (tarjetas de decisión, sección 10.4) |
 | Diseño UI | Design system, prototipos navegables con comentarios, legacy ↔ prototipo |
 | Arquitectura | Bounded contexts, OpenAPI, ADR, fitness functions |
 | Código | Navegador de archivos, descarga o push según permisos |
-| Trazabilidad | Visor **Legacy \| Regla \| Destino**, navegable en ambos sentidos (a detallar) |
+| Origen ↔ destino | Comparación por regla o por programa: **código legacy y código destino lado a lado** con las líneas relacionadas resaltadas, la regla con su estado de verificación y el **comportamiento legacy vs nuevo** (golden master e inputs frescos, con las diferencias marcadas) |
 | Validación | Tests, golden master con diffs, inputs frescos, canario, veredicto, sign-off |
 | Ejecuciones | Historial y **vista en vivo de los agentes** (fase, subagentes, verificaciones, autocorrecciones) |
 | Costos | Consumo por fase, agente, modelo vs presupuesto |
@@ -943,7 +976,7 @@ de permisos de administrador. Toda configuración es versionada y auditable.
   recuperación de contraseña y activación de invitación (sección 15.1).
 - **Cuenta y seguridad:** perfil, idioma, contraseña, MFA/passkeys y sesiones activas.
 
-- **Mis tareas / Aprobaciones:** bandeja transversal (specs, prototipos, preguntas, escalamientos, sign-offs).
+- **Mis tareas:** dos vistas: **Preguntas para mí** (tarjetas de decisión de todos los proyectos, respondibles ahí mismo) y **Aprobaciones y revisiones** (compuertas, prototipos, sign-offs).
 - **Consumo y costos:** consolidado, economía unitaria, presupuestos, proyecciones, exportación.
 - **Configuración IA:** conexiones, catálogo, perfiles, matriz por defecto, precios, políticas, prompts,
   evaluaciones por modelo.
@@ -1000,6 +1033,10 @@ nativo con cambio a español y tema claro/oscuro.
 - La sesión es simulada (`src/lib/session.ts`); en el sistema real la emite el BFF en una cookie `httpOnly`.
 - La recomendación de agentes y skills y las reglas de compatibilidad son deterministas
   (`src/lib/recommend.ts`) y deben migrar al backend manteniendo el mismo comportamiento.
+- Incluye los formularios de alta y edición (agentes, skills, conexiones IA, perfiles, precios, clientes,
+  invitaciones, roles y matriz de permisos, proveedores de identidad, insumos), el buscador global, las
+  notificaciones, el detalle de cada invocación de agente, el grafo interactivo, la comparación
+  origen ↔ destino y las tarjetas de decisión del human in the loop.
 - Cómo correrlo: ver `apps/web/README.md`.
 
 ---
@@ -1274,6 +1311,7 @@ Sybase SP (M4) → BMS (M5) → CICS (M6) → ASPX (M8).
 | D-08 | Soporte de todos los modelos de despliegue por diseño |
 | D-09 | Multi-proveedor de modelos con gateway único y libro de consumo propio |
 | D-10 | Agentes y skills seleccionables con recomendación determinista |
+| D-21 | Human in the loop por compuertas, preguntas con respuesta recomendada y revisión por excepción; tres niveles de autonomía por proyecto (sección 10.4) |
 | D-19 | Autenticación con **Keycloak** (IdP + broker SSO, Organizations por tenant, tema Keycloakify); la plataforma no guarda credenciales; OpenFGA autoriza |
 | D-18 | Producto nativamente en inglés (UI, prompts, skills, catálogo); español como traducción completa; idioma de artefactos configurable por proyecto (inglés por defecto) |
 

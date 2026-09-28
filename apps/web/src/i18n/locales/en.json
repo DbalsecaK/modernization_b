@@ -21,7 +21,9 @@
     "save": "Save changes",
     "search": "Search",
     "viewAll": "View all",
-    "yes": "Yes"
+    "yes": "Yes",
+    "cancel": "Cancel",
+    "discard": "Discard changes"
   },
   "nav": {
     "main": "Main navigation",
@@ -44,7 +46,12 @@
     "language": "Language",
     "notifications": "Notifications",
     "switchTheme": "Switch to {{theme}} theme",
-    "theme": { "light": "light", "dark": "dark" }
+    "theme": {
+      "light": "light",
+      "dark": "dark"
+    },
+    "notificationsCount_one": "Notifications ({{count}} unread)",
+    "notificationsCount_other": "Notifications ({{count}} unread)"
   },
   "auth": {
     "heroTitle": "Modernize legacy systems and build new features with verified AI agents.",
@@ -125,7 +132,11 @@
   "account": {
     "title": "Account & security",
     "description": "Your profile, language, sign-in methods and active sessions.",
-    "tabs": { "profile": "Profile", "security": "Security", "sessions": "Sessions" },
+    "tabs": {
+      "profile": "Profile",
+      "security": "Security",
+      "sessions": "Sessions"
+    },
     "profile": "Profile",
     "name": "Name",
     "email": "Email",
@@ -157,7 +168,11 @@
     "title": "Dashboard",
     "description": "Progress, verification and spend across your projects.",
     "perspective": "Dashboard perspective",
-    "perspectives": { "executive": "Executive", "delivery": "Delivery", "admin": "Administrator" },
+    "perspectives": {
+      "executive": "Executive",
+      "delivery": "Delivery",
+      "admin": "Administrator"
+    },
     "activeProjects": "Active projects",
     "ofTotal": "of {{total}} projects",
     "rulesVerified": "Rules verified",
@@ -271,7 +286,7 @@
       "uiDesign": "UI design",
       "architecture": "Architecture",
       "code": "Code",
-      "traceability": "Traceability",
+      "traceability": "Source ↔ target",
       "validation": "Validation",
       "runs": "Runs",
       "costs": "Costs",
@@ -306,7 +321,10 @@
     "version": "Version",
     "added": "Added",
     "status": "Status",
-    "statuses": { "scanned": "Scanned", "quarantined": "In quarantine" },
+    "statuses": {
+      "scanned": "Scanned",
+      "quarantined": "In quarantine"
+    },
     "securityNote": "Uploaded files are untrusted: they are checked for malware, path traversal and zip bombs, and credentials are masked before any model sees them."
   },
   "inventory": {
@@ -320,13 +338,52 @@
     "legend": "Domains",
     "hoverHint": "Hover a node to see its relationships.",
     "nodeDetail": "{{name}} · {{type}} · domain {{domain}}",
-    "types": { "transaction": "transaction", "program": "program", "map": "BMS map", "copybook": "copybook", "file": "file" },
+    "types": {
+      "transaction": "transaction",
+      "program": "program",
+      "map": "BMS map",
+      "copybook": "copybook",
+      "file": "file",
+      "job": "batch job"
+    },
     "impact": "Graph questions",
     "impactHint": "Answered directly from the knowledge graph.",
     "impactCopybook": "What breaks if I change CVACT01Y?",
     "impactDomain": "Which programs form the Accounts domain?",
     "impactOrder": "What can we migrate first?",
-    "impactOrphans": "Business paragraphs without a rule"
+    "impactOrphans": "Business paragraphs without a rule",
+    "typesPlural": {
+      "transaction": "Transactions",
+      "job": "Batch jobs",
+      "program": "Programs",
+      "map": "BMS maps",
+      "copybook": "Copybooks",
+      "file": "Files and tables"
+    },
+    "domain": "Domain",
+    "allDomains": "All domains",
+    "colorBy": "Color by",
+    "colorModes": {
+      "domain": "Domain",
+      "state": "Migration state"
+    },
+    "states": {
+      "verified": "Verified",
+      "generated": "Generated",
+      "inProgress": "In progress",
+      "pending": "Pending"
+    },
+    "clearImpact": "Clear impact",
+    "migrationState": "Migration state",
+    "loc": "Lines of code",
+    "target": "Target",
+    "uses": "Uses",
+    "usedBy": "Used by",
+    "rules": "Rules",
+    "showImpact": "Show impact",
+    "impactResult_one": "{{count}} item depends on it: {{items}}",
+    "impactResult_other": "{{count}} items depend on it: {{items}}",
+    "openCompare": "Compare source ↔ target"
   },
   "spec": {
     "filterStatus": "Filter by status",
@@ -340,7 +397,34 @@
     "smeQuestion": "Question for the SME",
     "approve": "Approve",
     "comment": "Comment",
-    "reject": "Request change"
+    "reject": "Request change",
+    "views": {
+      "rules": "Rules",
+      "screens": "Screens",
+      "contracts": "Contracts",
+      "questions": "Questions"
+    },
+    "screenSource": "Source: {{source}}",
+    "field": "Field",
+    "type": "Type",
+    "required": "Required",
+    "validationRule": "Validation",
+    "editable": "Editable",
+    "readOnly": "Read-only",
+    "editableYes": "Editable",
+    "actions": "Actions",
+    "states": "States",
+    "stateNames": {
+      "empty": "Empty",
+      "loading": "Loading",
+      "error": "Error",
+      "success": "Success"
+    },
+    "contractsTitle": "Contracts",
+    "contractsHint": "Operations that will become the OpenAPI, each linked to the rules it serves.",
+    "operation": "Operation",
+    "gateApproved": "Gate C1 approved. Design can start.",
+    "ruleApproved": "{{id}} approved."
   },
   "ruleStatus": {
     "approved": "Approved",
@@ -354,7 +438,11 @@
     "lifecycle": "Lifecycle",
     "policy": "Policy"
   },
-  "confidence": { "high": "high", "medium": "medium", "low": "low" },
+  "confidence": {
+    "high": "high",
+    "medium": "medium",
+    "low": "low"
+  },
   "testStatus": {
     "tested": "Tested (ran and passed)",
     "namedNotRun": "Named, not run yet",
@@ -372,7 +460,24 @@
     "designSystemHint": "Tokens and base components proposed for this customer",
     "comments": "Comments",
     "approve": "Approve UI (C2)",
-    "requestChanges": "Request changes"
+    "requestChanges": "Request changes",
+    "approved": "UI approved (gate C2).",
+    "figmaFrames": "Figma frames",
+    "missingFrame": "Missing frame",
+    "gaps_one": "{{count}} gap",
+    "gaps_other": "{{count}} gaps",
+    "gapsTitle": "Gaps and contradictions",
+    "gapsHint": "Detected by consolidating stories, Figma and the manual. Each one becomes a question.",
+    "gapKind": "Kind",
+    "gapWhere": "Where",
+    "gapDetail": "Detail",
+    "gapKinds": {
+      "missingValidation": "Missing validation",
+      "missingState": "Missing state",
+      "deadEnd": "Dead end",
+      "contradiction": "Contradiction",
+      "missingFrame": "Missing frame"
+    }
   },
   "architecture": {
     "contexts": "Bounded contexts",
@@ -381,7 +486,10 @@
     "services": "Services",
     "endpoints": "Endpoints",
     "adrs": "Architecture decisions",
-    "adrState": { "accepted": "Accepted", "proposed": "Proposed" },
+    "adrState": {
+      "accepted": "Accepted",
+      "proposed": "Proposed"
+    },
     "contract": "Contract (OpenAPI)",
     "fitness": "Fitness functions",
     "fitnessDomain": "The domain layer has no framework dependencies",
@@ -403,7 +511,24 @@
     "target": "Target",
     "citationVerified": "Legacy citation verified",
     "implementationVerified": "Implementation found in the target",
-    "testNotRun": "Test named but not run yet"
+    "testNotRun": "Test named but not run yet",
+    "by": {
+      "rule": "By rule",
+      "program": "By program"
+    },
+    "testPassed": "Test ran and passed",
+    "outputs": "Behavior: legacy vs new",
+    "outputsHint": "Golden master and fresh inputs for this rule, compared byte by byte.",
+    "case": "Case",
+    "input": "Input",
+    "legacyOutput": "Legacy output",
+    "newOutput": "New output",
+    "same": "Same",
+    "different": "Differs",
+    "allSame": "All cases match",
+    "differs_one": "{{count}} case differs",
+    "differs_other": "{{count}} cases differ",
+    "differenceNote": "A difference is a finding: fix the code, or a person records it as an approved difference. It is never hidden."
   },
   "validation": {
     "notYet": "Verification runs after generation. Nothing has been verified in this project yet.",
@@ -417,7 +542,12 @@
       "canary": "Canary",
       "source": "Source untouched"
     },
-    "state": { "pass": "Pass", "gap": "Gap", "fail": "Fail", "na": "Not applicable" },
+    "state": {
+      "pass": "Pass",
+      "gap": "Gap",
+      "fail": "Fail",
+      "na": "Not applicable"
+    },
     "doesNotProve": "What this does not prove",
     "limits": {
       "samples": "Behavior on inputs nobody tried: cases and fresh inputs are samples.",
@@ -432,7 +562,8 @@
     "comment": "Comment",
     "commentPlaceholder": "Optional",
     "sign": "Sign verification",
-    "signDisabled": "Sign-off is available when the verdict is PROVEN."
+    "signDisabled": "Sign-off is available when the verdict is PROVEN.",
+    "signed": "Verification signed."
   },
   "runs": {
     "currentRun": "Current run",
@@ -446,7 +577,21 @@
     "fanOutHint": "Rule extraction across modules",
     "live": "Live",
     "timeline": "Timeline",
-    "tokens": "{{value}} tokens"
+    "tokens": "{{value}} tokens",
+    "detail": {
+      "open": "View details",
+      "profile": "Model profile",
+      "model": "Model",
+      "iteration": "Iteration",
+      "duration": "Duration",
+      "tokens": "Tokens",
+      "cost": "Cost",
+      "prompt": "Input (summary)",
+      "response": "Output (summary)",
+      "verification": "Verification",
+      "traceNote": "Full prompts and responses are kept in the observability traces, with access controlled by role.",
+      "noDetail": "No detail recorded for this event."
+    }
   },
   "runEvent": {
     "started": "started",
@@ -620,8 +765,14 @@
     "evalScore": "{{score}}% on reference apps"
   },
   "templates": {
-    "bankStandard": { "name": "Bank standard", "body": "All four gates required: spec, UI, architecture and sign-off." },
-    "internalAgile": { "name": "Internal agile", "body": "Spec and sign-off required; UI and architecture reviewed asynchronously." }
+    "bankStandard": {
+      "name": "Bank standard",
+      "body": "All four gates required: spec, UI, architecture and sign-off."
+    },
+    "internalAgile": {
+      "name": "Internal agile",
+      "body": "Spec and sign-off required; UI and architecture reviewed asynchronously."
+    }
   },
   "tasks": {
     "title": "My tasks",
@@ -635,6 +786,10 @@
       "escalation": "Escalation",
       "signOff": "Sign-off",
       "approveArchitecture": "Approve architecture"
+    },
+    "tabs": {
+      "questions": "Questions for me",
+      "approvals": "Approvals & reviews"
     }
   },
   "usage": {
@@ -681,7 +836,12 @@
     "longContext": "Long context",
     "reasoning": "Reasoning"
   },
-  "effort": { "low": "Low", "medium": "Medium", "high": "High", "max": "Max" },
+  "effort": {
+    "low": "Low",
+    "medium": "Medium",
+    "high": "High",
+    "max": "Max"
+  },
   "ai": {
     "title": "AI configuration",
     "description": "Provider connections, model catalog, profiles with effort, per-phase assignment, pricing and policies.",
@@ -696,7 +856,11 @@
       "evaluations": "Evaluations"
     },
     "addConnection": "Add connection",
-    "connectionStatus": { "connected": "Connected", "error": "Error", "notConfigured": "Not configured" },
+    "connectionStatus": {
+      "connected": "Connected",
+      "error": "Error",
+      "notConfigured": "Not configured"
+    },
     "region": "Region",
     "models": "Models",
     "auth": "Authentication",
@@ -714,7 +878,11 @@
     "context": "Context",
     "capabilities": "Capabilities",
     "status": "Status",
-    "offeringStatus": { "available": "Available", "deprecated": "Deprecated", "disabled": "Disabled" },
+    "offeringStatus": {
+      "available": "Available",
+      "deprecated": "Deprecated",
+      "disabled": "Disabled"
+    },
     "profilesTitle": "Model profiles",
     "newProfile": "New profile",
     "profileHint": "An offering plus its parameters. Effort is normalized and translated to each provider's parameter.",
@@ -850,13 +1018,21 @@
     "mfaPending": "Pending",
     "lastSeen": "Last seen",
     "status": "Status",
-    "userStatus": { "active": "Active", "invited": "Invited", "disabled": "Disabled" },
+    "userStatus": {
+      "active": "Active",
+      "invited": "Invited",
+      "disabled": "Disabled"
+    },
     "rolesTitle": "Roles",
     "rolesHint": "Roles are configurable bundles of granular permissions.",
     "newRole": "New role",
     "role": "Role",
     "scope": "Scope",
-    "scopes": { "platform": "Platform", "tenant": "Customer", "project": "Project" },
+    "scopes": {
+      "platform": "Platform",
+      "tenant": "Customer",
+      "project": "Project"
+    },
     "members": "Members",
     "permissions": "Permissions",
     "matrixTitle": "Permission matrix",
@@ -947,7 +1123,13 @@
     "pool": "Pool",
     "jobs": "Jobs",
     "cpu": "CPU",
-    "status": { "busy": "Busy", "idle": "Idle", "offline": "Offline", "healthy": "Healthy", "updating": "Updating" },
+    "status": {
+      "busy": "Busy",
+      "idle": "Idle",
+      "offline": "Offline",
+      "healthy": "Healthy",
+      "updating": "Updating"
+    },
     "deployments": "Deployments",
     "deploymentsHint": "Instances and the platform version each one runs.",
     "instance": "Instance",
@@ -957,5 +1139,258 @@
     "title": "Page not found",
     "body": "The page you are looking for does not exist or you do not have access to it.",
     "home": "Go to the dashboard"
+  },
+  "search": {
+    "noResults": "No results for \"{{query}}\"",
+    "kinds": {
+      "project": "Project",
+      "rule": "Rule",
+      "agent": "Agent",
+      "skill": "Skill"
+    }
+  },
+  "notifications": {
+    "markAllRead": "Mark all as read",
+    "kinds": {
+      "gate": "Gate",
+      "escalation": "Escalation",
+      "budget": "Budget",
+      "verdict": "Verdict",
+      "connection": "Connection"
+    }
+  },
+  "tools": {
+    "readGraph": "Read graph",
+    "readCode": "Read legacy code",
+    "readInputs": "Read inputs",
+    "readWorkspace": "Read workspace",
+    "writeWorkspace": "Write workspace",
+    "sandbox": "Run in sandbox"
+  },
+  "catalogForms": {
+    "newAgentTitle": "New agent",
+    "newAgentHint": "Define the role, what it may do and its default model. It is evaluated on the reference apps before it can be used.",
+    "nameEn": "Name (English)",
+    "nameEs": "Name (Spanish)",
+    "optionalTranslation": "Optional. English is shown when missing.",
+    "descriptionEn": "Short description (English)",
+    "descriptionEs": "Short description (Spanish)",
+    "descriptionHint": "Shown on the agent card. Up to 200 characters.",
+    "phases": "Phases",
+    "capabilities": "Required model capabilities",
+    "capabilitiesHint": "Only compatible model profiles can be assigned.",
+    "tools": "Allowed tools",
+    "toolsHint": "Allow-list. Analysis agents should not write or execute.",
+    "writeWarning": "This agent can write files or run code. It will only do so inside the sandbox, without network access.",
+    "defaultProfile": "Default model profile",
+    "systemPrompt": "System prompt (English)",
+    "systemPromptHint": "Versioned. Every run records the version it used.",
+    "evaluationNotice": "New agents and skills start as experimental and are evaluated on the reference apps before being published.",
+    "submitForEvaluation": "Submit for evaluation",
+    "agentSubmitted": "Agent \"{{name}}\" submitted for evaluation.",
+    "newSkillTitle": "New skill",
+    "newSkillHint": "A package of knowledge (SKILL.md plus resources) that agents load when a task needs it.",
+    "skillName": "Skill name",
+    "skillDescriptionHint": "Agents always see this description; the full content loads only when needed.",
+    "tags": "Applies to technologies",
+    "tagsHint": "Comma-separated, e.g. COBOL CICS, Java Spring Boot. Use * for any.",
+    "conflicts": "Conflicts with",
+    "addConflict": "Add a conflicting skill…",
+    "package": "Skill package",
+    "packageHint": "SKILL.md or a .zip with SKILL.md and its resources.",
+    "choosePackage": "Choose a file",
+    "scope": "Visibility",
+    "scopeTenant": "This customer only",
+    "scopeGlobal": "All customers (NexTI)",
+    "skillSubmitted": "Skill \"{{name}}\" submitted for evaluation."
+  },
+  "aiForms": {
+    "editConnection": "Edit connection",
+    "connectionHint": "Credentials are written to the vault and never shown again. Prefer role-based access.",
+    "provider": "Provider",
+    "connectionName": "Connection name",
+    "secretHint": "Stored in the vault.",
+    "fields": {
+      "endpoint": "Endpoint",
+      "tenantId": "Entra tenant ID",
+      "clientId": "Client ID",
+      "clientSecret": "Client secret",
+      "roleArn": "IAM role ARN",
+      "externalId": "External ID",
+      "apiKey": "API key",
+      "organization": "Organization ID",
+      "projectId": "Project ID",
+      "serviceAccount": "Service account key"
+    },
+    "bedrockHint": "The platform assumes this role in the customer's account. Only the models enabled in that region will be discovered.",
+    "foundryHint": "Models are used through the deployments created in the Foundry resource; the platform reads them after the test.",
+    "testOk_one": "Connection works. {{count}} model found.",
+    "testOk_other": "Connection works. {{count}} models found.",
+    "discovered": "Models to add to the catalog",
+    "discoveredHint": "Versions are pinned. You can add more later with \"Sync\".",
+    "connectionSaved": "Connection \"{{name}}\" saved.",
+    "priceHint": "A new price version applies from its date forward; past costs keep the price they were calculated with.",
+    "cacheWritePrice": "Cache write / 1M tokens",
+    "batchDiscount": "Batch discount applies",
+    "priceSaved": "Price version saved.",
+    "untitledProfile": "New profile",
+    "profileName": "Profile name",
+    "profileSaved": "Profile \"{{name}}\" saved.",
+    "policiesSaved": "Policies saved."
+  },
+  "adminForms": {
+    "tenantHint": "Creates the customer, its Keycloak organization and its first administrator.",
+    "tenantName": "Customer name",
+    "dataRegion": "Data region",
+    "deploymentHint": {
+      "sharedSaas": "Runs on the NexTI shared platform, isolated by customer.",
+      "dedicatedSaas": "A dedicated instance operated by NexTI.",
+      "customerCloud": "The data plane runs in the customer's cloud account.",
+      "onPrem": "Runs in the customer's data center, without internet access."
+    },
+    "firstAdmin": "First administrator",
+    "firstAdminHint": "Receives an invitation to activate the account and configure MFA.",
+    "emailDomain": "Email domain",
+    "initialAuth": "Initial sign-in method",
+    "authBoth": "SSO and platform accounts",
+    "tenantProvisioning": "The customer gets its own encryption key, storage prefix and graph database.",
+    "createTenant": "Create customer",
+    "tenantCreated": "Customer \"{{name}}\" created. Invitation sent to the administrator.",
+    "inviteHint": "Invited people receive an email to activate their account.",
+    "emails": "Email addresses",
+    "emailsHint": "Separate with commas or spaces.",
+    "invalidEmails": "Invalid addresses: {{emails}}",
+    "tenantRoles": "Customer roles",
+    "tenantRolesHint": "Optional. Most people only need project roles.",
+    "projects": "Projects",
+    "projectRole": "Role in the selected projects",
+    "inviteFlow": "If the email domain uses SSO, the person signs in with their identity provider; otherwise they set a password and MFA.",
+    "sendInvites_one": "Send {{count}} invitation",
+    "sendInvites_other": "Send {{count}} invitations",
+    "invitesSent_one": "{{count}} invitation sent.",
+    "invitesSent_other": "{{count}} invitations sent.",
+    "roleName": "Role name",
+    "startFrom": "Start from",
+    "blankRole": "Blank role",
+    "createRole": "Create role",
+    "roleCreated": "Role \"{{name}}\" created.",
+    "matrixSaved": "Permission matrix saved as a new version.",
+    "idpHint": "Connect the customer's identity provider. Keycloak brokers the sign-in.",
+    "preset": "Provider",
+    "otherProvider": "Other (OIDC or SAML)",
+    "metadataUrl": "Metadata URL",
+    "entityId": "Entity ID",
+    "redirectUri": "Redirect URI to register in the provider",
+    "domainsHint": "Users with these email domains are routed to this provider.",
+    "enforceSso": "SSO only for these domains (disable password sign-in)",
+    "idpGroup": "Provider group",
+    "addMapping": "Add mapping",
+    "keycloakNote": "Saved through the Keycloak Admin API. The Keycloak console is never exposed to customers.",
+    "idpSaved": "Identity provider saved.",
+    "authSaved": "Authentication settings saved."
+  },
+  "inputForms": {
+    "hint": "Every input is validated and scanned before any agent reads it.",
+    "sources": {
+      "files": "Upload files",
+      "git": "Git repository",
+      "figma": "Figma",
+      "jira": "Jira"
+    },
+    "drop": "Drop files here or click to choose",
+    "acceptedCode": "Zip archives or source files. Up to 2 GB.",
+    "acceptedDocs": "PDF, Word, Excel, images. Up to 200 MB each.",
+    "repoUrl": "Repository URL",
+    "branch": "Branch or tag",
+    "credentials": "Access",
+    "credentialsHint": "Uses a configured integration; no credentials are typed here.",
+    "paths": "Paths to include",
+    "pathsHint": "Optional. Leave empty for the whole repository.",
+    "figmaLink": "Figma file link",
+    "figmaHint": "Read through the Figma API: frames, components, variables and prototype navigation.",
+    "figmaPages": "Pages to include",
+    "jiraConnection": "Jira connection",
+    "jql": "Query (JQL)",
+    "jqlHint": "Stories matching this query are synced and kept up to date.",
+    "start": "Start",
+    "checks": "Security checks",
+    "steps": {
+      "received": "Received",
+      "typeAndSize": "File types and size",
+      "archiveSafety": "Zip bombs, path traversal and links",
+      "malware": "Malware scan",
+      "secrets": "Credentials detected and masked",
+      "versioned": "Hashed and versioned"
+    },
+    "finished": "All checks passed. The input is ready for the agents.",
+    "done": "Done",
+    "added": "Input added and versioned."
+  },
+  "decisions": {
+    "risk": {
+      "high": "High impact",
+      "low": "Low impact"
+    },
+    "reason": {
+      "lowConfidence": "Low confidence",
+      "contradiction": "Contradiction",
+      "judgesDisagree": "Judges disagree",
+      "missingInfo": "Missing information"
+    },
+    "raisedBy": "Raised by {{agent}}",
+    "yourAnswer": "Your answer",
+    "recommendedPrefix": "Recommended",
+    "otherAnswer": "Other answer…",
+    "whyRecommended": "Why the platform recommends this",
+    "whyOption": "About this option",
+    "confidence": "Confidence: {{level}}",
+    "customLabel": "Your own answer",
+    "customHint": "Be specific: values, conditions and exceptions. It becomes part of the specification.",
+    "comment": "Comment (optional)",
+    "commentPlaceholder": "Context for the team or the auditor",
+    "impact": "Affects: {{items}}",
+    "submit": "Answer",
+    "recorded": "Answer recorded. Agents resume the affected items: {{items}}.",
+    "answeredBy": "Answered by {{name}}",
+    "filters": {
+      "open": "Open",
+      "answered": "Answered",
+      "all": "All"
+    },
+    "acceptLowRisk_one": "Accept {{count}} low-impact recommendation",
+    "acceptLowRisk_other": "Accept {{count}} low-impact recommendations",
+    "bulkHint": "High-impact questions always need an individual answer.",
+    "bulkAccepted_one": "{{count}} recommendation accepted.",
+    "bulkAccepted_other": "{{count}} recommendations accepted.",
+    "empty": "Nothing here. Agents keep working and will ask when they need you.",
+    "addComment": "+ Add a comment"
+  },
+  "hitl": {
+    "autonomyTitle": "Autonomy level",
+    "levels": {
+      "guided": {
+        "name": "Guided",
+        "body": "A person approves every gate and every P0 rule. Best for the first project with a customer."
+      },
+      "balanced": {
+        "name": "Balanced",
+        "body": "Gates C1–C4, questions and review by exception. Recommended."
+      },
+      "autonomous": {
+        "name": "Autonomous",
+        "body": "Only gates C1 and C4 plus escalated questions. For mature, low-risk work."
+      }
+    },
+    "whenTitle": "When people are involved",
+    "when": {
+      "gates": "Gates: {{gates}}.",
+      "questions": "Questions: when an agent has low confidence, finds a contradiction or two judges disagree. The platform always proposes an answer.",
+      "reviewAllP0": "Review: every P0 rule and every item with low confidence.",
+      "reviewException": "Review by exception: P0 rules, low confidence and a {{pct}}% random sample of the rest.",
+      "escalations": "Escalations: after {{max}} failed self-corrections, with the diagnosis."
+    },
+    "sampling": "Random review sample (%)",
+    "samplingHint": "Share of auto-approved items a person still reviews.",
+    "keepsWorking": "While a question waits, agents keep working on everything that does not depend on it."
   }
 }

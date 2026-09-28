@@ -1,4 +1,4 @@
-import { Link, useParams } from '@tanstack/react-router'
+import { Link, useNavigate, useParams } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
 import { ChevronLeft, Play } from 'lucide-react'
 import { useTab } from '@/lib/useTab'
@@ -31,6 +31,8 @@ export function ProjectWorkspace() {
   const { t } = useTranslation()
   const { projectId } = useParams({ strict: false }) as { projectId: string }
   const [tab, setTab] = useTab(TABS, 'overview')
+  const navigate = useNavigate()
+  const openCompare = (rule: string) => void navigate({ to: '.', search: { tab: 'traceability', rule } as never })
   const project = projects.find((p) => p.id === projectId)
 
   if (!project) {
@@ -69,7 +71,7 @@ export function ProjectWorkspace() {
       <Tabs tabs={visibleTabs.map((id) => ({ id, label: t(`project.tabs.${id}`) }))} value={tab} onChange={setTab} />
       {tab === 'overview' && <OverviewTab project={project} onOpen={setTab} />}
       {tab === 'inputs' && <InputsTab project={project} />}
-      {tab === 'inventory' && <InventoryTab />}
+      {tab === 'inventory' && <InventoryTab onCompare={openCompare} />}
       {tab === 'specification' && <SpecificationTab project={project} />}
       {tab === 'uiDesign' && <UiDesignTab project={project} />}
       {tab === 'architecture' && <ArchitectureTab project={project} />}

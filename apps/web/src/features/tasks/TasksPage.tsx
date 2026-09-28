@@ -6,7 +6,10 @@ import { cn } from '@/lib/cn'
 import { formatDate } from '@/lib/format'
 import { projects, tasks } from '@/mocks/data'
 import type { Task } from '@/mocks/types'
-import { Badge, Card, PageHeader } from '@/components/ui/primitives'
+import { Badge, Card, PageHeader, Tabs } from '@/components/ui/primitives'
+import { useTab } from '@/lib/useTab'
+import { DecisionList } from '@/features/decisions/DecisionCard'
+import { updateDecisions, useDecisions } from '@/features/decisions/store'
 
 const tabFor: Record<Task['kind'], string> = {
   approveSpec: 'specification',
@@ -17,15 +20,32 @@ const tabFor: Record<Task['kind'], string> = {
   approveArchitecture: 'architecture',
 }
 
+const TABS = ['questions', 'approvals'] as const
+
 export function TasksPage() {
   const { t } = useTranslation()
+  const [tab, setTab] = useTab(TABS, 'questions')
+  const decisions = useDecisions()
   const [filter, setFilter] = useState<'all' | Task['kind']>('all')
-  const kinds = Array.from(new Set(tasks.map((k) => k.kind)))
-  const list = tasks.filter((k) => filter === 'all' || k.kind === filter)
+  const approvals = tasks.filter((k) => k.kind !== 'answerQuestion' && k.kind !== 'escalation')
+  const kinds = Array.from(new Set(approvals.map((k) => k.kind)))
+  const list = approvals.filter((k) => filter === 'all' || k.kind === filter)
+  const openCount = decisions.filter((d) => d.status === 'open').length
 
   return (
     <>
       <PageHeader title={t('tasks.title')} description={t('tasks.description')} />
+      <Tabs
+        tabs={[
+          { id: 'questions', label: t('tasks.tabs.questions'), count: openCount },
+          { id: 'approvals', label: t('tasks.tabs.approvals'), count: approvals.length },
+        ]}
+        value={tab}
+        onChange={setTab}
+      />
+      {tab === 'questions' && <DecisionList decisions={decisions} onChange={updateDecisions} />}
+      {tab === 'approvals' && (
+      <>
       <div className="mb-4 flex flex-wrap gap-2">
         {(['all', ...kinds] as const).map((k) => (
           <button
@@ -63,6 +83,8 @@ export function TasksPage() {
           })}
         </ul>
       </Card>
+      </>
+      )}
     </>
   )
 }

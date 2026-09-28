@@ -3,8 +3,10 @@ import { useTranslation } from 'react-i18next'
 import { CheckCircle2, Loader2, Plus, RefreshCw, XCircle } from 'lucide-react'
 import { useTab } from '@/lib/useTab'
 import { formatDateTime, formatUsd } from '@/lib/format'
-import { agents, connections, offerings, profiles } from '@/mocks/data'
-import type { Effort } from '@/mocks/types'
+import { agents, connections as seedConnections, offerings, profiles as seedProfiles } from '@/mocks/data'
+import type { Effort, ModelProfile, ProviderConnection } from '@/mocks/types'
+import { toast } from '@/components/ui/overlay'
+import { ConnectionForm, PriceVersionForm } from './AiForms'
 import { Badge, Button, Card, CardBody, CardHeader, Field, Input, PageHeader, Select, Table, Tabs, Td, Th, Toggle } from '@/components/ui/primitives'
 import { agentName } from '@/features/catalog/AgentCard'
 import { Notice } from '@/features/projects/NewProjectWizard'
@@ -30,6 +32,10 @@ export function AiConfigPage() {
   )
 }
 
+// Shared across tabs so a connection added in one tab shows up in the others.
+let connections: ProviderConnection[] = seedConnections
+const profiles: ModelProfile[] = [...seedProfiles]
+
 function connectionName(id: string) {
   return connections.find((c) => c.id === id)?.name ?? id
 }
@@ -37,15 +43,23 @@ function connectionName(id: string) {
 function Connections() {
   const { t } = useTranslation()
   const [testing, setTesting] = useState<string | null>(null)
+  const [list, setList] = useState(connections)
+  const [form, setForm] = useState<{ open: boolean; initial?: ProviderConnection }>({ open: false })
+  const save = (c: ProviderConnection) => {
+    const next = list.some((x) => x.id === c.id) ? list.map((x) => (x.id === c.id ? c : x)) : [...list, c]
+    connections = next
+    setList(next)
+  }
   return (
     <div className="space-y-4">
+      <ConnectionForm key={form.initial?.id ?? 'new'} open={form.open} initial={form.initial} onClose={() => setForm({ open: false })} onSave={save} />
       <div className="flex justify-end">
-        <Button variant="primary">
+        <Button variant="primary" onClick={() => setForm({ open: true })}>
           <Plus size={16} /> {t('ai.addConnection')}
         </Button>
       </div>
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        {connections.map((c) => (
+        {list.map((c) => (
           <Card key={c.id}>
             <CardBody className="space-y-3">
               <div className="flex items-start justify-between gap-2">
@@ -87,7 +101,7 @@ function Connections() {
                 >
                   {testing === c.id ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />} {t('ai.testConnection')}
                 </Button>
-                <Button size="sm" variant="ghost">
+                <Button size="sm" variant="ghost" onClick={() => setForm({ open: true, initial: c.status === 'notConfigured' ? { ...c, status: 'notConfigured' } : c })}>
                   {c.status === 'notConfigured' ? t('ai.configure') : t('common.edit')}
                 </Button>
               </div>
@@ -163,8 +177,10 @@ const effortParam: Record<string, Record<Effort, string>> = {
 
 function Profiles() {
   const { t } = useTranslation()
+  const [list, setList] = useState(profiles)
   const [editing, setEditing] = useState(profiles[0].id)
-  const profile = profiles.find((p) => p.id === editing)!
+  const profile = list.find((p) => p.id === editing)!
+  const [profileName, setProfileName] = useState(profile.name)
   const [offeringId, setOfferingId] = useState(profile.offeringId)
   const [effort, setEffort] = useState<Effort>(profile.effort)
   const offering = offerings.find((o) => o.id === offeringId)!
@@ -172,15 +188,35 @@ function Profiles() {
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
       <Card>
-        <CardHeader title={t('ai.profilesTitle')} action={<Button size="sm"><Plus size={14} /> {t('ai.newProfile')}</Button>} />
+        <CardHeader
+          title={t('ai.profilesTitle')}
+          action={
+            <Button
+              size="sm"
+              onClick={() => {
+                const id = `profile-${list.length + 1}`
+                const created: ModelProfile = { id, name: t('aiForms.untitledProfile'), offeringId: offerings[0].id, effort: 'medium', providerParameter: 'effort = medium', maxOutputTokens: 16000 }
+                profiles.push(created)
+                setList([...profiles])
+                setEditing(id)
+                setOfferingId(created.offeringId)
+                setEffort(created.effort)
+                setProfileName(created.name)
+              }}
+            >
+              <Plus size={14} /> {t('ai.newProfile')}
+            </Button>
+          }
+        />
         <ul className="divide-y divide-border">
-          {profiles.map((p) => {
+          {list.map((p) => {
             const o = offerings.find((x) => x.id === p.offeringId)!
             return (
               <li key={p.id}>
                 <button
                   onClick={() => {
                     setEditing(p.id)
+                    setProfileName(p.name)
                     setOfferingId(p.offeringId)
                     setEffort(p.effort)
                   }}
@@ -200,8 +236,11 @@ function Profiles() {
         </ul>
       </Card>
       <Card>
-        <CardHeader title={profile.name} subtitle={t('ai.profileHint')} />
+        <CardHeader title={profileName} subtitle={t('ai.profileHint')} />
         <CardBody className="space-y-4">
+          <Field label={t('aiForms.profileName')}>
+            <Input value={profileName} onChange={(e) => setProfileName(e.target.value)} />
+          </Field>
           <Field label={t('ai.offering')}>
             <Select value={offeringId} onChange={(e) => setOfferingId(e.target.value)}>
               {offerings.map((o) => (
@@ -248,7 +287,18 @@ function Profiles() {
                 ))}
             </Select>
           </Field>
-          <Button variant="primary">{t('common.save')}</Button>
+          <Button
+            variant="primary"
+            onClick={() => {
+              const updated = { ...profile, name: profileName, offeringId, effort, providerParameter: effortParam[offering.family]?.[effort] ?? profile.providerParameter }
+              const i = profiles.findIndex((p) => p.id === profile.id)
+              profiles[i] = updated
+              setList([...profiles])
+              toast(t('aiForms.profileSaved', { name: profileName }))
+            }}
+          >
+            {t('common.save')}
+          </Button>
         </CardBody>
       </Card>
     </div>
@@ -304,9 +354,19 @@ function Assignment() {
 
 function Pricing() {
   const { t } = useTranslation()
+  const [open, setOpen] = useState(false)
   return (
     <Card>
-      <CardHeader title={t('ai.pricingTitle')} subtitle={t('ai.pricingHint')} action={<Button size="sm"><Plus size={14} /> {t('ai.newPriceVersion')}</Button>} />
+      <PriceVersionForm open={open} onClose={() => setOpen(false)} />
+      <CardHeader
+        title={t('ai.pricingTitle')}
+        subtitle={t('ai.pricingHint')}
+        action={
+          <Button size="sm" onClick={() => setOpen(true)}>
+            <Plus size={14} /> {t('ai.newPriceVersion')}
+          </Button>
+        }
+      />
       <Table>
         <thead>
           <tr>
@@ -370,6 +430,9 @@ function Policies() {
               <option value="90">{t('ai.retentionDays', { count: 90 })}</option>
             </Select>
           </Field>
+          <Button variant="primary" onClick={() => toast(t('aiForms.policiesSaved'))}>
+            {t('common.save')}
+          </Button>
         </CardBody>
       </Card>
     </div>
