@@ -8,6 +8,7 @@ import { Badge, Button, Card, CardBody, CardHeader, Code, Field, Input, Select }
 import { CheckboxGroup, Drawer, Textarea, toast } from '@/components/ui/overlay'
 import { Notice } from '../NewProjectWizard'
 import { validatePlan } from '@/lib/migrationPlan'
+import { splitScenarios, validateCriteria, type GherkinIssue } from '@/lib/gherkin'
 import { approveC1, can, discardStory, dismissSuggestion, mergeStories, nextStoryId, restoreStory, saveStory, splitStory, useStories } from './store'
 import { RoleSwitch } from './RoleSwitch'
 
@@ -49,8 +50,9 @@ export function UserStoriesView() {
   const untraced = live.filter((s) => !traced(s))
   const noCriteria = live.filter((s) => s.criteria.length === 0)
   const questions = live.filter((s) => s.status === 'question')
+  const invalid = live.filter((s) => validateCriteria(s.criteria).length > 0)
   const hardIssues = validatePlan(plan, live).filter((i) => i.kind === 'hard')
-  const blockers = questions.length + noCriteria.length + hardIssues.length
+  const blockers = questions.length + noCriteria.length + invalid.length + hardIssues.length
   const coverageGaps = uncovered.rules.length + uncovered.screens.length + uncovered.contracts.length
 
   const list = stories.filter(
@@ -94,7 +96,7 @@ export function UserStoriesView() {
         <Notice tone="info">{t('stories.afterC1')}</Notice>
       ) : (
         <Notice tone={blockers > 0 ? 'warning' : 'info'}>
-          {blockers > 0 ? t('stories.blockers', { questions: questions.length, criteria: noCriteria.length, plan: hardIssues.length }) : t('stories.readyToApprove')}
+          {blockers > 0 ? t('stories.blockers', { questions: questions.length, criteria: noCriteria.length, invalid: invalid.length, plan: hardIssues.length }) : t('stories.readyToApprove')}
         </Notice>
       )}
       {(coverageGaps > 0 || untraced.length > 0 || outOfScope.length > 0) && (
@@ -141,6 +143,7 @@ export function UserStoriesView() {
                           <span className="font-mono text-xs text-info">{s.id}</span>
                           {s.origin === 'user' && <UserRound size={12} className="text-muted" aria-label={t('stories.origin.user')} />}
                           {!traced(s) && active(s) && <AlertTriangle size={12} className="text-warning" aria-label={t('stories.untraced')} />}
+                          {active(s) && validateCriteria(s.criteria).length > 0 && <AlertTriangle size={12} className="text-critical" aria-label={t('gherkin.invalidStory')} />}
                           <Badge tone={storyStatusTone[s.status]} className="ml-auto">
                             {t(`stories.status.${s.status}`)}
                           </Badge>
@@ -184,11 +187,21 @@ export function UserStoriesView() {
                   <Notice tone="warning">{t('stories.noCriteria')}</Notice>
                 ) : (
                   <div className="space-y-2">
-                    {story.criteria.map((c, i) => (
-                      <Code key={i} className="whitespace-pre-wrap">
-                        {c}
-                      </Code>
-                    ))}
+                    {story.criteria.map((c, i) => {
+                      const issues = validateCriteria(story.criteria).filter((x) => x.scenario === i)
+                      return (
+                        <div key={i}>
+                          <Code className={cn('whitespace-pre-wrap', issues.length > 0 && 'ring-1 ring-critical')}>{c}</Code>
+                          {issues.length === 0 ? (
+                            <div className="mt-1 flex items-center gap-1 text-xs text-good-ink">
+                              <CheckCircle2 size={12} /> {t('gherkin.valid')}
+                            </div>
+                          ) : (
+                            <GherkinIssues issues={issues} />
+                          )}
+                        </div>
+                      )
+                    })}
                   </div>
                 )}
               </div>
@@ -359,6 +372,25 @@ function Gap({ label, items, tone = 'warning' }: { label: string; items: string[
   )
 }
 
+function GherkinIssues({ issues, numbered }: { issues: GherkinIssue[]; numbered?: boolean }) {
+  const { t } = useTranslation()
+  return (
+    <ul className="mt-1 space-y-0.5 text-xs text-critical-ink">
+      {issues.map((x, i) => (
+        <li key={i} className="flex items-start gap-1">
+          <AlertTriangle size={12} className="mt-0.5 shrink-0" />
+          <span>
+            {numbered && <b>{t('gherkin.scenario', { n: x.scenario + 1 })} · </b>}
+            {x.code === 'outOfOrder'
+              ? t('gherkin.issue.outOfOrder', { line: x.line, detail: t(`gherkin.step.${x.detail}`), after: t(`gherkin.step.${x.after}`) })
+              : t(`gherkin.issue.${x.code}`, { line: x.line, detail: x.detail })}
+          </span>
+        </li>
+      ))}
+    </ul>
+  )
+}
+
 function Links({ label, items }: { label: string; items: string[] }) {
   return (
     <div>
@@ -393,7 +425,9 @@ function StoryForm({ story, stories, onClose, onSaved }: { story: UserStory; sto
   const [draft, setDraft] = useState<UserStory>(story)
   const [criteria, setCriteria] = useState(story.criteria.join('\n\n'))
   const others = useMemo(() => stories.filter((s) => s.id !== story.id && active(s)), [stories, story.id])
-  const valid = draft.title.trim() && draft.asA.trim() && draft.iWant.trim()
+  const scenarios = splitScenarios(criteria)
+  const gherkin = validateCriteria(scenarios)
+  const valid = draft.title.trim() && draft.asA.trim() && draft.iWant.trim() && gherkin.length === 0
   const upd = (p: Partial<UserStory>) => setDraft({ ...draft, ...p })
   const hasDep = (id: string) => draft.dependsOn.find((d) => d.story === id)
 
@@ -413,7 +447,7 @@ function StoryForm({ story, stories, onClose, onSaved }: { story: UserStory; sto
             variant="primary"
             disabled={!valid}
             onClick={() => {
-              const saved = { ...draft, criteria: criteria.split(/\n\s*\n/).map((c) => c.trim()).filter(Boolean) }
+              const saved = { ...draft, criteria: scenarios }
               saveStory(isNew ? { ...saved, version: 0 } : saved, isNew ? t('stories.historyCreated') : t('stories.historyEdited'))
               toast(t('stories.saved'))
               onSaved(story.id)
@@ -467,7 +501,22 @@ function StoryForm({ story, stories, onClose, onSaved }: { story: UserStory; sto
         </div>
       </div>
       <Field label={t('stories.criteria')} hint={t('stories.criteriaHint')}>
-        <Textarea rows={7} value={criteria} onChange={(e) => setCriteria(e.target.value)} className="font-mono text-xs" placeholder={'Scenario: …\n  Given …\n  When …\n  Then …'} />
+        <Textarea
+          rows={7}
+          value={criteria}
+          onChange={(e) => setCriteria(e.target.value)}
+          className={cn('font-mono text-xs', gherkin.length > 0 && 'border-critical')}
+          placeholder={'Scenario: …\n  Given …\n  When …\n  Then …'}
+          aria-invalid={gherkin.length > 0}
+        />
+        {scenarios.length > 0 &&
+          (gherkin.length === 0 ? (
+            <div className="mt-1 flex items-center gap-1 text-xs text-good-ink">
+              <CheckCircle2 size={12} /> {t('gherkin.allValid', { count: scenarios.length })}
+            </div>
+          ) : (
+            <GherkinIssues issues={gherkin} numbered />
+          ))}
       </Field>
       <Field label={t('stories.rules')}>
         <CheckboxGroup options={rules.map((r) => ({ id: r.id, label: <span><span className="font-mono text-xs">{r.id}</span> {r.name}</span> }))} value={draft.rules} onChange={(v) => upd({ rules: v })} />

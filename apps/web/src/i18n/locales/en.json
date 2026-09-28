@@ -1670,7 +1670,7 @@
     "approveBlocked": "Resolve the blockers first",
     "approvedToast": "Stories and migration plan approved at C1. The backlog is created in Jira / Azure DevOps.",
     "afterC1": "Approved at C1. Any change now is a scope change: only the affected stories go back to review, the impact is recalculated on the graph and the change is synced to Jira / Azure DevOps.",
-    "blockers": "Before approving C1: {{questions}} with open questions, {{criteria}} without acceptance criteria, {{plan}} hard dependency problems in the plan.",
+    "blockers": "Before approving C1: {{questions}} with open questions, {{criteria}} without acceptance criteria, {{invalid}} with invalid Gherkin, {{plan}} hard dependency problems in the plan.",
     "readyToApprove": "These are the stories that will be built. Review, edit or add stories and approve them with the migration plan at C1 before the migration starts.",
     "coverage": "Coverage",
     "coverageHint": "Every rule, screen and contract must be in at least one story.",
@@ -1735,7 +1735,7 @@
     "saved": "Story saved",
     "title": "Title",
     "feature": "Feature",
-    "criteriaHint": "One Gherkin scenario per block, separated by a blank line.",
+    "criteriaHint": "One Gherkin scenario per block, separated by a blank line: Scenario, then Given, When and Then (And/But continue a step). English or Spanish keywords.",
     "dependsOnHint": "Hard: cannot be built before it. Soft: can go earlier with a temporary ACL or stub.",
     "depByUser": "Added by a person",
     "depKind": "Dependency type",
@@ -1803,5 +1803,33 @@
     "diffTitle": "Suggested vs yours",
     "diffHint": "Stories you moved from the suggested wave.",
     "sameAsSuggested": "The plan is the suggested one."
+  },
+  "gherkin": {
+    "valid": "Valid Gherkin",
+    "allValid_one": "{{count}} scenario, valid Gherkin",
+    "allValid_other": "{{count}} scenarios, all valid Gherkin",
+    "invalidStory": "Invalid acceptance criteria",
+    "scenario": "Scenario {{n}}",
+    "step": {
+      "given": "Given",
+      "when": "When",
+      "then": "Then"
+    },
+    "issue": {
+      "missingScenario": "Line {{line}}: must start with \"Scenario:\" (or \"Scenario Outline:\").",
+      "emptyName": "Line {{line}}: the scenario needs a name.",
+      "duplicateName": "Another scenario is already called \"{{detail}}\".",
+      "missingGiven": "Missing a Given step (the starting situation).",
+      "missingWhen": "Missing a When step (the action).",
+      "missingThen": "Missing a Then step (the expected result).",
+      "outOfOrder": "Line {{line}}: a {{detail}} step after a {{after}} step. One scenario tests one behavior: split it into two scenarios.",
+      "continuationFirst": "Line {{line}}: And/But cannot be the first step.",
+      "emptyStep": "Line {{line}}: the step has no text.",
+      "unknownLine": "Line {{line}}: \"{{detail}}\" is not a Gherkin step (Given, When, Then, And, But).",
+      "outlineWithoutExamples": "A Scenario Outline needs an Examples table.",
+      "examplesWithoutOutline": "Line {{line}}: Examples only go with a Scenario Outline.",
+      "unknownPlaceholder": "Line {{line}}: <{{detail}}> is not a column of the Examples table.",
+      "emptyExamples": "Line {{line}}: the Examples table has no rows."
+    }
   }
 }

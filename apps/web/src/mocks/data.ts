@@ -1231,6 +1231,8 @@ export const userStories: UserStory[] = [
     soThat: 'the billing policy is applied the same way as today',
     criteria: [
       'Scenario: Charge the late fee\n  Given a statement with minimum payment 80.00 due 2026-09-10\n  When no payment is received by 2026-09-10\n  Then a late fee of 25.00 is posted on 2026-09-11',
+      // Imported from a workshop note; it has no When step, so the Gherkin check flags it (spec 7.7).
+      'Scenario: No fee when the minimum is paid\n  Given a statement with minimum payment 80.00 paid on 2026-09-09\n  Then no late fee is posted',
     ],
     rules: ['RULE-004'],
     screens: [],

@@ -1670,7 +1670,7 @@
     "approveBlocked": "Resuelve primero los bloqueos",
     "approvedToast": "Historias y plan de migración aprobados en C1. El backlog se crea en Jira / Azure DevOps.",
     "afterC1": "Aprobado en C1. Cualquier cambio ahora es un cambio de alcance: solo las historias afectadas vuelven a revisión, se recalcula el impacto en el grafo y el cambio se sincroniza con Jira / Azure DevOps.",
-    "blockers": "Antes de aprobar C1: {{questions}} con preguntas abiertas, {{criteria}} sin criterios de aceptación, {{plan}} problemas de dependencias duras en el plan.",
+    "blockers": "Antes de aprobar C1: {{questions}} con preguntas abiertas, {{criteria}} sin criterios de aceptación, {{invalid}} con Gherkin inválido, {{plan}} problemas de dependencias duras en el plan.",
     "readyToApprove": "Estas son las historias que se van a construir. Revisa, edita o agrega historias y apruébalas con el plan de migración en C1 antes de iniciar la migración.",
     "coverage": "Cobertura",
     "coverageHint": "Toda regla, pantalla y contrato debe estar en al menos una historia.",
@@ -1735,7 +1735,7 @@
     "saved": "Historia guardada",
     "title": "Título",
     "feature": "Feature",
-    "criteriaHint": "Un escenario Gherkin por bloque, separados por una línea en blanco.",
+    "criteriaHint": "Un escenario Gherkin por bloque, separados por una línea en blanco: Scenario y luego Given, When y Then (And/But continúan un paso). Palabras clave en inglés o en español.",
     "dependsOnHint": "Dura: no se puede construir antes. Blanda: puede ir antes con una ACL o stub temporal.",
     "depByUser": "Agregada por una persona",
     "depKind": "Tipo de dependencia",
@@ -1803,5 +1803,33 @@
     "diffTitle": "Sugerido vs el tuyo",
     "diffHint": "Historias que moviste de la ola sugerida.",
     "sameAsSuggested": "El plan es el sugerido."
+  },
+  "gherkin": {
+    "valid": "Gherkin válido",
+    "allValid_one": "{{count}} escenario, Gherkin válido",
+    "allValid_other": "{{count}} escenarios, todos con Gherkin válido",
+    "invalidStory": "Criterios de aceptación inválidos",
+    "scenario": "Escenario {{n}}",
+    "step": {
+      "given": "Given (Dado)",
+      "when": "When (Cuando)",
+      "then": "Then (Entonces)"
+    },
+    "issue": {
+      "missingScenario": "Línea {{line}}: debe empezar con \"Scenario:\" o \"Escenario:\" (o un esquema del escenario).",
+      "emptyName": "Línea {{line}}: el escenario necesita un nombre.",
+      "duplicateName": "Ya hay otro escenario llamado \"{{detail}}\".",
+      "missingGiven": "Falta un paso Given / Dado (la situación inicial).",
+      "missingWhen": "Falta un paso When / Cuando (la acción).",
+      "missingThen": "Falta un paso Then / Entonces (el resultado esperado).",
+      "outOfOrder": "Línea {{line}}: un paso {{detail}} después de un paso {{after}}. Un escenario prueba un solo comportamiento: divídelo en dos escenarios.",
+      "continuationFirst": "Línea {{line}}: And/But (Y/Pero) no puede ser el primer paso.",
+      "emptyStep": "Línea {{line}}: el paso no tiene texto.",
+      "unknownLine": "Línea {{line}}: \"{{detail}}\" no es un paso Gherkin (Given, When, Then, And, But o Dado, Cuando, Entonces, Y, Pero).",
+      "outlineWithoutExamples": "Un esquema del escenario necesita una tabla de ejemplos.",
+      "examplesWithoutOutline": "Línea {{line}}: los ejemplos solo van con un esquema del escenario.",
+      "unknownPlaceholder": "Línea {{line}}: <{{detail}}> no es una columna de la tabla de ejemplos.",
+      "emptyExamples": "Línea {{line}}: la tabla de ejemplos no tiene filas."
+    }
   }
 }
