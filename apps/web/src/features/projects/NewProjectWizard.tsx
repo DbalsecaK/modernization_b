@@ -20,6 +20,7 @@ import { agents, profiles, skills, users } from '@/mocks/data'
 import type { AgentGroup, Flow, TargetStack } from '@/mocks/types'
 import { Badge, Button, Card, CardBody, Field, Input, PageHeader, Select, Toggle } from '@/components/ui/primitives'
 import { AgentCard, agentName } from '@/features/catalog/AgentCard'
+import { DocumentsSection, UiReferencesSection, WorkTrackingSection, type UiReferences, type WorkTracking } from './ProjectSetupSections'
 
 const STEPS = ['basics', 'source', 'target', 'agents', 'skills', 'models', 'pipeline', 'team', 'review'] as const
 type Step = (typeof STEPS)[number]
@@ -35,6 +36,9 @@ export function NewProjectWizard() {
   const [language, setLanguage] = useState<'en' | 'es'>('en')
   const [sources, setSources] = useState<string[]>(['COBOL CICS', 'BMS maps', 'DB2'])
   const [delivery, setDelivery] = useState<'zip' | 'git'>('git')
+  const [documents, setDocuments] = useState<string[]>([])
+  const [uiRefs, setUiRefs] = useState<UiReferences>({ documents: [], screens: [], figma: [], prototypes: [] })
+  const [tracking, setTracking] = useState<WorkTracking>({ integration: 'jira', project: '', autoCreate: true })
   const [target, setTarget] = useState<TargetStack>({
     architecture: 'Microservices (hexagonal)',
     backend: 'Java Spring Boot',
@@ -186,8 +190,10 @@ export function NewProjectWizard() {
                     <ChoiceCard selected={delivery === 'zip'} onClick={() => setDelivery('zip')} title={t('wizard.uploadZip')} body={t('wizard.uploadZipHint')} />
                   </div>
                 ) : (
-                  <div className="rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted">{t('wizard.dropInputs')}</div>
+                  <DocumentsSection value={documents} onChange={setDocuments} />
                 )}
+                <UiReferencesSection value={uiRefs} onChange={setUiRefs} />
+                <WorkTrackingSection value={tracking} onChange={setTracking} />
                 <Notice tone="info">{t('wizard.untrustedNotice')}</Notice>
               </>
             )}
@@ -470,6 +476,12 @@ export function NewProjectWizard() {
                   <Summary label={t('wizard.projectName')}>{name}</Summary>
                   <Summary label={t('wizard.flow')}>{t(`flows.${flow}`)}</Summary>
                   <Summary label={t('wizard.stepNames.source')}>{sources.join(', ')}</Summary>
+                  <Summary label={t('setup.uiTitle')}>
+                    {t('setup.summaryUi', { screens: uiRefs.screens.length, figma: uiRefs.figma.length, prototypes: uiRefs.prototypes.length })}
+                  </Summary>
+                  <Summary label={t('setup.trackingTitle')}>
+                    {tracking.integration === 'none' ? t('setup.noIntegration') : `${tracking.integration === 'jira' ? 'Jira' : 'Azure DevOps'} · ${tracking.project || '—'}`}
+                  </Summary>
                   <Summary label={t('wizard.stepNames.target')}>
                     {target.architecture} · {target.backend} · {target.frontend} · {target.database} · {target.cloud}
                   </Summary>

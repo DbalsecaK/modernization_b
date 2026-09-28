@@ -7,15 +7,18 @@ import { Button, Field, Input, Select, Tabs } from '@/components/ui/primitives'
 import { Drawer, Textarea, toast } from '@/components/ui/overlay'
 import { Notice } from './NewProjectWizard'
 
-type Source = 'files' | 'git' | 'figma' | 'jira'
+type Source = 'files' | 'git' | 'screens' | 'figma' | 'prototype' | 'jira'
 
 // Validation steps every input goes through before any agent reads it (spec 15.4).
 const STEPS = ['received', 'typeAndSize', 'archiveSafety', 'malware', 'secrets', 'versioned'] as const
 
-export function AddInputForm({ open, onClose, flow }: { open: boolean; onClose: () => void; flow: Flow }) {
+export function AddInputForm({ open, onClose, flow, initialSource }: { open: boolean; onClose: () => void; flow: Flow; initialSource?: Source }) {
   const { t } = useTranslation()
-  const sources: Source[] = flow === 'modernization' ? ['files', 'git'] : ['files', 'figma', 'jira']
-  const [source, setSource] = useState<Source>(sources[0])
+  const sources: Source[] = flow === 'modernization' ? ['files', 'git', 'screens', 'figma', 'prototype', 'jira'] : ['files', 'screens', 'figma', 'prototype', 'jira']
+  const [source, setSource] = useState<Source>(initialSource ?? sources[0])
+  const [shots, setShots] = useState<{ name: string; url: string }[]>([])
+  const [protoUrl, setProtoUrl] = useState('')
+  const [devops, setDevops] = useState<'jira' | 'azureDevOps'>('jira')
   const [files, setFiles] = useState<string[]>([])
   const [repo, setRepo] = useState('')
   const [branch, setBranch] = useState('main')
@@ -33,7 +36,9 @@ export function AddInputForm({ open, onClose, flow }: { open: boolean; onClose: 
   const ready =
     (source === 'files' && files.length > 0) ||
     (source === 'git' && /^https:\/\/\S+/.test(repo)) ||
-    (source === 'figma' && /figma\.com\/(file|design)\//.test(figma)) ||
+    (source === 'figma' && /figma\.com\/(file|design|proto)\//.test(figma)) ||
+    (source === 'screens' && shots.length > 0) ||
+    (source === 'prototype' && /^https:\/\/\S+/.test(protoUrl)) ||
     (source === 'jira' && jql.trim().length > 0)
   const finished = done >= STEPS.length
 
@@ -137,14 +142,58 @@ export function AddInputForm({ open, onClose, flow }: { open: boolean; onClose: 
         </div>
       )}
 
+      {source === 'screens' && (
+        <div>
+          <label className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-border px-6 py-8 text-center hover:bg-surface-2">
+            <Upload size={22} className="text-muted" />
+            <span className="text-sm text-text">{t('inputForms.dropScreens')}</span>
+            <span className="text-xs text-muted">{t('inputForms.screensHint')}</span>
+            <input
+              type="file"
+              accept="image/*"
+              multiple
+              className="sr-only"
+              onChange={(e) => setShots(Array.from(e.target.files ?? []).map((f) => ({ name: f.name, url: URL.createObjectURL(f) })))}
+            />
+          </label>
+          {shots.length > 0 && (
+            <div className="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-4">
+              {shots.map((s) => (
+                <figure key={s.url} className="overflow-hidden rounded-md border border-border">
+                  <img src={s.url} alt={s.name} className="aspect-video w-full object-cover" />
+                  <figcaption className="truncate px-1.5 py-1 text-[10px] text-muted">{s.name}</figcaption>
+                </figure>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {source === 'prototype' && (
+        <div className="space-y-4">
+          <Field label={t('inputForms.prototypeLink')} hint={t('inputForms.prototypeHint')}>
+            <Input value={protoUrl} onChange={(e) => setProtoUrl(e.target.value)} placeholder="https://www.figma.com/proto/… · https://prototype.example.com" />
+          </Field>
+          <Field label={t('inputForms.prototypeNotes')}>
+            <Textarea rows={3} placeholder={t('inputForms.prototypeNotesPlaceholder')} />
+          </Field>
+        </div>
+      )}
+
       {source === 'jira' && (
         <div className="space-y-4">
-          <Field label={t('inputForms.jiraConnection')}>
-            <Select defaultValue="jira">
-              <option value="jira">Jira — pacificcu.atlassian.net (integration)</option>
+          <Field label={t('inputForms.devopsProvider')}>
+            <Select value={devops} onChange={(e) => setDevops(e.target.value as typeof devops)}>
+              <option value="jira">Jira</option>
+              <option value="azureDevOps">Azure DevOps Boards</option>
             </Select>
           </Field>
-          <Field label={t('inputForms.jql')} hint={t('inputForms.jqlHint')}>
+          <Field label={t('inputForms.jiraConnection')}>
+            <Select defaultValue="default">
+              <option value="default">{devops === 'jira' ? 'Jira — andesbank.atlassian.net (integration)' : 'Azure DevOps — dev.azure.com/andesbank (integration)'}</option>
+            </Select>
+          </Field>
+          <Field label={devops === 'jira' ? t('inputForms.jql') : t('inputForms.wiql')} hint={t('inputForms.jqlHint')}>
             <Textarea value={jql} onChange={(e) => setJql(e.target.value)} className="min-h-16 font-mono text-xs" />
           </Field>
         </div>

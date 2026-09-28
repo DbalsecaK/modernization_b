@@ -291,7 +291,8 @@
       "runs": "Runs",
       "costs": "Costs",
       "activity": "Activity",
-      "settings": "Settings"
+      "settings": "Settings",
+      "backlog": "Backlog"
     }
   },
   "overview": {
@@ -478,6 +479,21 @@
       "deadEnd": "Dead end",
       "contradiction": "Contradiction",
       "missingFrame": "Missing frame"
+    },
+    "refs": {
+      "title": "Screens, Figma and prototypes",
+      "hint": "Everything the UI analyst and the UX/UI designer use for this project. Add more at any time.",
+      "addScreens": "Add screenshots",
+      "addFigma": "Add Figma link",
+      "addPrototype": "Add prototype link",
+      "fromInventory": "From the legacy inventory",
+      "uploaded": "Uploaded",
+      "kinds": {
+        "bms": "BMS maps",
+        "screens": "Screenshots",
+        "figma": "Figma",
+        "prototype": "Prototype"
+      }
     }
   },
   "architecture": {
@@ -621,7 +637,32 @@
     "time": "Time",
     "actor": "Actor",
     "action": "Action",
-    "target": "Target"
+    "target": "Target",
+    "panel": {
+      "title": "Agent activity",
+      "open": "Open agent activity",
+      "maximize": "Maximize",
+      "restore": "Restore size",
+      "minimize": "Minimize",
+      "summary": "{{running}} running · {{cost}}",
+      "latest": "Latest",
+      "elapsed": "Elapsed {{value}}",
+      "filters": {
+        "all": "All",
+        "running": "Running",
+        "failed": "Errors",
+        "waiting": "Waiting",
+        "succeeded": "Done"
+      },
+      "status": {
+        "running": "Running",
+        "succeeded": "Done",
+        "failed": "Error",
+        "waiting": "Waiting for a person"
+      },
+      "tokens": "{{value}} tokens",
+      "downloadJson": "Download full JSON"
+    }
   },
   "projectSettings": {
     "general": "General",
@@ -1296,7 +1337,9 @@
       "files": "Upload files",
       "git": "Git repository",
       "figma": "Figma",
-      "jira": "Jira"
+      "jira": "Jira / Azure DevOps",
+      "screens": "Screenshots",
+      "prototype": "Prototype link"
     },
     "drop": "Drop files here or click to choose",
     "acceptedCode": "Zip archives or source files. Up to 2 GB.",
@@ -1325,7 +1368,15 @@
     },
     "finished": "All checks passed. The input is ready for the agents.",
     "done": "Done",
-    "added": "Input added and versioned."
+    "added": "Input added and versioned.",
+    "dropScreens": "Drop screenshots or click to choose",
+    "screensHint": "PNG or JPG of current or target screens. They are read with vision and turned into screen specifications.",
+    "prototypeLink": "Prototype link",
+    "prototypeHint": "Clickable prototype (Figma prototype, InVision, any https URL). Navigation between screens is read when available.",
+    "prototypeNotes": "Notes for the analysts",
+    "prototypeNotesPlaceholder": "What to take from this prototype and what to ignore",
+    "devopsProvider": "Tool",
+    "wiql": "Query (WIQL)"
   },
   "decisions": {
     "risk": {
@@ -1466,5 +1517,131 @@
     },
     "dataStores": "Data stores",
     "system": "Card Management"
+  },
+  "protoChat": {
+    "title": "Ask for prototype changes",
+    "subtitle": "Chat with the UX/UI designer agent · {{screen}}",
+    "placeholder": "Describe the change, e.g. \"make the balance read-only\"",
+    "send": "Send",
+    "attach": "Attach a screenshot",
+    "attached": "Attached: {{name}}",
+    "working": "The UX/UI designer is updating the prototype…",
+    "newVersion": "New prototype version v{{version}}",
+    "reply": "Done: \"{{request}}\". The prototype was regenerated as v{{version}} with the approved design system. Review it and approve C2 when ready.",
+    "suggest": {
+      "fields": "Group related fields",
+      "mobile": "Make it work on mobile",
+      "errors": "Add the error states",
+      "brand": "Apply the customer's brand colors"
+    }
+  },
+  "setup": {
+    "documents": "Documents and user stories",
+    "uiTitle": "UI references (optional)",
+    "uiHint": "Screenshots, Figma files and clickable prototypes. Without them, the platform proposes a design system and prototypes.",
+    "screens": "Screenshots",
+    "figmaLinks": "Figma links",
+    "prototypeLinks": "Prototype links",
+    "add": "Add",
+    "invalidLink": "Enter a valid https link (for Figma: figma.com/design, /file or /proto).",
+    "noUiRefs": "No UI references yet. You can add them now or later from the UI design tab.",
+    "trackingTitle": "Work tracking (optional)",
+    "trackingHint": "Link a Jira or Azure DevOps project. The connection is configured once per customer in Administration → Integrations.",
+    "integration": "Integration",
+    "integrationHint": "Only integrations already connected for this customer appear here.",
+    "noIntegration": "No work tracking",
+    "jiraProject": "Jira project key",
+    "adoProject": "Azure DevOps project",
+    "autoCreate": "Create features, stories and tasks automatically when the spec is approved (C1)",
+    "summaryUi": "{{screens}} screenshots · {{figma}} Figma · {{prototypes}} prototypes"
+  },
+  "backlog": {
+    "types": {
+      "feature": "Features",
+      "story": "Stories",
+      "task": "Tasks",
+      "bug": "Bugs"
+    },
+    "openBugs": "Open bugs",
+    "openBugsHint": "Found by tester or validator agents",
+    "done": "Done",
+    "connection": "Connection",
+    "connectionHint": "Items are created and updated by the agents and kept in sync both ways.",
+    "provider": "Tool",
+    "site": "Jira site",
+    "organization": "Organization",
+    "project": "Project",
+    "lastSync": "Last sync",
+    "mapping": "Type mapping",
+    "mapTo": {
+      "jira": {
+        "feature": "Epic",
+        "story": "Story",
+        "task": "Sub-task",
+        "bug": "Bug"
+      },
+      "azureDevOps": {
+        "feature": "Feature",
+        "story": "User Story",
+        "task": "Task",
+        "bug": "Bug"
+      }
+    },
+    "syncNow": "Sync now",
+    "synced": "Backlog synced.",
+    "generate": "Generate backlog from the spec",
+    "generated": "The functional analyst created 3 features, 9 stories and 14 tasks.",
+    "automation": "Automation rules",
+    "automationHint": "What agents do in the tracker without being asked.",
+    "rules": {
+      "createFromSpec": {
+        "name": "Create the backlog from the approved spec",
+        "hint": "Features from bounded contexts, stories from capabilities and rules, tasks per layer."
+      },
+      "markDone": {
+        "name": "Mark items as done when their tests pass",
+        "hint": "Only with evidence: the tests that name the rule ran and passed."
+      },
+      "bugOnFailure": {
+        "name": "Open a bug when a test or an equivalence check fails",
+        "hint": "The tester or the validator attaches the failing test, the rule and the case."
+      },
+      "autoFix": {
+        "name": "Start the developer agent on new bugs",
+        "hint": "It proposes a fix within the self-correction limit."
+      },
+      "retestAndClose": {
+        "name": "Re-test and close fixed bugs",
+        "hint": "Closes after the re-run passes and the code reviewer approves (per the autonomy level)."
+      },
+      "syncComments": {
+        "name": "Sync comments both ways",
+        "hint": "Comments in Jira or Azure DevOps reach the agents as context."
+      }
+    },
+    "limitsNote": "Automations respect the project's autonomy level and stop after {{max}} failed fixes; then the bug is escalated to a person.",
+    "items": "Work items",
+    "itemsHint": "Hierarchy for {{project}}.",
+    "filterType": "Filter by type",
+    "allTypes": "All types",
+    "status": {
+      "todo": "To do",
+      "inProgress": "In progress",
+      "inReview": "In review",
+      "done": "Done",
+      "failed": "Failed"
+    },
+    "pendingSync": "Pending sync",
+    "viewLoop": "View fix loop",
+    "bugLoop": "Automatic fix loop · {{key}}",
+    "bugLoopHint": "Tester → bug → developer → re-test → review → close.",
+    "loopSteps": {
+      "detected": "detected a failure",
+      "bugCreated": "opened the bug",
+      "developerTriggered": "started the developer agent",
+      "fixProposed": "proposed a fix",
+      "retested": "re-ran the tests",
+      "waitingReview": "waiting for review"
+    }
   }
 }

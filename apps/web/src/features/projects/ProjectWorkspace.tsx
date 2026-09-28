@@ -8,6 +8,7 @@ import { Badge, Button, EmptyState, PageHeader, Tabs } from '@/components/ui/pri
 import { VerdictBadge } from '@/components/ui/status'
 import { InputsTab, InventoryTab, OverviewTab } from './tabs/OverviewTabs'
 import { ArchitectureTab, CodeTab, SpecificationTab, TraceabilityTab, UiDesignTab } from './tabs/SpecTabs'
+import { BacklogTab } from './tabs/BacklogTab'
 import { ActivityTab, CostsTab, RunsTab, SettingsTab, ValidationTab } from './tabs/QualityTabs'
 
 const TABS = [
@@ -20,6 +21,7 @@ const TABS = [
   'code',
   'traceability',
   'validation',
+  'backlog',
   'runs',
   'costs',
   'activity',
@@ -78,6 +80,7 @@ export function ProjectWorkspace() {
       {tab === 'code' && <CodeTab project={project} />}
       {tab === 'traceability' && <TraceabilityTab />}
       {tab === 'validation' && <ValidationTab project={project} />}
+      {tab === 'backlog' && <BacklogTab project={project} />}
       {tab === 'runs' && <RunsTab project={project} />}
       {tab === 'costs' && <CostsTab project={project} />}
       {tab === 'activity' && <ActivityTab project={project} />}

@@ -27,6 +27,7 @@ import { currentUser, tasks, tenants } from '@/mocks/data'
 import { Avatar } from '@/components/ui/primitives'
 import { Toaster } from '@/components/ui/overlay'
 import { GlobalSearch, NotificationsMenu } from './TopbarWidgets'
+import { AgentActivityPanel } from './AgentActivityPanel'
 
 const nav = [
   { to: '/', key: 'dashboard', Icon: LayoutDashboard },
@@ -198,12 +199,13 @@ export function AppShell() {
             <UserMenu />
           </div>
         </header>
-        <main className="flex-1 overflow-y-auto px-4 py-6 sm:px-6 lg:px-8">
+        <main className="flex-1 overflow-y-auto px-4 pt-6 pb-24 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-7xl">
             <Outlet />
           </div>
         </main>
         <Toaster />
+        <AgentActivityPanel />
       </div>
     </div>
   )

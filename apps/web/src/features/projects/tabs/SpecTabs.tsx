@@ -8,6 +8,8 @@ import type { Project, Rule } from '@/mocks/types'
 import { Badge, Button, Card, CardBody, CardHeader, Code, Select, Table, Td, Th } from '@/components/ui/primitives'
 import { Notice } from '../NewProjectWizard'
 import { toast } from '@/components/ui/overlay'
+import { AddInputForm } from '../InputForms'
+import { PrototypeChat } from '../PrototypeChat'
 import { DecisionList } from '@/features/decisions/DecisionCard'
 import { updateDecisions, useDecisions } from '@/features/decisions/store'
 
@@ -270,9 +272,49 @@ const bmsScreen = `  COACTUP                 Update Account                  09/
 export function UiDesignTab({ project }: { project: Project }) {
   const { t } = useTranslation()
   const isModernization = project.flow === 'modernization'
+  const [addSource, setAddSource] = useState<'screens' | 'figma' | 'prototype' | null>(null)
+  const references = isModernization
+    ? [
+        { kind: 'bms', name: 'COACTUP.bms, COCRDUP.bms', detail: t('uiDesign.refs.fromInventory') },
+        { kind: 'screens', name: 'current-3270-screens.png (4)', detail: t('uiDesign.refs.uploaded') },
+      ]
+    : [
+        { kind: 'figma', name: 'onboarding.fig · v14', detail: 'figma.com/design/AbC123' },
+        { kind: 'screens', name: 'current-onboarding-screens.png (6)', detail: t('uiDesign.refs.uploaded') },
+        { kind: 'prototype', name: 'Onboarding clickable prototype', detail: 'figma.com/proto/AbC123' },
+      ]
   return (
     <div className="space-y-6">
+      <AddInputForm key={addSource ?? 'none'} open={!!addSource} onClose={() => setAddSource(null)} flow={project.flow} initialSource={addSource ?? undefined} />
       <Notice tone="info">{t(isModernization ? 'uiDesign.fromBms' : 'uiDesign.fromFigma')}</Notice>
+      <Card>
+        <CardHeader
+          title={t('uiDesign.refs.title')}
+          subtitle={t('uiDesign.refs.hint')}
+          action={
+            <div className="flex flex-wrap gap-2">
+              <Button size="sm" onClick={() => setAddSource('screens')}>
+                {t('uiDesign.refs.addScreens')}
+              </Button>
+              <Button size="sm" onClick={() => setAddSource('figma')}>
+                {t('uiDesign.refs.addFigma')}
+              </Button>
+              <Button size="sm" onClick={() => setAddSource('prototype')}>
+                {t('uiDesign.refs.addPrototype')}
+              </Button>
+            </div>
+          }
+        />
+        <CardBody className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+          {references.map((r) => (
+            <div key={r.name} className="rounded-md border border-border p-3 text-sm">
+              <Badge>{t(`uiDesign.refs.kinds.${r.kind}`)}</Badge>
+              <div className="mt-1.5 truncate font-medium text-text">{r.name}</div>
+              <div className="truncate text-xs text-muted">{r.detail}</div>
+            </div>
+          ))}
+        </CardBody>
+      </Card>
       <div className="grid gap-6 xl:grid-cols-2">
         {isModernization ? (
           <Card>
@@ -381,6 +423,7 @@ export function UiDesignTab({ project }: { project: Project }) {
           </CardBody>
         </Card>
       </div>
+      <PrototypeChat screen={isModernization ? 'Update account (SCR-001)' : 'Personal data (SCR-102)'} />
     </div>
   )
 }

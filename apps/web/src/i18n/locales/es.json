@@ -291,7 +291,8 @@
       "runs": "Ejecuciones",
       "costs": "Costos",
       "activity": "Actividad",
-      "settings": "Configuración"
+      "settings": "Configuración",
+      "backlog": "Backlog"
     }
   },
   "overview": {
@@ -478,6 +479,21 @@
       "deadEnd": "Callejón sin salida",
       "contradiction": "Contradicción",
       "missingFrame": "Falta frame"
+    },
+    "refs": {
+      "title": "Pantallas, Figma y prototipos",
+      "hint": "Todo lo que usan el analista de UI y el diseñador UX/UI en este proyecto. Puedes agregar más en cualquier momento.",
+      "addScreens": "Agregar capturas",
+      "addFigma": "Agregar link de Figma",
+      "addPrototype": "Agregar link de prototipo",
+      "fromInventory": "Del inventario legacy",
+      "uploaded": "Subido",
+      "kinds": {
+        "bms": "Mapas BMS",
+        "screens": "Capturas",
+        "figma": "Figma",
+        "prototype": "Prototipo"
+      }
     }
   },
   "architecture": {
@@ -621,7 +637,32 @@
     "time": "Fecha",
     "actor": "Actor",
     "action": "Acción",
-    "target": "Objeto"
+    "target": "Objeto",
+    "panel": {
+      "title": "Actividad de agentes",
+      "open": "Abrir actividad de agentes",
+      "maximize": "Maximizar",
+      "restore": "Restaurar tamaño",
+      "minimize": "Minimizar",
+      "summary": "{{running}} en curso · {{cost}}",
+      "latest": "Lo último",
+      "elapsed": "Transcurrido {{value}}",
+      "filters": {
+        "all": "Todos",
+        "running": "En curso",
+        "failed": "Errores",
+        "waiting": "En espera",
+        "succeeded": "Terminados"
+      },
+      "status": {
+        "running": "En curso",
+        "succeeded": "Terminado",
+        "failed": "Error",
+        "waiting": "Esperando a una persona"
+      },
+      "tokens": "{{value}} tokens",
+      "downloadJson": "Descargar JSON completo"
+    }
   },
   "projectSettings": {
     "general": "General",
@@ -1296,7 +1337,9 @@
       "files": "Subir archivos",
       "git": "Repositorio Git",
       "figma": "Figma",
-      "jira": "Jira"
+      "jira": "Jira / Azure DevOps",
+      "screens": "Capturas de pantalla",
+      "prototype": "Link de prototipo"
     },
     "drop": "Suelta los archivos aquí o haz clic para elegir",
     "acceptedCode": "Archivos zip o fuentes. Hasta 2 GB.",
@@ -1325,7 +1368,15 @@
     },
     "finished": "Todos los controles pasaron. El insumo está listo para los agentes.",
     "done": "Listo",
-    "added": "Insumo agregado y versionado."
+    "added": "Insumo agregado y versionado.",
+    "dropScreens": "Suelta capturas o haz clic para elegir",
+    "screensHint": "PNG o JPG de pantallas actuales o deseadas. Se leen con visión y se convierten en especificaciones de pantalla.",
+    "prototypeLink": "Link del prototipo",
+    "prototypeHint": "Prototipo navegable (prototipo de Figma, InVision o cualquier URL https). Se lee la navegación entre pantallas cuando está disponible.",
+    "prototypeNotes": "Notas para los analistas",
+    "prototypeNotesPlaceholder": "Qué tomar de este prototipo y qué ignorar",
+    "devopsProvider": "Herramienta",
+    "wiql": "Consulta (WIQL)"
   },
   "decisions": {
     "risk": {
@@ -1466,5 +1517,131 @@
     },
     "dataStores": "Datos",
     "system": "Card Management"
+  },
+  "protoChat": {
+    "title": "Pedir cambios al prototipo",
+    "subtitle": "Chat con el agente diseñador UX/UI · {{screen}}",
+    "placeholder": "Describe el cambio, p. ej. \"deja el saldo solo de lectura\"",
+    "send": "Enviar",
+    "attach": "Adjuntar una captura",
+    "attached": "Adjunto: {{name}}",
+    "working": "El diseñador UX/UI está actualizando el prototipo…",
+    "newVersion": "Nueva versión del prototipo v{{version}}",
+    "reply": "Listo: \"{{request}}\". El prototipo se regeneró como v{{version}} con el design system aprobado. Revísalo y aprueba C2 cuando esté listo.",
+    "suggest": {
+      "fields": "Agrupar campos relacionados",
+      "mobile": "Hacerlo usable en móvil",
+      "errors": "Agregar los estados de error",
+      "brand": "Aplicar los colores de marca del cliente"
+    }
+  },
+  "setup": {
+    "documents": "Documentos e historias de usuario",
+    "uiTitle": "Referencias de UI (opcional)",
+    "uiHint": "Capturas de pantalla, archivos Figma y prototipos navegables. Sin ellos, la plataforma propone un design system y prototipos.",
+    "screens": "Capturas de pantalla",
+    "figmaLinks": "Links de Figma",
+    "prototypeLinks": "Links de prototipos",
+    "add": "Agregar",
+    "invalidLink": "Ingresa un link https válido (para Figma: figma.com/design, /file o /proto).",
+    "noUiRefs": "Aún no hay referencias de UI. Puedes agregarlas ahora o después desde la pestaña Diseño UI.",
+    "trackingTitle": "Seguimiento del trabajo (opcional)",
+    "trackingHint": "Vincula un proyecto de Jira o Azure DevOps. La conexión se configura una vez por cliente en Administración → Integraciones.",
+    "integration": "Integración",
+    "integrationHint": "Solo aparecen las integraciones ya conectadas para este cliente.",
+    "noIntegration": "Sin seguimiento",
+    "jiraProject": "Clave del proyecto Jira",
+    "adoProject": "Proyecto de Azure DevOps",
+    "autoCreate": "Crear features, historias y tareas automáticamente al aprobar la spec (C1)",
+    "summaryUi": "{{screens}} capturas · {{figma}} Figma · {{prototypes}} prototipos"
+  },
+  "backlog": {
+    "types": {
+      "feature": "Features",
+      "story": "Historias",
+      "task": "Tareas",
+      "bug": "Bugs"
+    },
+    "openBugs": "Bugs abiertos",
+    "openBugsHint": "Encontrados por agentes tester o validador",
+    "done": "Terminados",
+    "connection": "Conexión",
+    "connectionHint": "Los agentes crean y actualizan los ítems, y se mantienen sincronizados en ambos sentidos.",
+    "provider": "Herramienta",
+    "site": "Sitio de Jira",
+    "organization": "Organización",
+    "project": "Proyecto",
+    "lastSync": "Última sincronización",
+    "mapping": "Mapeo de tipos",
+    "mapTo": {
+      "jira": {
+        "feature": "Epic",
+        "story": "Story",
+        "task": "Sub-task",
+        "bug": "Bug"
+      },
+      "azureDevOps": {
+        "feature": "Feature",
+        "story": "User Story",
+        "task": "Task",
+        "bug": "Bug"
+      }
+    },
+    "syncNow": "Sincronizar ahora",
+    "synced": "Backlog sincronizado.",
+    "generate": "Generar backlog desde la spec",
+    "generated": "El analista funcional creó 3 features, 9 historias y 14 tareas.",
+    "automation": "Reglas de automatización",
+    "automationHint": "Lo que los agentes hacen en la herramienta sin que se lo pidan.",
+    "rules": {
+      "createFromSpec": {
+        "name": "Crear el backlog desde la spec aprobada",
+        "hint": "Features desde bounded contexts, historias desde capacidades y reglas, tareas por capa."
+      },
+      "markDone": {
+        "name": "Marcar ítems como terminados cuando sus tests pasan",
+        "hint": "Solo con evidencia: los tests que nombran la regla corrieron y pasaron."
+      },
+      "bugOnFailure": {
+        "name": "Abrir un bug cuando falla un test o una prueba de equivalencia",
+        "hint": "El tester o el validador adjunta el test fallido, la regla y el caso."
+      },
+      "autoFix": {
+        "name": "Iniciar el agente developer ante bugs nuevos",
+        "hint": "Propone una corrección dentro del límite de autocorrección."
+      },
+      "retestAndClose": {
+        "name": "Volver a probar y cerrar bugs corregidos",
+        "hint": "Se cierra cuando la re-ejecución pasa y el revisor de código aprueba (según el nivel de autonomía)."
+      },
+      "syncComments": {
+        "name": "Sincronizar comentarios en ambos sentidos",
+        "hint": "Los comentarios en Jira o Azure DevOps llegan a los agentes como contexto."
+      }
+    },
+    "limitsNote": "Las automatizaciones respetan el nivel de autonomía del proyecto y se detienen tras {{max}} correcciones fallidas; entonces el bug se escala a una persona.",
+    "items": "Ítems de trabajo",
+    "itemsHint": "Jerarquía de {{project}}.",
+    "filterType": "Filtrar por tipo",
+    "allTypes": "Todos los tipos",
+    "status": {
+      "todo": "Por hacer",
+      "inProgress": "En curso",
+      "inReview": "En revisión",
+      "done": "Terminado",
+      "failed": "Falló"
+    },
+    "pendingSync": "Pendiente de sincronizar",
+    "viewLoop": "Ver ciclo de corrección",
+    "bugLoop": "Ciclo automático de corrección · {{key}}",
+    "bugLoopHint": "Tester → bug → developer → nueva prueba → revisión → cierre.",
+    "loopSteps": {
+      "detected": "detectó una falla",
+      "bugCreated": "abrió el bug",
+      "developerTriggered": "inició al agente developer",
+      "fixProposed": "propuso una corrección",
+      "retested": "volvió a correr los tests",
+      "waitingReview": "espera revisión"
+    }
   }
 }

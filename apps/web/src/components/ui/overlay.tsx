@@ -89,7 +89,7 @@ export function Toaster() {
     () => toasts,
   )
   return (
-    <div className="pointer-events-none fixed right-4 bottom-4 z-[60] flex flex-col gap-2" aria-live="polite">
+    <div className="pointer-events-none fixed bottom-4 left-4 z-[60] flex flex-col gap-2" aria-live="polite">
       {items.map((item) => (
         <div key={item.id} className="flex items-center gap-2 rounded-md border border-border bg-surface px-4 py-3 text-sm text-text shadow-lg">
           <CheckCircle2 size={16} className="text-good" /> {item.message}

@@ -951,3 +951,67 @@ export const compareItems: CompareItem[] = [
     outputs: [{ caseId: 'C22', input: 'suspended account · reactivate', legacy: 'STATUS=Y', next: 'STATUS=ACTIVE (mapped Y)', same: true }],
   },
 ]
+
+// ---- Work items synced with Jira / Azure DevOps (Backlog tab) ----
+
+export type WorkItemType = 'feature' | 'story' | 'task' | 'bug'
+export type WorkItemStatus = 'todo' | 'inProgress' | 'inReview' | 'done' | 'failed'
+
+export interface WorkItem {
+  key: string
+  type: WorkItemType
+  title: string
+  parent?: string
+  status: WorkItemStatus
+  createdBy: string
+  assignee: string
+  rules: string[]
+  synced: boolean
+  updated: string
+}
+
+export const workItems: WorkItem[] = [
+  { key: 'CARDS-101', type: 'feature', title: 'Authorizations service (CICS CAUT → REST)', status: 'inProgress', createdBy: 'Solution architect', assignee: 'María Torres', rules: ['RULE-001', 'RULE-003'], synced: true, updated: '2026-09-28T09:20:00Z' },
+  { key: 'CARDS-102', type: 'story', parent: 'CARDS-101', title: 'As a cardholder, my purchase is declined when it exceeds my credit limit', status: 'done', createdBy: 'Functional analyst', assignee: 'Backend developer', rules: ['RULE-001'], synced: true, updated: '2026-09-28T09:05:00Z' },
+  { key: 'CARDS-103', type: 'task', parent: 'CARDS-102', title: 'Implement CreditLimitPolicy in the domain layer', status: 'done', createdBy: 'Backend developer', assignee: 'Backend developer', rules: ['RULE-001'], synced: true, updated: '2026-09-28T08:40:00Z' },
+  { key: 'CARDS-104', type: 'task', parent: 'CARDS-102', title: 'Characterization tests for RULE-001 (golden master C01, C02)', status: 'done', createdBy: 'Test engineer', assignee: 'Test engineer', rules: ['RULE-001'], synced: true, updated: '2026-09-28T08:55:00Z' },
+  { key: 'CARDS-105', type: 'story', parent: 'CARDS-101', title: 'As a cardholder, an expired card cannot be used', status: 'inProgress', createdBy: 'Functional analyst', assignee: 'Backend developer', rules: ['RULE-003'], synced: true, updated: '2026-09-28T09:25:00Z' },
+  { key: 'CARDS-106', type: 'task', parent: 'CARDS-105', title: 'Validate card expiry (waiting for Q-001)', status: 'todo', createdBy: 'Backend developer', assignee: 'Backend developer', rules: ['RULE-003'], synced: true, updated: '2026-09-28T09:25:00Z' },
+  { key: 'CARDS-107', type: 'bug', parent: 'CARDS-102', title: 'Purchase exactly at the limit is declined (expected approve)', status: 'inReview', createdBy: 'Test engineer', assignee: 'Backend developer', rules: ['RULE-001'], synced: true, updated: '2026-09-28T09:31:00Z' },
+  { key: 'CARDS-110', type: 'feature', title: 'Interest accrual batch (CBACT04C → Spring Batch)', status: 'inProgress', createdBy: 'Solution architect', assignee: 'Luis Andrade', rules: ['RULE-002'], synced: true, updated: '2026-09-28T09:10:00Z' },
+  { key: 'CARDS-111', type: 'story', parent: 'CARDS-110', title: 'As operations, daily interest is posted every night', status: 'inProgress', createdBy: 'Functional analyst', assignee: 'Backend developer', rules: ['RULE-002'], synced: true, updated: '2026-09-28T09:12:00Z' },
+  { key: 'CARDS-112', type: 'bug', parent: 'CARDS-111', title: 'Fresh input F03: interest 0.50 vs legacy 0.51 (rounding)', status: 'failed', createdBy: 'Equivalence validator', assignee: 'Backend developer', rules: ['RULE-002'], synced: false, updated: '2026-09-28T09:36:00Z' },
+]
+
+// Timeline of the automated bug loop for CARDS-107 (tester → bug → developer → re-test → close).
+export const bugLoop = [
+  { time: '09:28:10', agent: 'Test engineer', step: 'detected', detail: 'CreditLimitPolicyTest.rule001_approvesPurchaseAtLimit failed: expected APPROVED, got DECLINED.' },
+  { time: '09:28:12', agent: 'Test engineer', step: 'bugCreated', detail: 'Bug CARDS-107 created in Jira with the failing test, the rule and the golden master case.' },
+  { time: '09:28:15', agent: 'Supervisor', step: 'developerTriggered', detail: 'Automation rule "Fix bugs automatically" started the Backend developer (iteration 1 of 3).' },
+  { time: '09:30:40', agent: 'Backend developer', step: 'fixProposed', detail: 'Changed isGreaterThan to strictly greater, matching COBOL ">" (COAUTHPC.cbl:415). Commit a91c2e4.' },
+  { time: '09:31:05', agent: 'Test engineer', step: 'retested', detail: '412 tests from clean: all passed. Golden master C01, C02, F07: same.' },
+  { time: '09:31:06', agent: 'Supervisor', step: 'waitingReview', detail: 'Moved to In review. Closes automatically when the code reviewer approves (policy: balanced).' },
+]
+
+// ---- Live agent activity (floating activity panel) ----
+
+export type ActivityStatus = 'running' | 'succeeded' | 'failed' | 'waiting'
+
+export interface ActivityEvent {
+  id: string
+  startedAt: string
+  endedAt?: string
+  agent: string
+  projectId: string
+  message: string
+  status: ActivityStatus
+  costUsd: number
+  tokens: number
+  error?: { code: string; message: string; detail: string }
+}
+
+export const activitySeed: ActivityEvent[] = [
+  { id: 'ev-1', startedAt: '2026-09-28T09:20:02Z', endedAt: '2026-09-28T09:27:40Z', agent: 'Business rules extractor', projectId: 'p1', message: 'Extracted 23 rules from shard AUTH', status: 'succeeded', costUsd: 5.16, tokens: 1_240_000 },
+  { id: 'ev-2', startedAt: '2026-09-28T09:28:10Z', endedAt: '2026-09-28T09:28:12Z', agent: 'Test engineer', projectId: 'p1', message: 'Test failed → bug CARDS-107 created in Jira', status: 'succeeded', costUsd: 0.04, tokens: 9_000 },
+  { id: 'ev-3', startedAt: '2026-09-28T09:32:00Z', endedAt: '2026-09-28T09:33:10Z', agent: 'Equivalence validator', projectId: 'p2', message: 'Fresh input F03 differs from legacy', status: 'failed', costUsd: 0.31, tokens: 41_000, error: { code: 'EQUIVALENCE_DIFF', message: 'Output differs at line 1, byte 4', detail: 'legacy INT=0.51, new INT=0.50 (mask: none, tolerance: none)' } },
+]
