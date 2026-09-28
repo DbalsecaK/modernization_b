@@ -9,7 +9,9 @@
     "format": "node tools/lint/node_modules/prettier/bin/prettier.cjs --write apps/web",
     "format:check": "node tools/lint/node_modules/prettier/bin/prettier.cjs --check apps/web",
     "api:dev": "uv run uvicorn --factory nexti_api.main:create_app --reload --port 8100",
-    "py:check": "uv run ruff check . && uv run ruff format --check . && uv run mypy apps/api/src apps/api/tests packages/core/src packages/core/tests && uv run pytest"
+    "py:check": "uv run ruff check . && uv run ruff format --check . && uv run mypy apps/api/src apps/api/tests packages/core/src packages/core/tests && uv run pytest",
+    "db:migrate": "uv run alembic -c apps/api/alembic.ini upgrade head",
+    "db:seed": "uv run python -m nexti_api.cli seed-dev"
   },
   "packageManager": "pnpm@10.33.0",
   "type": "module"

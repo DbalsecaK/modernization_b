@@ -6,6 +6,7 @@ members = ["apps/api", "packages/core"]
 dev = [
   "mypy>=1.18",
   "pytest>=8.4",
+  "pytest-asyncio>=1.2",
   "ruff>=0.13",
 ]
 
@@ -32,3 +33,11 @@ plugins = ["pydantic.mypy"]
 [tool.pytest.ini_options]
 testpaths = ["apps/api/tests", "packages/core/tests"]
 addopts = ["--import-mode=importlib", "-ra"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "session"
+asyncio_default_test_loop_scope = "session"
+markers = ["integration: needs the local services (docker compose)"]
+
+[[tool.mypy.overrides]]
+module = ["asyncpg", "asyncpg.*"]
+ignore_missing_imports = true

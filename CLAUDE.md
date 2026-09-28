@@ -56,6 +56,8 @@ pnpm lint               # ESLint; pnpm format:check para Prettier
 uv sync --all-packages  # workspace uv: apps/api y packages/*
 pnpm py:check           # Ruff, mypy estricto y pytest
 pnpm api:dev            # API FastAPI en http://localhost:8100 (docs: /api/v1/docs)
+pnpm db:migrate         # migraciones Alembic (rol platform_owner)
+pnpm db:seed            # datos ficticios de desarrollo
 ```
 
 ## Reglas no negociables

@@ -116,6 +116,21 @@ Identificadores en inglés, `uuid` como clave, `created_at`/`updated_at` en UTC.
 | `authz_outbox` | id, tenant_id, operation (write/delete), tuples (jsonb), status, attempts, created_at | RLS por `tenant_id` |
 | `audit_log` | id, tenant_id (NULL = evento de plataforma), occurred_at, actor_id, actor_kind (user/dev-auth/system/keycloak), action, target, outcome, details (jsonb), prev_hash, hash | Append-only: sin UPDATE/DELETE (REVOKE + trigger); RLS de lectura por `tenant_id` |
 
+**Cómo quedó implementado (paso 4)**
+
+- `tenant` y `app_user` también tienen RLS: un tenant ve el activo y aquellos donde el usuario tiene membresía;
+  un usuario ve a sí mismo y a los usuarios del tenant activo. Durante el login, `app.auth_sub` y
+  `app.auth_email` dejan ver solo al usuario que entra y sus invitaciones pendientes.
+- Los roles son **por tenant**: al crear un tenant se copian los roles base de `nexti_core.authz_catalog`
+  (`is_system = true`), que su administrador puede editar. Las claves son las del prototipo (`tenantAdmin`,
+  `projectOwner`, …) y los permisos las de 16.2 en inglés (`users.manage`, …).
+- `permission_scope` indica si un permiso se da a nivel tenant, proyecto o ambos; claves foráneas compuestas
+  garantizan que rol, tenant, alcance, proyecto y membresía sean coherentes.
+- Los roles de plataforma (`superAdmin`, `supportOperator`) van en `platform_role_assignment`: sin RLS y de solo
+  lectura para la API.
+- `ensure_user_for_invitation()` (SECURITY DEFINER) permite invitar a una persona que ya existe en otro tenant sin
+  exponer su fila.
+
 **RLS y roles de base de datos**
 
 - La API se conecta con el rol `platform_app` (sin `BYPASSRLS`, dueño de nada); las migraciones con
@@ -291,7 +306,7 @@ cliente TypeScript generado desde él para la web.
 | 1 ✅ | Monorepo: workspace uv con `apps/api` y `packages/core`, Ruff, mypy, pytest; base de la API (settings, errores RFC 9457); ESLint + Prettier en la web (enmienda 3) | `pnpm py:check`, `pnpm lint`, `pnpm format:check`, `pnpm web:test` en verde |
 | 2 ✅ | `infra/docker-compose` con todos los servicios, healthchecks, roles de BD, `init_env.py` y realm de Keycloak de desarrollo | `docker compose up -d --wait` y todos *healthy* |
 | 3 ✅ | API: logs estructurados, `/health/live` y `/health/ready`, OpenAPI | `GET /health/ready` = 200 con todos los servicios |
-| 4 | Esquema con Alembic: tenancy, usuarios, roles, permisos, asignaciones, proyecto mínimo, invitaciones, outbox; RLS y roles de BD; datos sembrados | Tests SQL de aislamiento en verde |
+| 4 ✅ | Esquema con Alembic: tenancy, usuarios, roles, permisos, asignaciones, proyecto mínimo, invitaciones, outbox; RLS y roles de BD; datos sembrados | Tests SQL de aislamiento en verde |
 | 5 | Auditoría append-only con hash encadenado y verificación | Tests de inmutabilidad y cadena en verde |
 | 6 | BFF con Keycloak: login, callback, logout, sesión Redis, cookie, CSRF, `me`, cambio de tenant | Login real en local; test "ningún token en el navegador" |
 | 7 | `dev-auth` y arranque seguro | Test de arranque en producción falla como se espera |

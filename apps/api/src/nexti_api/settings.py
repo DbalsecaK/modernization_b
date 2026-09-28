@@ -25,6 +25,8 @@ class Settings(BaseSettings):
 
     # PostgreSQL as the runtime role (no BYPASSRLS): postgresql+asyncpg://platform_app:...@host:port/platform
     database_url: SecretStr = SecretStr("")
+    # Schema owner, used only by Alembic, the dev seed and tests; the running API never connects with it.
+    migration_database_url: SecretStr = SecretStr("")
     redis_url: SecretStr = SecretStr("")
     keycloak_url: str = ""
     keycloak_realm: str = "nexti"

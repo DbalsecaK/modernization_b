@@ -59,6 +59,8 @@ pnpm api:dev      # API en http://localhost:8100 (/api/v1/health/ready, docs en 
 python infra/docker-compose/init_env.py        # crea .env con secretos aleatorios (repetir tras cada pull)
 docker compose -f infra/docker-compose/compose.yaml up -d --wait
 python infra/docker-compose/smoke_check.py     # verifica servicios, realm de Keycloak y roles de BD
+pnpm db:migrate                                # esquema (Alembic, como platform_owner)
+pnpm db:seed                                   # datos ficticios de desarrollo (idempotente)
 docker compose -f infra/docker-compose/compose.yaml --profile observability up -d --wait   # + Langfuse
 ```
 
