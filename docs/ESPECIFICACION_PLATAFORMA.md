@@ -212,7 +212,8 @@ referencias a archivo y línea; el fuente vive en el object storage.
 - Cobertura: "¿esta regla tiene un caso de prueba que pasó?"
 - Trazabilidad inversa: "¿de dónde sale este método?" (Método → Regla → Párrafo → línea).
 - Reglas dispersas: "¿qué reglas de varios programas afectan al mismo campo de salida?"
-- Orden de migración: ordenamiento topológico con peso por complejidad.
+- Orden de migración: ordenamiento topológico con peso por complejidad. Es una **sugerencia**: se presenta
+  como plan por olas de historias de usuario que las personas pueden cambiar, validado contra el grafo (7.7).
 - Completitud (ver 11.5).
 - Huérfanos y aislados: "¿qué programas, copybooks o archivos no usa nadie?" (candidatos a código muerto o
   datos sin uso) y "¿qué elementos no tienen ninguna relación?" (posibles referencias faltantes).
@@ -265,7 +266,7 @@ alucinaciones.
 | 3 | **Mapa de dominios** | Comunidades del grafo → propuesta de bounded contexts; orden de migración | Dominios y plan | — |
 | 4 | **Clasificación** | Cada párrafo/bloque: infraestructura, flujo de control o lógica de negocio | Etiquetas en el grafo | — |
 | 5 | **Extracción de reglas** | Program slicing sobre el grafo + agente sobre cada slice → reglas estructuradas; revisor verifica cada cita y la cobertura del slice | Catálogo de reglas, huecos de cobertura | — |
-| 6 | **Revisión de reglas** | Negocio revisa, responde preguntas, corrige | Reglas aprobadas | **C1: spec aprobada** |
+| 6 | **Revisión de reglas e historias** | Negocio revisa, responde preguntas, corrige; revisa y edita las **historias de usuario** derivadas de reglas, pantallas y contratos y el **plan de migración por olas** (7.7) | Reglas, HU y plan aprobados | **C1: spec aprobada** |
 | 7 | **UI** | Pantallas legacy (BMS, ASPX) → spec de pantalla → design system y prototipo propuestos | Prototipos | **C2: UI aprobada** |
 | 8 | **Diseño** | Bounded contexts, modelo de dominio, contratos OpenAPI, ADR, fitness functions | Diseño | **C3: arquitectura aprobada** |
 | 9 | **Caracterización** | Tests de caracterización y golden master del legacy **antes** de generar | Oráculo congelado | — |
@@ -317,7 +318,7 @@ secretos, versionado; sección 15.4) antes de que un agente lo lea.
 | 1 | **Ingesta** | Cada insumo con su lector; versión y hash de cada insumo | — |
 | 2 | **Normalización** | Insumo → elementos de la spec (capacidades, HU normalizadas con Gherkin, pantallas, reglas, contratos, entidades, RNF) con origen | — |
 | 3 | **Consolidación** | Cruce HU ↔ pantallas ↔ entidades; detección de **contradicciones** y **huecos** (reglas deterministas sobre el grafo + agente) → preguntas | — |
-| 4 | **Revisión de spec** | PO responde preguntas y aprueba | **C1** |
+| 4 | **Revisión de spec** | PO responde preguntas, revisa y edita las HU y el plan de incrementos (7.7) y aprueba | **C1** |
 | 5 | **UI** | Figma/capturas → spec de pantalla, o propuesta de design system + prototipos navegables; comentarios e iteración | **C2** |
 | 6 | **Diseño** | DDD, modelo de dominio, contratos OpenAPI primero, ADR | **C3** |
 | 7 | **Generación por capas** | OpenAPI → esqueletos backend + cliente tipado frontend (determinista); dominio desde reglas; pantallas con el design system | — |
@@ -382,7 +383,7 @@ Boards** (D-22). Aplica a los dos flujos.
 
 | Regla | Qué hace |
 |---|---|
-| Crear desde la spec | Al aprobar **C1**, genera features, historias (con criterios Gherkin) y tareas enlazadas a las reglas y pantallas de la spec |
+| Crear desde la spec | Al aprobar **C1**, crea en Jira/ADO las features, **las historias aprobadas** (7.7, con sus criterios Gherkin) y sus tareas, enlazadas a las reglas y pantallas de la spec y ordenadas por ola |
 | Marcar como terminado | Cuando la verificación de un elemento pasa, el agente mueve el ítem a *Done* con la evidencia enlazada |
 | Bug ante fallo | Cuando un test o una equivalencia falla, el agente **tester** crea un bug con pasos, esperado vs obtenido, regla y traza |
 | Corrección automática | El agente **developer** toma el bug, propone la corrección en el sandbox y la deja en revisión |
@@ -397,6 +398,62 @@ determinista (regla 6): cerrar un bug en Jira no cambia un veredicto.
 **Reglas de seguridad:** la integración usa la credencial del tenant con alcance mínimo; toda escritura en el
 sistema externo queda en la auditoría; el contenido que viene de Jira/ADO es input no confiable (prompt
 injection); las escrituras son idempotentes (clave externa guardada en `work_item_link`) y reintentables.
+
+### 7.7 Historias de usuario y plan de migración (ambos flujos)
+
+Antes de iniciar la migración o la construcción, las personas ven y aprueban **qué se va a construir y en qué
+orden** (D-25). Está en **Especificación → Historias de usuario** y **Especificación → Plan de migración**; el
+Resumen y Mis tareas avisan cuando hay HU pendientes de revisión.
+
+**Origen de las HU**
+
+- **Flujo 1:** el agente *Analista funcional* agrupa reglas, pantallas y contratos extraídos del legacy en
+  HU por feature o capacidad (por ejemplo, transacción CAUP → programa → mapa = "Ver y actualizar una
+  cuenta"). Cada HU guarda su origen en el legacy.
+- **Flujo 2:** vienen de documentos, Figma o Jira/Azure DevOps y se normalizan (fase 2 de 7.2).
+
+**Contenido de cada HU:** feature, título, narrativa "Como… quiero… para…", criterios de aceptación en
+Gherkin, vínculos a reglas (`RULE-NNN`), pantallas, contratos y componentes legacy, origen (extraída,
+documento, Jira/ADO o creada por una persona), prioridad, estimación, ola, dependencias, estado (borrador,
+en revisión, pregunta abierta, aprobada, descartada, fusionada) y versión.
+
+**Lo que pueden hacer las personas**
+
+| Acción | Reglas |
+|---|---|
+| Editar | Título, narrativa, criterios, vínculos, prioridad, estimación, dependencias. Cada guardado crea una versión |
+| Crear | HU manual con origen "persona"; si no se vincula a ninguna regla, pantalla, contrato o componente queda marcada **sin trazabilidad** |
+| Dividir | Se eligen los criterios y reglas que pasan a la nueva HU; los vínculos se conservan y las dos vuelven a revisión |
+| Fusionar | Se unen criterios, vínculos y dependencias; la HU absorbida queda como "fusionada" y quien dependía de ella pasa a depender de la resultante |
+| Descartar | Motivo obligatorio. Si deja reglas sin cubrir, se avisa; puede marcarse **fuera de alcance** (las reglas se migran tal cual, sin HU) |
+| Restaurar | Una HU descartada vuelve a revisión y al plan |
+| Aceptar sugerencias | El agente sugiere (criterio faltante, HU demasiado grande, estado de error sin cubrir); nada se aplica hasta que una persona lo acepta |
+
+**Cobertura (determinista):** toda regla, pantalla y contrato de la spec debe estar en al menos una HU
+activa; lo que no, se muestra como hueco. Las HU sin trazabilidad y las fuera de alcance se listan aparte.
+
+**Plan de migración por olas**
+
+- La plataforma **propone** el plan desde el grafo (5.2): cada HU va en la ola siguiente a la más tardía de
+  la que depende; dentro de la ola, por prioridad y luego por tamaño. Las dependencias entre HU salen de las
+  relaciones del grafo (lee/escribe la misma tabla, llama al programa, usa la pantalla) y las personas pueden
+  agregar otras.
+- Las personas **cambian el orden**: arrastran HU entre olas, las reordenan dentro de la ola, crean olas y
+  pueden volver al orden sugerido. Se muestra la diferencia "sugerido vs el tuyo".
+- **Validación por código, no por modelo**, en cada cambio:
+  - **Dependencia dura** (p. ej. la tabla aún no existe en el destino): el movimiento se **rechaza** con el motivo.
+  - **Dependencia blanda**: se permite con **aviso** y se planifica una ACL o stub temporal (strangler fig, 6.3).
+  - Una HU puede compartir ola con su dependencia (se construyen juntas), nunca ir antes.
+- El plan se aprueba en **C1** junto con las HU. C1 **no se puede aprobar** si hay HU con preguntas abiertas,
+  sin criterios de aceptación o con dependencias duras rotas en el plan.
+
+**Después de C1:** todo cambio es un **cambio de alcance**: solo las HU afectadas vuelven a revisión, se
+recalcula el impacto en el grafo, se sincroniza con Jira/Azure DevOps (7.6) y, si la HU ya está en
+construcción o terminada, se genera una **pregunta** (10.4) en lugar de aplicarlo en silencio. Un cambio
+hecho en Jira entra como insumo a revisar, no modifica la spec directamente.
+
+**Permisos (OpenFGA):** el product owner y el analista funcional editan HU; el product owner y el líder
+técnico cambian el plan; el ejecutivo solo ve. Toda acción queda versionada y en la auditoría.
 
 ---
 
@@ -1044,7 +1101,7 @@ de permisos de administrador. Toda configuración es versionada y auditable.
 | Resumen | Pipeline visual, próximos pasos, riesgos, veredicto, costo |
 | Insumos | Código, repos, documentos, Figma, capturas, links de prototipos, Jira/Azure DevOps, con versiones |
 | Inventario / Mapa | **Grafo interactivo** del legacy (sección 5.2.1): recorrido de flujos de negocio paso a paso, foco por regla, filtros de relaciones, filtro de huérfanos y aislados, color por dominio o estado, buscador, zoom y arrastre, detalle del nodo, **análisis de impacto** y acceso directo a la comparación |
-| Especificación | Subvistas: reglas, pantallas (campos, validaciones, acciones, estados), contratos y **preguntas** (tarjetas de decisión, sección 10.4) |
+| Especificación | Subvistas: reglas, **historias de usuario** (editar, crear, dividir, fusionar, descartar; cobertura; versiones), **plan de migración** por olas (sugerido y editable, con validación de dependencias), pantallas (campos, validaciones, acciones, estados), contratos y **preguntas** (tarjetas de decisión, sección 10.4) |
 | Diseño UI | Design system, prototipos navegables con comentarios, legacy ↔ prototipo, **referencias** (capturas, Figma, prototipos) y **chat de cambios** con el agente UX/UI designer (7.4) |
 | Arquitectura | Bounded contexts, OpenAPI, ADR, fitness functions |
 | Código | Navegador de archivos, descarga o push según permisos |
@@ -1062,7 +1119,7 @@ de permisos de administrador. Toda configuración es versionada y auditable.
   recuperación de contraseña y activación de invitación (sección 15.1).
 - **Cuenta y seguridad:** perfil, idioma, contraseña, MFA/passkeys y sesiones activas.
 
-- **Mis tareas:** dos vistas: **Preguntas para mí** (tarjetas de decisión de todos los proyectos, respondibles ahí mismo) y **Aprobaciones y revisiones** (compuertas, prototipos, sign-offs).
+- **Mis tareas:** dos vistas: **Preguntas para mí** (tarjetas de decisión de todos los proyectos, respondibles ahí mismo) y **Aprobaciones y revisiones** (compuertas, **revisión de historias y plan de migración**, prototipos, sign-offs).
 - **Consumo y costos:** consolidado, economía unitaria, presupuestos, proyecciones, exportación.
 - **Configuración IA:** conexiones, catálogo, perfiles, matriz por defecto, precios, políticas, prompts,
   evaluaciones por modelo.
@@ -1125,8 +1182,9 @@ nativo con cambio a español y tema claro/oscuro.
   negocio, foco por regla y filtro de huérfanos, la comparación origen ↔ destino y las tarjetas de decisión del
   human in the loop.
 - También incluye las referencias de UI en el asistente, Insumos y Diseño UI, el chat de cambios al
-  prototipo, la pestaña Backlog (Jira/Azure DevOps con ciclo de bugs) y el panel flotante de actividad de
-  agentes (18.8).
+  prototipo, la pestaña Backlog (Jira/Azure DevOps con ciclo de bugs), el panel flotante de actividad de
+  agentes (18.8) y las historias de usuario con el plan de migración por olas (7.7; la validación del plan
+  está en `src/lib/migrationPlan.ts`, determinista y con tests, y debe migrar al backend igual).
 - Capturas de referencia en `docs/prototipo/`.
 - Cómo correrlo: ver `apps/web/README.md`.
 
@@ -1238,6 +1296,11 @@ restringido.
   `project_tracker_link` (proyecto ↔ proyecto externo, mapeo de tipos, reglas de automatización),
   `work_item_link` (ítem de la plataforma ↔ clave externa, tipo, estado, última sincronización),
   `bug_loop_step` (pasos del ciclo de bug con agente y evidencia).
+- **Historias y plan:** `feature`, `user_story` (estado, origen, prioridad, estimación, motivo de descarte,
+  fuera de alcance, fusionada en), `story_version` (instantánea por versión, quién y qué cambió),
+  `acceptance_criterion` (Gherkin), `story_link` (HU ↔ regla, pantalla, contrato o nodo del grafo),
+  `story_dependency` (dura o blanda, motivo, origen: grafo o persona), `story_suggestion`, `migration_plan`
+  (versionado, sugerido o editado, aprobado en C1) y `migration_wave` (orden de HU por ola).
 - **Catálogo:** `agent_definition`, `skill_definition` (versionadas), `project_agent`, `project_skill`,
   `source_adapter`, `target_pack`, `compatibility_rule`, `design_system`, `prototype`,
   `prototype_version` (versión generada por cada cambio), `prototype_chat_message`, `ui_reference`
@@ -1258,6 +1321,9 @@ Todas las tablas de negocio llevan `tenant_id` con RLS.
   panel de actividad, filtrado por autorización).
 - Backlog: `/api/v1/projects/{id}/tracker` (vínculo y reglas), `/api/v1/projects/{id}/work-items`,
   `POST /api/v1/projects/{id}/work-items:sync`; prototipos: `/api/v1/projects/{id}/prototypes/{screen}/chat`.
+- Historias y plan: `/api/v1/projects/{id}/stories` (CRUD, `:split`, `:merge`, `:discard`, `:restore`,
+  `/versions`), `/api/v1/projects/{id}/migration-plan` (`GET` sugerido y actual, `PUT` validado en el
+  servidor, `:reset`); la aprobación va con la compuerta C1.
 - OpenAPI generado por FastAPI; cliente TypeScript generado desde él para el frontend.
 - Paginación, filtros y errores con formato uniforme (RFC 9457 Problem Details).
 
@@ -1302,13 +1368,15 @@ superar un presupuesto pausa la ejecución; un agente no puede llamar a un prove
 
 ### M2 — Proyectos e insumos
 
-- CRUD de proyectos, asistente de creación (sin ejecutar agentes aún).
+- CRUD de proyectos, asistente de creación (sin ejecutar agentes aún), con referencias de UI (capturas,
+  links de Figma y de prototipos) desde el paso 2 (7.1).
 - Subida de insumos a object storage (validación, malware, hash, versión); conexión Git.
 - Catálogo de agentes y skills (fichas, cards), recomendación determinista, validación de composición.
 - Matriz de compatibilidad y plantillas de pipeline.
 
 **Aceptación:** crear un proyecto CICS+BMS → Spring Boot + Angular + PostgreSQL + AWS propone el equipo y
-las skills esperados; no se puede quitar un agente de Control; subir un zip con path traversal es rechazado.
+las skills esperados; no se puede quitar un agente de Control; subir un zip con path traversal es rechazado;
+un link de Figma que no es `figma.com/file|design|proto` se rechaza y una captura pasa por las mismas validaciones.
 
 ### M3 — Motor de orquestación
 
@@ -1317,6 +1385,8 @@ las skills esperados; no se puede quitar un agente de Control; subir un zip con 
 - Patrón hacer → verificar → corregir con límites y escalamiento.
 - Sandbox (Docker en dev) sin red.
 - SSE de progreso; pestaña Ejecuciones en vivo; bandeja Mis tareas.
+- Human in the loop (10.4): niveles de autonomía por proyecto y tarjetas de decisión con respuesta recomendada,
+  alternativas y respuesta propia.
 - Panel flotante de actividad de agentes (18.8) conectado al SSE, con descarga del JSON de error.
 
 **Aceptación:** matar un worker a mitad de una fase y reanudar sin perder trabajo; una compuerta detiene el
@@ -1328,11 +1398,19 @@ el panel de actividad solo muestra eventos de proyectos autorizados y el JSON de
 - Adaptador Sybase (inventario, tipos neutrales, extracción de reglas).
 - Spec y revisión (C1), diseño (C3), generación por capas en el pack elegido (Java Spring Boot o .NET 10,
   ver decisión D-06).
+- **Historias de usuario y plan de migración** (7.7): HU derivadas de la spec; editar, crear, dividir,
+  fusionar, descartar y restaurar con versiones y auditoría; cobertura; plan por olas sugerido desde el grafo,
+  editable y validado por código; aprobación conjunta en C1.
+- Comparación origen ↔ destino lado a lado por regla, con comportamiento legacy vs nuevo.
 - Golden master con Sybase ASE en contenedor y PostgreSQL; `verification` (compare, trace, proof pack, canario).
 - Pestañas Especificación, Validación y Trazabilidad (versión inicial).
 
 **Aceptación:** con la aplicación de referencia Sybase se obtiene un veredicto calculado por código; se miden
-omisiones, alucinaciones y errores de precisión contra la spec de referencia.
+omisiones, alucinaciones y errores de precisión contra la spec de referencia. Además: mover una HU antes de
+una dependencia dura se rechaza (también si se llama a la API directamente); una dependencia blanda se
+permite con aviso; descartar una HU que deja reglas sin cubrir lo muestra en la cobertura; C1 no se aprueba
+con HU con preguntas abiertas, sin criterios o con dependencias duras rotas; todo cambio de HU o del plan
+queda versionado y auditado; un usuario sin permiso no puede editar HU ni el plan (test permitido y denegado).
 
 ### M5 — BMS → pantallas y prototipos
 
@@ -1348,6 +1426,8 @@ con posición, longitud y atributos correctos.
 
 - Adaptador COBOL/CICS (inventario, clasificación, slicing, extracción).
 - Transacción → Programa → Mapa en el grafo; importación de trazas para golden master.
+- Visualización completa del grafo (5.2.1): vistas de círculos y capas, recorrido de flujos de negocio, foco
+  por regla, filtros de relaciones, huérfanos y aislados, detalle del nodo e impacto.
 - Visor de trazabilidad Legacy | Regla | Destino completo.
 
 **Aceptación:** medición contra la spec de referencia CICS; veredicto máximo PARTLY PROVEN si no hay ejecución.
@@ -1356,6 +1436,7 @@ con posición, longitud y atributos correctos.
 
 - Ingesta de documentos, HU, Figma (API), capturas (visión) y links de prototipos, desde el asistente y después.
 - Normalización, consolidación, detección de contradicciones y huecos, preguntas.
+- Historias de usuario y plan de incrementos (7.7) con HU que vienen de documentos, Figma y Jira/Azure DevOps.
 - Generación con contratos primero; validación de aceptación, contract tests y fidelidad visual.
 
 **Aceptación:** con un set de HU + Figma de ejemplo se genera y valida una funcionalidad de punta a punta,
@@ -1364,7 +1445,8 @@ con cada elemento trazado a su insumo.
 ### M7b — Integración Jira / Azure DevOps
 
 - Conexión por tenant en Administración (Vault), vínculo por proyecto en el asistente y en la pestaña Backlog.
-- Generación del backlog desde la spec al aprobar C1; marcado automático de terminado con evidencia.
+- Generación del backlog desde las **HU aprobadas** en C1 (7.7), ordenado por ola; los cambios posteriores
+  entran como cambio de alcance; marcado automático de terminado con evidencia.
 - Ciclo de bugs: tester crea el bug, developer propone la corrección en el sandbox, re-test y cierre, dentro
   del nivel de autonomía y del máximo de iteraciones (7.6).
 
@@ -1451,6 +1533,7 @@ Sybase SP (M4) → BMS (M5) → CICS (M6) → ASPX (M8).
 | D-22 | Jira y Azure DevOps: **conexión por tenant** (Administración), **vínculo por proyecto** (asistente o pestaña Backlog); los agentes crean y cierran ítems, el tester crea bugs y el developer los corrige dentro de los límites de autonomía e iteraciones (7.6) |
 | D-23 | Panel flotante de actividad de agentes en toda la app: minimizable/maximizable, evento más reciente arriba, agente, tiempo y costo por evento, JSON completo descargable en errores (18.8) |
 | D-24 | Referencias de UI (capturas, Figma, prototipos) cargables desde la creación del proyecto y después; chat con el agente UX/UI designer para pedir cambios al prototipo, con versiones y sin aprobar por sí solo (7.1, 7.4) |
+| D-25 | Historias de usuario visibles y editables antes de migrar (crear, editar, dividir, fusionar, descartar con motivo) y plan de migración por olas **sugerido por el sistema y modificable por las personas**, validado por código contra las dependencias del grafo; ambos se aprueban en C1 y después todo cambio es cambio de alcance (7.7) |
 | D-18 | Producto nativamente en inglés (UI, prompts, skills, catálogo); español como traducción completa; idioma de artefactos configurable por proyecto (inglés por defecto) |
 
 ### 22.2 Pendientes

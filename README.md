@@ -24,7 +24,8 @@ El producto es **nativamente en inglés**, con cambio completo a español.
   datos simulados. Capturas en `docs/prototipo/`. Incluye, entre otros: grafo de conocimiento, comparación
   origen ↔ destino, preguntas del human in the loop, referencias de UI (capturas, Figma, prototipos) desde la
   creación del proyecto, chat de cambios al prototipo, backlog con Jira/Azure DevOps y ciclo automático de
-  bugs, y panel flotante de actividad de agentes.
+  bugs, panel flotante de actividad de agentes, e historias de usuario editables con un plan de migración por
+  olas sugerido por el sistema y modificable, validado contra las dependencias.
 - Siguiente paso: hito **M0 — Fundaciones** (Keycloak, multi-tenant, RBAC, auditoría, CI).
 
 ## Probar el prototipo

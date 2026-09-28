@@ -32,3 +32,8 @@ Capturas de `apps/web` con datos de ejemplo (sección 18.7 de la especificación
 | `522-wizard-source.png` | Asistente → Origen: documentos, referencias de UI y vínculo con Jira/Azure DevOps |
 | `523-activity-panel.png` | Panel flotante de actividad de agentes (abierto): evento más reciente arriba, agente, tiempo y costo |
 | `524-activity-panel-max.png` | Panel de actividad maximizado con un error expandido y descarga del JSON |
+| `525-user-stories.png` | Especificación → Historias de usuario: cobertura, bloqueos de C1 y detalle de una HU creada por una persona |
+| `526-story-edit.png` | Edición de una HU: narrativa, criterios Gherkin, reglas, pantallas, contratos y dependencias |
+| `527-migration-plan.png` | Especificación → Plan de migración: olas sugeridas y cambios respecto a la sugerencia |
+| `528-plan-rejected.png` | Movimiento rechazado por una dependencia dura |
+| `529-plan-soft-warning.png` | Movimiento permitido con aviso por una dependencia blanda (ACL o stub temporal) |
