@@ -1,0 +1,20 @@
+# Agent card (spec 9.2). The system prompt arrives with the orchestration engine (M3).
+id: equivalence-validator
+version: 1.4.0
+order: 18
+name: "Equivalence validator"
+name_es: "Validador de equivalencia"
+group: control
+description: "Re-runs tests from clean, compares outputs, invents fresh inputs and runs the canary."
+description_es: "Re-ejecuta las pruebas desde cero, compara salidas, inventa inputs nuevos y corre el canario."
+phases: ["verification"]
+capabilities: ["toolCalling"]
+tools: ["readWorkspace", "sandbox"]
+mandatory: true
+level: certified
+default_profile: review
+relative_cost: 2
+# Deterministic recommendation (spec 9.4): the first rule that matches gives the reason.
+recommend:
+  - when: {flow: modernization}
+    reason: control

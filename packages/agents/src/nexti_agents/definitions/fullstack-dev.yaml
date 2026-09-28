@@ -1,0 +1,17 @@
+# Agent card (spec 9.2). The system prompt arrives with the orchestration engine (M3).
+id: fullstack-dev
+version: 0.9.0
+order: 11
+name: "Full stack developer"
+name_es: "Desarrollador full stack"
+group: build
+description: "Covers backend and frontend with one shared context. Less parallelism, fewer hand-offs."
+description_es: "Cubre backend y frontend con un solo contexto. Menos paralelismo, menos traspasos."
+phases: ["generation"]
+capabilities: ["toolCalling", "longContext", "vision"]
+tools: ["writeWorkspace", "sandbox"]
+mandatory: false
+level: assisted
+default_profile: codegen
+relative_cost: 3
+recommend: []  # only chosen by the user (e.g. replacing backend + frontend developers)

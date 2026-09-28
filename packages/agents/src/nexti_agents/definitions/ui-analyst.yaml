@@ -1,0 +1,22 @@
+# Agent card (spec 9.2). The system prompt arrives with the orchestration engine (M3).
+id: ui-analyst
+version: 1.1.0
+order: 4
+name: "UI analyst"
+name_es: "Analista de UI"
+group: analysis
+description: "Reads BMS maps, ASPX pages, Figma files and screenshots into screen specifications."
+description_es: "Lee mapas BMS, páginas ASPX, Figma y capturas y los convierte en especificaciones de pantalla."
+phases: ["ui", "normalization"]
+capabilities: ["vision", "structuredOutput"]
+tools: ["readGraph", "readInputs"]
+mandatory: false
+level: certified
+default_profile: vision
+relative_cost: 2
+# Deterministic recommendation (spec 9.4): the first rule that matches gives the reason.
+recommend:
+  - when: {flow: modernization, sources_any: ["bms", "aspx-webforms"]}
+    reason: legacyScreens
+  - when: {flow: newFeature, sources_any: ["figma", "screenshots"]}
+    reason: visualInputs

@@ -1,0 +1,20 @@
+# Agent card (spec 9.2). The system prompt arrives with the orchestration engine (M3).
+id: devops
+version: 0.8.0
+order: 13
+name: "DevOps / cloud engineer"
+name_es: "Ingeniero DevOps / cloud"
+group: build
+description: "Produces IaC, pipelines and the strangler-fig routing plan for the chosen cloud."
+description_es: "Produce IaC, pipelines y el plan de enrutamiento strangler fig para la nube elegida."
+phases: ["delivery"]
+capabilities: ["toolCalling"]
+tools: ["writeWorkspace", "sandbox"]
+mandatory: false
+level: assisted
+default_profile: codegen
+relative_cost: 1
+# Deterministic recommendation (spec 9.4): the first rule that matches gives the reason.
+recommend:
+  - when: {}
+    reason: cloud

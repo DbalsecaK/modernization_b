@@ -1,0 +1,14 @@
+# Pipeline templates (spec 18.3 step 7): which gates stop the flow for a human approval. The gates a template does
+# not require are reviewed asynchronously. The autonomy level (10.4) is chosen per project on top of the template.
+
+templates:
+  - key: bankStandard
+    name: "Bank standard"
+    description: "All four gates required: spec, UI, architecture and sign-off."
+    required_gates: [C1, C2, C3, C4]
+    default_autonomy: balanced
+  - key: internalAgile
+    name: "Internal agile"
+    description: "Spec and sign-off required; UI and architecture reviewed asynchronously."
+    required_gates: [C1, C4]
+    default_autonomy: balanced

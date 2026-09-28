@@ -1,0 +1,20 @@
+# Agent card (spec 9.2). The system prompt arrives with the orchestration engine (M3).
+id: code-reviewer
+version: 1.1.0
+order: 15
+name: "Code reviewer"
+name_es: "Revisor de código"
+group: quality
+description: "Reviews generated code against the target conventions and the customer constitution."
+description_es: "Revisa el código generado contra las convenciones del destino y la constitución del cliente."
+phases: ["generation"]
+capabilities: ["longContext"]
+tools: ["readWorkspace"]
+mandatory: false
+level: certified
+default_profile: review
+relative_cost: 1
+# Deterministic recommendation (spec 9.4): the first rule that matches gives the reason.
+recommend:
+  - when: {}
+    reason: always

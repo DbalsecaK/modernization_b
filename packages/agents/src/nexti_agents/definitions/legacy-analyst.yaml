@@ -1,0 +1,20 @@
+# Agent card (spec 9.2). The system prompt arrives with the orchestration engine (M3).
+id: legacy-analyst
+version: 1.4.0
+order: 1
+name: "Legacy analyst"
+name_es: "Analista legacy"
+group: analysis
+description: "Builds the inventory and dependency map of the legacy system and flags risky areas."
+description_es: "Construye el inventario y el mapa de dependencias del legacy y señala las zonas de riesgo."
+phases: ["inventory", "domains", "classification"]
+capabilities: ["longContext", "structuredOutput"]
+tools: ["readGraph", "readCode"]
+mandatory: false
+level: certified
+default_profile: fast-analysis
+relative_cost: 1
+# Deterministic recommendation (spec 9.4): the first rule that matches gives the reason.
+recommend:
+  - when: {flow: modernization}
+    reason: legacySource

@@ -1,0 +1,20 @@
+# Agent card (spec 9.2). The system prompt arrives with the orchestration engine (M3).
+id: rules-extractor
+version: 2.1.0
+order: 2
+name: "Business rules extractor"
+name_es: "Extractor de reglas de negocio"
+group: analysis
+description: "Turns program slices into business rules with concrete Given/When/Then and exact source citations."
+description_es: "Convierte slices de programa en reglas de negocio con Given/When/Then concretos y citas exactas al fuente."
+phases: ["ruleExtraction"]
+capabilities: ["longContext", "structuredOutput"]
+tools: ["readGraph", "readCode"]
+mandatory: false
+level: certified
+default_profile: deep-analysis
+relative_cost: 3
+# Deterministic recommendation (spec 9.4): the first rule that matches gives the reason.
+recommend:
+  - when: {flow: modernization}
+    reason: legacySource

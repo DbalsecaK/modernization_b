@@ -1,0 +1,32 @@
+# The two flows of v1 (spec 3.1) with their phases and gates (6.1 and 7.2).
+# `agent_required`: the composition must have at least one agent acting in that phase (spec 9.4); the others are
+# deterministic (preflight, inventory parsing) or covered by the phases around them.
+cost_unit_usd: 260  # planning figure per unit of an agent's relative cost; calibrated with the evaluations of M3
+
+flows:
+  - key: modernization
+    phases:
+      - {key: preflight}
+      - {key: inventory, agent_required: true}
+      - {key: domains}
+      - {key: classification}
+      - {key: ruleExtraction, agent_required: true}
+      - {key: ruleReview, gate: C1}
+      - {key: ui, gate: C2}
+      - {key: design, gate: C3, agent_required: true}
+      - {key: characterization}
+      - {key: generation, agent_required: true}
+      - {key: verification, gate: C4, agent_required: true}
+      - {key: hardening}
+      - {key: delivery}
+  - key: newFeature
+    phases:
+      - {key: ingestion}
+      - {key: normalization, agent_required: true}
+      - {key: consolidation}
+      - {key: specReview, gate: C1}
+      - {key: ui, gate: C2, agent_required: true}
+      - {key: design, gate: C3, agent_required: true}
+      - {key: generation, agent_required: true}
+      - {key: validation, gate: C4, agent_required: true}
+      - {key: delivery}

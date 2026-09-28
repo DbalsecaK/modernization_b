@@ -1,0 +1,20 @@
+# Agent card (spec 9.2). The system prompt arrives with the orchestration engine (M3).
+id: frontend-dev
+version: 1.2.0
+order: 10
+name: "Frontend developer"
+name_es: "Desarrollador frontend"
+group: build
+description: "Builds screens with the approved design system and the typed API client."
+description_es: "Construye las pantallas con el design system aprobado y el cliente tipado de la API."
+phases: ["generation"]
+capabilities: ["toolCalling", "vision"]
+tools: ["writeWorkspace", "sandbox"]
+mandatory: false
+level: certified
+default_profile: codegen
+relative_cost: 2
+# Deterministic recommendation (spec 9.4): the first rule that matches gives the reason.
+recommend:
+  - when: {target_not: {frontend: ["none"]}}
+    reason: frontend

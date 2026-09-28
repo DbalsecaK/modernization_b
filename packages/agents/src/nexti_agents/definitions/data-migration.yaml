@@ -1,0 +1,20 @@
+# Agent card (spec 9.2). The system prompt arrives with the orchestration engine (M3).
+id: data-migration
+version: 0.7.0
+order: 12
+name: "Data migration engineer"
+name_es: "Ingeniero de migración de datos"
+group: build
+description: "Generates and tests the data conversion from VSAM or legacy tables to the target database."
+description_es: "Genera y prueba la conversión de datos desde VSAM o tablas legacy hacia la base destino."
+phases: ["generation"]
+capabilities: ["toolCalling"]
+tools: ["writeWorkspace", "sandbox"]
+mandatory: false
+level: assisted
+default_profile: codegen
+relative_cost: 2
+# Deterministic recommendation (spec 9.4): the first rule that matches gives the reason.
+recommend:
+  - when: {flow: modernization}
+    reason: dataMigration

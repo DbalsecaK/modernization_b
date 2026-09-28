@@ -1,0 +1,20 @@
+# Agent card (spec 9.2). The system prompt arrives with the orchestration engine (M3).
+id: data-architect
+version: 1.0.0
+order: 7
+name: "Data architect"
+name_es: "Arquitecto de datos"
+group: design
+description: "Designs the target data model, aggregates and the data migration plan."
+description_es: "Diseña el modelo de datos destino, los agregados y el plan de migración de datos."
+phases: ["design"]
+capabilities: ["structuredOutput"]
+tools: ["readGraph"]
+mandatory: false
+level: certified
+default_profile: deep-analysis
+relative_cost: 2
+# Deterministic recommendation (spec 9.4): the first rule that matches gives the reason.
+recommend:
+  - when: {}
+    reason: always

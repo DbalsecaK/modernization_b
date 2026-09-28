@@ -30,7 +30,7 @@ jobs:
       - run: uv sync --all-packages --locked
       - run: uv run ruff check .
       - run: uv run ruff format --check .
-      - run: uv run mypy apps/api/src apps/api/tests packages/core/src packages/core/tests packages/model_gateway/src packages/model_gateway/tests
+      - run: uv run mypy apps/api/src apps/api/tests packages/core/src packages/core/tests packages/model_gateway/src packages/model_gateway/tests packages/agents/src packages/skills/src
 
   web:
     name: Web · lint, types, tests, build, generated types

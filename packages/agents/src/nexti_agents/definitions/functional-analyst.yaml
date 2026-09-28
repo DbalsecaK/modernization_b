@@ -1,0 +1,20 @@
+# Agent card (spec 9.2). The system prompt arrives with the orchestration engine (M3).
+id: functional-analyst
+version: 0.9.0
+order: 5
+name: "Functional analyst"
+name_es: "Analista funcional"
+group: analysis
+description: "Normalizes user stories, manuals and documents, and detects gaps and contradictions."
+description_es: "Normaliza historias de usuario, manuales y documentos, y detecta huecos y contradicciones."
+phases: ["ingestion", "normalization", "consolidation"]
+capabilities: ["longContext", "vision", "structuredOutput"]
+tools: ["readInputs", "readGraph"]
+mandatory: false
+level: assisted
+default_profile: deep-analysis
+relative_cost: 2
+# Deterministic recommendation (spec 9.4): the first rule that matches gives the reason.
+recommend:
+  - when: {flow: newFeature}
+    reason: documents
