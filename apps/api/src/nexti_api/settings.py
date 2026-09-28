@@ -28,8 +28,21 @@ class Settings(BaseSettings):
     # Schema owner, used only by Alembic, the dev seed and tests; the running API never connects with it.
     migration_database_url: SecretStr = SecretStr("")
     redis_url: SecretStr = SecretStr("")
+    # Keycloak as reached by the API (back channel) and as seen by the browser (redirects and token issuer).
     keycloak_url: str = ""
+    keycloak_public_url: str = ""
     keycloak_realm: str = "nexti"
+    oidc_client_id: str = "nexti-bff"
+    oidc_client_secret: SecretStr = SecretStr("")
+    # Origin of the web app; the OIDC callback goes through it (Vite proxy in development).
+    web_origin: str = "http://localhost:5173"
+
+    # BFF session (spec 15.1): idle timeout, absolute lifetime, encryption of what is stored in Redis.
+    session_secret: SecretStr = SecretStr("")
+    session_idle_seconds: int = 1800
+    session_max_seconds: int = 43200
+    # __Host- cookies must be Secure; browsers accept Secure cookies on http://localhost.
+    session_cookie_secure: bool = True
     openfga_url: str = ""
     openfga_api_key: SecretStr = SecretStr("")
 
@@ -39,7 +52,14 @@ class Settings(BaseSettings):
 
     @property
     def keycloak_issuer(self) -> str:
+        """Back-channel base URL of the realm (discovery, token, JWKS, logout)."""
         return f"{self.keycloak_url.rstrip('/')}/realms/{self.keycloak_realm}"
+
+    @property
+    def keycloak_public_issuer(self) -> str:
+        """The `iss` of the tokens and the base of the browser redirects."""
+        base = self.keycloak_public_url or self.keycloak_url
+        return f"{base.rstrip('/')}/realms/{self.keycloak_realm}"
 
 
 @lru_cache

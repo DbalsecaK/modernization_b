@@ -5,7 +5,10 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
-from nexti_api import health
+from nexti_api import health, me
+from nexti_api.auth import routes as auth_routes
+from nexti_api.auth.oidc import OidcClient
+from nexti_api.auth.session import SessionStore
 from nexti_api.errors import install_error_handlers
 from nexti_api.observability import RequestLogMiddleware, configure_logging
 from nexti_api.resources import Resources
@@ -22,6 +25,10 @@ def create_app(settings: Settings | None = None, health_checks: dict[str, health
         resources = Resources.open(settings)
         app.state.resources = resources
         app.state.health_checks = health_checks or health.default_checks(resources, settings)
+        app.state.oidc = OidcClient(settings, resources.http)
+        # Without Redis or a session secret there are no sessions: session routes answer 503.
+        configured = resources.redis is not None and settings.session_secret.get_secret_value()
+        app.state.sessions = SessionStore(resources.redis, settings) if configured and resources.redis else None
         try:
             yield
         finally:
@@ -40,4 +47,6 @@ def create_app(settings: Settings | None = None, health_checks: dict[str, health
     app.add_middleware(RequestLogMiddleware)
     install_error_handlers(app)
     app.include_router(health.router)
+    app.include_router(auth_routes.router)
+    app.include_router(me.router)
     return app

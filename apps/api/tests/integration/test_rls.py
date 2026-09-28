@@ -63,7 +63,9 @@ async def test_tenant_switcher_lists_only_own_memberships(app_engine: AsyncEngin
 
 async def test_users_of_other_tenants_are_invisible(app_engine: AsyncEngine, world: World) -> None:
     visible = await ids(app_engine, DbScope(tenant_id=world.tenant_a, user_id=world.a_user), "SELECT id FROM app_user")
-    assert set(visible) == {world.a_user, world.shared}
+    # Other tests may add members to A; what matters is that B's only user never shows up.
+    assert {world.a_user, world.shared} <= set(visible)
+    assert world.b_user not in visible
 
 
 async def test_membership_of_the_shared_user_in_b_is_hidden_from_a(app_engine: AsyncEngine, world: World) -> None:

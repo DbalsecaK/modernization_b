@@ -85,13 +85,17 @@ def databases() -> Iterator[Databases]:
         asyncio.run(drop_database(name))
 
 
-def _relay_password() -> str:
-    # The relay password is only in the Compose .env (the API's .env does not need it).
+def compose_env(name: str) -> str:
+    """A value of the Compose .env that the API's .env does not carry (relay password, dev user password...)."""
     env = API_DIR.parents[1] / "infra" / "docker-compose" / ".env"
     for line in env.read_text(encoding="utf-8").splitlines():
-        if line.startswith("AUTHZ_RELAY_PASSWORD="):
+        if line.startswith(f"{name}="):
             return line.split("=", 1)[1]
-    raise RuntimeError("AUTHZ_RELAY_PASSWORD not found in infra/docker-compose/.env")
+    raise RuntimeError(f"{name} not found in infra/docker-compose/.env")
+
+
+def _relay_password() -> str:
+    return compose_env("AUTHZ_RELAY_PASSWORD")
 
 
 @pytest.fixture(scope="session")

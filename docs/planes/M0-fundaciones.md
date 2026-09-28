@@ -165,6 +165,13 @@ Identificadores en inglés, `uuid` como clave, `created_at`/`updated_at` en UTC.
 - **Invitaciones:** el administrador invita (correo, rol, proyecto opcional) → la API crea el usuario en
   Keycloak vía Admin REST API con una cuenta de servicio de mínimo privilegio y pide a Keycloak el correo
   "definir contraseña" (llega a Mailpit en dev) → al primer login la membresía pasa a activa.
+- **Implementado (paso 6):** el `state` es de un solo uso y queda atado al navegador con una cookie
+  `__Host-nexti_login` (evita el login CSRF y el replay del callback). El ID token se valida con firma (JWKS),
+  `iss` público, `aud`, `azp`, `exp` y `nonce`. Al primer login el usuario se enlaza por correo **verificado**;
+  sin usuario de plataforma el acceso se rechaza (`no_platform_access`). En Redis la clave es el SHA-256 del id
+  de sesión y el registro va cifrado. El logout termina también la sesión de Keycloak por back channel.
+  `PATCH /api/v1/me` guarda el idioma. **Movido:** la activación de invitaciones al login pasa al paso 9 (con
+  las invitaciones) y `me.permissions` se llena desde OpenFGA en el paso 8.
 - **Realm de desarrollo:** `infra/keycloak/realm-nexti.json` con el cliente confidencial del BFF, política
   de contraseña básica y usuarios de prueba ficticios (`admin@nexti.example`, `po@andes.example`, …).
 
@@ -313,7 +320,7 @@ cliente TypeScript generado desde él para la web.
 | 3 ✅ | API: logs estructurados, `/health/live` y `/health/ready`, OpenAPI | `GET /health/ready` = 200 con todos los servicios |
 | 4 ✅ | Esquema con Alembic: tenancy, usuarios, roles, permisos, asignaciones, proyecto mínimo, invitaciones, outbox; RLS y roles de BD; datos sembrados | Tests SQL de aislamiento en verde |
 | 5 ✅ | Auditoría append-only con hash encadenado y verificación | Tests de inmutabilidad y cadena en verde |
-| 6 | BFF con Keycloak: login, callback, logout, sesión Redis, cookie, CSRF, `me`, cambio de tenant | Login real en local; test "ningún token en el navegador" |
+| 6 ✅ | BFF con Keycloak: login, callback, logout, sesión Redis, cookie, CSRF, `me`, cambio de tenant | Login real en local; test "ningún token en el navegador" |
 | 7 | `dev-auth` y arranque seguro | Test de arranque en producción falla como se espera |
 | 8 | OpenFGA: modelo y tests del modelo, cliente, `require(...)`, outbox y reconciliación | `fga model test` y tests de sincronización en verde |
 | 9 | Routers de administración (tenants, usuarios, invitaciones con Keycloak + Mailpit, roles, matriz, asignaciones, proyectos, auditoría) con tests permitido/denegado y aislamiento | Suite `authz` e `isolation` en verde |
