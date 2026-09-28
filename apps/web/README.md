@@ -20,7 +20,7 @@ password of 8+ characters goes to the MFA step (any 6 digits).
 |---|---|
 | Login | Email-first sign-in with SSO detection, password + MFA, forgot password, invitation |
 | Projects → New project | 9-step wizard: recommended agent cards, skills with conflicts, models, autonomy level |
-| Project → Inventory | Knowledge graph: pick a **business flow** to walk it step by step, pick a **business rule** to focus it, filter relations, show **only orphans and isolated** nodes, zoom and pan |
+| Project → Inventory | Knowledge graph in two layouts (**Circles** and **Layers**): pick a **business flow** to walk it step by step, pick a **business rule** to focus it, click a node for its description and connections, show impact, filter relations, show **only orphans and isolated** nodes, zoom, pan and double-click to zoom in |
 | Project → Source ↔ target | Legacy and target code side by side, the rule, and legacy vs new outputs |
 | Project → Specification | Rules, screens, contracts and questions |
 | My tasks → Questions | Decision cards: recommended answer pre-selected, alternatives, "Other answer…", bulk accept low-impact |
@@ -52,7 +52,7 @@ src/
    ├─ auth/                    # Login (SSO + password), MFA, forgot password, invitation, account
    ├─ dashboard/               # Executive / delivery / admin perspectives
    ├─ projects/                # List, new-project wizard (agents & skills), workspace with 13 tabs
-   │  ├─ graph/                # Knowledge graph: flows walkthrough, rule focus, filters, orphans, zoom
+   │  ├─ graph/                # Knowledge graph: circles and layers layouts, flows, rule focus, filters, orphans, impact
    │  ├─ tabs/                 # Workspace tabs
    │  └─ InputForms.tsx        # Add inputs (files, Git, Figma, Jira) with security checks
    ├─ decisions/               # Human-in-the-loop decision cards and their shared store

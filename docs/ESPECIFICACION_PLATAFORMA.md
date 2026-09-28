@@ -1093,7 +1093,7 @@ React (web) ──HTTPS──> WAF / API Gateway
 
 | Capa | Tecnología |
 |---|---|
-| Frontend | React + TypeScript, Vite, TanStack Query y TanStack Router, Tailwind + shadcn/ui (a confirmar), Cytoscape.js o Sigma.js (grafo), Monaco (código), i18next |
+| Frontend | React + TypeScript, Vite, TanStack Query y TanStack Router, Tailwind + shadcn/ui (a confirmar), grafo en SVG propio con d3-hierarchy (vista de círculos; evaluar Cytoscape.js o Sigma.js para grafos de miles de nodos), Monaco (código), i18next |
 | Backend API | Python 3.12+, FastAPI, Pydantic v2, SQLAlchemy 2 + Alembic |
 | Orquestación | LangGraph (checkpointer PostgreSQL), LangChain (abstracción de modelos y herramientas) |
 | Trabajos | Workers Python con cola sobre Redis (Celery o alternativa; decisión en la sección 22) |
