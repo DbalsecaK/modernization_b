@@ -9,7 +9,9 @@
   nuevas a partir de documentación, con agentes de IA verificados.
 - **Dueño:** NexTI Business Solutions.
 - **Estado:** especificación inicial (v0.1).
-- **Idioma de trabajo:** español (la plataforma debe soportar también inglés).
+- **Idioma del producto:** **inglés nativo** (idioma por defecto de toda la plataforma), con cambio a español.
+  Ver 18.6.
+- **Idioma de este documento:** español.
 
 ---
 
@@ -845,7 +847,7 @@ de permisos de administrador. Toda configuración es versionada y auditable.
 
 **Asistente de creación:**
 
-1. Datos básicos y flujo.
+1. Datos básicos, flujo e idioma de los artefactos (inglés por defecto).
 2. Origen (tecnologías; zip/Git o insumos documentales).
 3. Destino y arquitectura (matriz de compatibilidad con avisos).
 4. **Equipo de agentes** (cards; recomendados con motivo; reemplazar/quitar/agregar).
@@ -885,8 +887,41 @@ de permisos de administrador. Toda configuración es versionada y auditable.
 
 ### 18.5 Transversales
 
-Tiempo real (SSE/WebSocket), i18n español/inglés, tema claro/oscuro, WCAG 2.1 AA, todo enlazable por URL,
+Tiempo real (SSE/WebSocket), inglés nativo con cambio a español (18.6), tema claro/oscuro, WCAG 2.1 AA, todo enlazable por URL,
 estados vacíos, de carga y de error en todas las vistas.
+
+### 18.6 Idioma: inglés nativo, español como alternativa
+
+**Toda la plataforma es nativamente en inglés.** El español es una traducción completa y se activa por
+elección del usuario.
+
+**Interfaz**
+
+- Los textos fuente de la UI se escriben en **inglés**; las claves y el catálogo base son `en`.
+  El catálogo `es` es una traducción de ese base.
+- Idioma por defecto: inglés. Orden de resolución:
+  preferencia del usuario → idioma por defecto del tenant → inglés.
+  (No se usa el idioma del navegador para cambiar el default, salvo que el tenant lo habilite.)
+- Selector de idioma en el perfil y en la barra superior; el cambio es inmediato y persiste.
+- Fechas, números y monedas con formato del locale (`en-US` / `es-*`), independiente del idioma de los datos.
+- Correos, notificaciones y exportaciones (PDF, informes) en el idioma del destinatario.
+- Mensajes de error de la API: códigos estables + texto en inglés; la web los muestra traducidos por código.
+- CI falla si una clave existe en `en` y falta en `es` (o al revés).
+
+**Artefactos generados (spec, reglas, documentación, informes de verificación)**
+
+- Idioma configurable **por proyecto**, con **inglés por defecto**; opción de generarlos en español
+  (útil para bancos cuyo negocio revisa en español).
+- El idioma elegido se pasa a los agentes como parámetro del proyecto; los prompts de sistema y las skills
+  se mantienen en **inglés** (idioma base) y piden la salida en el idioma del proyecto.
+- Identificadores técnicos (`RULE-NNN`, veredictos `PROVEN / PARTLY PROVEN / NOT PROVEN`, nombres de
+  fases en la API) son iguales en ambos idiomas; en la UI se muestran con su etiqueta traducida.
+- El código generado usa identificadores en inglés; los comentarios siguen el idioma del proyecto.
+
+**Catálogo y contenido administrable**
+
+- Agentes, skills, plantillas de pipeline y design systems: nombre y descripción en inglés, con traducción
+  opcional al español (si falta, se muestra el inglés).
 
 ---
 
@@ -1002,10 +1037,13 @@ Cada hito termina con: código en la rama, tests pasando en CI, documentación a
 - FastAPI con OIDC (patrón BFF, cookies), sesión, CSRF.
 - Tenants, usuarios, membresías, RLS, OpenFGA con roles base.
 - Audit log append-only.
-- Web: layout, login, menú por permisos, i18n, tema.
+- Web: layout, login, menú por permisos, tema.
+- i18n: inglés como idioma fuente y por defecto; catálogo en español; selector de idioma (18.6).
 
 **Aceptación:** un usuario de un tenant no puede ver datos de otro (test automatizado a nivel API y SQL);
 login con MFA en Keycloak local; toda acción sensible queda en la auditoría.
+La web arranca en inglés; al cambiar a español no queda ningún texto sin traducir (test automatizado
+que compara las claves de ambos catálogos); la preferencia persiste entre sesiones.
 
 ### M1 — Configuración IA y consumo
 
@@ -1151,6 +1189,7 @@ Sybase SP (M4) → BMS (M5) → CICS (M6) → ASPX (M8).
 | D-08 | Soporte de todos los modelos de despliegue por diseño |
 | D-09 | Multi-proveedor de modelos con gateway único y libro de consumo propio |
 | D-10 | Agentes y skills seleccionables con recomendación determinista |
+| D-18 | Producto nativamente en inglés (UI, prompts, skills, catálogo); español como traducción completa; idioma de artefactos configurable por proyecto (inglés por defecto) |
 
 ### 22.2 Pendientes
 
@@ -1179,7 +1218,7 @@ Las decisiones nuevas se agregan como ADR en `docs/adr/` y se reflejan aquí.
   precios y plataforma.
 - **Observabilidad:** trazas por ejecución, fase y llamada; métricas de costo y latencia.
 - **Accesibilidad:** WCAG 2.1 AA.
-- **Internacionalización:** español e inglés.
+- **Internacionalización:** inglés nativo (por defecto) y español; preparada para agregar más idiomas sin cambiar código.
 - **Portabilidad:** Kubernetes en cualquier nube u on-prem.
 
 ---
@@ -1215,7 +1254,7 @@ carpeta `plugins/code-modernization`.
 ### 25.1 Qué reutilizar (respetando la licencia y la atribución)
 
 - **Prompts de agentes** como punto de partida (legacy-analyst, business-rules-extractor, architecture-critic,
-  security-auditor, test-engineer, scaffolder, …), adaptados a español y a COBOL/Sybase/.NET bancario.
+  security-auditor, test-engineer, scaffolder, …), adaptados a COBOL/Sybase/.NET bancario y a la generación de artefactos en inglés o español.
 - **Scripts de verificación** como referencia de diseño para `packages/verification`:
   `compare.py` (comparación byte a byte con máscaras y tolerancias), `trace_rules.py` (regla → test),
   `proof_pack.py` (veredicto por reglas fijas).
@@ -1226,7 +1265,7 @@ carpeta `plugins/code-modernization`.
 
 Grafo persistente, multiusuario y multi-cliente, parsers deterministas, semántica de datos bancaria,
 migración de datos, orquestación con presupuesto y reanudación gestionada, visor de trazabilidad,
-completitud estructural, validación de reglas más allá de P0, y todo en español.
+completitud estructural, validación de reglas más allá de P0, y producto bilingüe (inglés nativo, español).
 
 ### 25.3 Lecciones de diseño adoptadas
 

@@ -51,5 +51,10 @@ el mismo cambio y registra la decisión (sección 22 o un ADR en `docs/adr/`).
 
 ## Idioma
 
-- Documentación, mensajes de commit y textos de UI en español (con i18n para inglés).
+- **El producto es nativamente en inglés** (sección 18.6 de la especificación):
+  - Textos de UI escritos en inglés como fuente (catálogo `en`); el español es una traducción (`es`).
+    Nunca escribas textos visibles directamente en el componente: usa claves i18n y agrega ambas traducciones.
+  - Idioma por defecto: inglés. Prompts de sistema, skills y catálogo base en inglés.
+  - Mensajes de error de la API: código estable + texto en inglés.
 - Identificadores de código en inglés.
+- Documentación interna del repo (`docs/`) y mensajes de commit: en español.

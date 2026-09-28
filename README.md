@@ -9,6 +9,8 @@ Plataforma web multi-cliente para:
 Metodología: Spec-Driven Development, con agentes de IA orquestados en LangGraph, verificación
 independiente y aprobaciones humanas.
 
+El producto es **nativamente en inglés**, con cambio completo a español.
+
 ## Documentación
 
 - [Especificación de la plataforma](docs/ESPECIFICACION_PLATAFORMA.md): visión, flujos, arquitectura,
