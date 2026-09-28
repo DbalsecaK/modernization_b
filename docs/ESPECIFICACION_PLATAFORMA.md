@@ -776,6 +776,7 @@ verificados o los marca como no verificados.
 | **Azure AI Foundry** | Entra ID (service principal / managed identity) | Uso por *deployments* con nombre del cliente; el catálogo lee sus deployments |
 | **AWS Bedrock** | Rol IAM asumido entre cuentas (sin llaves estáticas) | Habilitación por cuenta y región; inference profiles; IDs versionados |
 | **OpenAI API** | API key en Vault/KMS | Alias y snapshots fechados |
+| **OpenRouter** | API key en Vault/KMS | Agregador con API compatible con OpenAI. **Primer proveedor implementado** (M1, D-28). Se usa en desarrollo, pruebas o producción según lo configure cada cliente. Fija proveedor de enrutamiento y versión del modelo; devuelve el costo por llamada ([ADR-0005](adr/0005-openrouter-proveedor-inicial.md)) |
 | **Otros** (Anthropic API, Vertex AI, modelos locales vía vLLM) | Según proveedor | Mismo modelo de datos |
 
 Cada conexión tiene "probar conexión" (credenciales, permisos, modelos disponibles).
@@ -811,6 +812,8 @@ del generador cuando la política lo exija.
 ### 12.6 Políticas por tenant
 
 Modelos y regiones permitidos, proveedores prohibidos, límites de uso, retención de prompts y respuestas.
+Para agregadores (OpenRouter), además: proveedores de destino permitidos y exigencia de retención cero (ZDR) y
+de no entrenamiento; un tenant puede prohibir el agregador por completo.
 
 ### 12.7 Implementación
 
@@ -843,7 +846,7 @@ vigencia. La mantiene el administrador. Un cambio de tarifa no reescribe costos 
 ### 13.4 Reconciliación (opcional)
 
 Comparar el costo calculado con la facturación real del proveedor (AWS Cost Explorer, Azure Cost Management)
-usando etiquetas.
+usando etiquetas. En OpenRouter, con el costo que el proveedor informa en cada respuesta.
 
 ### 13.5 Vistas
 
@@ -1283,7 +1286,7 @@ React (web) ──HTTPS──> WAF / API Gateway
   (app, RLS,                │                  Object storage (S3/MinIO)
    checkpoints,       Workers LangGraph        Vault / KMS
    libro consumo)           │
-                      Gateway de modelos ── Proveedores (Foundry, Bedrock, OpenAI…)
+                      Gateway de modelos ── Proveedores (OpenRouter, Foundry, Bedrock, OpenAI…)
                             │
                       Sandbox de ejecución
                       Langfuse (trazas y evaluación)
@@ -1422,14 +1425,17 @@ pasan los tests de accesibilidad.
 
 ### M1 — Configuración IA y consumo
 
-- Conexiones (Foundry, Bedrock, OpenAI) con "probar conexión" y secretos en Vault (dev: equivalente local).
+- Conexión **OpenRouter** (primer proveedor, D-28) con "probar conexión" y secreto en Vault (dev: equivalente local),
+  proveedor de enrutamiento fijado y políticas de ZDR y proveedores permitidos por tenant. Foundry, Bedrock y
+  OpenAI se agregan después sobre el mismo modelo de datos (cuando un cliente lo requiera, antes de M9).
 - Catálogo familia → versión → oferta con sincronización; capacidades.
 - Perfiles con esfuerzo normalizado y tabla de equivalencias; fallback.
 - Cascada de configuración y matriz fase × rol.
 - Gateway de modelos único; libro de consumo; precios versionados; presupuestos y alertas.
 - Pantallas de Configuración IA y Consumo y costos.
 
-**Aceptación:** una llamada de prueba por cada proveedor queda registrada con tokens y costo correctos;
+**Aceptación:** una llamada de prueba por OpenRouter queda registrada con tokens y costo correctos (y el costo
+coincide con el que informa OpenRouter); una política de tenant que prohíbe OpenRouter o exige ZDR se respeta;
 superar un presupuesto pausa la ejecución; un agente no puede llamar a un proveedor sin pasar por el gateway.
 
 ### M2 — Proyectos e insumos
@@ -1631,6 +1637,7 @@ Sybase SP (M4) → BMS (M5) → CICS (M6) → ASPX (M8).
 | D-20 | Keycloak: **un realm con una Organization por tenant** en el SaaS compartido; realm o instancia dedicada en despliegues dedicados o si un cliente exige políticas por realm; versión fijada 26+ ([ADR-0002](adr/0002-keycloak-organizations-por-tenant.md)) |
 | D-27 | Autenticación **por etapas**: Keycloak mínimo desde M0 (cuentas locales en Keycloak, BFF, `dev-auth` solo en desarrollo) y SSO/MFA/Organizations/Keycloakify en **M0b**; la plataforma nunca guarda contraseñas ([ADR-0004](adr/0004-autenticacion-por-etapas.md)) |
 | D-18 | Producto nativamente en inglés (UI, prompts, skills, catálogo); español como traducción completa; idioma de artefactos configurable por proyecto (inglés por defecto) |
+| D-28 | **OpenRouter** como primer proveedor de modelos (M1): conexión por tenant usable en desarrollo, pruebas o producción según decida cada cliente, con proveedor de enrutamiento y versión fijados y políticas de ZDR y proveedores permitidos; Foundry, Bedrock y OpenAI después sobre el mismo modelo de datos ([ADR-0005](adr/0005-openrouter-proveedor-inicial.md)) |
 
 ### 22.2 Pendientes
 

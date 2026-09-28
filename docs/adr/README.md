@@ -10,5 +10,6 @@ reemplaza y se marca el anterior como "Reemplazado por ADR-NNNN".
 | [0002](0002-keycloak-organizations-por-tenant.md) | D-20 — Keycloak: una Organization por tenant | Aceptada |
 | [0003](0003-componentes-ui-shadcn-radix.md) | D-14 — Componentes UI con shadcn/ui sobre Radix | Aceptada |
 | [0004](0004-autenticacion-por-etapas.md) | D-27 — Autenticación por etapas (Keycloak mínimo en M0, SSO/MFA en M0b) | Aceptada |
+| [0005](0005-openrouter-proveedor-inicial.md) | D-28 — OpenRouter como primer proveedor de modelos | Aceptada |
 
 Plantilla: contexto, decisión, alternativas consideradas, consecuencias y cómo se valida.
