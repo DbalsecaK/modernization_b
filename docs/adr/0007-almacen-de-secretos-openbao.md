@@ -21,6 +21,10 @@ MPL 2.0 y la misma API.
 - En la base solo queda la ruta del secreto (`vault_path`); la API key no vuelve nunca al navegador (la UI solo
   muestra si está configurada).
 
+> **Nota (M2, 2026-09-28):** el cliente KV pasa a `nexti_core.secrets` para guardar también el token Git de un
+> proyecto. Sigue siendo el único módulo que habla con OpenBao; las credenciales de proveedores de modelos solo las
+> lee el gateway.
+
 ## Alternativas consideradas
 
 | Opción | Por qué no |
