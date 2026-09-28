@@ -8,7 +8,7 @@
     "lint": "node tools/lint/node_modules/eslint/bin/eslint.js apps/web",
     "format": "node tools/lint/node_modules/prettier/bin/prettier.cjs --write apps/web",
     "format:check": "node tools/lint/node_modules/prettier/bin/prettier.cjs --check apps/web",
-    "api:dev": "uv run uvicorn --factory nexti_api.main:create_app --reload --port 8000",
+    "api:dev": "uv run uvicorn --factory nexti_api.main:create_app --reload --port 8100",
     "py:check": "uv run ruff check . && uv run ruff format --check . && uv run mypy apps/api/src apps/api/tests packages/core/src packages/core/tests && uv run pytest"
   },
   "packageManager": "pnpm@10.33.0",

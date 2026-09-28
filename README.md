@@ -50,8 +50,22 @@ uv sync --all-packages
 pnpm lint         # ESLint (apps/web)
 pnpm format:check # Prettier (apps/web)
 pnpm py:check     # Ruff, mypy estricto y pytest (apps/api, packages/)
-pnpm api:dev      # API en http://localhost:8000 (healthz: /healthz)
+pnpm api:dev      # API en http://localhost:8100 (healthz: /healthz)
 ```
+
+### Entorno local (Docker Compose)
+
+```bash
+python infra/docker-compose/init_env.py        # crea .env con secretos aleatorios (repetir tras cada pull)
+docker compose -f infra/docker-compose/compose.yaml up -d --wait
+python infra/docker-compose/smoke_check.py     # verifica servicios, realm de Keycloak y roles de BD
+docker compose -f infra/docker-compose/compose.yaml --profile observability up -d --wait   # + Langfuse
+```
+
+Servicios en `127.0.0.1`: PostgreSQL 5440, Redis 6380, Keycloak 8180 (realm `nexti`), OpenFGA 8190,
+Mailpit 8025, MinIO 9100/9101, Neo4j 7476/7689 y Langfuse 3100. Los puertos se cambian en `.env`.
+Los usuarios de desarrollo del realm son ficticios (`admin@nexti.example`, `mtorres@andesbank.example`, …) y su
+contraseña es `KC_DEV_USER_PASSWORD` del `.env`.
 
 ESLint y Prettier viven en `tools/lint` con su propio TypeScript 6: TypeScript 7 (compilador nativo) ya no
 expone la API que usa typescript-eslint. La web sigue compilando con TypeScript 7.

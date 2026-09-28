@@ -1,8 +1,19 @@
 # Plan del hito M0 — Fundaciones
 
-- **Estado:** propuesta para revisión (no iniciar código hasta aprobarla).
+- **Estado:** aprobado el 2026-09-28 como **plan mixto**: este documento más tres enmiendas (ver abajo).
 - **Fuente:** `docs/ESPECIFICACION_PLATAFORMA.md` (secciones 14, 15, 16, 18.7, 19, 20) y ADR-0001 a 0004.
 - **Rama de trabajo:** `m0-fundaciones`, un commit por paso, PR a `main` al terminar.
+
+**Enmiendas aprobadas**
+
+1. **OpenFGA con `role_binding` por proyecto** (sección 6): asignar un rol de proyecto con `role:<id>#assignee`
+   lo daría en todos los proyectos que usan ese rol; cada asignación de proyecto usa su propio objeto
+   `role_binding:<proyecto>/<rol>`.
+2. **Entorno local** (sección 3): versiones exactas verificadas, puertos alternativos solo en `127.0.0.1` (para no
+   chocar con otros proyectos locales), Langfuse y ClickHouse en el perfil `observability` y secretos de
+   desarrollo generados al azar por `infra/docker-compose/init_env.py` (el repositorio no tiene ni valores de ejemplo).
+3. **Paso 1 ampliado** (sección 12): incluye la base de la API (settings, RFC 9457) y ESLint + Prettier, que
+   estaban en los pasos 3 y 10.
 
 ## 1. Objetivo y alcance
 
@@ -32,7 +43,8 @@ Se crea con datos sembrados y sin pantallas de alta; el CRUD y el asistente son 
 /
 ├─ pyproject.toml                  # workspace uv (miembros: apps/api, packages/core)
 ├─ uv.lock
-├─ .env.example                    # variables con valores de ejemplo (nunca secretos reales)
+├─ eslint.config.js, .prettierrc.json
+├─ tools/lint/                     # ESLint y Prettier con TypeScript 6 propio (TS 7 no expone la API del compilador)
 ├─ .github/workflows/ci.yml
 ├─ apps/
 │  ├─ api/
@@ -53,28 +65,38 @@ Se crea con datos sembrados y sin pantallas de alta; el CRUD y el asistente son 
 ├─ packages/
 │  └─ core/                        # tipos compartidos: ids, enums de roles y permisos, errores (mypy estricto)
 └─ infra/
-   ├─ docker-compose/compose.yml
+   ├─ docker-compose/
+   │  ├─ compose.yaml
+   │  ├─ .env.example              # nombres de variables y puertos; secretos vacíos
+   │  ├─ init_env.py               # crea .env con secretos aleatorios (y agrega los que falten)
+   │  └─ postgres/init/01-roles-and-databases.sh   # bases y roles de BD (lee las contraseñas del entorno)
    ├─ keycloak/realm-nexti.json    # realm de desarrollo: cliente del BFF, usuarios de prueba sin datos reales
    ├─ openfga/model.fga            # modelo de autorización
-   ├─ openfga/model.tests.yaml     # tests del modelo (permitido/denegado)
-   └─ postgres/init.sql            # bases y roles de BD (app, migrator, keycloak)
+   └─ openfga/model.tests.yaml     # tests del modelo (permitido/denegado)
 ```
 
 ## 3. Entorno local (Docker Compose)
 
-| Servicio | Imagen (versión fijada al implementar) | Puerto local | Para qué en M0 |
+| Servicio | Imagen (fijada) | Puerto local (`127.0.0.1`) | Para qué en M0 |
 |---|---|---|---|
-| postgres | `postgres:16` | 5432 | Base de la plataforma, de Keycloak y de OpenFGA |
-| redis | `redis:7` | 6379 | Sesiones del BFF |
-| keycloak | `quay.io/keycloak/keycloak:26.x` | 8080 | Autenticación (realm importado al arrancar) |
-| openfga | `openfga/openfga:v1.x` | 8081 | Autorización |
-| mailpit | `axllent/mailpit` | 8025 | Correos de invitación en desarrollo |
-| minio | `minio/minio` | 9000/9001 | Solo levantado (se usa en M2) |
-| neo4j | `neo4j:5` | 7474/7687 | Solo levantado (se usa en M4/M6) |
-| langfuse | `langfuse/langfuse` | 3000 | Solo levantado (se usa en M1/M3) |
+| postgres | `postgres:17.11` | 5440 | Base de la plataforma, de Keycloak, de OpenFGA y de Langfuse |
+| redis | `redis:8.8.3-alpine` | 6380 | Sesiones del BFF |
+| keycloak | `quay.io/keycloak/keycloak:26.7.4` | 8180 | Autenticación (realm importado al arrancar) |
+| openfga | `openfga/openfga:v1.21.0` | 8190 | Autorización |
+| mailpit | `axllent/mailpit:v1.31.3` | 8025 (UI), 1025 (SMTP) | Correos de invitación en desarrollo |
+| minio | `cgr.dev/chainguard/minio@sha256:…` (MinIO ya no publica imágenes comunitarias) | 9100/9101 | Solo levantado (se usa en M2) |
+| neo4j | `neo4j:5.26.31-community` | 7476/7689 | Solo levantado (se usa en M4/M6; D-12 pendiente) |
+| langfuse + clickhouse | `langfuse:4.46.0`, `clickhouse-server:25.12.11.4` | 3100 | Perfil `observability`, solo levantado (se usa en M1/M3) |
 
-Todos con *healthcheck*. Un solo comando: `docker compose -f infra/docker-compose/compose.yml up -d`.
-Las contraseñas de desarrollo salen de `.env` (copiado de `.env.example`); nunca se commitean.
+La API de desarrollo usa el puerto 8100. Todos los puertos se pueden cambiar en `.env`.
+
+```bash
+python infra/docker-compose/init_env.py        # crea .env con secretos aleatorios
+docker compose -f infra/docker-compose/compose.yaml up -d --wait
+docker compose -f infra/docker-compose/compose.yaml --profile observability up -d --wait   # con Langfuse
+```
+
+`.env` nunca se commitea; `.env.example` solo tiene nombres y puertos.
 
 ## 4. Modelo de datos (PostgreSQL)
 
@@ -96,7 +118,9 @@ Identificadores en inglés, `uuid` como clave, `created_at`/`updated_at` en UTC.
 
 **RLS y roles de base de datos**
 
-- La API se conecta con el rol `nexti_app` (sin `BYPASSRLS`, dueño de nada); las migraciones con `nexti_migrator`.
+- La API se conecta con el rol `platform_app` (sin `BYPASSRLS`, dueño de nada); las migraciones con
+  `platform_owner`. El publicador del outbox usa `authz_relay`, que solo puede leer y actualizar `authz_outbox`
+  (con su propia política RLS, sin `BYPASSRLS`).
 - Cada request abre una transacción y ejecuta `SET LOCAL app.tenant_id = '<tenant de la sesión>'` y
   `SET LOCAL app.user_id = '<usuario>'`. Las políticas usan `current_setting('app.tenant_id', true)::uuid`.
 - Sin tenant en la sesión, las consultas a tablas con RLS no devuelven filas (fallo seguro).
@@ -139,20 +163,26 @@ model
 
 type user
 
-type role
-  relations
-    define assignee: [user]
-
 type platform
   relations
     define superadmin: [user]
     define support: [user]
 
+# Tenant-scope role of one tenant: role:<tenant>/<role_key>
+type role
+  relations
+    define assignee: [user]
+
+# Project-scope role assignment, one object per project and role: role_binding:<project>/<role_key>
+type role_binding
+  relations
+    define assignee: [user]
+
 type tenant
   relations
     define platform: [platform]
     define member: [user]
-    define admin: [user, role#assignee] or superadmin from platform
+    define admin: [user] or superadmin from platform
     # one relation per tenant permission (16.2), granted to roles:
     define users_manage: [role#assignee] or admin
     define audit_view: [role#assignee] or admin
@@ -161,16 +191,21 @@ type tenant
 type project
   relations
     define tenant: [tenant]
-    define member: [user, role#assignee]
+    define member: [role_binding#assignee]
     define view: member or admin from tenant
-    define configure: [role#assignee] or admin from tenant
-    define gate_c1_approve: [role#assignee]
+    define configure: [role_binding#assignee] or admin from tenant
+    define gate_c1_approve: [role_binding#assignee]
     # ... resto de permisos de proyecto de 16.2
 ```
 
-- **Roles configurables:** el rol se asigna con `role:<id>#assignee@user:<id>`; cada permiso del rol se
-  escribe como `tenant:<id>#<permiso>@role:<id>#assignee` (o sobre `project:<id>`). Cambiar los permisos de
-  un rol en la matriz actualiza sus tuplas.
+- **Roles de tenant:** se asignan con `role:<tenant>/<rol>#assignee@user:<id>` y cada permiso del rol se escribe
+  como `tenant:<id>#<permiso>@role:<tenant>/<rol>#assignee`. `tenant.admin` se escribe directo en `admin`.
+- **Roles de proyecto (enmienda 1):** asignar el rol R al usuario U en el proyecto P escribe
+  `role_binding:P/R#assignee@user:U` y, por cada permiso de R, `project:P#<permiso>@role_binding:P/R#assignee`.
+  Con `role:R#assignee` la asignación valdría en todos los proyectos que usan R. Cambiar la matriz de un rol de
+  proyecto reescribe sus tuplas en cada proyecto del tenant, por outbox.
+- `admin from tenant` no alcanza a `signoff_sign` (16.3: el administrador no firma si no es miembro con ese
+  permiso). La segregación de funciones de las compuertas llega con M3.
 - **Sincronización:** cada cambio en `role_assignment`, `role_permission` o `membership` inserta la fila de
   negocio y una fila en `authz_outbox` en la **misma transacción**; un proceso en la API publica el outbox en
   OpenFGA con reintentos. Un job de **reconciliación** compara PostgreSQL con OpenFGA y corrige.
@@ -253,16 +288,16 @@ cliente TypeScript generado desde él para la web.
 
 | # | Paso | Listo cuando |
 |---|---|---|
-| 1 | Monorepo Python: `pyproject.toml` raíz, `apps/api` y `packages/core` vacíos, Ruff, mypy, pytest, `.env.example` | `uv run pytest` y `uv run ruff check` en verde |
-| 2 | `infra/docker-compose` con todos los servicios, healthchecks, `postgres/init.sql` y realm de Keycloak de desarrollo | `docker compose up -d` y todos *healthy* |
-| 3 | API base: settings, errores RFC 9457, logs estructurados, `/health`, OpenAPI | `GET /health/ready` = 200 con todos los servicios |
+| 1 ✅ | Monorepo: workspace uv con `apps/api` y `packages/core`, Ruff, mypy, pytest; base de la API (settings, errores RFC 9457); ESLint + Prettier en la web (enmienda 3) | `pnpm py:check`, `pnpm lint`, `pnpm format:check`, `pnpm web:test` en verde |
+| 2 | `infra/docker-compose` con todos los servicios, healthchecks, roles de BD, `init_env.py` y realm de Keycloak de desarrollo | `docker compose up -d --wait` y todos *healthy* |
+| 3 | API: logs estructurados, `/health/live` y `/health/ready`, OpenAPI | `GET /health/ready` = 200 con todos los servicios |
 | 4 | Esquema con Alembic: tenancy, usuarios, roles, permisos, asignaciones, proyecto mínimo, invitaciones, outbox; RLS y roles de BD; datos sembrados | Tests SQL de aislamiento en verde |
 | 5 | Auditoría append-only con hash encadenado y verificación | Tests de inmutabilidad y cadena en verde |
 | 6 | BFF con Keycloak: login, callback, logout, sesión Redis, cookie, CSRF, `me`, cambio de tenant | Login real en local; test "ningún token en el navegador" |
 | 7 | `dev-auth` y arranque seguro | Test de arranque en producción falla como se espera |
 | 8 | OpenFGA: modelo y tests del modelo, cliente, `require(...)`, outbox y reconciliación | `fga model test` y tests de sincronización en verde |
 | 9 | Routers de administración (tenants, usuarios, invitaciones con Keycloak + Mailpit, roles, matriz, asignaciones, proyectos, auditoría) con tests permitido/denegado y aislamiento | Suite `authz` e `isolation` en verde |
-| 10 | Web: ESLint, Prettier, cliente de API, TanStack Query, sesión real, menú por permisos, selector de tenant | La web entra con Keycloak o dev-auth y muestra el menú según el rol |
+| 10 | Web: cliente de API, TanStack Query, sesión real, menú por permisos, selector de tenant | La web entra con Keycloak o dev-auth y muestra el menú según el rol |
 | 11 | Web: Administración conectada (usuarios, invitaciones, roles, matriz, auditoría); reemplazo de mocks | e2e de invitar, asignar rol y ver auditoría |
 | 12 | Primitivas sobre Radix + Playwright/axe | Tests de accesibilidad en verde, sin cambios en imports de pantallas |
 | 13 | CI completo (jobs de la sección 10) | Pipeline verde en el PR |
@@ -278,7 +313,7 @@ cliente TypeScript generado desde él para la web.
 | Eventos de Keycloak a la auditoría | Lectura periódica de la Admin API en M0; listener SPI si hace falta en M0b |
 | Publicación del outbox | Tarea en segundo plano dentro de la API en M0 (sin cola todavía; la cola es D-13, M3) |
 | Cliente TypeScript | Generado desde OpenAPI (`openapi-typescript`) |
-| Versiones | Se fijan al implementar (Keycloak 26.x, OpenFGA 1.x, Postgres 16, Python 3.12) y se registran en `.env.example` y Compose |
+| Versiones | Fijadas en `compose.yaml` (sección 3) y `.python-version` (3.12) |
 
 ## 14. Riesgos
 
