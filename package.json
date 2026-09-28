@@ -14,7 +14,8 @@
     "db:seed": "uv run python -m nexti_api.cli seed-dev",
     "fga:test": "docker run --rm -v ./infra/openfga:/model openfga/cli:v0.8.1 model test --tests /model/model.tests.yaml",
     "authz:reconcile": "uv run python -m nexti_api.cli reconcile",
-    "api:types": "uv run python -m nexti_api.cli openapi apps/api/openapi.json && node tools/codegen/node_modules/openapi-typescript/bin/cli.js apps/api/openapi.json -o apps/web/src/api/schema.d.ts"
+    "api:types": "uv run python -m nexti_api.cli openapi apps/api/openapi.json && node tools/codegen/node_modules/openapi-typescript/bin/cli.js apps/api/openapi.json -o apps/web/src/api/schema.d.ts",
+    "web:e2e": "pnpm --filter @nexti/web e2e"
   },
   "packageManager": "pnpm@10.33.0",
   "type": "module"

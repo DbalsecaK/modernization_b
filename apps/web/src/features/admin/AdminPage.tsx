@@ -95,13 +95,22 @@ function Tenants() {
   const tenants = useTenants(true)
   const languageName = useLanguageName()
   const [open, setOpen] = useState(false)
+  // A fresh form on every opening; closing does not remount, so focus returns to the opener.
+  const [opened, setOpened] = useState(0)
   return (
     <Card>
-      <TenantForm key={String(open)} open={open} onClose={() => setOpen(false)} />
+      <TenantForm key={opened} open={open} onClose={() => setOpen(false)} />
       <CardHeader
         title={t('admin.tenantsTitle')}
         action={
-          <Button size="sm" variant="primary" onClick={() => setOpen(true)}>
+          <Button
+            size="sm"
+            variant="primary"
+            onClick={() => {
+              setOpened((n) => n + 1)
+              setOpen(true)
+            }}
+          >
             <Plus size={14} /> {t('admin.newTenant')}
           </Button>
         }
@@ -146,15 +155,24 @@ function Users() {
   const setStatus = useSetMemberStatus()
   const remove = useRemoveMember()
   const [open, setOpen] = useState(false)
+  // A fresh form on every opening; closing does not remount, so focus returns to the opener.
+  const [opened, setOpened] = useState(0)
   const failed = (message: string) => t('adminForms.actionFailed', { message })
   return (
     <div className="space-y-6">
       <Card>
-        <InviteForm key={String(open)} open={open} onClose={() => setOpen(false)} />
+        <InviteForm key={opened} open={open} onClose={() => setOpen(false)} />
         <CardHeader
           title={t('admin.usersTitle')}
           action={
-            <Button size="sm" variant="primary" onClick={() => setOpen(true)}>
+            <Button
+              size="sm"
+              variant="primary"
+              onClick={() => {
+                setOpened((n) => n + 1)
+                setOpen(true)
+              }}
+            >
               <Plus size={14} /> {t('admin.invite')}
             </Button>
           }
@@ -316,6 +334,8 @@ function Roles() {
   const save = useSetRolePermissions()
   const deleteRole = useDeleteRole()
   const [open, setOpen] = useState(false)
+  // A fresh form on every opening; closing does not remount, so focus returns to the opener.
+  const [opened, setOpened] = useState(0)
   // Unsaved edits of the matrix (role id -> granted keys) on top of what the API returned.
   const [edits, setEdits] = useState<Record<string, string[]>>({})
   const granted = (r: Role) => edits[r.id] ?? r.permissions
@@ -332,13 +352,19 @@ function Roles() {
   }
   return (
     <div className="space-y-6">
-      <RoleForm key={String(open)} open={open} onClose={() => setOpen(false)} permissions={permissions} roles={roles} />
+      <RoleForm key={opened} open={open} onClose={() => setOpen(false)} permissions={permissions} roles={roles} />
       <Card>
         <CardHeader
           title={t('admin.rolesTitle')}
           subtitle={t('admin.rolesHint')}
           action={
-            <Button size="sm" onClick={() => setOpen(true)}>
+            <Button
+              size="sm"
+              onClick={() => {
+                setOpened((n) => n + 1)
+                setOpen(true)
+              }}
+            >
               <Plus size={14} /> {t('admin.newRole')}
             </Button>
           }

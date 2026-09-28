@@ -11,7 +11,7 @@
   --border: #e3e6eb;
   --text: #0b1220;
   --text-2: #4a5263;
-  --text-muted: #7a8295;
+  --text-muted: #656d80; /* WCAG AA: 5.2:1 on surface, 4.7:1 on surface-2 */
   --brand: #052158;
   --brand-contrast: #ffffff;
   --accent: #05e194;

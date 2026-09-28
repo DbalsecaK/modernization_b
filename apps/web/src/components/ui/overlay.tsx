@@ -1,9 +1,12 @@
-import { useEffect, useRef, useSyncExternalStore, type ReactNode, type TextareaHTMLAttributes } from 'react'
+import { useRef, useSyncExternalStore, type ReactNode, type TextareaHTMLAttributes } from 'react'
 import { useTranslation } from 'react-i18next'
+import * as Dialog from '@radix-ui/react-dialog'
+import * as ToastPrimitive from '@radix-ui/react-toast'
 import { CheckCircle2, X } from 'lucide-react'
 import { cn } from '@/lib/cn'
 
-// Side panel used by every create/edit form. Closes with Escape or the backdrop; focus moves into the panel.
+// Side panel used by every create/edit form, on Radix Dialog (D-14, ADR-0003): focus is trapped inside and
+// returns to the opener on close; Escape and the backdrop close it; title and description are announced.
 export function Drawer({
   open,
   onClose,
@@ -22,68 +25,71 @@ export function Drawer({
   wide?: boolean
 }) {
   const { t } = useTranslation()
-  const panel = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    if (!open) return
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
-    document.addEventListener('keydown', onKey)
-    panel.current?.focus()
-    return () => document.removeEventListener('keydown', onKey)
-  }, [open, onClose])
-
-  if (!open) return null
+  // Radix returns focus to a Dialog.Trigger; these drawers are opened by any button, so the opener is kept here.
+  const opener = useRef<HTMLElement | null>(null)
   return (
-    <div className="fixed inset-0 z-50">
-      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div
-        ref={panel}
-        tabIndex={-1}
-        role="dialog"
-        aria-modal="true"
-        aria-label={typeof title === 'string' ? title : undefined}
-        className={cn(
-          'absolute inset-y-0 right-0 flex w-full flex-col bg-surface shadow-2xl focus:outline-none',
-          wide ? 'max-w-3xl' : 'max-w-xl',
-        )}
-      >
-        <div className="flex items-start justify-between gap-4 border-b border-border px-6 py-4">
-          <div className="min-w-0">
-            <h2 className="text-lg font-semibold text-text">{title}</h2>
-            {description && <p className="mt-0.5 text-sm text-text-2">{description}</p>}
+    <Dialog.Root open={open} onOpenChange={(next) => !next && onClose()}>
+      <Dialog.Portal>
+        <Dialog.Overlay className="fixed inset-0 z-50 bg-black/40" />
+        <Dialog.Content
+          className={cn(
+            'fixed inset-y-0 right-0 z-50 flex w-full flex-col bg-surface shadow-2xl focus:outline-none',
+            wide ? 'max-w-3xl' : 'max-w-xl',
+          )}
+          {...(description ? {} : { 'aria-describedby': undefined })}
+          onOpenAutoFocus={() => {
+            opener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
+          }}
+          onCloseAutoFocus={(event) => {
+            event.preventDefault()
+            opener.current?.focus()
+          }}
+        >
+          <div className="flex items-start justify-between gap-4 border-b border-border px-6 py-4">
+            <div className="min-w-0">
+              <Dialog.Title className="text-lg font-semibold text-text">{title}</Dialog.Title>
+              {description && (
+                <Dialog.Description className="mt-0.5 text-sm text-text-2">{description}</Dialog.Description>
+              )}
+            </div>
+            <Dialog.Close
+              className="rounded-md p-1.5 text-muted hover:bg-surface-2 hover:text-text"
+              aria-label={t('common.close')}
+            >
+              <X size={18} />
+            </Dialog.Close>
           </div>
-          <button
-            onClick={onClose}
-            className="rounded-md p-1.5 text-muted hover:bg-surface-2 hover:text-text"
-            aria-label={t('common.close')}
-          >
-            <X size={18} />
-          </button>
-        </div>
-        <div className="flex-1 space-y-5 overflow-y-auto px-6 py-5">{children}</div>
-        {footer && <div className="flex justify-end gap-2 border-t border-border px-6 py-4">{footer}</div>}
-      </div>
-    </div>
+          <div className="flex-1 space-y-5 overflow-y-auto px-6 py-5">{children}</div>
+          {footer && <div className="flex justify-end gap-2 border-t border-border px-6 py-4">{footer}</div>}
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
   )
 }
 
-// Minimal toast store for confirmations ("Saved", "Invitation sent").
+// Confirmations ("Saved", "Invitation sent") on Radix Toast: announced to screen readers, dismissable with
+// the keyboard (F8 focuses the region, Escape closes). `toast(message)` works from anywhere.
 type ToastItem = { id: number; message: string }
 let toasts: ToastItem[] = []
 const listeners = new Set<() => void>()
 let nextId = 1
 
-export function toast(message: string) {
-  const id = nextId++
-  toasts = [...toasts, { id, message }]
+function emit() {
   listeners.forEach((l) => l())
-  window.setTimeout(() => {
-    toasts = toasts.filter((x) => x.id !== id)
-    listeners.forEach((l) => l())
-  }, 3500)
+}
+
+export function toast(message: string) {
+  toasts = [...toasts, { id: nextId++, message }]
+  emit()
+}
+
+function dismiss(id: number) {
+  toasts = toasts.filter((x) => x.id !== id)
+  emit()
 }
 
 export function Toaster() {
+  const { t } = useTranslation()
   const items = useSyncExternalStore(
     (l) => {
       listeners.add(l)
@@ -93,16 +99,19 @@ export function Toaster() {
     () => toasts,
   )
   return (
-    <div className="pointer-events-none fixed bottom-4 left-4 z-[60] flex flex-col gap-2" aria-live="polite">
+    <ToastPrimitive.Provider duration={3500} label={t('topbar.notifications')}>
       {items.map((item) => (
-        <div
+        <ToastPrimitive.Root
           key={item.id}
+          onOpenChange={(open) => !open && dismiss(item.id)}
           className="flex items-center gap-2 rounded-md border border-border bg-surface px-4 py-3 text-sm text-text shadow-lg"
         >
-          <CheckCircle2 size={16} className="text-good" /> {item.message}
-        </div>
+          <CheckCircle2 size={16} className="text-good" aria-hidden />
+          <ToastPrimitive.Description>{item.message}</ToastPrimitive.Description>
+        </ToastPrimitive.Root>
       ))}
-    </div>
+      <ToastPrimitive.Viewport className="fixed bottom-4 left-4 z-[60] flex max-w-sm flex-col gap-2 outline-none" />
+    </ToastPrimitive.Provider>
   )
 }
 

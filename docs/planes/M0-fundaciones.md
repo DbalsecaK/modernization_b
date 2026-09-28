@@ -309,6 +309,13 @@ cliente TypeScript generado desde él para la web.
 - **Primitivas sobre Radix (D-14):** `Drawer`, `Select`, `Tabs`, `Tooltip`, `Toast` (y Combobox cuando se
   toque), sin cambiar su API.
 - **Calidad:** ESLint + Prettier (configuración nueva), Vitest (tests actuales), **Playwright** e2e y **axe**.
+- **Implementado (paso 12):** `Drawer` sobre Radix Dialog (trampa de foco, foco de vuelta a quien lo abrió, título
+  y descripción anunciados), `Toast` sobre Radix Toast (misma función `toast()`) y `Toggle` sobre Radix Switch, sin
+  cambiar su API. `Tabs` sigue propio con el patrón ARIA completo (foco itinerante, flechas, Home/End): Radix Tabs
+  exige los paneles dentro de su raíz y aquí los pinta quien lo usa. `Select` sigue nativo (ya es accesible);
+  `Tooltip` y `Combobox` se adoptan cuando se usen. axe encontró contraste insuficiente del gris `text-muted`
+  (3,9:1) y se corrigió el token (5,2:1). Playwright (`pnpm web:e2e`): login real con Keycloak sin tokens en el
+  navegador, idioma, menú por permisos, administración y axe sobre las primitivas.
 - i18n: toda clave nueva en `en.json` y `es.json` (el test de paridad lo exige).
 - **Implementado (paso 10):** tipos generados con `openapi-typescript` (en `tools/codegen`, con TypeScript 5,
   porque TS 7 no expone la API del compilador) y cliente `openapi-fetch` que añade `X-CSRF-Token` en las
@@ -357,7 +364,7 @@ cliente TypeScript generado desde él para la web.
 | 9 ✅ | Routers de administración (tenants, usuarios, invitaciones con Keycloak + Mailpit, roles, matriz, asignaciones, proyectos, auditoría) con tests permitido/denegado y aislamiento | Suite `authz` e `isolation` en verde |
 | 10 ✅ | Web: cliente de API, TanStack Query, sesión real, menú por permisos, selector de tenant | La web entra con Keycloak o dev-auth y muestra el menú según el rol |
 | 11 ✅ | Web: Administración conectada (usuarios, invitaciones, roles, matriz, auditoría); reemplazo de mocks | e2e de invitar, asignar rol y ver auditoría |
-| 12 | Primitivas sobre Radix + Playwright/axe | Tests de accesibilidad en verde, sin cambios en imports de pantallas |
+| 12 ✅ | Primitivas sobre Radix + Playwright/axe | Tests de accesibilidad en verde, sin cambios en imports de pantallas |
 | 13 | CI completo (jobs de la sección 10) | Pipeline verde en el PR |
 | 14 | Cierre: recorrido de todos los criterios, actualización de spec/README/CLAUDE.md, capturas | Checklist de la sección 11 completo |
 
