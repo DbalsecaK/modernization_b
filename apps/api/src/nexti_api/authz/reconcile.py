@@ -9,8 +9,8 @@ from nexti_api.audit import AuditEvent, record
 from nexti_api.authz.fga import OpenFga
 from nexti_api.authz.names import Tuple
 from nexti_api.authz.tuples import expected_platform_tuples, expected_tuples
-from nexti_api.db.models import Tenant
-from nexti_api.db.session import DbScope, scoped_connection
+from nexti_core.db.models import Tenant
+from nexti_core.db.session import DbScope, scoped_connection
 
 SAMPLE = 20
 

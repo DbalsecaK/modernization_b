@@ -10,8 +10,8 @@ from dataclasses import dataclass
 from sqlalchemy import insert, select
 from sqlalchemy.ext.asyncio import AsyncConnection
 
-from nexti_api.db.models import AppUser, Membership, PlatformRoleAssignment, Project, Role, RoleAssignment, Tenant
 from nexti_api.tenancy import create_tenant
+from nexti_core.db.models import AppUser, Membership, PlatformRoleAssignment, Project, Role, RoleAssignment, Tenant
 
 
 @dataclass(frozen=True)

@@ -19,9 +19,9 @@ from nexti_api.auth.session import (
 )
 from nexti_api.auth.users import SignInDeniedError, sign_in, user_tenants
 from nexti_api.authz.require import Authorized, authenticated
-from nexti_api.db.session import DbScope, scoped_connection
 from nexti_api.observability import log
 from nexti_api.settings import Settings
+from nexti_core.db.session import DbScope, scoped_connection
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 

@@ -11,9 +11,9 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 from nexti_api.admin.common import audit, not_found, transaction
 from nexti_api.authz.require import Authorized, require_tenant
 from nexti_api.authz.sync import authz_change
-from nexti_api.db.models import AppUser, Membership, Project, Role, RoleAssignment
 from nexti_api.errors import ProblemError
 from nexti_api.schemas import ApiModel
+from nexti_core.db.models import AppUser, Membership, Project, Role, RoleAssignment
 
 router = APIRouter(prefix="/api/v1/users", tags=["users"])
 ManageUsers = Annotated[Authorized, Depends(require_tenant("users.manage"))]

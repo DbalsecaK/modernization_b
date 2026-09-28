@@ -7,8 +7,8 @@ from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncEngine
 
 from nexti_api.auth.oidc import IdentityClaims
-from nexti_api.db.models import AppUser, PlatformRoleAssignment, Tenant
-from nexti_api.db.session import DbScope, scoped_connection
+from nexti_core.db.models import AppUser, PlatformRoleAssignment, Tenant
+from nexti_core.db.session import DbScope, scoped_connection
 
 
 class SignInDeniedError(Exception):

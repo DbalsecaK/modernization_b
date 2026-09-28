@@ -15,9 +15,9 @@ from fastapi.testclient import TestClient
 from sqlalchemy import insert, text
 from sqlalchemy.ext.asyncio import AsyncEngine
 
-from nexti_api.db.models import AppUser, Membership
 from nexti_api.main import create_app
 from nexti_api.settings import Settings
+from nexti_core.db.models import AppUser, Membership
 
 from .conftest import SETTINGS, World, compose_env
 

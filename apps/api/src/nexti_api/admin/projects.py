@@ -9,8 +9,8 @@ from sqlalchemy import select
 from nexti_api.admin.common import transaction
 from nexti_api.authz import names
 from nexti_api.authz.require import Authorized, require_tenant
-from nexti_api.db.models import Project
 from nexti_api.schemas import ApiModel
+from nexti_core.db.models import Project
 
 router = APIRouter(prefix="/api/v1/projects", tags=["projects"])
 

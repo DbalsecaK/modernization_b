@@ -13,8 +13,8 @@ from sqlalchemy import Select, select
 from nexti_api.admin.common import audit, transaction
 from nexti_api.audit import verify
 from nexti_api.authz.require import Authorized, require_tenant
-from nexti_api.db.models import AuditLog
 from nexti_api.schemas import ApiModel
+from nexti_core.db.models import AuditLog
 
 router = APIRouter(prefix="/api/v1/audit", tags=["audit"])
 AuditView = Annotated[Authorized, Depends(require_tenant("audit.view"))]

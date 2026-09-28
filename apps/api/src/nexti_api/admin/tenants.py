@@ -13,10 +13,10 @@ from nexti_api.admin.common import audit, not_found, transaction
 from nexti_api.authz.require import Authorized, require_platform
 from nexti_api.authz.sync import enqueue
 from nexti_api.authz.tuples import expected_tuples
-from nexti_api.db.models import Tenant
 from nexti_api.errors import ProblemError
 from nexti_api.schemas import ApiModel
 from nexti_api.tenancy import create_tenant
+from nexti_core.db.models import Tenant
 
 router = APIRouter(prefix="/api/v1/tenants", tags=["tenants"])
 SuperAdmin = Annotated[Authorized, Depends(require_platform("superAdmin"))]

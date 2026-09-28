@@ -21,9 +21,9 @@ from sqlalchemy.engine import URL, make_url
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine, create_async_engine
 
 from nexti_api.authz.fga import OpenFga, ensure_store, load_model
-from nexti_api.db.models import AppUser, AuthzOutbox, Invitation, Membership, Project, Role, RoleAssignment
 from nexti_api.settings import API_DIR, Settings
 from nexti_api.tenancy import create_tenant
+from nexti_core.db.models import AppUser, AuthzOutbox, Invitation, Membership, Project, Role, RoleAssignment
 
 SETTINGS = Settings(app_env="test")
 

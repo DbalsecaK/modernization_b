@@ -15,7 +15,7 @@ import structlog
 from sqlalchemy import insert, text
 from sqlalchemy.ext.asyncio import AsyncConnection
 
-from nexti_api.db.models import AuditLog
+from nexti_core.db.models import AuditLog
 
 ActorKind = Literal["user", "dev-auth", "system", "keycloak"]
 Outcome = Literal["success", "failure", "allowed", "denied"]

@@ -15,11 +15,11 @@ from nexti_api.audit import AuditEvent
 from nexti_api.auth.routes import audit_platform, set_session_cookie
 from nexti_api.auth.session import SessionStore
 from nexti_api.auth.users import user_tenants
-from nexti_api.db.models import AppUser
-from nexti_api.db.session import DbScope, scoped_connection
 from nexti_api.errors import ProblemError
 from nexti_api.schemas import ApiModel
 from nexti_api.settings import Settings
+from nexti_core.db.models import AppUser
+from nexti_core.db.session import DbScope, scoped_connection
 
 router = APIRouter(prefix="/auth/dev", tags=["dev-auth"])
 

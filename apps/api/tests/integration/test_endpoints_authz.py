@@ -16,7 +16,9 @@ from sqlalchemy.ext.asyncio import AsyncEngine
 
 from nexti_api.authz.fga import OpenFga
 from nexti_api.authz.reconcile import reconcile
-from nexti_api.db.models import (
+from nexti_api.main import create_app
+from nexti_api.settings import Settings
+from nexti_core.db.models import (
     AppUser,
     AuditLog,
     Invitation,
@@ -25,8 +27,6 @@ from nexti_api.db.models import (
     Role,
     RoleAssignment,
 )
-from nexti_api.main import create_app
-from nexti_api.settings import Settings
 
 from .conftest import World
 

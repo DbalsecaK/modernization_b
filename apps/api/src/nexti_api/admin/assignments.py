@@ -17,9 +17,9 @@ from nexti_api.admin.common import audit, not_found, transaction
 from nexti_api.authz import names
 from nexti_api.authz.require import Authorized, deny, require_tenant
 from nexti_api.authz.sync import authz_change
-from nexti_api.db.models import Membership, Project, Role, RoleAssignment
 from nexti_api.errors import ProblemError
 from nexti_api.schemas import ApiModel
+from nexti_core.db.models import Membership, Project, Role, RoleAssignment
 
 router = APIRouter(prefix="/api/v1/role-assignments", tags=["roles"])
 # Any member reaches the handler; the handler decides between users.manage and project.configure.

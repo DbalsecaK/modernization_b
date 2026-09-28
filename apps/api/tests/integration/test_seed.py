@@ -6,9 +6,9 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import create_async_engine
 
 from nexti_api.cli import main
-from nexti_api.db.models import AppUser, RoleAssignment, Tenant
 from nexti_api.seed import ASSIGNMENTS, TENANTS, USERS, seed_dev
 from nexti_api.settings import Settings
+from nexti_core.db.models import AppUser, RoleAssignment, Tenant
 
 from .conftest import Databases, create_database, drop_database, migrate
 

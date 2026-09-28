@@ -5,7 +5,7 @@ from sqlalchemy import text
 from sqlalchemy.exc import DBAPIError
 from sqlalchemy.ext.asyncio import AsyncEngine
 
-from nexti_api.db.session import DbScope, scoped_connection
+from nexti_core.db.session import DbScope, scoped_connection
 
 from .conftest import World
 

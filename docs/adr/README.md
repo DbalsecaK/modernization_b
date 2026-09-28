@@ -12,5 +12,6 @@ reemplaza y se marca el anterior como "Reemplazado por ADR-NNNN".
 | [0004](0004-autenticacion-por-etapas.md) | D-27 — Autenticación por etapas (Keycloak mínimo en M0, SSO/MFA en M0b) | Aceptada |
 | [0005](0005-openrouter-proveedor-inicial.md) | D-28 — OpenRouter como primer proveedor de modelos | Aceptada |
 | [0006](0006-identidad-global-sin-tenant-id.md) | D-29 — Identidad global sin `tenant_id`, con visibilidad por RLS | Aceptada |
+| [0007](0007-almacen-de-secretos-openbao.md) | D-30 — Almacén de secretos: API de Vault, OpenBao en desarrollo | Aceptada |
 
 Plantilla: contexto, decisión, alternativas consideradas, consecuencias y cómo se valida.

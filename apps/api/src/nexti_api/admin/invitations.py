@@ -17,12 +17,12 @@ from nexti_api.admin.common import audit, not_found, transaction
 from nexti_api.audit import AuditEvent, record
 from nexti_api.authz.require import Authorized, require_tenant
 from nexti_api.authz.sync import authz_change
-from nexti_api.db.models import AppUser, Invitation, Membership, Project, Role, RoleAssignment
-from nexti_api.db.session import DbScope, scoped_connection
 from nexti_api.errors import ProblemError
 from nexti_api.keycloak_admin import KeycloakAdmin, KeycloakAdminError
 from nexti_api.observability import log
 from nexti_api.schemas import ApiModel
+from nexti_core.db.models import AppUser, Invitation, Membership, Project, Role, RoleAssignment
+from nexti_core.db.session import DbScope, scoped_connection
 
 router = APIRouter(prefix="/api/v1/invitations", tags=["invitations"])
 ManageUsers = Annotated[Authorized, Depends(require_tenant("users.manage"))]

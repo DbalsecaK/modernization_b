@@ -10,8 +10,8 @@ from alembic.migration import MigrationContext
 from sqlalchemy import Connection, text
 from sqlalchemy.ext.asyncio import AsyncEngine
 
-from nexti_api.db.models import Base
 from nexti_core.authz_catalog import PERMISSIONS
+from nexti_core.db.models import Base
 
 from .conftest import SETTINGS, Databases, create_database, drop_database, migrate
 

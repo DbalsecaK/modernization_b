@@ -20,10 +20,10 @@ from nexti_api.authz.relay import OutboxRelay
 from nexti_api.authz.require import Authorized, require_tenant
 from nexti_api.authz.sync import authz_change
 from nexti_api.authz.tuples import expected_tuples
-from nexti_api.db.models import Membership, Role, RoleAssignment
-from nexti_api.db.session import DbScope, scoped_connection
 from nexti_api.main import create_app
 from nexti_api.settings import Settings
+from nexti_core.db.models import Membership, Role, RoleAssignment
+from nexti_core.db.session import DbScope, scoped_connection
 
 from .conftest import SETTINGS, World
 

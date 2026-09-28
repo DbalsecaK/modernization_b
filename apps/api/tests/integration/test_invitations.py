@@ -15,9 +15,9 @@ from sqlalchemy.ext.asyncio import AsyncEngine
 from nexti_api.authz import names
 from nexti_api.authz.fga import OpenFga
 from nexti_api.authz.reconcile import reconcile
-from nexti_api.db.models import Invitation, Membership, Role, RoleAssignment
 from nexti_api.main import create_app
 from nexti_api.settings import Settings
+from nexti_core.db.models import Invitation, Membership, Role, RoleAssignment
 
 from .conftest import SETTINGS, World, compose_env, keycloak_admin_headers
 from .test_auth_flow import PASSWORD, as_local_path, keycloak_sign_in
