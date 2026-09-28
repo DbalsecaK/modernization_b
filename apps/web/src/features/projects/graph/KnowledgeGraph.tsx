@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { hierarchy, pack } from 'd3-hierarchy'
 import { useTranslation } from 'react-i18next'
 import { ChevronLeft, ChevronRight, Maximize2, Minus, Plus, Search, X } from 'lucide-react'
 import { cn } from '@/lib/cn'
@@ -33,6 +34,35 @@ function layout(nodes: GraphNode[]) {
   return pos
 }
 
+// Circle-packing layout: system → domains (entry points, programs, maps, copybooks) and a separate data-stores
+// group (files and tables). Circle size follows lines of code where known.
+type PackGroup = { id: string; label: string; x: number; y: number; r: number; depth: number }
+const PACK_SIZE = 760
+
+function packLayout(nodes: GraphNode[], dataLabel: string, systemLabel: string) {
+  type Datum = { id: string; label: string; value?: number; children?: Datum[] }
+  const size = (n: GraphNode) => (n.loc ? Math.max(60, n.loc / 12) : n.type === 'file' ? 70 : n.type === 'copybook' ? 55 : 60)
+  const domains = [...new Set(nodes.filter((n) => n.type !== 'file').map((n) => n.domain))]
+  const children: Datum[] = domains.map((d) => ({
+    id: `group:${d}`,
+    label: d,
+    children: nodes.filter((n) => n.domain === d && n.type !== 'file').map((n) => ({ id: n.id, label: n.id, value: size(n) })),
+  }))
+  const files = nodes.filter((n) => n.type === 'file')
+  if (files.length) children.push({ id: 'group:data', label: dataLabel, children: files.map((n) => ({ id: n.id, label: n.id, value: size(n) })) })
+  const root = hierarchy<Datum>({ id: 'root', label: systemLabel, children })
+    .sum((d) => d.value ?? 0)
+    .sort((a, b) => (b.value ?? 0) - (a.value ?? 0))
+  const packed = pack<Datum>().size([PACK_SIZE, PACK_SIZE]).padding((d) => (d.depth === 0 ? 28 : 10))(root)
+  const pos: Record<string, { x: number; y: number; r: number }> = {}
+  const groups: PackGroup[] = []
+  packed.descendants().forEach((d) => {
+    if (d.children) groups.push({ id: d.data.id, label: d.data.label, x: d.x, y: d.y, r: d.r, depth: d.depth })
+    else pos[d.data.id] = { x: d.x, y: d.y, r: d.r }
+  })
+  return { pos, groups }
+}
+
 // Orphan: nobody uses it and it is not an entry point. Isolated: no relation at all.
 function classify(id: string, type: GraphNodeType) {
   const incoming = graphEdges.some((e) => e.to === id)
@@ -51,6 +81,7 @@ export function KnowledgeGraph({ onCompare }: { onCompare: (ruleId: string) => v
   const [impact, setImpact] = useState<string[]>([])
   const [order, setOrder] = useState<string[] | null>(null)
   const [colorBy, setColorBy] = useState<'domain' | 'state'>('domain')
+  const [mode, setMode] = useState<'circles' | 'layers'>('circles')
   const [query, setQuery] = useState('')
   const [flowId, setFlowId] = useState('')
   const [ruleId, setRuleId] = useState('')
@@ -76,10 +107,12 @@ export function KnowledgeGraph({ onCompare }: { onCompare: (ruleId: string) => v
   })
   const ids = new Set(nodes.map((n) => n.id))
   const edges = graphEdges.filter((e) => ids.has(e.from) && ids.has(e.to) && relations.includes(edgeGroup[e.kind] ?? 'calls'))
-  const pos = useMemo(() => layout(nodes), [nodes])
-  const height = Math.max(0, ...Object.values(pos).map((p) => p.y)) + 60
+  const packed = useMemo(() => packLayout(nodes, t('graph.dataStores'), t('graph.system')), [nodes, t])
+  const layered = useMemo(() => layout(nodes), [nodes])
+  const pos: Record<string, { x: number; y: number; r?: number }> = mode === 'circles' ? packed.pos : layered
+  const height = mode === 'circles' ? PACK_SIZE : Math.max(0, ...Object.values(pos).map((p) => p.y)) + 60
   // Fit the whole graph to the available width (on load and on reset).
-  const contentWidth = Math.max(0, ...Object.values(pos).map((p) => p.x)) + NODE_W / 2 + 40
+  const contentWidth = mode === 'circles' ? PACK_SIZE : Math.max(0, ...Object.values(pos).map((p) => p.x)) + NODE_W / 2 + 40
   const fitK = Math.min(1.2, Math.max(0.5, boxWidth / Math.max(contentWidth, 1)))
   const fit = { k: fitK, x: 0, y: 0 }
 
@@ -167,6 +200,11 @@ export function KnowledgeGraph({ onCompare }: { onCompare: (ruleId: string) => v
   useEffect(() => {
     if (!touched.current) setView({ k: fitK, x: 0, y: 0 })
   }, [fitK])
+  useEffect(() => {
+    touched.current = false
+    setView({ k: fitK, x: 0, y: 0 })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode])
 
   const node = graphNodes.find((n) => n.id === selected)
   const counts = TYPES.map((ty) => [ty, graphNodes.filter((n) => n.type === ty).length] as const)
@@ -290,6 +328,13 @@ export function KnowledgeGraph({ onCompare }: { onCompare: (ruleId: string) => v
             subtitle={t('graph.stats', { nodes: nodes.length, edges: edges.length })}
             action={
               <div className="flex items-center gap-1">
+                <div className="mr-2 flex rounded-md border border-border p-0.5 text-xs" role="group" aria-label={t('graph.layout')}>
+                  {(['circles', 'layers'] as const).map((m) => (
+                    <button key={m} onClick={() => setMode(m)} aria-pressed={mode === m} className={cn('rounded px-2 py-1', mode === m ? 'bg-brand text-brand-contrast' : 'text-muted')}>
+                      {t(`graph.layouts.${m}`)}
+                    </button>
+                  ))}
+                </div>
                 <IconButton label={t('graph.zoomIn')} onClick={() => ((touched.current = true), setView((v) => ({ ...v, k: Math.min(2.5, v.k * 1.2) })))}>
                   <Plus size={14} />
                 </IconButton>
@@ -332,6 +377,30 @@ export function KnowledgeGraph({ onCompare }: { onCompare: (ruleId: string) => v
                 </marker>
               </defs>
               <g transform={`translate(${view.x},${view.y}) scale(${view.k})`}>
+                {mode === 'circles' &&
+                  packed.groups.map((g) => (
+                    <g key={g.id}>
+                      <circle
+                        cx={g.x}
+                        cy={g.y}
+                        r={g.r}
+                        fill={g.id === 'group:data' ? 'color-mix(in srgb, var(--series-3) 6%, transparent)' : g.depth === 0 ? 'transparent' : 'color-mix(in srgb, var(--text) 3%, transparent)'}
+                        stroke="var(--border)"
+                        strokeWidth={g.depth === 0 ? 1.5 : 1}
+                      />
+                      <text
+                        x={g.x}
+                        y={g.y - g.r + (g.depth === 0 ? 22 : 18)}
+                        textAnchor="middle"
+                        fontSize={g.depth === 0 ? 16 : 13}
+                        fontWeight={600}
+                        fill="var(--text-muted)"
+                        className="pointer-events-none select-none"
+                      >
+                        {g.label}
+                      </text>
+                    </g>
+                  ))}
                 {edges.map((e) => {
                   const a = pos[e.from]
                   const b = pos[e.to]
@@ -340,7 +409,7 @@ export function KnowledgeGraph({ onCompare }: { onCompare: (ruleId: string) => v
                   const touchesSelected = !flow && !rule && !!selected && (e.from === selected || e.to === selected)
                   const dim = focusActive && !inFlow && !touchesSelected && !(isFocused(e.from) && isFocused(e.to) && !selected)
                   const sameCol = a.x === b.x
-                  const d = sameCol
+                  const d = mode === 'circles' ? circleEdge(a as Circle, b as Circle) : sameCol
                     ? `M${a.x + NODE_W / 2},${a.y} C${a.x + NODE_W / 2 + 50},${a.y} ${b.x + NODE_W / 2 + 50},${b.y} ${b.x + NODE_W / 2},${b.y}`
                     : `M${a.x + NODE_W / 2},${a.y} C${a.x + 120},${a.y} ${b.x - 120},${b.y} ${b.x - NODE_W / 2 - 4},${b.y}`
                   return (
@@ -368,7 +437,7 @@ export function KnowledgeGraph({ onCompare }: { onCompare: (ruleId: string) => v
                     <g
                       key={n.id}
                       opacity={dim ? 0.2 : 1}
-                      className="cursor-pointer"
+                      className="cursor-pointer outline-none"
                       onClick={(e) => (e.stopPropagation(), setSelected(n.id))}
                       onDoubleClick={(e) => {
                         e.stopPropagation()
@@ -382,6 +451,17 @@ export function KnowledgeGraph({ onCompare }: { onCompare: (ruleId: string) => v
                       aria-label={`${n.id} · ${t(`inventory.types.${n.type}`)}`}
                       onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && setSelected(n.id)}
                     >
+                      {mode === 'circles' ? (
+                        <CircleNode
+                          node={n}
+                          p={p as Circle}
+                          color={impact.includes(n.id) ? 'var(--critical)' : color(n)}
+                          strong={selected === n.id || inStep}
+                          dashed={!!orphanKind}
+                          stepNo={stepNo}
+                        />
+                      ) : (
+                      <>
                       <rect
                         x={p.x - NODE_W / 2}
                         y={p.y - NODE_H / 2}
@@ -406,6 +486,8 @@ export function KnowledgeGraph({ onCompare }: { onCompare: (ruleId: string) => v
                             {stepNo}
                           </text>
                         </g>
+                      )}
+                      </>
                       )}
                     </g>
                   )
@@ -708,5 +790,63 @@ function IconButton({ label, onClick, children }: { label: string; onClick: () =
     <button onClick={onClick} aria-label={label} title={label} className="rounded-md border border-border p-1.5 text-muted hover:bg-surface-2 hover:text-text">
       {children}
     </button>
+  )
+}
+
+type Circle = { x: number; y: number; r: number }
+
+// Curved edge between two circles, bent toward the centre of the pack so bundles read as arcs.
+function circleEdge(a: Circle, b: Circle) {
+  const c = PACK_SIZE / 2
+  const mx = (a.x + b.x) / 2
+  const my = (a.y + b.y) / 2
+  const cx = mx + (c - mx) * 0.35
+  const cy = my + (c - my) * 0.35
+  const trim = (from: { x: number; y: number }, to: Circle) => {
+    const dx = from.x - to.x
+    const dy = from.y - to.y
+    const len = Math.hypot(dx, dy) || 1
+    return { x: to.x + (dx / len) * (to.r + 3), y: to.y + (dy / len) * (to.r + 3) }
+  }
+  const start = trim({ x: cx, y: cy }, a)
+  const end = trim({ x: cx, y: cy }, b)
+  return `M${start.x},${start.y} Q${cx},${cy} ${end.x},${end.y}`
+}
+
+function CircleNode({ node, p, color, strong, dashed, stepNo }: { node: GraphNode; p: Circle; color: string; strong: boolean; dashed: boolean; stepNo?: number }) {
+  const inside = p.r >= 26
+  const maxChars = Math.max(4, Math.floor((p.r * 2) / 7))
+  const label = node.id.length > maxChars ? `${node.id.slice(0, maxChars - 1)}…` : node.id
+  return (
+    <>
+      <circle
+        cx={p.x}
+        cy={p.y}
+        r={p.r}
+        fill={`color-mix(in srgb, ${color} ${strong ? 38 : 24}%, var(--surface))`}
+        stroke={color}
+        strokeWidth={strong ? 3.5 : 1.5}
+        strokeDasharray={dashed ? '5 3' : undefined}
+      />
+      <text
+        x={p.x}
+        y={inside ? p.y + 4 : p.y + p.r + 12}
+        textAnchor="middle"
+        fontSize={inside ? Math.min(13, Math.max(10, p.r / 3.2)) : 10}
+        fontWeight={600}
+        fill="var(--text)"
+        className="pointer-events-none select-none"
+      >
+        {inside ? label : node.id}
+      </text>
+      {stepNo && (
+        <g>
+          <circle cx={p.x - p.r * 0.72} cy={p.y - p.r * 0.72} r={10} fill="var(--brand)" stroke="var(--surface)" strokeWidth={2} />
+          <text x={p.x - p.r * 0.72} y={p.y - p.r * 0.72 + 4} textAnchor="middle" fontSize={10} fontWeight={700} fill="var(--brand-contrast)">
+            {stepNo}
+          </text>
+        </g>
+      )}
+    </>
   )
 }

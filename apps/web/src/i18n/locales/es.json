@@ -1458,6 +1458,13 @@
       "USES_MAP": "usa mapa"
     },
     "orderTitle": "Orden de migración sugerido",
-    "orderHint": "Primero datos y layouts compartidos, luego los programas con menos dependientes y al final los puntos de entrada. Los huérfanos quedan fuera hasta confirmarlos."
+    "orderHint": "Primero datos y layouts compartidos, luego los programas con menos dependientes y al final los puntos de entrada. Los huérfanos quedan fuera hasta confirmarlos.",
+    "layout": "Vista",
+    "layouts": {
+      "circles": "Círculos",
+      "layers": "Capas"
+    },
+    "dataStores": "Datos",
+    "system": "Card Management"
   }
 }

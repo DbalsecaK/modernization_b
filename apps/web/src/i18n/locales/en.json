@@ -1458,6 +1458,13 @@
       "USES_MAP": "uses map"
     },
     "orderTitle": "Suggested migration order",
-    "orderHint": "Data and shared layouts first, then programs with the fewest dependents, entry points last. Orphans are left out until confirmed."
+    "orderHint": "Data and shared layouts first, then programs with the fewest dependents, entry points last. Orphans are left out until confirmed.",
+    "layout": "Layout",
+    "layouts": {
+      "circles": "Circles",
+      "layers": "Layers"
+    },
+    "dataStores": "Data stores",
+    "system": "Card Management"
   }
 }

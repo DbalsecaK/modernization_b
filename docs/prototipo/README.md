@@ -14,6 +14,8 @@ Capturas de `apps/web` con datos de ejemplo (sección 18.7 de la especificación
 | `17-admin-auth-en.png` | Administración → Autenticación (SSO + cuentas propias, MFA, políticas) |
 | `18-usage-en.png` | Consumo y costos |
 | `31-dashboard-es-dark.png` | Dashboard en español y tema oscuro |
+| `500-graph-circles.png` | Grafo en vista de círculos con el recorrido de un flujo |
+| `500-graph-circles-dark-es.png` | Vista de círculos con un nodo seleccionado, en español y tema oscuro |
 | `501-graph.png` | Proyecto → Inventario: recorrido del flujo "Authorize a card purchase" paso a paso |
 | `502-graph-rule.png` | Grafo con foco en una regla de negocio (RULE-002) |
 | `502-graph-orphans.png` | Grafo filtrado a solo huérfanos y aislados, con el detalle del nodo |

@@ -230,6 +230,10 @@ referencias a archivo y línea; el fuente vive en el object storage.
   con su estilo de línea y dirección (flechas).
 - **Filtro de nodos:** todos, **solo huérfanos y aislados**, u ocultarlos; además, filtro por tipo de nodo.
   Los huérfanos y aislados se marcan con borde punteado y una explicación en el detalle.
+- **Dos vistas del mismo grafo:** **Círculos** (empaquetado circular anidado: sistema → dominios con sus
+  programas, mapas y copybooks, y un grupo aparte de datos; el tamaño refleja las líneas de código; las
+  relaciones se dibujan como arcos) y **Capas** (puntos de entrada → programas → mapas y copybooks → datos).
+  Todas las funciones (flujos, reglas, filtros, selección, impacto, huérfanos) aplican en ambas.
 - **Color** por dominio o por estado de migración (verificado, generado, en curso, pendiente), con leyenda.
 - **Buscador** de módulos, datos y jobs; **zoom** con la rueda o botones, **arrastre** para mover, ajuste
   automático al ancho y restablecer con Esc.
