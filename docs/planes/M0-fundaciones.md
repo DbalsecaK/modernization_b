@@ -257,6 +257,11 @@ cliente TypeScript generado desde él para la web.
 - **Eventos de Keycloak** (login, error, cambio de contraseña, admin events) llegan por un endpoint interno o
   por lectura periódica de la Admin API y se registran con `actor_kind=keycloak`.
 - Verificación: `GET /api/v1/audit/verify` (solo auditor/superadmin) recorre la cadena y reporta cortes.
+- **Implementado (paso 5):** la cadena la calcula un trigger de la base (`seq` sin huecos, `prev_hash`, `hash` =
+  sha256 del JSON canónico de la fila), serializado por cadena con un advisory lock; una cadena por tenant y
+  una de plataforma (`tenant_id` NULL). UPDATE, DELETE y TRUNCATE los rechaza un trigger incluso al dueño.
+  `audit_verify(tenant)` detecta filas alteradas, reescritas o borradas. El escritor rechaza `details` con
+  claves de credenciales o JWT, y el evento se registra en la misma transacción que la acción.
 
 ## 9. Frontend (`apps/web`)
 
@@ -307,7 +312,7 @@ cliente TypeScript generado desde él para la web.
 | 2 ✅ | `infra/docker-compose` con todos los servicios, healthchecks, roles de BD, `init_env.py` y realm de Keycloak de desarrollo | `docker compose up -d --wait` y todos *healthy* |
 | 3 ✅ | API: logs estructurados, `/health/live` y `/health/ready`, OpenAPI | `GET /health/ready` = 200 con todos los servicios |
 | 4 ✅ | Esquema con Alembic: tenancy, usuarios, roles, permisos, asignaciones, proyecto mínimo, invitaciones, outbox; RLS y roles de BD; datos sembrados | Tests SQL de aislamiento en verde |
-| 5 | Auditoría append-only con hash encadenado y verificación | Tests de inmutabilidad y cadena en verde |
+| 5 ✅ | Auditoría append-only con hash encadenado y verificación | Tests de inmutabilidad y cadena en verde |
 | 6 | BFF con Keycloak: login, callback, logout, sesión Redis, cookie, CSRF, `me`, cambio de tenant | Login real en local; test "ningún token en el navegador" |
 | 7 | `dev-auth` y arranque seguro | Test de arranque en producción falla como se espera |
 | 8 | OpenFGA: modelo y tests del modelo, cliente, `require(...)`, outbox y reconciliación | `fga model test` y tests de sincronización en verde |

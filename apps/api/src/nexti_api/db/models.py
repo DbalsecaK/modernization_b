@@ -14,6 +14,7 @@ from sqlalchemy import (
     Identity,
     Index,
     Integer,
+    LargeBinary,
     PrimaryKeyConstraint,
     Text,
     UniqueConstraint,
@@ -189,3 +190,27 @@ class AuthzOutbox(Base):
     last_error: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = _now()
     processed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class AuditLog(Base):
+    """Append-only; seq, prev_hash and hash are computed by the database trigger (migration 0002)."""
+
+    __tablename__ = "audit_log"
+    __table_args__ = (UniqueConstraint("tenant_id", "seq", postgresql_nulls_not_distinct=True),)
+    id: Mapped[int] = mapped_column(BigInteger, Identity(always=True), primary_key=True)
+    tenant_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("tenant.id"))
+    seq: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    occurred_at: Mapped[datetime] = _now()
+    actor_kind: Mapped[str] = mapped_column(Text, nullable=False)
+    actor_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
+    actor_label: Mapped[str | None] = mapped_column(Text)
+    action: Mapped[str] = mapped_column(Text, nullable=False)
+    target: Mapped[str | None] = mapped_column(Text)
+    outcome: Mapped[str] = mapped_column(Text, nullable=False)
+    details: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))
+    request_id: Mapped[str | None] = mapped_column(Text)
+    prev_hash: Mapped[bytes | None] = mapped_column(LargeBinary)
+    hash: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
+
+
+Index("audit_log_tenant_time_idx", AuditLog.tenant_id, AuditLog.occurred_at.desc())
