@@ -1349,6 +1349,7 @@ source = { editable = "packages/orchestration" }
 dependencies = [
     { name = "langgraph" },
     { name = "langgraph-checkpoint-postgres" },
+    { name = "nexti-agents" },
     { name = "nexti-core" },
     { name = "nexti-sandbox" },
     { name = "psycopg", extra = ["binary"] },
@@ -1358,6 +1359,7 @@ dependencies = [
 requires-dist = [
     { name = "langgraph", specifier = ">=1.0" },
     { name = "langgraph-checkpoint-postgres", specifier = ">=3.0" },
+    { name = "nexti-agents", editable = "packages/agents" },
     { name = "nexti-core", editable = "packages/core" },
     { name = "nexti-sandbox", editable = "packages/sandbox" },
     { name = "psycopg", extras = ["binary"], specifier = ">=3.2" },
