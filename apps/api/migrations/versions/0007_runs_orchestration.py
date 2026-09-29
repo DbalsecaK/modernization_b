@@ -38,6 +38,8 @@ def upgrade() -> None:
       current_phase text,
       autonomy text NOT NULL CHECK (autonomy IN ('guided', 'balanced', 'autonomous')),
       max_iterations integer NOT NULL CHECK (max_iterations BETWEEN 1 AND 10),
+      -- Options of the run (the demo pipeline's behaviour; empty for real pipelines).
+      options jsonb NOT NULL DEFAULT '{{}}'::jsonb CHECK (jsonb_typeof(options) = 'object'),
       error text,
       started_by uuid REFERENCES app_user (id),
       created_at timestamptz NOT NULL DEFAULT now(),

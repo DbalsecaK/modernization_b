@@ -672,6 +672,7 @@ class Run(Base):
     current_phase: Mapped[str | None] = mapped_column(Text)
     autonomy: Mapped[str] = mapped_column(Text, nullable=False)
     max_iterations: Mapped[int] = mapped_column(Integer, nullable=False)
+    options: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))
     error: Mapped[str | None] = mapped_column(Text)
     started_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("app_user.id"))
     created_at: Mapped[datetime] = _now()
