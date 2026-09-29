@@ -56,8 +56,8 @@ def rule(key: str, line: int, statement: str) -> Rule:
 
 
 def story(title: str, links: list[str]) -> StoryDraft:
-    return StoryDraft(title=title, links=links,
-                      criteria=["Scenario: It works\n  Given an order\n  When it is paid\n  Then it is marked A"])  # fmt: skip
+    criterion = "Scenario: It works\n  Given an order\n  When it is paid\n  Then it is marked A"
+    return StoryDraft(title=title, links=links, criteria=[criterion])
 
 
 def test_the_zip_is_read_as_text_with_limits() -> None:
