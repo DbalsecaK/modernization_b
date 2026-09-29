@@ -1054,7 +1054,7 @@ pentest periódico.
 
 `proyecto.crear`, `proyecto.configurar`, `insumo.subir`, `pipeline.ejecutar`, `compuerta.c1.aprobar`,
 `compuerta.c2.aprobar`, `compuerta.c3.aprobar`, `signoff.firmar`, `codigo.ver`, `codigo.descargar`,
-`codigo.push`, `pregunta.responder`, `modelos.configurar`, `consumo.ver`, `costo.ver`, `agentes.seleccionar`, `skills.seleccionar`,
+`codigo.push`, `pregunta.responder`, `historia.editar`, `plan.editar`, `modelos.configurar`, `consumo.ver`, `costo.ver`, `agentes.seleccionar`, `skills.seleccionar`,
 `skills.publicar`, `usuarios.gestionar`, `auditoria.ver`.
 
 Los roles son **paquetes configurables** de permisos.
@@ -1477,6 +1477,8 @@ el panel de actividad solo muestra eventos de proyectos autorizados y el JSON de
 
 ### M4 — Primer vertical completo: Sybase SP → destino + PostgreSQL
 
+Plan detallado: `docs/planes/M4-vertical-sybase.md`.
+
 - Adaptador Sybase (inventario, tipos neutrales, extracción de reglas).
 - Spec y revisión (C1), diseño (C3), generación por capas en el pack elegido (Java Spring Boot o .NET 10,
   ver decisión D-06).
@@ -1651,13 +1653,13 @@ Sybase SP (M4) → BMS (M5) → CICS (M6) → ASPX (M8).
 | D-31 | Insumos validados por un único módulo (`packages/ingest`) antes de guardarse: tipo por contenido, tamaños, zip seguro (path traversal, enlaces, bombs), cabecera de imágenes, secretos contados y sha256; **malware con ClamAV** en Compose, CI y despliegue, con falla cerrada si no responde; síncrono en la API hasta que existan workers ([ADR-0008](adr/0008-validacion-de-insumos-clamav.md)) |
 | D-30 | Secretos con la **API de Vault** (KV v2) a través de un único módulo del gateway; **OpenBao** en desarrollo y CI, Vault u OpenBao en producción; la base solo guarda la ruta ([ADR-0007](adr/0007-almacen-de-secretos-openbao.md)) |
 | D-29 | Identidad global: `app_user`, el catálogo de permisos y los roles de plataforma sin `tenant_id`, con visibilidad por RLS y membresía; toda otra tabla de negocio lleva `tenant_id` con RLS forzado ([ADR-0006](adr/0006-identidad-global-sin-tenant-id.md)) |
+| D-06 | El primer vertical Sybase migra a **Java Spring Boot + PostgreSQL**, el primer pack que se construye; el destino no es fijo: el asistente siempre pide los cinco ejes y un backend sin pack espera en la generación, nunca genera otro lenguaje; las aplicaciones de referencia de clientes viven en un kit local fuera del repo y el CI usa respuestas de modelos grabadas ([ADR-0010](adr/0010-primer-pack-java-spring-boot.md), [ADR-0011](adr/0011-kit-de-referencia-fuera-del-repo.md), [ADR-0012](adr/0012-respuestas-grabadas-y-evaluacion-a-demanda.md)) |
 | D-28 | **OpenRouter** como primer proveedor de modelos (M1): conexión por tenant usable en desarrollo, pruebas o producción según decida cada cliente, con proveedor de enrutamiento y versión fijados y políticas de ZDR y proveedores permitidos; Foundry, Bedrock y OpenAI después sobre el mismo modelo de datos ([ADR-0005](adr/0005-openrouter-proveedor-inicial.md)) |
 
 ### 22.2 Pendientes
 
 | Id | Pregunta |
 |---|---|
-| D-06 | Destino del primer vertical Sybase: ¿Java Spring Boot o .NET 10? |
 | D-11 | ¿NexTI solo informa el consumo de IA o también lo factura (con margen) cuando la cuenta es de NexTI? |
 | D-12 | Neo4j Community (particionado por etiqueta) vs Enterprise (base por tenant) |
 | D-16 | Modelo de licenciamiento (por proyecto, por líneas, por tenant) |
