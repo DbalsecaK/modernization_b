@@ -32,7 +32,8 @@ const keys = {
 
 export const useTenants = (enabled: boolean) =>
   useQuery({ queryKey: keys.tenants, queryFn: () => unwrap(api.GET('/api/v1/tenants')), enabled })
-export const useMembers = () => useQuery({ queryKey: keys.members, queryFn: () => unwrap(api.GET('/api/v1/users')) })
+export const useMembers = (enabled = true) =>
+  useQuery({ queryKey: keys.members, queryFn: () => unwrap(api.GET('/api/v1/users')), enabled })
 export const useInvitations = () =>
   useQuery({ queryKey: keys.invitations, queryFn: () => unwrap(api.GET('/api/v1/invitations')) })
 export const useRoles = () => useQuery({ queryKey: keys.roles, queryFn: () => unwrap(api.GET('/api/v1/roles')) })

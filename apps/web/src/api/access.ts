@@ -8,6 +8,11 @@ export function can(me: Me | null, permission: string): boolean {
   return !!me?.permissions.includes(permission)
 }
 
+/** The wizard and the "New project" button. */
+export function canCreateProjects(me: Me | null): boolean {
+  return can(me, 'project.create')
+}
+
 export function isPlatformOperator(me: Me | null): boolean {
   return !!me?.platformRoles.some((r) => r === 'superAdmin' || r === 'supportOperator')
 }

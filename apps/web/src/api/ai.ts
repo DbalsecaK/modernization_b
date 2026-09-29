@@ -155,8 +155,8 @@ export const useAddPrice = () =>
   )
 
 // Profiles
-export const useProfiles = () =>
-  useQuery({ queryKey: keys.profiles, queryFn: () => unwrap(api.GET('/api/v1/ai/profiles')) })
+export const useProfiles = (enabled = true) =>
+  useQuery({ queryKey: keys.profiles, queryFn: () => unwrap(api.GET('/api/v1/ai/profiles')), enabled })
 
 export const useSaveProfile = () =>
   useAiMutation(
