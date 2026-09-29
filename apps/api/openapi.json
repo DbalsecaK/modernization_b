@@ -1,6 +1,41 @@
 {
   "components": {
     "schemas": {
+      "AcceptRecommendedIn": {
+        "properties": {
+          "questionIds": {
+            "anyOf": [
+              {
+                "items": {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                "maxItems": 200,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Questionids"
+          }
+        },
+        "title": "AcceptRecommendedIn",
+        "type": "object"
+      },
+      "AcceptRecommendedOut": {
+        "properties": {
+          "answered": {
+            "title": "Answered",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "answered"
+        ],
+        "title": "AcceptRecommendedOut",
+        "type": "object"
+      },
       "ActiveTenantIn": {
         "properties": {
           "tenantId": {
@@ -13,6 +48,125 @@
           "tenantId"
         ],
         "title": "ActiveTenantIn",
+        "type": "object"
+      },
+      "ActivityEventOut": {
+        "properties": {
+          "agentKey": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agentkey"
+          },
+          "costUsd": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Costusd"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "invocationId": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Invocationid"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "occurredAt": {
+            "format": "date-time",
+            "title": "Occurredat",
+            "type": "string"
+          },
+          "payload": {
+            "additionalProperties": true,
+            "title": "Payload",
+            "type": "object"
+          },
+          "phase": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phase"
+          },
+          "projectId": {
+            "format": "uuid",
+            "title": "Projectid",
+            "type": "string"
+          },
+          "runId": {
+            "format": "uuid",
+            "title": "Runid",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "tokens": {
+            "title": "Tokens",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "projectId",
+          "runId",
+          "invocationId",
+          "agentKey",
+          "phase",
+          "kind",
+          "status",
+          "message",
+          "model",
+          "tokens",
+          "costUsd",
+          "payload",
+          "occurredAt"
+        ],
+        "title": "ActivityEventOut",
         "type": "object"
       },
       "AdapterOut": {
@@ -145,6 +299,51 @@
           "relativeCost"
         ],
         "title": "AgentOut",
+        "type": "object"
+      },
+      "AnswerIn": {
+        "description": "Choose an option (the recommended one or an alternative) or write an answer.",
+        "properties": {
+          "comment": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comment"
+          },
+          "option": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Option"
+          },
+          "text": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Text"
+          }
+        },
+        "title": "AnswerIn",
         "type": "object"
       },
       "AssignmentCreate": {
@@ -1256,6 +1455,78 @@
         "title": "ConnectionUpdate",
         "type": "object"
       },
+      "DemoOptionsIn": {
+        "description": "Behaviour of the demonstration pipeline (development and test only).",
+        "properties": {
+          "failVerification": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Failverification"
+          },
+          "fixAfter": {
+            "default": 1,
+            "maximum": 10.0,
+            "minimum": 0.0,
+            "title": "Fixafter",
+            "type": "integer"
+          },
+          "questionPhase": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Questionphase"
+          },
+          "shards": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "maxItems": 8,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shards"
+          },
+          "slowPhase": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Slowphase"
+          },
+          "slowSeconds": {
+            "default": 0,
+            "maximum": 600.0,
+            "minimum": 0.0,
+            "title": "Slowseconds",
+            "type": "number"
+          }
+        },
+        "title": "DemoOptionsIn",
+        "type": "object"
+      },
       "DevLoginIn": {
         "properties": {
           "userId": {
@@ -1342,6 +1613,108 @@
           "phases"
         ],
         "title": "FlowOut",
+        "type": "object"
+      },
+      "GateDecisionIn": {
+        "properties": {
+          "comment": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comment"
+          }
+        },
+        "title": "GateDecisionIn",
+        "type": "object"
+      },
+      "GateOut": {
+        "properties": {
+          "comment": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comment"
+          },
+          "decidedAt": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decidedat"
+          },
+          "decidedBy": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decidedby"
+          },
+          "decidedByName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decidedbyname"
+          },
+          "gate": {
+            "title": "Gate",
+            "type": "string"
+          },
+          "requestedAt": {
+            "format": "date-time",
+            "title": "Requestedat",
+            "type": "string"
+          },
+          "required": {
+            "title": "Required",
+            "type": "boolean"
+          },
+          "status": {
+            "enum": [
+              "pending",
+              "approved",
+              "rejected"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "gate",
+          "required",
+          "status",
+          "requestedAt",
+          "decidedBy",
+          "decidedByName",
+          "decidedAt",
+          "comment"
+        ],
+        "title": "GateOut",
         "type": "object"
       },
       "HTTPValidationError": {
@@ -1731,6 +2104,131 @@
           "createdAt"
         ],
         "title": "InvitationOut",
+        "type": "object"
+      },
+      "InvocationOut": {
+        "properties": {
+          "agentKey": {
+            "title": "Agentkey",
+            "type": "string"
+          },
+          "costUsd": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Costusd"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "finishedAt": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finishedat"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "inputTokens": {
+            "title": "Inputtokens",
+            "type": "integer"
+          },
+          "iteration": {
+            "title": "Iteration",
+            "type": "integer"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "outputTokens": {
+            "title": "Outputtokens",
+            "type": "integer"
+          },
+          "phase": {
+            "title": "Phase",
+            "type": "string"
+          },
+          "shard": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shard"
+          },
+          "startedAt": {
+            "format": "date-time",
+            "title": "Startedat",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary"
+          }
+        },
+        "required": [
+          "id",
+          "phase",
+          "agentKey",
+          "shard",
+          "iteration",
+          "status",
+          "model",
+          "inputTokens",
+          "outputTokens",
+          "costUsd",
+          "summary",
+          "error",
+          "startedAt",
+          "finishedAt"
+        ],
+        "title": "InvocationOut",
         "type": "object"
       },
       "LinkIn": {
@@ -2358,6 +2856,72 @@
           "agentRequired"
         ],
         "title": "PhaseOut",
+        "type": "object"
+      },
+      "PhaseRunOut": {
+        "properties": {
+          "detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detail"
+          },
+          "finishedAt": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finishedat"
+          },
+          "iterations": {
+            "title": "Iterations",
+            "type": "integer"
+          },
+          "phase": {
+            "title": "Phase",
+            "type": "string"
+          },
+          "position": {
+            "title": "Position",
+            "type": "integer"
+          },
+          "startedAt": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Startedat"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "phase",
+          "position",
+          "status",
+          "iterations",
+          "detail",
+          "startedAt",
+          "finishedAt"
+        ],
+        "title": "PhaseRunOut",
         "type": "object"
       },
       "PolicyIn": {
@@ -3344,6 +3908,188 @@
         "title": "ProjectUpdate",
         "type": "object"
       },
+      "QuestionOut": {
+        "properties": {
+          "affects": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Affects",
+            "type": "array"
+          },
+          "agentKey": {
+            "title": "Agentkey",
+            "type": "string"
+          },
+          "alternatives": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Alternatives",
+            "type": "array"
+          },
+          "answer": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Answer"
+          },
+          "answeredAt": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Answeredat"
+          },
+          "answeredBy": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Answeredby"
+          },
+          "answeredByName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Answeredbyname"
+          },
+          "comment": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comment"
+          },
+          "context": {
+            "title": "Context",
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "title": "Createdat",
+            "type": "string"
+          },
+          "evidence": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Evidence",
+            "type": "array"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "impact": {
+            "enum": [
+              "high",
+              "low"
+            ],
+            "title": "Impact",
+            "type": "string"
+          },
+          "phase": {
+            "title": "Phase",
+            "type": "string"
+          },
+          "projectId": {
+            "format": "uuid",
+            "title": "Projectid",
+            "type": "string"
+          },
+          "questionText": {
+            "title": "Questiontext",
+            "type": "string"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "recommended": {
+            "additionalProperties": true,
+            "title": "Recommended",
+            "type": "object"
+          },
+          "runId": {
+            "format": "uuid",
+            "title": "Runid",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "open",
+              "answered",
+              "cancelled"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "wasRecommended": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Wasrecommended"
+          }
+        },
+        "required": [
+          "id",
+          "projectId",
+          "runId",
+          "phase",
+          "agentKey",
+          "questionText",
+          "context",
+          "evidence",
+          "reason",
+          "impact",
+          "recommended",
+          "alternatives",
+          "affects",
+          "status",
+          "answer",
+          "wasRecommended",
+          "answeredBy",
+          "answeredByName",
+          "answeredAt",
+          "comment",
+          "createdAt"
+        ],
+        "title": "QuestionOut",
+        "type": "object"
+      },
       "Readiness": {
         "properties": {
           "checks": {
@@ -3708,6 +4454,380 @@
           "message"
         ],
         "title": "RuleOut",
+        "type": "object"
+      },
+      "RunDetail": {
+        "properties": {
+          "autonomy": {
+            "title": "Autonomy",
+            "type": "string"
+          },
+          "configVersion": {
+            "title": "Configversion",
+            "type": "integer"
+          },
+          "costVisible": {
+            "title": "Costvisible",
+            "type": "boolean"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "title": "Createdat",
+            "type": "string"
+          },
+          "currentPhase": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Currentphase"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "finishedAt": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finishedat"
+          },
+          "gates": {
+            "items": {
+              "$ref": "#/components/schemas/GateOut"
+            },
+            "title": "Gates",
+            "type": "array"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "invocations": {
+            "items": {
+              "$ref": "#/components/schemas/InvocationOut"
+            },
+            "title": "Invocations",
+            "type": "array"
+          },
+          "kind": {
+            "enum": [
+              "pipeline",
+              "demo"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "maxIterations": {
+            "title": "Maxiterations",
+            "type": "integer"
+          },
+          "options": {
+            "additionalProperties": true,
+            "title": "Options",
+            "type": "object"
+          },
+          "phases": {
+            "items": {
+              "$ref": "#/components/schemas/PhaseRunOut"
+            },
+            "title": "Phases",
+            "type": "array"
+          },
+          "projectId": {
+            "format": "uuid",
+            "title": "Projectid",
+            "type": "string"
+          },
+          "questions": {
+            "items": {
+              "$ref": "#/components/schemas/QuestionOut"
+            },
+            "title": "Questions",
+            "type": "array"
+          },
+          "startedAt": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Startedat"
+          },
+          "startedBy": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Startedby"
+          },
+          "startedByName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Startedbyname"
+          },
+          "status": {
+            "enum": [
+              "queued",
+              "running",
+              "waiting",
+              "succeeded",
+              "failed",
+              "cancelled"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "waitingReason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Waitingreason"
+          }
+        },
+        "required": [
+          "id",
+          "projectId",
+          "configVersion",
+          "kind",
+          "status",
+          "waitingReason",
+          "currentPhase",
+          "autonomy",
+          "maxIterations",
+          "options",
+          "error",
+          "startedBy",
+          "startedByName",
+          "createdAt",
+          "startedAt",
+          "finishedAt",
+          "phases",
+          "invocations",
+          "gates",
+          "questions",
+          "costVisible"
+        ],
+        "title": "RunDetail",
+        "type": "object"
+      },
+      "RunIn": {
+        "properties": {
+          "kind": {
+            "default": "pipeline",
+            "enum": [
+              "pipeline",
+              "demo"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "options": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DemoOptionsIn"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "title": "RunIn",
+        "type": "object"
+      },
+      "RunOut": {
+        "properties": {
+          "autonomy": {
+            "title": "Autonomy",
+            "type": "string"
+          },
+          "configVersion": {
+            "title": "Configversion",
+            "type": "integer"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "title": "Createdat",
+            "type": "string"
+          },
+          "currentPhase": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Currentphase"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "finishedAt": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finishedat"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "pipeline",
+              "demo"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "maxIterations": {
+            "title": "Maxiterations",
+            "type": "integer"
+          },
+          "options": {
+            "additionalProperties": true,
+            "title": "Options",
+            "type": "object"
+          },
+          "projectId": {
+            "format": "uuid",
+            "title": "Projectid",
+            "type": "string"
+          },
+          "startedAt": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Startedat"
+          },
+          "startedBy": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Startedby"
+          },
+          "startedByName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Startedbyname"
+          },
+          "status": {
+            "enum": [
+              "queued",
+              "running",
+              "waiting",
+              "succeeded",
+              "failed",
+              "cancelled"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "waitingReason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Waitingreason"
+          }
+        },
+        "required": [
+          "id",
+          "projectId",
+          "configVersion",
+          "kind",
+          "status",
+          "waitingReason",
+          "currentPhase",
+          "autonomy",
+          "maxIterations",
+          "options",
+          "error",
+          "startedBy",
+          "startedByName",
+          "createdAt",
+          "startedAt",
+          "finishedAt"
+        ],
+        "title": "RunOut",
         "type": "object"
       },
       "SessionTenantOut": {
@@ -4122,6 +5242,88 @@
           "cloud"
         ],
         "title": "TargetOut",
+        "type": "object"
+      },
+      "TaskOut": {
+        "properties": {
+          "createdAt": {
+            "format": "date-time",
+            "title": "Createdat",
+            "type": "string"
+          },
+          "gate": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gate"
+          },
+          "impact": {
+            "enum": [
+              "high",
+              "low"
+            ],
+            "title": "Impact",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "question",
+              "gate"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "phase": {
+            "title": "Phase",
+            "type": "string"
+          },
+          "projectId": {
+            "format": "uuid",
+            "title": "Projectid",
+            "type": "string"
+          },
+          "projectName": {
+            "title": "Projectname",
+            "type": "string"
+          },
+          "questionId": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Questionid"
+          },
+          "runId": {
+            "format": "uuid",
+            "title": "Runid",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "projectId",
+          "projectName",
+          "runId",
+          "phase",
+          "title",
+          "impact",
+          "createdAt"
+        ],
+        "title": "TaskOut",
         "type": "object"
       },
       "TeamMemberIn": {
@@ -4670,6 +5872,140 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/api/v1/activity/events": {
+      "get": {
+        "operationId": "activity_events_api_v1_activity_events_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "after",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "After"
+            }
+          },
+          {
+            "in": "query",
+            "name": "follow",
+            "required": false,
+            "schema": {
+              "default": true,
+              "title": "Follow",
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
+            "name": "projectId",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Projectid"
+            }
+          },
+          {
+            "in": "header",
+            "name": "last-event-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Last-Event-Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Activity Events",
+        "tags": [
+          "activity"
+        ]
+      }
+    },
+    "/api/v1/activity/events/{event_id}/export": {
+      "get": {
+        "description": "The JSON of one event, without secrets, as a download.",
+        "operationId": "export_event_api_v1_activity_events__event_id__export_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "event_id",
+            "required": true,
+            "schema": {
+              "title": "Event Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActivityEventOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Export Event",
+        "tags": [
+          "activity"
+        ]
+      }
+    },
     "/api/v1/ai/assignment-options": {
       "get": {
         "operationId": "options_api_v1_ai_assignment_options_get",
@@ -6921,6 +8257,191 @@
         ]
       }
     },
+    "/api/v1/projects/{project_id}/questions": {
+      "get": {
+        "operationId": "list_questions_api_v1_projects__project_id__questions_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "open",
+                    "answered",
+                    "cancelled"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/QuestionOut"
+                  },
+                  "title": "Response List Questions Api V1 Projects  Project Id  Questions Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Questions",
+        "tags": [
+          "questions"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/questions/{question_id}:answer": {
+      "post": {
+        "operationId": "answer_question_api_v1_projects__project_id__questions__question_id__answer_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "question_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Question Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnswerIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuestionOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Answer Question",
+        "tags": [
+          "questions"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/questions:accept-recommended": {
+      "post": {
+        "description": "Accept the recommendation of the open low-impact questions (all of the project, or the ones given).",
+        "operationId": "accept_recommended_api_v1_projects__project_id__questions_accept_recommended_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AcceptRecommendedIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AcceptRecommendedOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Accept Recommended",
+        "tags": [
+          "questions"
+        ]
+      }
+    },
     "/api/v1/projects/{project_id}/repository": {
       "delete": {
         "operationId": "delete_repository_api_v1_projects__project_id__repository_delete",
@@ -7097,6 +8618,450 @@
         "summary": "Test Repository",
         "tags": [
           "inputs"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/runs": {
+      "get": {
+        "operationId": "list_runs_api_v1_projects__project_id__runs_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/RunOut"
+                  },
+                  "title": "Response List Runs Api V1 Projects  Project Id  Runs Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Runs",
+        "tags": [
+          "runs"
+        ]
+      },
+      "post": {
+        "description": "Launch the pipeline with the project's current configuration. The demo pipeline exists only in development\nand test (plan M3 decision 3).",
+        "operationId": "start_run_api_v1_projects__project_id__runs_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RunIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Start Run",
+        "tags": [
+          "runs"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/runs/{run_id}": {
+      "get": {
+        "operationId": "get_run_api_v1_projects__project_id__runs__run_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Run",
+        "tags": [
+          "runs"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/runs/{run_id}/events": {
+      "get": {
+        "operationId": "run_events_api_v1_projects__project_id__runs__run_id__events_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Run Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "after",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "After"
+            }
+          },
+          {
+            "in": "query",
+            "name": "follow",
+            "required": false,
+            "schema": {
+              "default": true,
+              "title": "Follow",
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "header",
+            "name": "last-event-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Last-Event-Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Run Events",
+        "tags": [
+          "activity"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/runs/{run_id}/gates/{gate}:approve": {
+      "post": {
+        "operationId": "approve_gate_api_v1_projects__project_id__runs__run_id__gates__gate__approve_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Run Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "gate",
+            "required": true,
+            "schema": {
+              "title": "Gate",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GateDecisionIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GateOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Approve Gate",
+        "tags": [
+          "runs"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/runs/{run_id}/gates/{gate}:reject": {
+      "post": {
+        "operationId": "reject_gate_api_v1_projects__project_id__runs__run_id__gates__gate__reject_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Run Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "gate",
+            "required": true,
+            "schema": {
+              "title": "Gate",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GateDecisionIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GateOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Reject Gate",
+        "tags": [
+          "runs"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/runs/{run_id}:cancel": {
+      "post": {
+        "description": "The run stops at its next step; its open questions are cancelled.",
+        "operationId": "cancel_run_api_v1_projects__project_id__runs__run_id__cancel_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Cancel Run",
+        "tags": [
+          "runs"
         ]
       }
     },
@@ -7532,6 +9497,31 @@
         "summary": "Switch Tenant",
         "tags": [
           "session"
+        ]
+      }
+    },
+    "/api/v1/tasks": {
+      "get": {
+        "operationId": "my_tasks_api_v1_tasks_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/TaskOut"
+                  },
+                  "title": "Response My Tasks Api V1 Tasks Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "My Tasks",
+        "tags": [
+          "tasks"
         ]
       }
     },

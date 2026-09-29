@@ -39,6 +39,7 @@ tuples:
   - { user: role_binding:p1_architect#assignee, relation: gate_c3_approve, object: project:p1 }
   - { user: role_binding:p1_architect#assignee, relation: signoff_sign, object: project:p1 }
   - { user: role_binding:p1_architect#assignee, relation: code_view, object: project:p1 }
+  - { user: role_binding:p1_architect#assignee, relation: question_answer, object: project:p1 }
   - { user: role_binding:p2_architect#assignee, relation: member, object: project:p2 }
   - { user: role_binding:p2_architect#assignee, relation: gate_c3_approve, object: project:p2 }
   - { user: role_binding:p2_architect#assignee, relation: signoff_sign, object: project:p2 }
@@ -128,3 +129,21 @@ tests:
       - user: user:support
         object: tenant:andes
         assertions: { viewer: true, users_manage: false, audit_view: false }
+
+  - name: answering the agents' questions follows the project roles and the tenant administrator (M3)
+    check:
+      - user: user:luis
+        object: project:p1
+        assertions: { question_answer: true }
+      - user: user:luis
+        object: project:p2
+        assertions: { question_answer: false }
+      - user: user:maria
+        object: project:p2
+        assertions: { question_answer: true }
+      - user: user:carlos
+        object: project:p1
+        assertions: { question_answer: false }
+      - user: user:ana
+        object: project:p1
+        assertions: { question_answer: false }

@@ -16,7 +16,13 @@ ALLOWED = {"nexti_model_gateway.service", "nexti_model_gateway.gateway", "nexti_
 # Signs of a direct call to the provider or the secrets store.
 FORBIDDEN_TEXT = ("openrouter.ai/api", "X-Vault-Token", "/v1/secret/data")
 SECRETS_CLIENT = ROOT / "packages" / "core" / "src" / "nexti_core" / "secrets.py"
-SECRETS_USERS = {ROOT / "apps" / "api" / "src" / "nexti_api" / "projects" / "repository.py"}
+SECRETS_USERS = {
+    ROOT / "apps" / "api" / "src" / "nexti_api" / "projects" / "repository.py",
+    # The worker's preflight resolves the repository token (read only) to check the repository (spec 11.1).
+    ROOT / "apps" / "worker" / "src" / "nexti_worker" / "probe.py",
+    ROOT / "apps" / "worker" / "src" / "nexti_worker" / "runner.py",
+    ROOT / "apps" / "worker" / "src" / "nexti_worker" / "__main__.py",
+}
 
 
 def production_python() -> list[Path]:
@@ -81,3 +87,18 @@ def test_only_the_repository_module_uses_the_secrets_client_outside_the_gateway(
     )
     assert offenders == []
     assert SECRETS_CLIENT.is_file()
+
+
+ENGINE_MODULES = ("langgraph", "procrastinate", "nexti_orchestration", "nexti_worker", "nexti_sandbox")
+
+
+def test_the_api_never_runs_agents() -> None:
+    """The API creates runs and enqueues them; the worker executes them (CLAUDE.md rule 3, plan M3)."""
+    api = ROOT / "apps" / "api" / "src"
+    offenders = sorted(
+        f"{p.relative_to(ROOT)}: {m}"
+        for p in api.rglob("*.py")
+        for m in imports(p)
+        if m.split(".")[0] in ENGINE_MODULES
+    )
+    assert offenders == []

@@ -4,6 +4,43 @@
  */
 
 export interface paths {
+    "/api/v1/activity/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Activity Events */
+        get: operations["activity_events_api_v1_activity_events_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/activity/events/{event_id}/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Export Event
+         * @description The JSON of one event, without secrets, as a download.
+         */
+        get: operations["export_event_api_v1_activity_events__event_id__export_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/ai/assignment-options": {
         parameters: {
             query?: never;
@@ -716,6 +753,60 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/projects/{project_id}/questions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Questions */
+        get: operations["list_questions_api_v1_projects__project_id__questions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/projects/{project_id}/questions/{question_id}:answer": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Answer Question */
+        post: operations["answer_question_api_v1_projects__project_id__questions__question_id__answer_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/projects/{project_id}/questions:accept-recommended": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Accept Recommended
+         * @description Accept the recommendation of the open low-impact questions (all of the project, or the ones given).
+         */
+        post: operations["accept_recommended_api_v1_projects__project_id__questions_accept_recommended_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/projects/{project_id}/repository": {
         parameters: {
             query?: never;
@@ -746,6 +837,116 @@ export interface paths {
         put?: never;
         /** Test Repository */
         post: operations["test_repository_api_v1_projects__project_id__repository_test_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/projects/{project_id}/runs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Runs */
+        get: operations["list_runs_api_v1_projects__project_id__runs_get"];
+        put?: never;
+        /**
+         * Start Run
+         * @description Launch the pipeline with the project's current configuration. The demo pipeline exists only in development
+         *     and test (plan M3 decision 3).
+         */
+        post: operations["start_run_api_v1_projects__project_id__runs_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/projects/{project_id}/runs/{run_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Run */
+        get: operations["get_run_api_v1_projects__project_id__runs__run_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/projects/{project_id}/runs/{run_id}/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Run Events */
+        get: operations["run_events_api_v1_projects__project_id__runs__run_id__events_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/projects/{project_id}/runs/{run_id}/gates/{gate}:approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Approve Gate */
+        post: operations["approve_gate_api_v1_projects__project_id__runs__run_id__gates__gate__approve_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/projects/{project_id}/runs/{run_id}/gates/{gate}:reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reject Gate */
+        post: operations["reject_gate_api_v1_projects__project_id__runs__run_id__gates__gate__reject_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/projects/{project_id}/runs/{run_id}:cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Cancel Run
+         * @description The run stops at its next step; its open questions are cancelled.
+         */
+        post: operations["cancel_run_api_v1_projects__project_id__runs__run_id__cancel_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -877,6 +1078,23 @@ export interface paths {
          *     tenant from the session, never from a parameter.
          */
         put: operations["switch_tenant_api_v1_session_tenant_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tasks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** My Tasks */
+        get: operations["my_tasks_api_v1_tasks_get"];
+        put?: never;
         post?: never;
         delete?: never;
         options?: never;
@@ -1084,6 +1302,16 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** AcceptRecommendedIn */
+        AcceptRecommendedIn: {
+            /** Questionids */
+            questionIds?: string[] | null;
+        };
+        /** AcceptRecommendedOut */
+        AcceptRecommendedOut: {
+            /** Answered */
+            answered: number;
+        };
         /** ActiveTenantIn */
         ActiveTenantIn: {
             /**
@@ -1091,6 +1319,48 @@ export interface components {
              * Format: uuid
              */
             tenantId: string;
+        };
+        /** ActivityEventOut */
+        ActivityEventOut: {
+            /** Agentkey */
+            agentKey: string | null;
+            /** Costusd */
+            costUsd: string | null;
+            /** Id */
+            id: number;
+            /** Invocationid */
+            invocationId: string | null;
+            /** Kind */
+            kind: string;
+            /** Message */
+            message: string;
+            /** Model */
+            model: string | null;
+            /**
+             * Occurredat
+             * Format: date-time
+             */
+            occurredAt: string;
+            /** Payload */
+            payload: {
+                [key: string]: unknown;
+            };
+            /** Phase */
+            phase: string | null;
+            /**
+             * Projectid
+             * Format: uuid
+             */
+            projectId: string;
+            /**
+             * Runid
+             * Format: uuid
+             */
+            runId: string;
+            /** Status */
+            status: string;
+            /** Tokens */
+            tokens: number;
         };
         /** AdapterOut */
         AdapterOut: {
@@ -1141,6 +1411,18 @@ export interface components {
             tools: string[];
             /** Version */
             version: string;
+        };
+        /**
+         * AnswerIn
+         * @description Choose an option (the recommended one or an alternative) or write an answer.
+         */
+        AnswerIn: {
+            /** Comment */
+            comment?: string | null;
+            /** Option */
+            option?: string | null;
+            /** Text */
+            text?: string | null;
         };
         /** AssignmentCreate */
         AssignmentCreate: {
@@ -1516,6 +1798,30 @@ export interface components {
             /** Name */
             name?: string | null;
         };
+        /**
+         * DemoOptionsIn
+         * @description Behaviour of the demonstration pipeline (development and test only).
+         */
+        DemoOptionsIn: {
+            /** Failverification */
+            failVerification?: string | null;
+            /**
+             * Fixafter
+             * @default 1
+             */
+            fixAfter: number;
+            /** Questionphase */
+            questionPhase?: string | null;
+            /** Shards */
+            shards?: string[] | null;
+            /** Slowphase */
+            slowPhase?: string | null;
+            /**
+             * Slowseconds
+             * @default 0
+             */
+            slowSeconds: number;
+        };
         /** DevLoginIn */
         DevLoginIn: {
             /**
@@ -1554,6 +1860,36 @@ export interface components {
             key: "modernization" | "newFeature";
             /** Phases */
             phases: components["schemas"]["PhaseOut"][];
+        };
+        /** GateDecisionIn */
+        GateDecisionIn: {
+            /** Comment */
+            comment?: string | null;
+        };
+        /** GateOut */
+        GateOut: {
+            /** Comment */
+            comment: string | null;
+            /** Decidedat */
+            decidedAt: string | null;
+            /** Decidedby */
+            decidedBy: string | null;
+            /** Decidedbyname */
+            decidedByName: string | null;
+            /** Gate */
+            gate: string;
+            /**
+             * Requestedat
+             * Format: date-time
+             */
+            requestedAt: string;
+            /** Required */
+            required: boolean;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "pending" | "approved" | "rejected";
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -1696,6 +2032,45 @@ export interface components {
              * @enum {string}
              */
             status: "pending" | "accepted" | "revoked" | "expired";
+        };
+        /** InvocationOut */
+        InvocationOut: {
+            /** Agentkey */
+            agentKey: string;
+            /** Costusd */
+            costUsd: string | null;
+            /** Error */
+            error: {
+                [key: string]: unknown;
+            } | null;
+            /** Finishedat */
+            finishedAt: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Inputtokens */
+            inputTokens: number;
+            /** Iteration */
+            iteration: number;
+            /** Model */
+            model: string | null;
+            /** Outputtokens */
+            outputTokens: number;
+            /** Phase */
+            phase: string;
+            /** Shard */
+            shard: string | null;
+            /**
+             * Startedat
+             * Format: date-time
+             */
+            startedAt: string;
+            /** Status */
+            status: string;
+            /** Summary */
+            summary: string | null;
         };
         /** LinkIn */
         LinkIn: {
@@ -1888,6 +2263,23 @@ export interface components {
             gate: string | null;
             /** Key */
             key: string;
+        };
+        /** PhaseRunOut */
+        PhaseRunOut: {
+            /** Detail */
+            detail: string | null;
+            /** Finishedat */
+            finishedAt: string | null;
+            /** Iterations */
+            iterations: number;
+            /** Phase */
+            phase: string;
+            /** Position */
+            position: number;
+            /** Startedat */
+            startedAt: string | null;
+            /** Status */
+            status: string;
         };
         /** PolicyIn */
         PolicyIn: {
@@ -2237,6 +2629,75 @@ export interface components {
             /** Status */
             status?: ("active" | "archived") | null;
         };
+        /** QuestionOut */
+        QuestionOut: {
+            /** Affects */
+            affects: string[];
+            /** Agentkey */
+            agentKey: string;
+            /** Alternatives */
+            alternatives: {
+                [key: string]: unknown;
+            }[];
+            /** Answer */
+            answer: string | null;
+            /** Answeredat */
+            answeredAt: string | null;
+            /** Answeredby */
+            answeredBy: string | null;
+            /** Answeredbyname */
+            answeredByName: string | null;
+            /** Comment */
+            comment: string | null;
+            /** Context */
+            context: string;
+            /**
+             * Createdat
+             * Format: date-time
+             */
+            createdAt: string;
+            /** Evidence */
+            evidence: {
+                [key: string]: unknown;
+            }[];
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Impact
+             * @enum {string}
+             */
+            impact: "high" | "low";
+            /** Phase */
+            phase: string;
+            /**
+             * Projectid
+             * Format: uuid
+             */
+            projectId: string;
+            /** Questiontext */
+            questionText: string;
+            /** Reason */
+            reason: string;
+            /** Recommended */
+            recommended: {
+                [key: string]: unknown;
+            };
+            /**
+             * Runid
+             * Format: uuid
+             */
+            runId: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "open" | "answered" | "cancelled";
+            /** Wasrecommended */
+            wasRecommended: boolean | null;
+        };
         /** Readiness */
         Readiness: {
             /** Checks */
@@ -2375,6 +2836,130 @@ export interface components {
             key: string;
             /** Message */
             message: string;
+        };
+        /** RunDetail */
+        RunDetail: {
+            /** Autonomy */
+            autonomy: string;
+            /** Configversion */
+            configVersion: number;
+            /** Costvisible */
+            costVisible: boolean;
+            /**
+             * Createdat
+             * Format: date-time
+             */
+            createdAt: string;
+            /** Currentphase */
+            currentPhase: string | null;
+            /** Error */
+            error: string | null;
+            /** Finishedat */
+            finishedAt: string | null;
+            /** Gates */
+            gates: components["schemas"]["GateOut"][];
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Invocations */
+            invocations: components["schemas"]["InvocationOut"][];
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "pipeline" | "demo";
+            /** Maxiterations */
+            maxIterations: number;
+            /** Options */
+            options: {
+                [key: string]: unknown;
+            };
+            /** Phases */
+            phases: components["schemas"]["PhaseRunOut"][];
+            /**
+             * Projectid
+             * Format: uuid
+             */
+            projectId: string;
+            /** Questions */
+            questions: components["schemas"]["QuestionOut"][];
+            /** Startedat */
+            startedAt: string | null;
+            /** Startedby */
+            startedBy: string | null;
+            /** Startedbyname */
+            startedByName: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "queued" | "running" | "waiting" | "succeeded" | "failed" | "cancelled";
+            /** Waitingreason */
+            waitingReason: string | null;
+        };
+        /** RunIn */
+        RunIn: {
+            /**
+             * Kind
+             * @default pipeline
+             * @enum {string}
+             */
+            kind: "pipeline" | "demo";
+            options?: components["schemas"]["DemoOptionsIn"] | null;
+        };
+        /** RunOut */
+        RunOut: {
+            /** Autonomy */
+            autonomy: string;
+            /** Configversion */
+            configVersion: number;
+            /**
+             * Createdat
+             * Format: date-time
+             */
+            createdAt: string;
+            /** Currentphase */
+            currentPhase: string | null;
+            /** Error */
+            error: string | null;
+            /** Finishedat */
+            finishedAt: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "pipeline" | "demo";
+            /** Maxiterations */
+            maxIterations: number;
+            /** Options */
+            options: {
+                [key: string]: unknown;
+            };
+            /**
+             * Projectid
+             * Format: uuid
+             */
+            projectId: string;
+            /** Startedat */
+            startedAt: string | null;
+            /** Startedby */
+            startedBy: string | null;
+            /** Startedbyname */
+            startedByName: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "queued" | "running" | "waiting" | "succeeded" | "failed" | "cancelled";
+            /** Waitingreason */
+            waitingReason: string | null;
         };
         /** SessionTenantOut */
         SessionTenantOut: {
@@ -2516,6 +3101,44 @@ export interface components {
             database: string;
             /** Frontend */
             frontend: string;
+        };
+        /** TaskOut */
+        TaskOut: {
+            /**
+             * Createdat
+             * Format: date-time
+             */
+            createdAt: string;
+            /** Gate */
+            gate?: string | null;
+            /**
+             * Impact
+             * @enum {string}
+             */
+            impact: "high" | "low";
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "question" | "gate";
+            /** Phase */
+            phase: string;
+            /**
+             * Projectid
+             * Format: uuid
+             */
+            projectId: string;
+            /** Projectname */
+            projectName: string;
+            /** Questionid */
+            questionId?: string | null;
+            /**
+             * Runid
+             * Format: uuid
+             */
+            runId: string;
+            /** Title */
+            title: string;
         };
         /** TeamMemberIn */
         TeamMemberIn: {
@@ -2733,6 +3356,72 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    activity_events_api_v1_activity_events_get: {
+        parameters: {
+            query?: {
+                after?: number | null;
+                follow?: boolean;
+                projectId?: string | null;
+            };
+            header?: {
+                "last-event-id"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    export_event_api_v1_activity_events__event_id__export_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                event_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActivityEventOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     options_api_v1_ai_assignment_options_get: {
         parameters: {
             query?: never;
@@ -4262,6 +4951,110 @@ export interface operations {
             };
         };
     };
+    list_questions_api_v1_projects__project_id__questions_get: {
+        parameters: {
+            query?: {
+                status?: ("open" | "answered" | "cancelled") | null;
+            };
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuestionOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    answer_question_api_v1_projects__project_id__questions__question_id__answer_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                question_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AnswerIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuestionOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    accept_recommended_api_v1_projects__project_id__questions_accept_recommended_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AcceptRecommendedIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AcceptRecommendedOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_repository_api_v1_projects__project_id__repository_get: {
         parameters: {
             query?: never;
@@ -4375,6 +5168,247 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RepositoryOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_runs_api_v1_projects__project_id__runs_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    start_run_api_v1_projects__project_id__runs_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RunIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_run_api_v1_projects__project_id__runs__run_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    run_events_api_v1_projects__project_id__runs__run_id__events_get: {
+        parameters: {
+            query?: {
+                after?: number | null;
+                follow?: boolean;
+            };
+            header?: {
+                "last-event-id"?: string | null;
+            };
+            path: {
+                project_id: string;
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    approve_gate_api_v1_projects__project_id__runs__run_id__gates__gate__approve_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                run_id: string;
+                gate: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GateDecisionIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GateOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    reject_gate_api_v1_projects__project_id__runs__run_id__gates__gate__reject_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                run_id: string;
+                gate: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GateDecisionIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GateOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    cancel_run_api_v1_projects__project_id__runs__run_id__cancel_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunOut"];
                 };
             };
             /** @description Validation Error */
@@ -4696,6 +5730,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    my_tasks_api_v1_tasks_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaskOut"][];
                 };
             };
         };

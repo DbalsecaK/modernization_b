@@ -14,5 +14,6 @@ reemplaza y se marca el anterior como "Reemplazado por ADR-NNNN".
 | [0006](0006-identidad-global-sin-tenant-id.md) | D-29 — Identidad global sin `tenant_id`, con visibilidad por RLS | Aceptada |
 | [0007](0007-almacen-de-secretos-openbao.md) | D-30 — Almacén de secretos: API de Vault, OpenBao en desarrollo | Aceptada |
 | [0008](0008-validacion-de-insumos-clamav.md) | D-31 — Validación de insumos en la API y malware con ClamAV | Aceptada |
+| [0009](0009-cola-procrastinate-postgresql.md) | D-13 — Cola de trabajos con Procrastinate sobre PostgreSQL | Aceptada |
 
 Plantilla: contexto, decisión, alternativas consideradas, consecuencias y cómo se valida.

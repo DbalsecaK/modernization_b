@@ -8,6 +8,7 @@ import uuid
 import zipfile
 import zlib
 from collections.abc import Iterator
+from typing import Any
 
 import httpx
 import pytest
@@ -27,6 +28,9 @@ from nexti_core.secrets import SecretsConfig, SecretStore, repository_path
 from nexti_ingest import ClamdScanner
 
 from .conftest import SETTINGS, World
+
+# The response type of starlette's TestClient (httpx or httpx2, whichever the environment has).
+TestResponse = Any
 
 # The EICAR test signature, reversed so no antivirus quarantines this file; it only exists in memory.
 EICAR = "*H+H$!ELIF-TSET-SURIVITNA-DRADNATS-RACIE$}7)CC7)^P(45XZP\\4[PA@%P!O5X"[::-1].encode()
@@ -81,8 +85,8 @@ def store() -> ObjectStore:
 
 def upload(
     api: TestClient, headers: dict[str, str], project: uuid.UUID, name: str, data: bytes, kind: str
-) -> httpx.Response:
-    response: httpx.Response = api.post(
+) -> TestResponse:
+    response: TestResponse = api.post(
         f"/api/v1/projects/{project}/inputs", files={"file": (name, data, "application/octet-stream")},
         data={"kind": kind}, headers=headers,
     )  # fmt: skip

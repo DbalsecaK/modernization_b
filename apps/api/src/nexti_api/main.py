@@ -28,6 +28,10 @@ from nexti_api.projects import catalog_api, inputs, repository
 from nexti_api.projects import router as projects_router
 from nexti_api.projects import services as input_services
 from nexti_api.resources import Resources
+from nexti_api.runs import activity as runs_activity
+from nexti_api.runs import questions as runs_questions
+from nexti_api.runs import router as runs_router
+from nexti_api.runs import tasks as runs_tasks
 from nexti_api.settings import Settings, get_settings
 from nexti_model_gateway.service import GatewayService, SecretsConfig
 
@@ -154,6 +158,10 @@ def create_app(settings: Settings | None = None, health_checks: dict[str, health
         catalog_api.router,
         inputs.router,
         repository.router,
+        runs_router.router,
+        runs_questions.router,
+        runs_tasks.router,
+        runs_activity.router,
     ):
         app.include_router(admin_router)
     app.include_router(audit_log.router)

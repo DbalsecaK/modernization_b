@@ -1054,7 +1054,7 @@ pentest periódico.
 
 `proyecto.crear`, `proyecto.configurar`, `insumo.subir`, `pipeline.ejecutar`, `compuerta.c1.aprobar`,
 `compuerta.c2.aprobar`, `compuerta.c3.aprobar`, `signoff.firmar`, `codigo.ver`, `codigo.descargar`,
-`codigo.push`, `modelos.configurar`, `consumo.ver`, `costo.ver`, `agentes.seleccionar`, `skills.seleccionar`,
+`codigo.push`, `pregunta.responder`, `modelos.configurar`, `consumo.ver`, `costo.ver`, `agentes.seleccionar`, `skills.seleccionar`,
 `skills.publicar`, `usuarios.gestionar`, `auditoria.ver`.
 
 Los roles son **paquetes configurables** de permisos.
@@ -1282,7 +1282,8 @@ React (web) ──HTTPS──> WAF / API Gateway
                   FastAPI (BFF + API) ── OIDC + OpenFGA
                             │
       ┌─────────────────────┼──────────────────────┐
-  PostgreSQL           Cola (Redis)            Neo4j
+  PostgreSQL        Cola (PostgreSQL,         Neo4j
+                    Procrastinate)
   (app, RLS,                │                  Object storage (S3/MinIO)
    checkpoints,       Workers LangGraph        Vault / KMS
    libro consumo)           │
@@ -1299,7 +1300,7 @@ React (web) ──HTTPS──> WAF / API Gateway
 | Frontend | React + TypeScript, Vite, TanStack Query y TanStack Router, Tailwind + **shadcn/ui sobre Radix** (D-14; se adoptan detrás de las primitivas del prototipo), grafo en SVG propio con d3-hierarchy (vista de círculos; evaluar Cytoscape.js o Sigma.js para grafos de miles de nodos), Monaco (código), i18next |
 | Backend API | Python 3.12+, FastAPI, Pydantic v2, SQLAlchemy 2 + Alembic |
 | Orquestación | LangGraph (checkpointer PostgreSQL), LangChain (abstracción de modelos y herramientas) |
-| Trabajos | Workers Python con cola sobre Redis (Celery o alternativa; decisión en la sección 22) |
+| Trabajos | Workers Python con cola **Procrastinate sobre PostgreSQL** (D-13, ADR-0009) |
 | Datos | PostgreSQL 16+, Neo4j 5, S3 / MinIO |
 | Autorización | OpenFGA (D-15) |
 | Identidad | **Keycloak** (IdP + broker SSO, Organizations por tenant, tema con Keycloakify; D-19, D-20); en dev, en Docker Compose con realm importado y cuentas locales (D-27) |
@@ -1458,6 +1459,8 @@ las skills esperados; no se puede quitar un agente de Control; subir un zip con 
 un link de Figma que no es `figma.com/file|design|proto` se rechaza y una captura pasa por las mismas validaciones.
 
 ### M3 — Motor de orquestación
+
+Plan detallado: `docs/planes/M3-motor-orquestacion.md`.
 
 - Composición dinámica de grafos LangGraph desde el proyecto; checkpointer PostgreSQL.
 - Workers y cola; interrupts para compuertas; reanudación tras fallo.
@@ -1644,6 +1647,7 @@ Sybase SP (M4) → BMS (M5) → CICS (M6) → ASPX (M8).
 | D-20 | Keycloak: **un realm con una Organization por tenant** en el SaaS compartido; realm o instancia dedicada en despliegues dedicados o si un cliente exige políticas por realm; versión fijada 26+ ([ADR-0002](adr/0002-keycloak-organizations-por-tenant.md)) |
 | D-27 | Autenticación **por etapas**: Keycloak mínimo desde M0 (cuentas locales en Keycloak, BFF, `dev-auth` solo en desarrollo) y SSO/MFA/Organizations/Keycloakify en **M0b**; la plataforma nunca guarda contraseñas ([ADR-0004](adr/0004-autenticacion-por-etapas.md)) |
 | D-18 | Producto nativamente en inglés (UI, prompts, skills, catálogo); español como traducción completa; idioma de artefactos configurable por proyecto (inglés por defecto) |
+| D-13 | Cola de trabajos con **Procrastinate sobre PostgreSQL**: ejecución y trabajo en la misma transacción, latidos para reintentar el trabajo de un worker caído y reanudación desde el checkpoint de LangGraph; cola y checkpointer sin `tenant_id` y solo con referencias ([ADR-0009](adr/0009-cola-procrastinate-postgresql.md)) |
 | D-31 | Insumos validados por un único módulo (`packages/ingest`) antes de guardarse: tipo por contenido, tamaños, zip seguro (path traversal, enlaces, bombs), cabecera de imágenes, secretos contados y sha256; **malware con ClamAV** en Compose, CI y despliegue, con falla cerrada si no responde; síncrono en la API hasta que existan workers ([ADR-0008](adr/0008-validacion-de-insumos-clamav.md)) |
 | D-30 | Secretos con la **API de Vault** (KV v2) a través de un único módulo del gateway; **OpenBao** en desarrollo y CI, Vault u OpenBao en producción; la base solo guarda la ruta ([ADR-0007](adr/0007-almacen-de-secretos-openbao.md)) |
 | D-29 | Identidad global: `app_user`, el catálogo de permisos y los roles de plataforma sin `tenant_id`, con visibilidad por RLS y membresía; toda otra tabla de negocio lleva `tenant_id` con RLS forzado ([ADR-0006](adr/0006-identidad-global-sin-tenant-id.md)) |
@@ -1656,7 +1660,6 @@ Sybase SP (M4) → BMS (M5) → CICS (M6) → ASPX (M8).
 | D-06 | Destino del primer vertical Sybase: ¿Java Spring Boot o .NET 10? |
 | D-11 | ¿NexTI solo informa el consumo de IA o también lo factura (con margen) cuando la cuenta es de NexTI? |
 | D-12 | Neo4j Community (particionado por etiqueta) vs Enterprise (base por tenant) |
-| D-13 | Cola de trabajos: Celery vs alternativa (Arq, Dramatiq, Temporal) |
 | D-16 | Modelo de licenciamiento (por proyecto, por líneas, por tenant) |
 | D-17 | Primer cliente para despliegue en nube propia: ¿AWS o Azure? |
 

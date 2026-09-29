@@ -50,7 +50,11 @@ Flow = Literal["modernization", "newFeature"]
 Autonomy = Literal["guided", "balanced", "autonomous"]
 Key = Annotated[str, Field(min_length=1, max_length=64)]
 # Project permissions the screens use to show or hide actions (the API checks them anyway).
-PROJECT_PERMISSIONS = ("project.configure", "input.upload", "agents.select", "skills.select", "code.download")
+PROJECT_PERMISSIONS = (
+    "project.configure", "input.upload", "agents.select", "skills.select", "code.download",
+    # Runs (M3): launch, answer questions, decide gates.
+    "pipeline.run", "question.answer", "gate.c1.approve", "gate.c2.approve", "gate.c3.approve", "signoff.sign",
+)  # fmt: skip
 
 
 class TargetIn(ApiModel):

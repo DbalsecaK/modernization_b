@@ -1,5 +1,6 @@
 # CI of the platform (spec 15.7, plan M0 section 10): lint, types, tests, OpenFGA model tests, end-to-end with the
-# real services, SAST, SCA and secret scanning. Every job must pass before merging to main.
+# real services (the runs e2e starts a worker, M3), SAST, SCA and secret scanning. Every job must pass before merging
+# to main.
 # Third-party actions are pinned to a commit SHA (a tag can be moved); the comment says which release it is.
 name: CI
 
@@ -17,6 +18,8 @@ concurrency:
 
 env:
   COMPOSE: docker compose -f infra/docker-compose/compose.yaml
+  # The execution sandbox of the worker (M3, spec 15.5): the image pinned in packages/sandbox, pulled once per job.
+  SANDBOX_IMAGE: python:3.12-slim@sha256:f77ac9e44ae96ef2c90b8053ea08c31f8be030f824196b0ae4db6d462c84e51f
   # The services the API needs (Neo4j and Langfuse are not used yet; MinIO and ClamAV hold and scan the inputs, M2).
   SERVICES: postgres redis keycloak openfga openbao minio clamav mailpit
 
@@ -30,7 +33,7 @@ jobs:
       - run: uv sync --all-packages --locked
       - run: uv run ruff check .
       - run: uv run ruff format --check .
-      - run: uv run mypy apps/api/src apps/api/tests packages/core/src packages/core/tests packages/model_gateway/src packages/model_gateway/tests packages/agents/src packages/skills/src packages/ingest/src packages/ingest/tests
+      - run: uv run mypy apps/api/src apps/api/tests packages/core/src packages/core/tests packages/model_gateway/src packages/model_gateway/tests packages/agents/src packages/skills/src packages/ingest/src packages/ingest/tests packages/sandbox/src packages/sandbox/tests packages/orchestration/src packages/orchestration/tests apps/worker/src apps/worker/tests
 
   web:
     name: Web · lint, types, tests, build, generated types
@@ -79,6 +82,9 @@ jobs:
           python3 infra/docker-compose/init_env.py
           # shellcheck disable=SC2086 # the list of services must be split
           $COMPOSE up -d --wait $SERVICES
+          docker pull "$SANDBOX_IMAGE"
+      # Includes the M3 acceptance: worker processes (python -m nexti_worker) killed and replaced, and generated code
+      # tested in the Docker sandbox.
       - run: uv run pytest
         env:
           # M1 acceptance against the real OpenRouter API (a few millionths of a dollar); skipped when empty.
@@ -107,6 +113,7 @@ jobs:
           $COMPOSE up -d --wait $SERVICES
           uv run alembic -c apps/api/alembic.ini upgrade head
           uv run python -m nexti_api.cli seed-dev
+          docker pull "$SANDBOX_IMAGE"
       - run: pnpm --filter @nexti/web exec playwright install --with-deps chromium
       - run: pnpm web:e2e
         env:
