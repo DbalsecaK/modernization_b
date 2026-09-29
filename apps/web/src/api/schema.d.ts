@@ -458,6 +458,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/gherkin:validate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Validate Gherkin
+         * @description The validator of the server, for the editor while the person types (the same code that guards saving).
+         */
+        post: operations["validate_gherkin_api_v1_gherkin_validate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/health/live": {
         parameters: {
             query?: never;
@@ -630,6 +650,23 @@ export interface paths {
         patch: operations["update_project_api_v1_projects__project_id__patch"];
         trace?: never;
     };
+    "/api/v1/projects/{project_id}/c1-check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** C1 Check */
+        get: operations["c1_check_api_v1_projects__project_id__c1_check_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/projects/{project_id}/config": {
         parameters: {
             query?: never;
@@ -659,6 +696,23 @@ export interface paths {
         };
         /** Config Versions */
         get: operations["config_versions_api_v1_projects__project_id__config_versions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/projects/{project_id}/coverage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Coverage */
+        get: operations["get_coverage_api_v1_projects__project_id__coverage_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -747,6 +801,44 @@ export interface paths {
          * @description A Figma link (figma.com/file|design|proto) or a prototype link (https) with notes of what to respect.
          */
         post: operations["add_link_api_v1_projects__project_id__inputs_link_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/projects/{project_id}/plan": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Plan */
+        get: operations["get_plan_api_v1_projects__project_id__plan_get"];
+        /** Change Plan */
+        put: operations["change_plan_api_v1_projects__project_id__plan_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/projects/{project_id}/plan:reset": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reset Plan
+         * @description Back to the order the platform suggested.
+         */
+        post: operations["reset_plan_api_v1_projects__project_id__plan_reset_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -947,6 +1039,210 @@ export interface paths {
          * @description The run stops at its next step; its open questions are cancelled.
          */
         post: operations["cancel_run_api_v1_projects__project_id__runs__run_id__cancel_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/projects/{project_id}/spec/rules": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Rules */
+        get: operations["list_rules_api_v1_projects__project_id__spec_rules_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/projects/{project_id}/spec/rules/{key}/versions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Rule Versions */
+        get: operations["rule_versions_api_v1_projects__project_id__spec_rules__key__versions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/projects/{project_id}/stories": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Stories */
+        get: operations["list_stories_api_v1_projects__project_id__stories_get"];
+        put?: never;
+        /**
+         * Create Story
+         * @description A story written by a person. Without links it is listed as untraced (7.7).
+         */
+        post: operations["create_story_api_v1_projects__project_id__stories_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/projects/{project_id}/stories/{key}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Edit Story
+         * @description A new version; an approved story goes back to review (after C1 every change is a change of scope, 7.7).
+         */
+        put: operations["edit_story_api_v1_projects__project_id__stories__key__put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/projects/{project_id}/stories/{key}/dependencies": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Add Dependency */
+        post: operations["add_dependency_api_v1_projects__project_id__stories__key__dependencies_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/projects/{project_id}/stories/{key}/dependencies/{on}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove Dependency */
+        delete: operations["remove_dependency_api_v1_projects__project_id__stories__key__dependencies__on__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/projects/{project_id}/stories/{key}/versions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Story Versions */
+        get: operations["story_versions_api_v1_projects__project_id__stories__key__versions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/projects/{project_id}/stories/{key}:discard": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Discard Story
+         * @description With a reason. Its rules become a coverage gap unless it is out of scope (they migrate as they are).
+         */
+        post: operations["discard_story_api_v1_projects__project_id__stories__key__discard_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/projects/{project_id}/stories/{key}:merge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Merge Story
+         * @description `key` is absorbed by `into`: criteria, links and dependencies go to it; who depended on `key` now depends on
+         *     `into`; `key` stays as merged (7.7).
+         */
+        post: operations["merge_story_api_v1_projects__project_id__stories__key__merge_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/projects/{project_id}/stories/{key}:restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Restore Story */
+        post: operations["restore_story_api_v1_projects__project_id__stories__key__restore_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/projects/{project_id}/stories/{key}:split": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Split Story
+         * @description The chosen criteria and links move to a new story; both go back to review; dependencies are copied.
+         */
+        post: operations["split_story_api_v1_projects__project_id__stories__key__split_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1588,6 +1884,13 @@ export interface components {
             /** Spentusd */
             spentUsd: string;
         };
+        /** C1CheckOut */
+        C1CheckOut: {
+            /** Blockers */
+            blockers: string[];
+            /** Canapprove */
+            canApprove: boolean;
+        };
         /** CatalogOut */
         CatalogOut: {
             /** Adapters */
@@ -1595,7 +1898,7 @@ export interface components {
             /** Agents */
             agents: components["schemas"]["AgentOut"][];
             /** Compatibilityrules */
-            compatibilityRules: components["schemas"]["RuleOut"][];
+            compatibilityRules: components["schemas"]["nexti_api__projects__catalog_api__RuleOut"][];
             /** Costunitusd */
             costUnitUsd: number;
             /** Flows */
@@ -1798,6 +2101,23 @@ export interface components {
             /** Name */
             name?: string | null;
         };
+        /** CoverageOut */
+        CoverageOut: {
+            /** Complete */
+            complete: boolean;
+            /** Covered */
+            covered: {
+                [key: string]: string[];
+            };
+            /** Elements */
+            elements: number;
+            /** Gaps */
+            gaps: string[];
+            /** Outofscope */
+            outOfScope: string[];
+            /** Untracedstories */
+            untracedStories: string[];
+        };
         /**
          * DemoOptionsIn
          * @description Behaviour of the demonstration pipeline (development and test only).
@@ -1822,6 +2142,22 @@ export interface components {
              */
             slowSeconds: number;
         };
+        /** DependencyIn */
+        DependencyIn: {
+            /** On */
+            on: string;
+            /**
+             * Reason
+             * @default
+             */
+            reason: string;
+            /**
+             * Strength
+             * @default soft
+             * @enum {string}
+             */
+            strength: "hard" | "soft";
+        };
         /** DevLoginIn */
         DevLoginIn: {
             /**
@@ -1841,6 +2177,16 @@ export interface components {
              * Format: uuid
              */
             id: string;
+        };
+        /** DiscardIn */
+        DiscardIn: {
+            /**
+             * Outofscope
+             * @default false
+             */
+            outOfScope: boolean;
+            /** Reason */
+            reason: string;
         };
         /** EffortMappingIn */
         EffortMappingIn: {
@@ -1890,6 +2236,29 @@ export interface components {
              * @enum {string}
              */
             status: "pending" | "approved" | "rejected";
+        };
+        /** GherkinIn */
+        GherkinIn: {
+            /** Criteria */
+            criteria: string[];
+        };
+        /** GherkinOut */
+        GherkinOut: {
+            /** Problems */
+            problems: components["schemas"]["GherkinProblemOut"][];
+            /** Valid */
+            valid: boolean;
+        };
+        /** GherkinProblemOut */
+        GherkinProblemOut: {
+            /** Code */
+            code: string;
+            /** Criterion */
+            criterion: number;
+            /** Line */
+            line: number;
+            /** Message */
+            message: string;
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -2160,6 +2529,11 @@ export interface components {
              */
             status: "active" | "suspended";
         };
+        /** MergeIn */
+        MergeIn: {
+            /** Into */
+            into: string;
+        };
         /** MissingSkillOut */
         MissingSkillOut: {
             /** Skill */
@@ -2280,6 +2654,48 @@ export interface components {
             startedAt: string | null;
             /** Status */
             status: string;
+        };
+        /** PlanIn */
+        PlanIn: {
+            /** Changenote */
+            changeNote?: string | null;
+            /** Waves */
+            waves: string[][];
+        };
+        /** PlanOut */
+        PlanOut: {
+            /** Changenote */
+            changeNote: string | null;
+            /**
+             * Createdat
+             * Format: date-time
+             */
+            createdAt: string;
+            /** Createdbyname */
+            createdByName: string | null;
+            /** Differsfromsuggested */
+            differsFromSuggested: boolean;
+            /** Errors */
+            errors: components["schemas"]["PlanProblemOut"][];
+            /** Suggested */
+            suggested: string[][];
+            /** Version */
+            version: number;
+            /** Warnings */
+            warnings: components["schemas"]["PlanProblemOut"][];
+            /** Waves */
+            waves: string[][];
+        };
+        /** PlanProblemOut */
+        PlanProblemOut: {
+            /** Code */
+            code: string;
+            /** Message */
+            message: string;
+            /** On */
+            on: string | null;
+            /** Story */
+            story: string;
         };
         /** PolicyIn */
         PolicyIn: {
@@ -2830,13 +3246,6 @@ export interface components {
             /** Name */
             name: string;
         };
-        /** RuleOut */
-        RuleOut: {
-            /** Key */
-            key: string;
-            /** Message */
-            message: string;
-        };
         /** RunDetail */
         RunDetail: {
             /** Autonomy */
@@ -3052,6 +3461,99 @@ export interface components {
             name: string;
             /** Requiredskills */
             requiredSkills: string[];
+        };
+        /** SplitIn */
+        SplitIn: {
+            /**
+             * Criteria
+             * @description Indexes of the criteria that move
+             */
+            criteria?: number[];
+            /**
+             * Links
+             * @description Links that move to the new story
+             */
+            links?: string[];
+            /** Title */
+            title: string;
+        };
+        /** StoryIn */
+        StoryIn: {
+            /** Criteria */
+            criteria?: string[];
+            /**
+             * Estimate
+             * @default 3
+             */
+            estimate: number;
+            /**
+             * Feature
+             * @default
+             */
+            feature: string;
+            /** Links */
+            links?: string[];
+            /**
+             * Narrative
+             * @default
+             */
+            narrative: string;
+            /**
+             * Priority
+             * @default P1
+             * @enum {string}
+             */
+            priority: "P0" | "P1" | "P2";
+            /** Title */
+            title: string;
+        };
+        /** StoryOut */
+        StoryOut: {
+            /** Action */
+            action: string;
+            /**
+             * Createdat
+             * Format: date-time
+             */
+            createdAt: string;
+            /** Createdby */
+            createdBy: string | null;
+            /** Createdbyname */
+            createdByName: string | null;
+            /** Criteria */
+            criteria: string[];
+            /** Dependson */
+            dependsOn: {
+                [key: string]: unknown;
+            }[];
+            /** Estimate */
+            estimate: number;
+            /** Feature */
+            feature: string;
+            /** Key */
+            key: string;
+            /** Links */
+            links: string[];
+            /** Mergedinto */
+            mergedInto: string | null;
+            /** Narrative */
+            narrative: string;
+            /** Origin */
+            origin: string;
+            /** Outofscope */
+            outOfScope: boolean;
+            /** Priority */
+            priority: string;
+            /** Reason */
+            reason: string | null;
+            /** Status */
+            status: string;
+            /** Title */
+            title: string;
+            /** Traced */
+            traced: boolean;
+            /** Version */
+            version: number;
         };
         /** SyncOut */
         SyncOut: {
@@ -3346,6 +3848,33 @@ export interface components {
              * @enum {string}
              */
             status: "available" | "deprecated";
+        };
+        /** RuleOut */
+        nexti_api__projects__catalog_api__RuleOut: {
+            /** Key */
+            key: string;
+            /** Message */
+            message: string;
+        };
+        /** RuleOut */
+        nexti_api__spec__schemas__RuleOut: {
+            /**
+             * Createdat
+             * Format: date-time
+             */
+            createdAt: string;
+            /** Data */
+            data: {
+                [key: string]: unknown;
+            };
+            /** Key */
+            key: string;
+            /** Origin */
+            origin: string;
+            /** Status */
+            status: string;
+            /** Version */
+            version: number;
         };
     };
     responses: never;
@@ -4368,6 +4897,39 @@ export interface operations {
             };
         };
     };
+    validate_gherkin_api_v1_gherkin_validate_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GherkinIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GherkinOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     live_api_v1_health_live_get: {
         parameters: {
             query?: never;
@@ -4722,6 +5284,37 @@ export interface operations {
             };
         };
     };
+    c1_check_api_v1_projects__project_id__c1_check_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["C1CheckOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     change_config_api_v1_projects__project_id__config_put: {
         parameters: {
             query?: never;
@@ -4775,6 +5368,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ConfigVersionOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_coverage_api_v1_projects__project_id__coverage_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CoverageOut"];
                 };
             };
             /** @description Validation Error */
@@ -4938,6 +5562,103 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["InputOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_plan_api_v1_projects__project_id__plan_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlanOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    change_plan_api_v1_projects__project_id__plan_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PlanIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlanOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    reset_plan_api_v1_projects__project_id__plan_reset_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlanOut"];
                 };
             };
             /** @description Validation Error */
@@ -5409,6 +6130,412 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RunOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_rules_api_v1_projects__project_id__spec_rules_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["nexti_api__spec__schemas__RuleOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    rule_versions_api_v1_projects__project_id__spec_rules__key__versions_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["nexti_api__spec__schemas__RuleOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_stories_api_v1_projects__project_id__stories_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StoryOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_story_api_v1_projects__project_id__stories_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StoryIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StoryOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    edit_story_api_v1_projects__project_id__stories__key__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StoryIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StoryOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    add_dependency_api_v1_projects__project_id__stories__key__dependencies_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DependencyIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StoryOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    remove_dependency_api_v1_projects__project_id__stories__key__dependencies__on__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                key: string;
+                on: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StoryOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    story_versions_api_v1_projects__project_id__stories__key__versions_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StoryOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    discard_story_api_v1_projects__project_id__stories__key__discard_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DiscardIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StoryOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    merge_story_api_v1_projects__project_id__stories__key__merge_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MergeIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StoryOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    restore_story_api_v1_projects__project_id__stories__key__restore_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StoryOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    split_story_api_v1_projects__project_id__stories__key__split_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SplitIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StoryOut"][];
                 };
             };
             /** @description Validation Error */

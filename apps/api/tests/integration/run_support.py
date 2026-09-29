@@ -149,3 +149,58 @@ async def fetch(owner: AsyncEngine, sql: str, **params: Any) -> list[dict[str, A
 async def execute(owner: AsyncEngine, sql: str, **params: Any) -> None:
     async with owner.begin() as conn:
         await conn.execute(text(sql), params)
+
+
+VALID_CRITERION = "Scenario: Pay\n  Given a pending order\n  When it is paid\n  Then it is marked A"
+
+
+async def seed_spec(owner: AsyncEngine, tenant_id: uuid.UUID, project_id: uuid.UUID) -> None:
+    """Three rules, three stories (US-002 depends hard on US-001, US-003 soft on US-002) and plan version 1."""
+    async with owner.begin() as conn:
+        for number in (1, 2, 3):
+            data = {
+                "id": f"RULE-00{number}", "name": f"Rule {number}", "category": "validation", "priority": "P1",
+                "statement": f"The statement of rule number {number}.",
+                "sources": [{"file": "sp_pago_orden.sp", "line_start": 30 + number * 10, "line_end": 32 + number * 10}],
+            }  # fmt: skip
+            await conn.execute(
+                text(
+                    "INSERT INTO spec_element (tenant_id, project_id, element_type, key, version, status, data) "
+                    "VALUES (:t, :p, 'rule', :k, 1, 'review', CAST(:d AS jsonb))"
+                ),
+                {"t": tenant_id, "p": project_id, "k": f"RULE-00{number}", "d": json.dumps(data)},
+            )
+        ids = {}
+        for number in (1, 2, 3):
+            key = f"US-00{number}"
+            story_id = (
+                await conn.execute(
+                    text("INSERT INTO user_story (tenant_id, project_id, key) VALUES (:t, :p, :k) RETURNING id"),
+                    {"t": tenant_id, "p": project_id, "k": key},
+                )
+            ).scalar_one()
+            ids[key] = story_id
+            await conn.execute(
+                text(
+                    "INSERT INTO user_story_version (tenant_id, story_id, version, title, criteria, links, status) "
+                    "VALUES (:t, :s, 1, :ti, CAST(:c AS jsonb), CAST(:l AS jsonb), 'review')"
+                ),
+                {"t": tenant_id, "s": story_id, "ti": f"Story {number}", "c": json.dumps([VALID_CRITERION]),
+                 "l": json.dumps([f"RULE-00{number}"])},
+            )  # fmt: skip
+        for story, on, strength in (("US-002", "US-001", "hard"), ("US-003", "US-002", "soft")):
+            await conn.execute(
+                text(
+                    "INSERT INTO story_dependency (tenant_id, story_id, depends_on, strength, reason) "
+                    "VALUES (:t, :s, :o, :st, 'shares a table')"
+                ),
+                {"t": tenant_id, "s": ids[story], "o": ids[on], "st": strength},
+            )
+        waves = json.dumps([["US-001"], ["US-002"], ["US-003"]])
+        await conn.execute(
+            text(
+                "INSERT INTO migration_plan (tenant_id, project_id, version, waves, suggested) "
+                "VALUES (:t, :p, 1, CAST(:w AS jsonb), CAST(:w AS jsonb))"
+            ),
+            {"t": tenant_id, "p": project_id, "w": waves},
+        )

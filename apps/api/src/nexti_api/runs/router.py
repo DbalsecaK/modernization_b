@@ -6,7 +6,7 @@ import uuid
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, Request
-from sqlalchemy import RowMapping, func, insert, select, update
+from sqlalchemy import RowMapping, func, insert, select, text, update
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from nexti_api.admin.common import audit, not_found, transaction
@@ -25,6 +25,7 @@ from nexti_api.runs.schemas import (
     RunIn,
     RunOut,
 )
+from nexti_api.spec import common as spec_common
 from nexti_core.db.models import AgentInvocation, AppUser, Gate, PhaseRun, Project, ProjectConfig, Question, Run
 from nexti_core.jobs import defer_run
 
@@ -184,6 +185,23 @@ async def cancel_run(request: Request, project_id: uuid.UUID, run_id: uuid.UUID,
         return RunOut.model_validate(dict(await load_run(conn, project_id, run_id)))
 
 
+async def approve_stories(conn: AsyncConnection, auth: Authorized, project_id: uuid.UUID) -> None:
+    """At C1 the active stories are approved (a new version each); from then on a change is a change of scope."""
+    for story in await spec_common.stories(conn, project_id):
+        if story.active and story.status != "approved":
+            await conn.execute(
+                text(
+                    "INSERT INTO user_story_version (tenant_id, story_id, version, feature, title, narrative, "
+                    "criteria, links, priority, estimate, status, origin, out_of_scope, merged_into, reason, action, "
+                    "created_by) "
+                    "SELECT tenant_id, story_id, version + 1, feature, title, narrative, criteria, links, priority, "
+                    "estimate, 'approved', origin, out_of_scope, merged_into, reason, 'status', :by "
+                    "FROM user_story_version WHERE story_id = :s AND version = :v"
+                ),
+                {"s": story.id, "v": story.version, "by": auth.user_id},
+            )
+
+
 async def _decide(
     request: Request, project_id: uuid.UUID, run_id: uuid.UUID, gate: str, auth: Authorized, approve: bool,
     comment: str | None,
@@ -212,6 +230,12 @@ async def _decide(
             raise ProblemError(409, "gate_decided", "The gate was already decided.")
         if run["status"] in FINAL:
             raise ProblemError(409, "run_finished", "The run has already finished.")
+        # C1 approves the spec, the user stories and the plan together (7.7): code decides whether it can.
+        if approve and gate == "C1" and run["kind"] == "pipeline":
+            blockers = await spec_common.c1_blockers(conn, project_id)
+            if blockers:
+                raise ProblemError(409, "c1_blocked", "C1 cannot be approved yet.", blockers=blockers)
+            await approve_stories(conn, auth, project_id)
         await conn.execute(
             update(Gate)
             .where(Gate.run_id == run_id, Gate.gate == gate)

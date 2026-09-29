@@ -763,6 +763,27 @@
         "title": "BudgetOut",
         "type": "object"
       },
+      "C1CheckOut": {
+        "properties": {
+          "blockers": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Blockers",
+            "type": "array"
+          },
+          "canApprove": {
+            "title": "Canapprove",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "canApprove",
+          "blockers"
+        ],
+        "title": "C1CheckOut",
+        "type": "object"
+      },
       "CatalogOut": {
         "properties": {
           "adapters": {
@@ -781,7 +802,7 @@
           },
           "compatibilityRules": {
             "items": {
-              "$ref": "#/components/schemas/RuleOut"
+              "$ref": "#/components/schemas/nexti_api__projects__catalog_api__RuleOut"
             },
             "title": "Compatibilityrules",
             "type": "array"
@@ -1455,6 +1476,59 @@
         "title": "ConnectionUpdate",
         "type": "object"
       },
+      "CoverageOut": {
+        "properties": {
+          "complete": {
+            "title": "Complete",
+            "type": "boolean"
+          },
+          "covered": {
+            "additionalProperties": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "title": "Covered",
+            "type": "object"
+          },
+          "elements": {
+            "title": "Elements",
+            "type": "integer"
+          },
+          "gaps": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Gaps",
+            "type": "array"
+          },
+          "outOfScope": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Outofscope",
+            "type": "array"
+          },
+          "untracedStories": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Untracedstories",
+            "type": "array"
+          }
+        },
+        "required": [
+          "elements",
+          "covered",
+          "gaps",
+          "outOfScope",
+          "untracedStories",
+          "complete"
+        ],
+        "title": "CoverageOut",
+        "type": "object"
+      },
       "DemoOptionsIn": {
         "description": "Behaviour of the demonstration pipeline (development and test only).",
         "properties": {
@@ -1527,6 +1601,35 @@
         "title": "DemoOptionsIn",
         "type": "object"
       },
+      "DependencyIn": {
+        "properties": {
+          "on": {
+            "pattern": "^US-\\d{3,}$",
+            "title": "On",
+            "type": "string"
+          },
+          "reason": {
+            "default": "",
+            "maxLength": 500,
+            "title": "Reason",
+            "type": "string"
+          },
+          "strength": {
+            "default": "soft",
+            "enum": [
+              "hard",
+              "soft"
+            ],
+            "title": "Strength",
+            "type": "string"
+          }
+        },
+        "required": [
+          "on"
+        ],
+        "title": "DependencyIn",
+        "type": "object"
+      },
       "DevLoginIn": {
         "properties": {
           "userId": {
@@ -1563,6 +1666,26 @@
           "displayName"
         ],
         "title": "DevUser",
+        "type": "object"
+      },
+      "DiscardIn": {
+        "properties": {
+          "outOfScope": {
+            "default": false,
+            "title": "Outofscope",
+            "type": "boolean"
+          },
+          "reason": {
+            "maxLength": 2000,
+            "minLength": 3,
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "reason"
+        ],
+        "title": "DiscardIn",
         "type": "object"
       },
       "EffortMappingIn": {
@@ -1715,6 +1838,72 @@
           "comment"
         ],
         "title": "GateOut",
+        "type": "object"
+      },
+      "GherkinIn": {
+        "properties": {
+          "criteria": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 50,
+            "title": "Criteria",
+            "type": "array"
+          }
+        },
+        "required": [
+          "criteria"
+        ],
+        "title": "GherkinIn",
+        "type": "object"
+      },
+      "GherkinOut": {
+        "properties": {
+          "problems": {
+            "items": {
+              "$ref": "#/components/schemas/GherkinProblemOut"
+            },
+            "title": "Problems",
+            "type": "array"
+          },
+          "valid": {
+            "title": "Valid",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "valid",
+          "problems"
+        ],
+        "title": "GherkinOut",
+        "type": "object"
+      },
+      "GherkinProblemOut": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "criterion": {
+            "title": "Criterion",
+            "type": "integer"
+          },
+          "line": {
+            "title": "Line",
+            "type": "integer"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "criterion",
+          "code",
+          "line",
+          "message"
+        ],
+        "title": "GherkinProblemOut",
         "type": "object"
       },
       "HTTPValidationError": {
@@ -2508,6 +2697,20 @@
         "title": "MemberUpdate",
         "type": "object"
       },
+      "MergeIn": {
+        "properties": {
+          "into": {
+            "pattern": "^US-\\d{3,}$",
+            "title": "Into",
+            "type": "string"
+          }
+        },
+        "required": [
+          "into"
+        ],
+        "title": "MergeIn",
+        "type": "object"
+      },
       "MissingSkillOut": {
         "properties": {
           "skill": {
@@ -2922,6 +3125,159 @@
           "finishedAt"
         ],
         "title": "PhaseRunOut",
+        "type": "object"
+      },
+      "PlanIn": {
+        "properties": {
+          "changeNote": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Changenote"
+          },
+          "waves": {
+            "items": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "maxItems": 100,
+            "title": "Waves",
+            "type": "array"
+          }
+        },
+        "required": [
+          "waves"
+        ],
+        "title": "PlanIn",
+        "type": "object"
+      },
+      "PlanOut": {
+        "properties": {
+          "changeNote": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Changenote"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "title": "Createdat",
+            "type": "string"
+          },
+          "createdByName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Createdbyname"
+          },
+          "differsFromSuggested": {
+            "title": "Differsfromsuggested",
+            "type": "boolean"
+          },
+          "errors": {
+            "items": {
+              "$ref": "#/components/schemas/PlanProblemOut"
+            },
+            "title": "Errors",
+            "type": "array"
+          },
+          "suggested": {
+            "items": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "title": "Suggested",
+            "type": "array"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          },
+          "warnings": {
+            "items": {
+              "$ref": "#/components/schemas/PlanProblemOut"
+            },
+            "title": "Warnings",
+            "type": "array"
+          },
+          "waves": {
+            "items": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "title": "Waves",
+            "type": "array"
+          }
+        },
+        "required": [
+          "version",
+          "waves",
+          "suggested",
+          "differsFromSuggested",
+          "errors",
+          "warnings",
+          "changeNote",
+          "createdByName",
+          "createdAt"
+        ],
+        "title": "PlanOut",
+        "type": "object"
+      },
+      "PlanProblemOut": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "on": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "On"
+          },
+          "story": {
+            "title": "Story",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "story",
+          "on",
+          "message"
+        ],
+        "title": "PlanProblemOut",
         "type": "object"
       },
       "PolicyIn": {
@@ -4438,24 +4794,6 @@
         "title": "RoleUpdate",
         "type": "object"
       },
-      "RuleOut": {
-        "properties": {
-          "key": {
-            "title": "Key",
-            "type": "string"
-          },
-          "message": {
-            "title": "Message",
-            "type": "string"
-          }
-        },
-        "required": [
-          "key",
-          "message"
-        ],
-        "title": "RuleOut",
-        "type": "object"
-      },
       "RunDetail": {
         "properties": {
           "autonomy": {
@@ -5094,6 +5432,245 @@
           "requiredSkills"
         ],
         "title": "SourceOptionOut",
+        "type": "object"
+      },
+      "SplitIn": {
+        "properties": {
+          "criteria": {
+            "description": "Indexes of the criteria that move",
+            "items": {
+              "type": "integer"
+            },
+            "title": "Criteria",
+            "type": "array"
+          },
+          "links": {
+            "description": "Links that move to the new story",
+            "items": {
+              "type": "string"
+            },
+            "title": "Links",
+            "type": "array"
+          },
+          "title": {
+            "maxLength": 200,
+            "minLength": 3,
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title"
+        ],
+        "title": "SplitIn",
+        "type": "object"
+      },
+      "StoryIn": {
+        "properties": {
+          "criteria": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 50,
+            "title": "Criteria",
+            "type": "array"
+          },
+          "estimate": {
+            "default": 3,
+            "maximum": 100.0,
+            "minimum": 1.0,
+            "title": "Estimate",
+            "type": "integer"
+          },
+          "feature": {
+            "default": "",
+            "maxLength": 200,
+            "title": "Feature",
+            "type": "string"
+          },
+          "links": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 200,
+            "title": "Links",
+            "type": "array"
+          },
+          "narrative": {
+            "default": "",
+            "maxLength": 2000,
+            "title": "Narrative",
+            "type": "string"
+          },
+          "priority": {
+            "default": "P1",
+            "enum": [
+              "P0",
+              "P1",
+              "P2"
+            ],
+            "title": "Priority",
+            "type": "string"
+          },
+          "title": {
+            "maxLength": 200,
+            "minLength": 3,
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title"
+        ],
+        "title": "StoryIn",
+        "type": "object"
+      },
+      "StoryOut": {
+        "properties": {
+          "action": {
+            "title": "Action",
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "title": "Createdat",
+            "type": "string"
+          },
+          "createdBy": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Createdby"
+          },
+          "createdByName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Createdbyname"
+          },
+          "criteria": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Criteria",
+            "type": "array"
+          },
+          "dependsOn": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Dependson",
+            "type": "array"
+          },
+          "estimate": {
+            "title": "Estimate",
+            "type": "integer"
+          },
+          "feature": {
+            "title": "Feature",
+            "type": "string"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "links": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Links",
+            "type": "array"
+          },
+          "mergedInto": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mergedinto"
+          },
+          "narrative": {
+            "title": "Narrative",
+            "type": "string"
+          },
+          "origin": {
+            "title": "Origin",
+            "type": "string"
+          },
+          "outOfScope": {
+            "title": "Outofscope",
+            "type": "boolean"
+          },
+          "priority": {
+            "title": "Priority",
+            "type": "string"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "traced": {
+            "title": "Traced",
+            "type": "boolean"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "key",
+          "version",
+          "feature",
+          "title",
+          "narrative",
+          "criteria",
+          "links",
+          "priority",
+          "estimate",
+          "status",
+          "origin",
+          "outOfScope",
+          "mergedInto",
+          "reason",
+          "action",
+          "createdBy",
+          "createdByName",
+          "createdAt",
+          "traced",
+          "dependsOn"
+        ],
+        "title": "StoryOut",
         "type": "object"
       },
       "SyncOut": {
@@ -5862,6 +6439,64 @@
           "offerings"
         ],
         "title": "VersionOut",
+        "type": "object"
+      },
+      "nexti_api__projects__catalog_api__RuleOut": {
+        "properties": {
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "message"
+        ],
+        "title": "RuleOut",
+        "type": "object"
+      },
+      "nexti_api__spec__schemas__RuleOut": {
+        "properties": {
+          "createdAt": {
+            "format": "date-time",
+            "title": "Createdat",
+            "type": "string"
+          },
+          "data": {
+            "additionalProperties": true,
+            "title": "Data",
+            "type": "object"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "origin": {
+            "title": "Origin",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "key",
+          "version",
+          "status",
+          "data",
+          "origin",
+          "createdAt"
+        ],
+        "title": "RuleOut",
         "type": "object"
       }
     }
@@ -7462,6 +8097,48 @@
         ]
       }
     },
+    "/api/v1/gherkin:validate": {
+      "post": {
+        "description": "The validator of the server, for the editor while the person types (the same code that guards saving).",
+        "operationId": "validate_gherkin_api_v1_gherkin_validate_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GherkinIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GherkinOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Validate Gherkin",
+        "tags": [
+          "spec"
+        ]
+      }
+    },
     "/api/v1/health/live": {
       "get": {
         "description": "The process is up. Does not touch dependencies.",
@@ -7903,6 +8580,49 @@
         ]
       }
     },
+    "/api/v1/projects/{project_id}/c1-check": {
+      "get": {
+        "operationId": "c1_check_api_v1_projects__project_id__c1_check_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/C1CheckOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "C1 Check",
+        "tags": [
+          "spec"
+        ]
+      }
+    },
     "/api/v1/projects/{project_id}/config": {
       "put": {
         "description": "A new configuration version. Changing the team needs agents.select; changing skills needs skills.select.",
@@ -8001,6 +8721,49 @@
         "summary": "Config Versions",
         "tags": [
           "projects"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/coverage": {
+      "get": {
+        "operationId": "get_coverage_api_v1_projects__project_id__coverage_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CoverageOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Coverage",
+        "tags": [
+          "spec"
         ]
       }
     },
@@ -8254,6 +9017,144 @@
         "summary": "Add Link",
         "tags": [
           "inputs"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/plan": {
+      "get": {
+        "operationId": "get_plan_api_v1_projects__project_id__plan_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlanOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Plan",
+        "tags": [
+          "spec"
+        ]
+      },
+      "put": {
+        "operationId": "change_plan_api_v1_projects__project_id__plan_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PlanIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlanOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Change Plan",
+        "tags": [
+          "spec"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/plan:reset": {
+      "post": {
+        "description": "Back to the order the platform suggested.",
+        "operationId": "reset_plan_api_v1_projects__project_id__plan_reset_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlanOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Reset Plan",
+        "tags": [
+          "spec"
         ]
       }
     },
@@ -9062,6 +9963,695 @@
         "summary": "Cancel Run",
         "tags": [
           "runs"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/spec/rules": {
+      "get": {
+        "operationId": "list_rules_api_v1_projects__project_id__spec_rules_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/nexti_api__spec__schemas__RuleOut"
+                  },
+                  "title": "Response List Rules Api V1 Projects  Project Id  Spec Rules Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Rules",
+        "tags": [
+          "spec"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/spec/rules/{key}/versions": {
+      "get": {
+        "operationId": "rule_versions_api_v1_projects__project_id__spec_rules__key__versions_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "key",
+            "required": true,
+            "schema": {
+              "title": "Key",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/nexti_api__spec__schemas__RuleOut"
+                  },
+                  "title": "Response Rule Versions Api V1 Projects  Project Id  Spec Rules  Key  Versions Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Rule Versions",
+        "tags": [
+          "spec"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/stories": {
+      "get": {
+        "operationId": "list_stories_api_v1_projects__project_id__stories_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/StoryOut"
+                  },
+                  "title": "Response List Stories Api V1 Projects  Project Id  Stories Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Stories",
+        "tags": [
+          "spec"
+        ]
+      },
+      "post": {
+        "description": "A story written by a person. Without links it is listed as untraced (7.7).",
+        "operationId": "create_story_api_v1_projects__project_id__stories_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StoryIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoryOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Story",
+        "tags": [
+          "spec"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/stories/{key}": {
+      "put": {
+        "description": "A new version; an approved story goes back to review (after C1 every change is a change of scope, 7.7).",
+        "operationId": "edit_story_api_v1_projects__project_id__stories__key__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "key",
+            "required": true,
+            "schema": {
+              "title": "Key",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StoryIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoryOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Edit Story",
+        "tags": [
+          "spec"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/stories/{key}/dependencies": {
+      "post": {
+        "operationId": "add_dependency_api_v1_projects__project_id__stories__key__dependencies_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "key",
+            "required": true,
+            "schema": {
+              "title": "Key",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DependencyIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoryOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Add Dependency",
+        "tags": [
+          "spec"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/stories/{key}/dependencies/{on}": {
+      "delete": {
+        "operationId": "remove_dependency_api_v1_projects__project_id__stories__key__dependencies__on__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "key",
+            "required": true,
+            "schema": {
+              "title": "Key",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "on",
+            "required": true,
+            "schema": {
+              "title": "On",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoryOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Remove Dependency",
+        "tags": [
+          "spec"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/stories/{key}/versions": {
+      "get": {
+        "operationId": "story_versions_api_v1_projects__project_id__stories__key__versions_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "key",
+            "required": true,
+            "schema": {
+              "title": "Key",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/StoryOut"
+                  },
+                  "title": "Response Story Versions Api V1 Projects  Project Id  Stories  Key  Versions Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Story Versions",
+        "tags": [
+          "spec"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/stories/{key}:discard": {
+      "post": {
+        "description": "With a reason. Its rules become a coverage gap unless it is out of scope (they migrate as they are).",
+        "operationId": "discard_story_api_v1_projects__project_id__stories__key__discard_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "key",
+            "required": true,
+            "schema": {
+              "title": "Key",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DiscardIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoryOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Discard Story",
+        "tags": [
+          "spec"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/stories/{key}:merge": {
+      "post": {
+        "description": "`key` is absorbed by `into`: criteria, links and dependencies go to it; who depended on `key` now depends on\n`into`; `key` stays as merged (7.7).",
+        "operationId": "merge_story_api_v1_projects__project_id__stories__key__merge_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "key",
+            "required": true,
+            "schema": {
+              "title": "Key",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MergeIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoryOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Merge Story",
+        "tags": [
+          "spec"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/stories/{key}:restore": {
+      "post": {
+        "operationId": "restore_story_api_v1_projects__project_id__stories__key__restore_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "key",
+            "required": true,
+            "schema": {
+              "title": "Key",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoryOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Restore Story",
+        "tags": [
+          "spec"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/stories/{key}:split": {
+      "post": {
+        "description": "The chosen criteria and links move to a new story; both go back to review; dependencies are copied.",
+        "operationId": "split_story_api_v1_projects__project_id__stories__key__split_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "key",
+            "required": true,
+            "schema": {
+              "title": "Key",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SplitIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/StoryOut"
+                  },
+                  "title": "Response Split Story Api V1 Projects  Project Id  Stories  Key  Split Post",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Split Story",
+        "tags": [
+          "spec"
         ]
       }
     },
