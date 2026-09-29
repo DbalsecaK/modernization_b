@@ -1249,6 +1249,77 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/projects/{project_id}/traceability": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Traceability */
+        get: operations["traceability_api_v1_projects__project_id__traceability_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/projects/{project_id}/traceability/{rule_key}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Rule Trace */
+        get: operations["rule_trace_api_v1_projects__project_id__traceability__rule_key__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/projects/{project_id}/verdicts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Verdicts */
+        get: operations["list_verdicts_api_v1_projects__project_id__verdicts_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/projects/{project_id}/verdicts/{verdict_id}/proof-pack": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Proof Pack
+         * @description The evidence of a verdict as the worker stored it (a zip a reviewer can keep and recompute).
+         */
+        get: operations["proof_pack_api_v1_projects__project_id__verdicts__verdict_id__proof_pack_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/projects:compose": {
         parameters: {
             query?: never;
@@ -1891,6 +1962,19 @@ export interface components {
             /** Canapprove */
             canApprove: boolean;
         };
+        /** CaseOut */
+        CaseOut: {
+            /** Differences */
+            differences: {
+                [key: string]: unknown;
+            }[];
+            /** Failure */
+            failure: string | null;
+            /** Matched */
+            matched: boolean;
+            /** Name */
+            name: string;
+        };
         /** CatalogOut */
         CatalogOut: {
             /** Adapters */
@@ -1923,6 +2007,20 @@ export interface components {
             /** Reason */
             reason: string | null;
         };
+        /** CheckOut */
+        CheckOut: {
+            /** Detail */
+            detail: string;
+            /** Key */
+            key: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "passed" | "failed" | "not_checked";
+            /** Title */
+            title: string;
+        };
         /** CheckResult */
         CheckResult: {
             /** Latency Ms */
@@ -1932,6 +2030,19 @@ export interface components {
              * @enum {string}
              */
             status: "ok" | "fail";
+        };
+        /** CodeExcerptOut */
+        CodeExcerptOut: {
+            /** Firstline */
+            firstLine: number;
+            /** Highlighted */
+            highlighted: number[];
+            /** Lines */
+            lines: string[];
+            /** Path */
+            path: string;
+            /** Truncated */
+            truncated: boolean;
         };
         /** ComposeIn */
         ComposeIn: {
@@ -3746,6 +3857,51 @@ export interface components {
             /** Status */
             status?: ("active" | "suspended") | null;
         };
+        /** TraceDetailOut */
+        TraceDetailOut: {
+            /** Cases */
+            cases: components["schemas"]["CaseOut"][];
+            /** Key */
+            key: string;
+            /** Legacy */
+            legacy: components["schemas"]["CodeExcerptOut"][];
+            /** Rule */
+            rule: {
+                [key: string]: unknown;
+            };
+            /** Status */
+            status: string;
+            /** Target */
+            target: components["schemas"]["CodeExcerptOut"][];
+            /** Verdict */
+            verdict: string | null;
+            /** Verified */
+            verified: boolean | null;
+        };
+        /** TraceRuleOut */
+        TraceRuleOut: {
+            /** Cases */
+            cases: number;
+            /** Key */
+            key: string;
+            /** Matched */
+            matched: number;
+            /** Name */
+            name: string;
+            /** Priority */
+            priority: string;
+            /** Sources */
+            sources: string[];
+            /** Status */
+            status: string;
+            /** Targetfiles */
+            targetFiles: string[];
+            /**
+             * Verified
+             * @description None until a verification ran
+             */
+            verified: boolean | null;
+        };
         /** UsageRow */
         UsageRow: {
             /** Cachereadtokens */
@@ -3821,6 +3977,37 @@ export interface components {
             msg: string;
             /** Error Type */
             type: string;
+        };
+        /** VerdictOut */
+        VerdictOut: {
+            /** Checks */
+            checks: components["schemas"]["CheckOut"][];
+            /**
+             * Createdat
+             * Format: date-time
+             */
+            createdAt: string;
+            /** Hasproofpack */
+            hasProofPack: boolean;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Module */
+            module: string;
+            /** Notproven */
+            notProven: string[];
+            /**
+             * Runid
+             * Format: uuid
+             */
+            runId: string;
+            /**
+             * Verdict
+             * @enum {string}
+             */
+            verdict: "PROVEN" | "PARTLY PROVEN" | "NOT PROVEN";
         };
         /** VersionOut */
         VersionOut: {
@@ -6536,6 +6723,132 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["StoryOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    traceability_api_v1_projects__project_id__traceability_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TraceRuleOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    rule_trace_api_v1_projects__project_id__traceability__rule_key__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                rule_key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TraceDetailOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_verdicts_api_v1_projects__project_id__verdicts_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VerdictOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    proof_pack_api_v1_projects__project_id__verdicts__verdict_id__proof_pack_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                verdict_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
             /** @description Validation Error */

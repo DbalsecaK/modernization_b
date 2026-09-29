@@ -127,3 +127,59 @@ class PlanIn(ApiModel):
 class C1CheckOut(ApiModel):
     can_approve: bool
     blockers: list[str]
+
+
+class CheckOut(ApiModel):
+    key: str
+    title: str
+    status: Literal["passed", "failed", "not_checked"]
+    detail: str
+
+
+class VerdictOut(ApiModel):
+    id: uuid.UUID
+    run_id: uuid.UUID
+    module: str
+    verdict: Literal["PROVEN", "PARTLY PROVEN", "NOT PROVEN"]
+    checks: list[CheckOut]
+    not_proven: list[str]
+    has_proof_pack: bool
+    created_at: datetime
+
+
+class TraceRuleOut(ApiModel):
+    key: str
+    name: str
+    priority: str
+    status: str
+    sources: list[str]
+    target_files: list[str]
+    cases: int
+    matched: int
+    verified: bool | None = Field(description="None until a verification ran")
+
+
+class CodeExcerptOut(ApiModel):
+    path: str
+    first_line: int
+    lines: list[str]
+    highlighted: list[int]
+    truncated: bool
+
+
+class CaseOut(ApiModel):
+    name: str
+    matched: bool
+    failure: str | None
+    differences: list[dict[str, Any]]
+
+
+class TraceDetailOut(ApiModel):
+    key: str
+    rule: dict[str, Any]
+    status: str
+    legacy: list[CodeExcerptOut]
+    target: list[CodeExcerptOut]
+    cases: list[CaseOut]
+    verified: bool | None
+    verdict: str | None

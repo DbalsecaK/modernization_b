@@ -1,6 +1,7 @@
 """Zip archives are hostile input (spec 15.4): every entry is checked from the central directory and then really
 decompressed with caps, because the sizes a zip declares can lie."""
 
+import io
 import stat
 import zipfile
 from dataclasses import dataclass
@@ -91,3 +92,32 @@ def inspect_zip(stream: BinaryIO, limits: Limits, findings: SecretFindings | Non
                 findings.scan(bytes(kept), info.filename)
     stream.seek(0)
     return ArchiveReport(entries=len(infos), uncompressed_bytes=total)
+
+
+# The legacy code the pipeline reads from an accepted archive (already inspected at upload by `inspect_zip`).
+SOURCE_SUFFIXES = (".sp", ".sql", ".prc", ".proc", ".tsql", ".syb", ".txt")
+MAX_SOURCE_FILE_BYTES = 5 * 1024 * 1024
+MAX_SOURCE_TOTAL_BYTES = 50 * 1024 * 1024
+
+
+def read_text_files(data: bytes, prefix: str = "") -> list[tuple[str, str]]:
+    """(path, text) of the source files of an accepted archive, with size caps; binary entries are skipped."""
+    files: list[tuple[str, str]] = []
+    total = 0
+    with zipfile.ZipFile(io.BytesIO(data)) as archive:
+        for info in archive.infolist():
+            name = info.filename.replace("\\", "/")
+            if info.is_dir() or not name.lower().endswith(SOURCE_SUFFIXES) or info.file_size > MAX_SOURCE_FILE_BYTES:
+                continue
+            total += info.file_size
+            if total > MAX_SOURCE_TOTAL_BYTES:
+                break
+            raw = archive.read(info)
+            if b"\x00" in raw[:4096]:
+                continue
+            try:
+                content = raw.decode("utf-8")
+            except UnicodeDecodeError:
+                content = raw.decode("latin-1")
+            files.append((f"{prefix}{name}", content.replace("\r\n", "\n")))
+    return files

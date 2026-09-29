@@ -51,7 +51,7 @@ from nexti_core.object_store import ObjectStore, ObjectStoreConfig, input_key
 from nexti_model_gateway.secrets import SecretsConfig, SecretStore, connection_path
 
 from .conftest import SETTINGS, World
-from .run_support import VALID_CRITERION, execute, make_config, make_project, make_run, seed_spec
+from .run_support import VALID_CRITERION, execute, make_config, make_project, make_run, seed_spec, seed_validation
 
 # Routes that are public by design (no session): health, the sign-in flow and dev-auth (development only).
 PUBLIC = {
@@ -383,6 +383,14 @@ class Ctx:
             ).scalar_one()
         return event_id
 
+    async def verified_project(self) -> tuple[uuid.UUID, uuid.UUID]:
+        """A fresh project of tenant A with rules, generated code and a verdict with its proof pack."""
+        project_id = await make_project(self.owner, self.world.tenant_a)
+        await seed_spec(self.owner, self.world.tenant_a, project_id)
+        verdict_id = await seed_validation(self.owner, object_store(), self.world.tenant_a, project_id)
+        await self.sync_authz()
+        return project_id, verdict_id
+
     async def spec_project(self) -> uuid.UUID:
         """A fresh project of tenant A with rules, stories (US-003 discarded), dependencies and a plan."""
         project_id = await make_project(self.owner, self.world.tenant_a)
@@ -632,6 +640,14 @@ def _spec(suffix: str, body: dict[str, Any] | None = None) -> Callable[[Ctx], Aw
     return make
 
 
+def _verified(suffix: str) -> Callable[[Ctx], Awaitable[Request]]:
+    async def make(ctx: Ctx) -> Request:
+        project_id, verdict_id = await ctx.verified_project()
+        return f"/api/v1/projects/{project_id}{suffix.format(verdict=verdict_id)}", None
+
+    return make
+
+
 STORY = {"title": "Pay an order", "criteria": [VALID_CRITERION], "links": ["RULE-001"]}
 
 AI_POLICY = {"openrouterAllowed": True, "deniedUpstreamProviders": ["deepinfra"], "denyDataCollection": True}
@@ -855,6 +871,16 @@ CASES = [
         _spec("/plan", {"waves": [["US-001", "US-002"]]}),
     ),
     Case("POST", "/api/v1/projects/{project_id}/plan:reset", "admin", "member", _spec("/plan:reset")),
+    Case("GET", "/api/v1/projects/{project_id}/verdicts", "admin", "outsider", _verified("/verdicts")),
+    Case(
+        "GET", "/api/v1/projects/{project_id}/verdicts/{verdict_id}/proof-pack", "admin", "outsider",
+        _verified("/verdicts/{verdict}/proof-pack"),
+    ),
+    Case("GET", "/api/v1/projects/{project_id}/traceability", "admin", "outsider", _verified("/traceability")),
+    Case(
+        "GET", "/api/v1/projects/{project_id}/traceability/{rule_key}", "admin", "outsider",
+        _verified("/traceability/RULE-001"),
+    ),
 ]  # fmt: skip
 
 

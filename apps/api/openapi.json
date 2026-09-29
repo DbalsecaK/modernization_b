@@ -784,6 +784,45 @@
         "title": "C1CheckOut",
         "type": "object"
       },
+      "CaseOut": {
+        "properties": {
+          "differences": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Differences",
+            "type": "array"
+          },
+          "failure": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Failure"
+          },
+          "matched": {
+            "title": "Matched",
+            "type": "boolean"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "matched",
+          "failure",
+          "differences"
+        ],
+        "title": "CaseOut",
+        "type": "object"
+      },
       "CatalogOut": {
         "properties": {
           "adapters": {
@@ -903,6 +942,39 @@
         "title": "ChainOut",
         "type": "object"
       },
+      "CheckOut": {
+        "properties": {
+          "detail": {
+            "title": "Detail",
+            "type": "string"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "passed",
+              "failed",
+              "not_checked"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "title",
+          "status",
+          "detail"
+        ],
+        "title": "CheckOut",
+        "type": "object"
+      },
       "CheckResult": {
         "properties": {
           "latency_ms": {
@@ -923,6 +995,45 @@
           "latency_ms"
         ],
         "title": "CheckResult",
+        "type": "object"
+      },
+      "CodeExcerptOut": {
+        "properties": {
+          "firstLine": {
+            "title": "Firstline",
+            "type": "integer"
+          },
+          "highlighted": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Highlighted",
+            "type": "array"
+          },
+          "lines": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Lines",
+            "type": "array"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          },
+          "truncated": {
+            "title": "Truncated",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "path",
+          "firstLine",
+          "lines",
+          "highlighted",
+          "truncated"
+        ],
+        "title": "CodeExcerptOut",
         "type": "object"
       },
       "ComposeIn": {
@@ -6165,6 +6276,145 @@
         "title": "TenantUpdate",
         "type": "object"
       },
+      "TraceDetailOut": {
+        "properties": {
+          "cases": {
+            "items": {
+              "$ref": "#/components/schemas/CaseOut"
+            },
+            "title": "Cases",
+            "type": "array"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "legacy": {
+            "items": {
+              "$ref": "#/components/schemas/CodeExcerptOut"
+            },
+            "title": "Legacy",
+            "type": "array"
+          },
+          "rule": {
+            "additionalProperties": true,
+            "title": "Rule",
+            "type": "object"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "target": {
+            "items": {
+              "$ref": "#/components/schemas/CodeExcerptOut"
+            },
+            "title": "Target",
+            "type": "array"
+          },
+          "verdict": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Verdict"
+          },
+          "verified": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Verified"
+          }
+        },
+        "required": [
+          "key",
+          "rule",
+          "status",
+          "legacy",
+          "target",
+          "cases",
+          "verified",
+          "verdict"
+        ],
+        "title": "TraceDetailOut",
+        "type": "object"
+      },
+      "TraceRuleOut": {
+        "properties": {
+          "cases": {
+            "title": "Cases",
+            "type": "integer"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "matched": {
+            "title": "Matched",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "priority": {
+            "title": "Priority",
+            "type": "string"
+          },
+          "sources": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Sources",
+            "type": "array"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "targetFiles": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Targetfiles",
+            "type": "array"
+          },
+          "verified": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "None until a verification ran",
+            "title": "Verified"
+          }
+        },
+        "required": [
+          "key",
+          "name",
+          "priority",
+          "status",
+          "sources",
+          "targetFiles",
+          "cases",
+          "matched",
+          "verified"
+        ],
+        "title": "TraceRuleOut",
+        "type": "object"
+      },
       "UsageRow": {
         "properties": {
           "cacheReadTokens": {
@@ -6368,6 +6618,68 @@
           "type"
         ],
         "title": "ValidationError",
+        "type": "object"
+      },
+      "VerdictOut": {
+        "properties": {
+          "checks": {
+            "items": {
+              "$ref": "#/components/schemas/CheckOut"
+            },
+            "title": "Checks",
+            "type": "array"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "title": "Createdat",
+            "type": "string"
+          },
+          "hasProofPack": {
+            "title": "Hasproofpack",
+            "type": "boolean"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "module": {
+            "title": "Module",
+            "type": "string"
+          },
+          "notProven": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Notproven",
+            "type": "array"
+          },
+          "runId": {
+            "format": "uuid",
+            "title": "Runid",
+            "type": "string"
+          },
+          "verdict": {
+            "enum": [
+              "PROVEN",
+              "PARTLY PROVEN",
+              "NOT PROVEN"
+            ],
+            "title": "Verdict",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "runId",
+          "module",
+          "verdict",
+          "checks",
+          "notProven",
+          "hasProofPack",
+          "createdAt"
+        ],
+        "title": "VerdictOut",
         "type": "object"
       },
       "VersionOut": {
@@ -10652,6 +10964,204 @@
         "summary": "Split Story",
         "tags": [
           "spec"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/traceability": {
+      "get": {
+        "operationId": "traceability_api_v1_projects__project_id__traceability_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/TraceRuleOut"
+                  },
+                  "title": "Response Traceability Api V1 Projects  Project Id  Traceability Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Traceability",
+        "tags": [
+          "validation"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/traceability/{rule_key}": {
+      "get": {
+        "operationId": "rule_trace_api_v1_projects__project_id__traceability__rule_key__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "rule_key",
+            "required": true,
+            "schema": {
+              "title": "Rule Key",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TraceDetailOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Rule Trace",
+        "tags": [
+          "validation"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/verdicts": {
+      "get": {
+        "operationId": "list_verdicts_api_v1_projects__project_id__verdicts_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/VerdictOut"
+                  },
+                  "title": "Response List Verdicts Api V1 Projects  Project Id  Verdicts Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Verdicts",
+        "tags": [
+          "validation"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/verdicts/{verdict_id}/proof-pack": {
+      "get": {
+        "description": "The evidence of a verdict as the worker stored it (a zip a reviewer can keep and recompute).",
+        "operationId": "proof_pack_api_v1_projects__project_id__verdicts__verdict_id__proof_pack_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "verdict_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Verdict Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Proof Pack",
+        "tags": [
+          "validation"
         ]
       }
     },

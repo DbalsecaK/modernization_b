@@ -217,11 +217,11 @@ async def test_the_port_keeps_designs_drafts_and_the_golden_master_as_references
         assert row["verdict"] == "PARTLY PROVEN"
         assert row["checks"][0]["key"] == "tests_ran"
         assert row["not_proven"][0] == "a note"
-        reference = fixtures / "reference_spec.json"
-        await port.save_evaluation(evaluate(load_reference(reference), []))
+        spec_file = fixtures / "reference_spec.json"
+        await port.save_evaluation(evaluate(load_reference(spec_file), []))
         (stored,) = await fetch(owner_engine, "SELECT reference, reference_sha256, metrics FROM evaluation "
                                 "WHERE project_id = :p", p=project_id)  # fmt: skip
-        assert stored["reference_sha256"] == hashlib.sha256(reference.read_bytes()).hexdigest()
+        assert stored["reference_sha256"] == hashlib.sha256(spec_file.read_bytes()).hexdigest()
         assert stored["metrics"]["omissions_p0"] == ["RULE-001", "RULE-002", "RULE-004", "RULE-006", "RULE-007"]
         assert "statement" not in json.dumps(stored["metrics"])  # the metrics, never the content of the reference
 

@@ -7,7 +7,6 @@ import hashlib
 import io
 import json
 import uuid
-import zipfile
 from collections.abc import Callable, Sequence
 from typing import Any
 
@@ -20,6 +19,7 @@ from nexti_core.object_store import ObjectStore
 from nexti_core.spec.characterization import GoldenMaster
 from nexti_core.spec.model import Rule
 from nexti_graph import GraphStore, Scope
+from nexti_ingest.archive import read_text_files
 from nexti_model_gateway.gateway import CallContext, NoProfileError
 from nexti_model_gateway.service import GatewayService
 from nexti_orchestration import RunContext
@@ -30,10 +30,6 @@ from nexti_pack_spring_boot import Design
 from nexti_sandbox import Sandbox
 from nexti_verification import Verdict
 from nexti_verification.evaluation import Evaluation
-
-MAX_FILE_BYTES = 5 * 1024 * 1024
-MAX_TOTAL_BYTES = 50 * 1024 * 1024
-TEXT_SUFFIXES = (".sp", ".sql", ".prc", ".proc", ".tsql", ".syb", ".txt")
 
 
 class GatewayCaller:
@@ -63,25 +59,7 @@ class GatewayCaller:
 
 def read_zip(data: bytes, prefix: str = "") -> list[SourceFile]:
     """The text files of an accepted archive (validated at upload by packages/ingest), with size limits."""
-    files: list[SourceFile] = []
-    total = 0
-    with zipfile.ZipFile(io.BytesIO(data)) as archive:
-        for info in archive.infolist():
-            name = info.filename.replace("\\", "/")
-            if info.is_dir() or not name.lower().endswith(TEXT_SUFFIXES) or info.file_size > MAX_FILE_BYTES:
-                continue
-            total += info.file_size
-            if total > MAX_TOTAL_BYTES:
-                break
-            raw = archive.read(info)
-            if b"\x00" in raw[:4096]:
-                continue
-            try:
-                content = raw.decode("utf-8")
-            except UnicodeDecodeError:
-                content = raw.decode("latin-1")
-            files.append(SourceFile(f"{prefix}{name}", content.replace("\r\n", "\n")))
-    return files
+    return [SourceFile(path, text) for path, text in read_text_files(data, prefix)]
 
 
 class WorkerProjectPort:

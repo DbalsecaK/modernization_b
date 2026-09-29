@@ -4,6 +4,7 @@ The worker is a separate application; these tests exercise the API and the worke
 import json
 import uuid
 from collections.abc import Mapping
+from pathlib import Path
 from typing import Any
 
 import httpx
@@ -204,3 +205,81 @@ async def seed_spec(owner: AsyncEngine, tenant_id: uuid.UUID, project_id: uuid.U
             ),
             {"t": tenant_id, "p": project_id, "w": waves},
         )
+
+
+LEGACY_SOURCE = (
+    Path(__file__).resolve().parents[4] / "packages/adapters/source/sybase/tests/fixtures/pago_orden/sp_pago_orden.sp"
+)
+SERVICE_JAVA = """package demo.application;
+
+/** Pays one order. */
+public class PayOrderService {
+    // RULE-001: only current, savings and virtual accounts
+    public boolean debitable(String type) {
+        return "CTE".equals(type) || "AHO".equals(type) || "VIR".equals(type);
+    }
+}
+"""
+
+
+async def seed_validation(owner: AsyncEngine, store: Any, tenant_id: uuid.UUID, project_id: uuid.UUID) -> uuid.UUID:
+    """On a project seeded with `seed_spec`: the legacy archive, one generated file tracing RULE-001 and a verdict
+    with its proof pack (a golden case for RULE-001 that matched). Returns the verdict id."""
+    import hashlib
+    import io
+    import zipfile
+
+    from nexti_core.object_store import input_key
+    from nexti_core.spec.model import Rule
+    from nexti_verification import CaseOutcome, build_proof_pack, compute, trace_rules
+    from nexti_verification import verdict as checks
+
+    version = await make_config(owner, tenant_id, project_id)
+    run_id = await make_run(owner, tenant_id, project_id, version, kind="pipeline")
+    source = LEGACY_SOURCE.read_bytes()
+    archive = io.BytesIO()
+    with zipfile.ZipFile(archive, "w") as zipped:
+        zipped.writestr("sp/sp_pago_orden.sp", source)
+    data = archive.getvalue()
+    input_id = uuid.uuid4()
+    await store.put(input_key(tenant_id, project_id, input_id), io.BytesIO(data), len(data), "application/zip")
+    java = SERVICE_JAVA.encode("utf-8")
+    java_key = f"tenants/{tenant_id}/projects/{project_id}/runs/{run_id}/files/PayOrderService.java"
+    await store.put(java_key, io.BytesIO(java), len(java), "text/plain; charset=utf-8")
+    rule = Rule.model_validate({
+        "id": "RULE-001", "name": "Rule 1", "category": "validation", "priority": "P1",
+        "statement": "The statement of rule number 1.",
+        "sources": [{"file": "sp_pago_orden.sp", "line_start": 40, "line_end": 42}],
+    })  # fmt: skip
+    golden = [CaseOutcome("case_one", ["RULE-001"])]
+    verdict = compute("PayOrder", [checks.tests_ran(7, 0, True), checks.same_behaviour(golden, [])], ["a note"])
+    pack = build_proof_pack(verdict, golden, None, trace_rules([rule], golden, {}), "<testsuite/>")
+    pack_key = f"tenants/{tenant_id}/projects/{project_id}/runs/{run_id}/verification/PayOrder/proof-pack.zip"
+    await store.put(pack_key, io.BytesIO(pack), len(pack), "application/zip")
+    async with owner.begin() as conn:
+        await conn.execute(
+            text("INSERT INTO input_artifact (id, tenant_id, project_id, kind, name, version, status, object_key, "
+                 "size_bytes, sha256, content_type) VALUES (:i, :t, :p, 'source_archive', 'code.zip', 1, 'accepted', "
+                 ":k, :s, :h, 'application/zip')"),
+            {"i": input_id, "t": tenant_id, "p": project_id, "k": input_key(tenant_id, project_id, input_id),
+             "s": len(data), "h": hashlib.sha256(data).hexdigest()},
+        )  # fmt: skip
+        await conn.execute(
+            text("INSERT INTO generated_artifact (tenant_id, project_id, run_id, layer, path, object_key, sha256, "
+                 "size_bytes, rules) VALUES (:t, :p, :r, 'domain', 'src/main/java/demo/PayOrderService.java', :k, :h, "
+                 ":s, CAST('[\"RULE-001\"]' AS jsonb))"),
+            {"t": tenant_id, "p": project_id, "r": run_id, "k": java_key, "h": hashlib.sha256(java).hexdigest(),
+             "s": len(java)},
+        )  # fmt: skip
+        verdict_id: uuid.UUID = (
+            await conn.execute(
+                text("INSERT INTO verdict (tenant_id, project_id, run_id, module, verdict, checks, not_proven, "
+                     "proof_pack_key) VALUES (:t, :p, :r, 'PayOrder', :v, CAST(:c AS jsonb), CAST(:n AS jsonb), :k) "
+                     "RETURNING id"),
+                {"t": tenant_id, "p": project_id, "r": run_id, "v": verdict.verdict, "k": pack_key,
+                 "c": json.dumps([{"key": c.key, "title": c.title, "status": c.status, "detail": c.detail}
+                                  for c in verdict.checks]),
+                 "n": json.dumps(verdict.not_proven)},
+            )
+        ).scalar_one()  # fmt: skip
+    return verdict_id
