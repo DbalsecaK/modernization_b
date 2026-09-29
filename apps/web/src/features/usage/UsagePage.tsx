@@ -21,7 +21,7 @@ import {
   Th,
 } from '@/components/ui/primitives'
 import { BarList, LineChart } from '@/components/charts/charts'
-import { agents } from '@/mocks/data'
+import { useCatalog } from '@/api/projects'
 import { agentName } from '@/features/catalog/AgentCard'
 import { errorMessage } from '@/features/admin/AdminForms'
 import { Notice } from '@/features/projects/NewProjectWizard'
@@ -194,11 +194,12 @@ export function UsagePage() {
 /** Labels of the grouping keys: phases and agent roles are translated, the rest come from the ledger. */
 function useGroupLabel() {
   const { t, i18n } = useTranslation()
+  const agents = useCatalog().data?.agents ?? []
   return (group: GroupBy, r: UsageRow) => {
     if (r.key == null) return t('usage.unassigned')
     if (group === 'phase') return r.key === 'connection-test' ? t('usage.connectionTest') : t(`phases.${r.key}`)
     if (group === 'agentRole') {
-      const agent = agents.find((a) => a.id === r.key)
+      const agent = agents.find((a) => a.key === r.key)
       return agent ? agentName(agent, i18n.language) : r.key
     }
     return r.label
