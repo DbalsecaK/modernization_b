@@ -1,7 +1,7 @@
 """Design (C3) and generation by layers on the fictitious application (spec 6.1 phases 8 and 10): the architect's
 design is validated by code; the tests come first from the rule scenarios; the service is corrected until those
 tests pass in the real Java sandbox; a backend without a pack waits instead of generating another language.
-Skipped without Docker or the image nexti-sandbox-java:1 (infra/sandbox/java)."""
+Skipped without Docker or the image nexti-sandbox-java:2 (infra/sandbox/java)."""
 
 import asyncio
 import hashlib
@@ -183,7 +183,7 @@ async def test_design_then_generation_by_layers_corrects_the_service_until_the_t
     port = MemoryGenerationPort(java_sandbox)
     phases = GenerationPhases(port)
     designed = await phases.design(phase_context(run, "design", store))
-    assert designed.summary.startswith("1 use case(s), 3 entities, 4 ports")
+    assert designed.summary.startswith("1 use case(s), 4 entities, 4 ports")
 
     result = await phases.generation(phase_context(run, "generation", store))
     assert "7 tests pass in the sandbox" in result.summary

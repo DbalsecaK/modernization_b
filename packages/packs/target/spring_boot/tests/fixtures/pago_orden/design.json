@@ -6,36 +6,115 @@
       "name": "PaymentOrder",
       "table": "payment_order",
       "legacy_table": "db_pagos..pg_orden",
-      "key": ["orderNumber", "company"],
+      "key": [
+        "orderNumber",
+        "company"
+      ],
       "fields": [
-        {"name": "orderNumber", "type": "integer(32,signed)", "column": "order_number"},
-        {"name": "company", "type": "integer(32,signed)"},
-        {"name": "state", "type": "text(fixed,1,iso8859-1)"},
-        {"name": "paymentDate", "type": "timestamp(local)", "column": "payment_date"},
-        {"name": "commission", "type": "decimal(19,4,signed)"}
+        {
+          "name": "orderNumber",
+          "type": "integer(32,signed)",
+          "column": "order_number",
+          "legacy": "ord_numero"
+        },
+        {
+          "name": "company",
+          "type": "integer(32,signed)",
+          "legacy": "ord_empresa"
+        },
+        {
+          "name": "state",
+          "type": "text(fixed,1,iso8859-1)",
+          "legacy": "ord_estado"
+        },
+        {
+          "name": "paymentDate",
+          "type": "timestamp(local)",
+          "column": "payment_date",
+          "legacy": "ord_fecha_pago"
+        },
+        {
+          "name": "commission",
+          "type": "decimal(19,4,signed)",
+          "legacy": "ord_comision"
+        }
       ]
     },
     {
       "name": "Tariff",
       "table": "company_tariff",
       "legacy_table": "db_admin..ad_tarifa_empresa",
-      "key": ["company", "service"],
+      "key": [
+        "company",
+        "service"
+      ],
       "fields": [
-        {"name": "company", "type": "integer(32,signed)"},
-        {"name": "service", "type": "text(var,10,iso8859-1)"},
-        {"name": "amount", "type": "decimal(19,4,signed)"},
-        {"name": "separate", "type": "boolean"}
+        {
+          "name": "company",
+          "type": "integer(32,signed)",
+          "legacy": "tar_empresa"
+        },
+        {
+          "name": "service",
+          "type": "text(var,10,iso8859-1)",
+          "legacy": "tar_servicio"
+        },
+        {
+          "name": "amount",
+          "type": "decimal(19,4,signed)",
+          "legacy": "tar_valor"
+        },
+        {
+          "name": "separate",
+          "type": "boolean",
+          "legacy": "tar_separada"
+        }
       ]
     },
     {
       "name": "Account",
       "table": "account",
       "legacy_table": "db_cuentas..ct_cuenta",
-      "key": ["number", "type"],
+      "key": [
+        "number",
+        "type"
+      ],
       "fields": [
-        {"name": "number", "type": "text(fixed,10,iso8859-1)"},
-        {"name": "type", "type": "text(fixed,3,iso8859-1)"},
-        {"name": "balance", "type": "decimal(19,4,signed)"}
+        {
+          "name": "number",
+          "type": "text(fixed,10,iso8859-1)",
+          "legacy": "cta_numero"
+        },
+        {
+          "name": "type",
+          "type": "text(fixed,3,iso8859-1)",
+          "legacy": "cta_tipo"
+        },
+        {
+          "name": "balance",
+          "type": "decimal(19,4,signed)",
+          "legacy": "cta_saldo"
+        }
+      ]
+    },
+    {
+      "name": "ServiceTariff",
+      "table": "service_tariff",
+      "legacy_table": "db_admin..ad_servicio",
+      "key": [
+        "service"
+      ],
+      "fields": [
+        {
+          "name": "service",
+          "type": "text(var,10,iso8859-1)",
+          "legacy": "srv_codigo"
+        },
+        {
+          "name": "amount",
+          "type": "decimal(19,4,signed)",
+          "legacy": "srv_tarifa"
+        }
       ]
     }
   ],
@@ -44,66 +123,263 @@
       "name": "OrderRepository",
       "entity": "PaymentOrder",
       "methods": [
-        {"name": "find", "inputs": [{"name": "orderNumber", "type": "integer(32,signed)"}, {"name": "company", "type": "integer(32,signed)"}], "returns": "PaymentOrder"},
-        {"name": "markPaid", "description": "Returns the rows updated.", "inputs": [{"name": "orderNumber", "type": "integer(32,signed)"}, {"name": "company", "type": "integer(32,signed)"}, {"name": "paymentDate", "type": "timestamp(local)"}, {"name": "commission", "type": "decimal(19,4,signed)"}], "returns": "int"}
+        {
+          "name": "find",
+          "inputs": [
+            {
+              "name": "orderNumber",
+              "type": "integer(32,signed)"
+            },
+            {
+              "name": "company",
+              "type": "integer(32,signed)"
+            }
+          ],
+          "returns": "PaymentOrder"
+        },
+        {
+          "name": "markPaid",
+          "description": "Returns the rows updated.",
+          "inputs": [
+            {
+              "name": "orderNumber",
+              "type": "integer(32,signed)"
+            },
+            {
+              "name": "company",
+              "type": "integer(32,signed)"
+            },
+            {
+              "name": "paymentDate",
+              "type": "timestamp(local)"
+            },
+            {
+              "name": "commission",
+              "type": "decimal(19,4,signed)"
+            }
+          ],
+          "returns": "int"
+        }
       ]
     },
     {
       "name": "TariffRepository",
       "entity": "Tariff",
       "methods": [
-        {"name": "companyTariff", "inputs": [{"name": "company", "type": "integer(32,signed)"}, {"name": "service", "type": "text(var,10,iso8859-1)"}], "returns": "Tariff"},
-        {"name": "serviceTariff", "description": "The general tariff of the service, never separate.", "inputs": [{"name": "service", "type": "text(var,10,iso8859-1)"}], "returns": "Tariff"}
+        {
+          "name": "companyTariff",
+          "inputs": [
+            {
+              "name": "company",
+              "type": "integer(32,signed)"
+            },
+            {
+              "name": "service",
+              "type": "text(var,10,iso8859-1)"
+            }
+          ],
+          "returns": "Tariff"
+        },
+        {
+          "name": "serviceTariff",
+          "description": "The general tariff of the service, never separate.",
+          "inputs": [
+            {
+              "name": "service",
+              "type": "text(var,10,iso8859-1)"
+            }
+          ],
+          "returns": "Tariff"
+        }
       ]
     },
     {
       "name": "AccountRepository",
       "entity": "Account",
       "methods": [
-        {"name": "find", "inputs": [{"name": "number", "type": "text(fixed,10,iso8859-1)"}, {"name": "type", "type": "text(fixed,3,iso8859-1)"}], "returns": "Account"}
+        {
+          "name": "find",
+          "inputs": [
+            {
+              "name": "number",
+              "type": "text(fixed,10,iso8859-1)"
+            },
+            {
+              "name": "type",
+              "type": "text(fixed,3,iso8859-1)"
+            }
+          ],
+          "returns": "Account"
+        }
       ]
     },
     {
       "name": "DebitGateway",
       "methods": [
-        {"name": "debit", "description": "Debits the account and returns the movement number; throws on failure.", "inputs": [{"name": "account", "type": "text(fixed,10,iso8859-1)"}, {"name": "type", "type": "text(fixed,3,iso8859-1)"}, {"name": "amount", "type": "decimal(19,4,signed)"}, {"name": "reference", "type": "text(var,40,iso8859-1)"}], "returns": "long"}
-      ]
+        {
+          "name": "debit",
+          "description": "Debits the account and returns the movement number; throws on failure.",
+          "inputs": [
+            {
+              "name": "account",
+              "type": "text(fixed,10,iso8859-1)",
+              "legacy": "@i_cuenta"
+            },
+            {
+              "name": "type",
+              "type": "text(fixed,3,iso8859-1)",
+              "legacy": "@i_tipo"
+            },
+            {
+              "name": "amount",
+              "type": "decimal(19,4,signed)",
+              "legacy": "@i_valor"
+            },
+            {
+              "name": "reference",
+              "type": "text(var,40,iso8859-1)",
+              "legacy": "@i_referencia"
+            }
+          ],
+          "returns": "long",
+          "legacy_output": "@o_secuencial"
+        }
+      ],
+      "legacy_program": "db_cuentas..sp_debito"
     }
   ],
   "use_cases": [
     {
       "name": "PayOrder",
       "description": "Debits the account of the company for one payment order and charges the commission.",
-      "rules": ["RULE-001", "RULE-002", "RULE-003", "RULE-004", "RULE-005", "RULE-006", "RULE-007", "RULE-008", "RULE-009"],
+      "rules": [
+        "RULE-001",
+        "RULE-002",
+        "RULE-003",
+        "RULE-004",
+        "RULE-005",
+        "RULE-006",
+        "RULE-007",
+        "RULE-008",
+        "RULE-009"
+      ],
       "inputs": [
-        {"name": "orderNumber", "type": "integer(32,signed)"},
-        {"name": "company", "type": "integer(32,signed)"},
-        {"name": "service", "type": "text(var,10,iso8859-1)"},
-        {"name": "accountType", "type": "text(fixed,3,iso8859-1)"},
-        {"name": "account", "type": "text(fixed,10,iso8859-1)"},
-        {"name": "amount", "type": "decimal(19,4,signed)"},
-        {"name": "channel", "type": "text(fixed,3,iso8859-1)"},
-        {"name": "processingDate", "type": "timestamp(local)"}
+        {
+          "name": "orderNumber",
+          "type": "integer(32,signed)",
+          "legacy": "@i_orden"
+        },
+        {
+          "name": "company",
+          "type": "integer(32,signed)",
+          "legacy": "@i_empresa"
+        },
+        {
+          "name": "service",
+          "type": "text(var,10,iso8859-1)",
+          "legacy": "@i_servicio"
+        },
+        {
+          "name": "accountType",
+          "type": "text(fixed,3,iso8859-1)",
+          "legacy": "@i_tipo_cuenta"
+        },
+        {
+          "name": "account",
+          "type": "text(fixed,10,iso8859-1)",
+          "legacy": "@i_cuenta"
+        },
+        {
+          "name": "amount",
+          "type": "decimal(19,4,signed)",
+          "legacy": "@i_valor"
+        },
+        {
+          "name": "channel",
+          "type": "text(fixed,3,iso8859-1)",
+          "legacy": "@i_canal"
+        },
+        {
+          "name": "processingDate",
+          "type": "timestamp(local)",
+          "legacy": "@i_fecha_proceso"
+        }
       ],
       "outputs": [
-        {"name": "movement", "type": "integer(64,signed)"},
-        {"name": "message", "type": "text(var,120,iso8859-1)"}
+        {
+          "name": "movement",
+          "type": "integer(64,signed)",
+          "legacy": "@o_movimiento"
+        },
+        {
+          "name": "message",
+          "type": "text(var,120,iso8859-1)",
+          "legacy": "@o_mensaje"
+        }
       ],
       "errors": [
-        {"code": "ACCOUNT_TYPE_NOT_ALLOWED", "legacy_code": "50001", "message": "TIPO DE CUENTA NO PERMITIDO"},
-        {"code": "ORDER_NOT_FOUND", "legacy_code": "50002", "message": "ORDEN NO EXISTE"},
-        {"code": "ORDER_NOT_PENDING", "legacy_code": "50003", "message": "ORDEN NO ESTA PENDIENTE"},
-        {"code": "INSUFFICIENT_FUNDS", "legacy_code": "50004", "message": "FONDOS INSUFICIENTES"},
-        {"code": "DEBIT_FAILED", "legacy_code": "50005", "message": "ERROR EN DEBITO"},
-        {"code": "COMMISSION_FAILED", "legacy_code": "50006", "message": "ERROR EN COMISION"},
-        {"code": "ORDER_NOT_UPDATED", "legacy_code": "50007", "message": "ERROR ACTUALIZANDO ORDEN"}
+        {
+          "code": "ACCOUNT_TYPE_NOT_ALLOWED",
+          "legacy_code": "50001",
+          "message": "TIPO DE CUENTA NO PERMITIDO"
+        },
+        {
+          "code": "ORDER_NOT_FOUND",
+          "legacy_code": "50002",
+          "message": "ORDEN NO EXISTE"
+        },
+        {
+          "code": "ORDER_NOT_PENDING",
+          "legacy_code": "50003",
+          "message": "ORDEN NO ESTA PENDIENTE"
+        },
+        {
+          "code": "INSUFFICIENT_FUNDS",
+          "legacy_code": "50004",
+          "message": "FONDOS INSUFICIENTES"
+        },
+        {
+          "code": "DEBIT_FAILED",
+          "legacy_code": "50005",
+          "message": "ERROR EN DEBITO"
+        },
+        {
+          "code": "COMMISSION_FAILED",
+          "legacy_code": "50006",
+          "message": "ERROR EN COMISION"
+        },
+        {
+          "code": "ORDER_NOT_UPDATED",
+          "legacy_code": "50007",
+          "message": "ERROR ACTUALIZANDO ORDEN"
+        }
       ],
-      "ports": ["OrderRepository", "TariffRepository", "AccountRepository", "DebitGateway"],
+      "ports": [
+        "OrderRepository",
+        "TariffRepository",
+        "AccountRepository",
+        "DebitGateway"
+      ],
       "http_method": "POST",
-      "path": "/orders/pay"
+      "path": "/orders/pay",
+      "legacy_program": "dbo.sp_pago_orden",
+      "legacy_message": "@o_mensaje"
     }
   ],
   "decisions": [
-    {"title": "The payment is one transaction in the service", "decision": "The use case runs in one database transaction; a failed debit or commission rolls everything back, as the legacy BEGIN TRAN / ROLLBACK did."}
+    {
+      "title": "The payment is one transaction in the service",
+      "decision": "The use case runs in one database transaction; a failed debit or commission rolls everything back, as the legacy BEGIN TRAN / ROLLBACK did."
+    }
+  ],
+  "infrastructure": [
+    "cobis..sp_cerror"
+  ],
+  "masks": [
+    {
+      "path": "outputs:@o_movimiento",
+      "when": "rejected",
+      "reason": "On a rejection the legacy leaves in @o_movimiento the number of a debit it has just undone; the target returns no movement when it rejects (decided at C3)."
+    }
   ]
 }

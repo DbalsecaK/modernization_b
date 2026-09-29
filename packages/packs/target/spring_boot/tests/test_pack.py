@@ -1,6 +1,6 @@
 """The Java Spring Boot pack (spec 8.4): the design is validated, the skeleton follows from it, neutral types map
 exactly, and the generated project compiles and passes its tests in the Java sandbox (skipped without Docker or
-without the image `nexti-sandbox-java:1`, built from infra/sandbox/java)."""
+without the image `nexti-sandbox-java:2`, built from infra/sandbox/java)."""
 
 import asyncio
 import json

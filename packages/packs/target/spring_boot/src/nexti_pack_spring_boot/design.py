@@ -3,7 +3,7 @@ cases that implement the rules, the ports to persistence and the decisions (ADR)
 agent, validated here, approved by a person at C3."""
 
 import re
-from typing import Annotated
+from typing import Annotated, Literal
 
 from pydantic import AfterValidator, BaseModel, ConfigDict, Field, field_validator, model_validator
 
@@ -35,7 +35,12 @@ class DesignModel(BaseModel):
 class FieldSpec(DesignModel):
     name: JavaName
     type: str = Field(description="Neutral type (4.3)")
-    column: str | None = Field(default=None, description="Column in the legacy/target table, when persisted")
+    column: str | None = Field(default=None, description="Column in the target table, when persisted")
+    legacy: str | None = Field(
+        default=None,
+        description="What it is in the legacy: the column (entity field), the parameter (use case input or output) "
+        "or the argument of the external program (port method input). The golden master is compared through it.",
+    )
 
     @field_validator("type")
     @classmethod
@@ -64,11 +69,13 @@ class PortMethod(DesignModel):
     description: str = ""
     inputs: list[FieldSpec] = Field(default_factory=list)
     returns: str | None = Field(default=None, description="An entity name, 'boolean', 'int' or null (void)")
+    legacy_output: str | None = Field(default=None, description="Output parameter of the external program it returns")
 
 
 class Port(DesignModel):
     name: JavaName = Field(description="Interface name, e.g. OrderRepository")
     entity: str | None = None
+    legacy_program: str | None = Field(default=None, description="The external legacy program this port replaces")
     methods: list[PortMethod] = Field(min_length=1)
 
 
@@ -88,6 +95,19 @@ class UseCase(DesignModel):
     ports: list[str] = Field(default_factory=list)
     http_method: str = Field(default="POST", pattern=r"^(GET|POST|PUT|PATCH|DELETE)$")
     path: str = Field(default="", pattern=r"^(/[a-z0-9{}-]+)*$")
+    legacy_program: str | None = Field(default=None, description="The legacy program the use case replaces")
+    legacy_message: str | None = Field(
+        default=None, description="The legacy output parameter that carries the message of a rejection"
+    )
+
+
+class EquivalenceMask(DesignModel):
+    """A declared difference with the legacy (spec 11.3 check 3): approved with the design at C3, listed by the
+    verdict among what it does not prove."""
+
+    path: str = Field(pattern=r"^(outputs|tables|calls):\S+$", description="outputs:@x, tables:db..t.col, calls:db..p")
+    when: Literal["always", "rejected"] = Field(default="always", description="rejected: only when the legacy rejects")
+    reason: str = Field(min_length=10, max_length=500)
 
 
 class Decision(DesignModel):
@@ -104,6 +124,12 @@ class Design(DesignModel):
     ports: list[Port] = Field(default_factory=list)
     use_cases: list[UseCase] = Field(min_length=1)
     decisions: list[Decision] = Field(default_factory=list)
+    masks: list[EquivalenceMask] = Field(default_factory=list)
+    infrastructure: list[str] = Field(
+        default_factory=list,
+        description="Legacy programs that are infrastructure (error logging, auditing tables): not translated, the "
+        "framework replaces them (6.2); their calls are masked when the golden master is compared",
+    )
 
     @model_validator(mode="after")
     def references_exist(self) -> "Design":

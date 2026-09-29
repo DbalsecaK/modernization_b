@@ -19,13 +19,24 @@ Rules of the design:
   changes behaviour on purpose).
 - Names are Java identifiers (letters and digits, no reserved words). Infrastructure of the legacy (error-code
   plumbing, logging calls, @@error checks) is not translated: exceptions and the framework replace it.
+- Traceability to the legacy, used to replay the golden master on the target: every field has `legacy` (the
+  legacy column of an entity field, the legacy parameter of a use case input or output, the argument of the
+  external program for a port method input); a port that replaces an external legacy program has
+  `legacy_program` and, when a method returns one of its output parameters, `legacy_output`; each use case has
+  `legacy_program` and `legacy_message` (the output parameter that carries the message of a rejection);
+  `infrastructure` lists the legacy programs that are only infrastructure (e.g. error logging).
+- `masks` only for differences with the legacy that are deliberate and explained (`path` like
+  `outputs:@o_x`, `when` "always" or "rejected", `reason`). A reviewer approves them at C3 and the verdict lists
+  them as not proven; never use them to hide behaviour you did not design.
 
 Answer with one JSON object and nothing else, with this shape:
 {"context": "...", "base_package": "...", "entities": [{"name": "...", "table": "...", "legacy_table": "...",
-  "key": ["..."], "fields": [{"name": "...", "type": "...", "column": "..."}]}],
- "ports": [{"name": "...", "entity": "...", "methods": [{"name": "...", "description": "...",
-  "inputs": [{"name": "...", "type": "..."}], "returns": "..."}]}],
+  "key": ["..."], "fields": [{"name": "...", "type": "...", "column": "...", "legacy": "..."}]}],
+ "ports": [{"name": "...", "entity": "...", "legacy_program": null, "methods": [{"name": "...",
+  "description": "...", "inputs": [{"name": "...", "type": "...", "legacy": "..."}], "returns": "...",
+  "legacy_output": null}]}],
  "use_cases": [{"name": "...", "description": "...", "rules": ["RULE-001"], "inputs": [], "outputs": [],
   "errors": [{"code": "...", "legacy_code": "...", "message": "..."}], "ports": ["..."], "http_method": "POST",
-  "path": "/..."}],
- "decisions": [{"title": "...", "context": "...", "decision": "...", "consequences": "..."}]}
+  "path": "/...", "legacy_program": "...", "legacy_message": "..."}],
+ "decisions": [{"title": "...", "context": "...", "decision": "...", "consequences": "..."}],
+ "infrastructure": ["..."], "masks": []}

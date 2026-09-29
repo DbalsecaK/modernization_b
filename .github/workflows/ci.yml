@@ -85,7 +85,7 @@ jobs:
           $COMPOSE up -d --wait $SERVICES
           docker pull "$SANDBOX_IMAGE"
           # The Java sandbox of the Spring Boot pack (M4): Temurin 21 with the pack's libraries, no network at run time.
-          docker build -q -t nexti-sandbox-java:1 infra/sandbox/java
+          docker build -q -t nexti-sandbox-java:2 infra/sandbox/java
       # Includes the M3 acceptance: worker processes (python -m nexti_worker) killed and replaced, and generated code
       # tested in the Docker sandbox.
       - run: uv run pytest

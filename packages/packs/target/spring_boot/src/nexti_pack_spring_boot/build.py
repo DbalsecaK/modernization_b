@@ -9,7 +9,7 @@ from dataclasses import dataclass, field
 
 from nexti_sandbox import Limits, Sandbox
 
-IMAGE = "nexti-sandbox-java:1"
+IMAGE = "nexti-sandbox-java:2"
 LIMITS = Limits(cpus=2.0, memory_mb=1536, pids=512, timeout_seconds=600, work_mb=512, max_output_bytes=2 * 1024 * 1024)
 REPORT_START = "===JUNIT-XML==="
 
@@ -37,8 +37,9 @@ if [ "$RUN_TESTS" = "1" ] && [ -d /work/p/src/test/java ]; then
     echo "===JUNIT-XML==="; cat /work/reports/*.xml
   fi
 fi
-echo "===DONE==="
+echo "===AFTER==="
 """
+DONE = '\necho "===DONE==="\n'
 
 
 @dataclass
@@ -58,6 +59,7 @@ class BuildResult:
     tests: list[TestCaseResult] = field(default_factory=list)
     junit_xml: str = ""
     duration_ms: int = 0
+    after_output: str = ""  # what the `after` script printed (e.g. the equivalence harness)
 
     @property
     def passed(self) -> int:
@@ -94,11 +96,19 @@ def parse_junit(xml: str) -> list[TestCaseResult]:
     return results
 
 
-async def compile_and_test(sandbox: Sandbox, files: Mapping[str, str], *, run_tests: bool = True) -> BuildResult:
+async def compile_and_test(
+    sandbox: Sandbox,
+    files: Mapping[str, str],
+    *,
+    run_tests: bool = True,
+    extra_inputs: Mapping[str, str] | None = None,
+    after: str = "",
+) -> BuildResult:
+    """`extra_inputs` land in /input next to the project; `after` runs once the project compiled and tested."""
     inputs = {f"project/{path}": content.encode("utf-8") for path, content in files.items()}
-    result = await sandbox.run(
-        ["sh", "-c", f"RUN_TESTS={'1' if run_tests else '0'}; export RUN_TESTS; {SCRIPT}"], files=inputs, limits=LIMITS
-    )
+    inputs.update({path: content.encode("utf-8") for path, content in (extra_inputs or {}).items()})
+    script = f"RUN_TESTS={'1' if run_tests else '0'}; export RUN_TESTS; {SCRIPT}{after}{DONE}"
+    result = await sandbox.run(["sh", "-c", script], files=inputs, limits=LIMITS)
     out = result.stdout
     if "===COMPILE-FAILED===" in out or "===TEST-COMPILE-FAILED===" in out:
         marker = "===COMPILE-FAILED===" if "===COMPILE-FAILED===" in out else "===TEST-COMPILE-FAILED==="
@@ -108,5 +118,7 @@ async def compile_and_test(sandbox: Sandbox, files: Mapping[str, str], *, run_te
         detail = (result.stderr or out)[-3000:]
         return BuildResult(False, f"the build did not finish (exit {result.exit_code}): {detail}",
                            duration_ms=result.duration_ms)  # fmt: skip
-    xml = out.split(REPORT_START, 1)[1].split("===DONE===", 1)[0] if REPORT_START in out else ""
-    return BuildResult(True, tests=parse_junit(xml), junit_xml=xml.strip(), duration_ms=result.duration_ms)
+    xml = out.split(REPORT_START, 1)[1].split("===AFTER===", 1)[0] if REPORT_START in out else ""
+    after_output = out.split("===AFTER===", 1)[1].split("===DONE===", 1)[0] if "===AFTER===" in out else ""
+    return BuildResult(True, tests=parse_junit(xml), junit_xml=xml.strip(), duration_ms=result.duration_ms,
+                       after_output=after_output)  # fmt: skip
