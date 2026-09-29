@@ -90,3 +90,21 @@
 | C1 no se aprueba con HU con preguntas abiertas, sin criterios, con Gherkin inválido o con dependencias duras rotas | API de compuertas |
 | Un escenario sin `When`, con pasos fuera de orden o con un `<placeholder>` fuera de `Examples` se rechaza (en/es, web y API) | Validador Gherkin + API + e2e |
 | Todo cambio de HU o del plan queda versionado y auditado; sin permiso no se editan (permitido y denegado) | Matriz de autorización y tests de versiones |
+
+## 5. Notas de implementación
+
+- **Paso 10, golden master:**
+  - El *Ingeniero de pruebas* propone la suite: esquema legacy, casos por regla y respuestas de los programas
+    externos. El código la valida contra el fuente y la cobertura de reglas; si falla, vuelve al agente con el
+    error concreto. Los resultados esperados nunca los escribe un modelo: salen de ejecutar el legacy.
+  - El legacy corre en un ASE 16 desechable (`datagrip/sybase:16.0`) sin red y con límites de memoria y procesos.
+    Se crean las bases que nombra el código y los procedimientos del fuente, sin cambios.
+  - Cada programa externo se reemplaza por un stub con los parámetros de sus llamadas. El stub registra la
+    llamada y responde lo que dice el caso.
+  - Las llamadas hechas dentro de una transacción que el programa revierte se revierten con ella: no tuvieron
+    efecto.
+  - Los valores se leen con prefijo de longitud y se guardan en forma canónica de su tipo neutral, para que la
+    comparación con el destino sea por valor.
+  - El CI reproduce la grabación de `packages/adapters/source/sybase/tests/fixtures/pago_orden/golden/`.
+    `NEXTI_LIVE_ASE=1` vuelve a correr ASE y comprueba que reproduce la grabación.
+  - El worker usa `GOLDEN_MASTER_MODE=live` por defecto; `replay` y `record` son solo para desarrollo y test.

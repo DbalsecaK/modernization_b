@@ -6,6 +6,7 @@ phase."""
 from collections.abc import Mapping
 from typing import Protocol, cast
 
+from nexti_orchestration.characterization import CharacterizationPhases, CharacterizationPort
 from nexti_orchestration.demo import demo_executors
 from nexti_orchestration.generation import GenerationPhases, GenerationPort
 from nexti_orchestration.graph import Executor
@@ -34,6 +35,9 @@ def executors_for(
             "ruleReview": phases.rule_review,
             "ui": phases.ui,
         })  # fmt: skip
+        if hasattr(port, "legacy_runner"):  # a port that can also run the legacy for the golden master
+            characterization = CharacterizationPhases(cast(CharacterizationPort, port))
+            executors["characterization"] = characterization.characterization
         if hasattr(port, "save_design"):  # a port that can also keep designs and generated files
             generation = GenerationPhases(cast(GenerationPort, port))
             executors.update({"design": generation.design, "generation": generation.generation})

@@ -11,6 +11,8 @@ import httpx
 import structlog
 from sqlalchemy.ext.asyncio import create_async_engine
 
+from nexti_adapter_sybase.ase import AseRunner, RecordedRunner
+from nexti_core.adapters import LegacyRunner
 from nexti_core.jobs import RUNS_QUEUE
 from nexti_core.object_store import ObjectStore, ObjectStoreConfig
 from nexti_core.redaction import redact
@@ -44,6 +46,13 @@ def configure_logging(settings: WorkerSettings) -> None:
     )
 
 
+def legacy_runner(settings: WorkerSettings) -> LegacyRunner:
+    live = AseRunner(docker=settings.sandbox_docker)
+    if settings.golden_master_mode == "live":
+        return live
+    return RecordedRunner(Path(settings.golden_master_dir), settings.golden_master_mode, live)
+
+
 async def run_worker(settings: WorkerSettings, *, name: str | None = None, wait: bool = True) -> None:
     if not settings.database_url.get_secret_value():
         raise SystemExit("DATABASE_URL is not set")
@@ -74,6 +83,7 @@ async def run_worker(settings: WorkerSettings, *, name: str | None = None, wait:
                 if settings.model_cassettes_mode else None,
             ) if settings.secrets_url else None,
             sandboxes=lambda image: DockerSandbox(image=image, docker=settings.sandbox_docker),
+            legacy=lambda: legacy_runner(settings),
             graph=GraphStore.connect(
                 settings.graph_uri, settings.graph_user, settings.graph_password.get_secret_value()
             ) if settings.graph_uri else None,

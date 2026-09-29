@@ -22,6 +22,7 @@ from psycopg.rows import dict_row
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine
 
+from nexti_core.adapters import LegacyRunner
 from nexti_core.db.session import DbScope, scoped_connection
 from nexti_core.object_store import ObjectStore
 from nexti_core.secrets import SecretStore
@@ -52,6 +53,7 @@ class Runtime:
     gateway: GatewayService | None = None  # models (M4); without it the analysis phases wait
     graph: GraphStore | None = None
     sandboxes: Callable[[str], Sandbox] | None = None  # the sandbox of a pack, by image (M4)
+    legacy: Callable[[], LegacyRunner] | None = None  # the engine that runs the legacy for the golden master (M4)
 
 
 async def _resume_value(
@@ -112,7 +114,9 @@ async def execute_run(runtime: Runtime, run_id: uuid.UUID, tenant_id: uuid.UUID)
         http=runtime.http, allow_private_hosts=runtime.allow_private_hosts,
     )  # fmt: skip
     port = (
-        WorkerProjectPort(runtime.engine, run, runtime.gateway, runtime.objects, runtime.graph, runtime.sandboxes)
+        WorkerProjectPort(
+            runtime.engine, run, runtime.gateway, runtime.objects, runtime.graph, runtime.sandboxes, runtime.legacy
+        )
         if runtime.gateway is not None
         else None
     )

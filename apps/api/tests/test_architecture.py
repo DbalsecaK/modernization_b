@@ -141,3 +141,18 @@ def test_only_the_graph_package_talks_to_neo4j() -> None:
         and any(m.split(".")[0] == "neo4j" for m in imports(p))
     )
     assert offenders == []
+
+
+def test_only_the_isolated_containers_start_processes() -> None:
+    """Customer and generated code run only in a container without network (CLAUDE.md): the code sandbox and the
+    legacy engine of the golden master are the only production modules that start processes."""
+    allowed = {
+        ROOT / "packages" / "sandbox" / "src" / "nexti_sandbox" / "__init__.py",
+        ROOT / "packages" / "adapters" / "source" / "sybase" / "src" / "nexti_adapter_sybase" / "ase.py",
+    }
+    offenders = sorted(
+        str(p.relative_to(ROOT))
+        for p in production_python()
+        if p not in allowed and ("subprocess" in imports(p) or "create_subprocess" in p.read_text(encoding="utf-8"))
+    )
+    assert offenders == []

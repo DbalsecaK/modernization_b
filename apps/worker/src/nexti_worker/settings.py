@@ -45,6 +45,9 @@ class WorkerSettings(BaseSettings):
     graph_uri: str = ""
     graph_user: str = "neo4j"
     graph_password: SecretStr = SecretStr("")
+    # Golden master (M4): run the legacy live in its engine, or (development and test) replay/record a folder.
+    golden_master_mode: Literal["live", "replay", "record"] = "live"
+    golden_master_dir: str = ""
 
     @model_validator(mode="after")
     def cassettes_only_locally(self) -> "WorkerSettings":
@@ -52,6 +55,8 @@ class WorkerSettings(BaseSettings):
             raise ValueError("recorded model responses are only allowed in development and test")
         if bool(self.model_cassettes_dir) != bool(self.model_cassettes_mode):
             raise ValueError("MODEL_CASSETTES_DIR and MODEL_CASSETTES_MODE go together")
+        if self.golden_master_mode != "live" and not (self.is_local and self.golden_master_dir):
+            raise ValueError("a recorded golden master needs GOLDEN_MASTER_DIR and is only for development and test")
         return self
 
     @property

@@ -14,11 +14,13 @@ import pytest
 from sqlalchemy.ext.asyncio import AsyncEngine
 
 from nexti_core.object_store import ObjectStore, ObjectStoreConfig, input_key
+from nexti_core.spec.characterization import GoldenMaster
 from nexti_core.spec.model import Rule
 from nexti_core.spec.plan import Dependency
 from nexti_graph import GraphStore, Scope
 from nexti_model_gateway.service import GatewayService, SecretsConfig
 from nexti_orchestration.stories import Stories, StoryDraft
+from nexti_pack_spring_boot import Design
 from nexti_worker.loading import load_run
 from nexti_worker.project import WorkerProjectPort, read_zip
 
@@ -166,6 +168,44 @@ async def test_the_port_reads_inputs_and_versions_rules_stories_and_the_plan(
                 await graph.delete_project(Scope(world.tenant_a, project_id))
                 await graph.close()
     assert json.dumps({"ok": True})
+
+
+async def test_the_port_keeps_designs_drafts_and_the_golden_master_as_references(
+    app_engine: AsyncEngine, owner_engine: AsyncEngine, world: World
+) -> None:
+    project_id = await make_project(owner_engine, world.tenant_a)
+    version = await make_config(owner_engine, world.tenant_a, project_id)
+    run_id = await make_run(owner_engine, world.tenant_a, project_id, version, kind="pipeline")
+    store = ObjectStore(ObjectStoreConfig(SETTINGS.object_store_url, SETTINGS.object_store_access_key,
+                                          SETTINGS.object_store_secret_key.get_secret_value(),
+                                          SETTINGS.object_store_bucket))  # fmt: skip
+    loaded = await load_run(app_engine, run_id, world.tenant_a)
+    fixtures = ROOT / "packages/adapters/source/sybase/tests/fixtures/pago_orden"
+    master = next((fixtures / "golden").glob("*.json")).read_text(encoding="utf-8")
+    design = (ROOT / "packages/packs/target/spring_boot/tests/fixtures/pago_orden/design.json").read_text("utf-8")
+    async with httpx.AsyncClient() as http:
+        gateway = GatewayService(app_engine, http, SecretsConfig(SETTINGS.secrets_url, "unused"))
+        port = WorkerProjectPort(app_engine, loaded.context, gateway, store, None)
+        assert await port.load_design() is None
+        assert port.legacy_runner() is None  # this worker has no engine for the legacy
+
+        await port.save_design(Design.model_validate_json(design))
+        loaded_design = await port.load_design()
+        assert loaded_design is not None
+        assert loaded_design.context == "payments"
+        reference = await port.save_file("src/A.java", "class A {}")
+        assert reference.startswith(f"tenants/{world.tenant_a}/projects/{project_id}/runs/{run_id}/drafts/")
+        assert await port.load_file(reference) == "class A {}"
+        await port.save_golden_master(GoldenMaster.model_validate_json(master))
+
+    rows = await fetch(owner_engine, "SELECT path, layer, rules, object_key FROM generated_artifact "
+                                     "WHERE project_id = :p ORDER BY path", p=project_id)  # fmt: skip
+    assert [(r["path"], r["layer"]) for r in rows] == [
+        ("characterization/golden_master.json", "tests"), ("design/design.json", "docs"),
+    ]  # fmt: skip
+    assert rows[0]["rules"] == [f"RULE-00{n}" for n in range(1, 10)]
+    kept = b"".join(await store.read(rows[0]["object_key"])).decode("utf-8")
+    assert GoldenMaster.model_validate_json(kept).engine == "sybase-ase-16.0"
 
 
 @pytest.mark.parametrize("mode", ["replay", "record"])

@@ -6,7 +6,10 @@ The worker drives adapters through this contract; the graph layer stores what `i
 
 from collections.abc import Mapping
 from dataclasses import dataclass, field
-from typing import Literal, Protocol
+from typing import TYPE_CHECKING, Literal, Protocol
+
+if TYPE_CHECKING:
+    from nexti_core.spec.characterization import GoldenMaster, Suite
 
 # Code and data layers (what adapters produce) and knowledge / target layers (spec 5.1).
 NodeLabel = Literal[
@@ -94,3 +97,16 @@ class SourceAdapter(Protocol):
     ) -> tuple[frozenset[str], frozenset[str]]:
         """Tables (or files) read and written by the code inside the line ranges."""
         ...
+
+
+class LegacyUnavailableError(RuntimeError):
+    """The legacy cannot be run now: its engine is missing or did not start, or a replay has no recording."""
+
+
+class LegacyRunner(Protocol):
+    """How to run the legacy for the golden master (8.2 `runner()`): each case in an isolated engine, observed
+    through `nexti_core.spec.characterization`."""
+
+    engine: str
+
+    async def run(self, files: list[SourceFile], suite: "Suite") -> "GoldenMaster": ...

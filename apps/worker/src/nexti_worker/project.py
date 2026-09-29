@@ -14,9 +14,10 @@ from typing import Any
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine
 
-from nexti_core.adapters import Edge, Inventory, Node, SourceFile
+from nexti_core.adapters import Edge, Inventory, LegacyRunner, Node, SourceFile
 from nexti_core.db.session import DbScope, scoped_connection
 from nexti_core.object_store import ObjectStore
+from nexti_core.spec.characterization import GoldenMaster
 from nexti_core.spec.model import Rule
 from nexti_graph import GraphStore, Scope
 from nexti_model_gateway.gateway import CallContext, NoProfileError
@@ -90,6 +91,7 @@ class WorkerProjectPort:
         objects: ObjectStore | None,
         graph: GraphStore | None,
         sandboxes: Callable[[str], Sandbox] | None = None,
+        legacy: Callable[[], LegacyRunner] | None = None,
     ) -> None:
         self.engine = engine
         self.run = run
@@ -99,6 +101,7 @@ class WorkerProjectPort:
         self.scope = Scope(run.tenant_id, run.project_id)
         self._files: list[SourceFile] | None = None
         self._sandboxes = sandboxes
+        self._legacy = legacy
 
     def _db(self) -> Any:
         return scoped_connection(self.engine, DbScope(tenant_id=self.run.tenant_id))
@@ -370,3 +373,14 @@ class WorkerProjectPort:
         if self._sandboxes is None:
             raise RuntimeError("no sandbox is configured for the packs")
         return self._sandboxes(image)
+
+    # -- characterization (M4) -----------------------------------------------------------------------------------
+    def legacy_runner(self) -> LegacyRunner | None:
+        """The engine of the only source adapter of this version (Sybase ASE), when the worker has one."""
+        return self._legacy() if self._legacy is not None else None
+
+    async def save_golden_master(self, master: GoldenMaster) -> None:
+        path = "characterization/golden_master.json"
+        rules = sorted({r for recorded in master.results for r in recorded.case.rules})
+        await self.save_artifacts({path: master.model_dump_json(indent=1, by_alias=True)}, {path: "tests"},
+                                  {path: rules})  # fmt: skip
