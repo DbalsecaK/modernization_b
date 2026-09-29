@@ -8,6 +8,7 @@ dependencies = [
   "asyncpg>=0.31",
   "cryptography>=46",
   "fastapi>=0.118",
+  "python-multipart>=0.0.20",
   "httpx>=0.28",
   "psycopg[binary]>=3.2",
   "pydantic>=2.11",

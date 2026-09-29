@@ -396,6 +396,36 @@
         "title": "AuditPage",
         "type": "object"
       },
+      "Body_upload_input_api_v1_projects__project_id__inputs_post": {
+        "properties": {
+          "file": {
+            "contentMediaType": "application/octet-stream",
+            "title": "File",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "source_archive",
+              "document",
+              "screenshot"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "notes": {
+            "default": "",
+            "maxLength": 2000,
+            "title": "Notes",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file",
+          "kind"
+        ],
+        "title": "Body_upload_input_api_v1_projects__project_id__inputs_post",
+        "type": "object"
+      },
       "BudgetIn": {
         "properties": {
           "alertPct": {
@@ -1327,6 +1357,173 @@
         "title": "HTTPValidationError",
         "type": "object"
       },
+      "InputOut": {
+        "properties": {
+          "contentType": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contenttype"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "title": "Createdat",
+            "type": "string"
+          },
+          "findings": {
+            "additionalProperties": true,
+            "title": "Findings",
+            "type": "object"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "source_archive",
+              "document",
+              "screenshot",
+              "figma_link",
+              "prototype_link"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "notes": {
+            "title": "Notes",
+            "type": "string"
+          },
+          "rejectionCode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rejectioncode"
+          },
+          "rejectionDetail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rejectiondetail"
+          },
+          "sha256": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sha256"
+          },
+          "sizeBytes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sizebytes"
+          },
+          "status": {
+            "enum": [
+              "accepted",
+              "rejected",
+              "deleted"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "uploadedBy": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Uploadedby"
+          },
+          "uploadedByName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Uploadedbyname"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Url"
+          },
+          "version": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Version"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "name",
+          "version",
+          "status",
+          "sizeBytes",
+          "sha256",
+          "contentType",
+          "url",
+          "notes",
+          "findings",
+          "rejectionCode",
+          "rejectionDetail",
+          "uploadedBy",
+          "uploadedByName",
+          "createdAt"
+        ],
+        "title": "InputOut",
+        "type": "object"
+      },
       "InvitationCreate": {
         "properties": {
           "displayName": {
@@ -1534,6 +1731,36 @@
           "createdAt"
         ],
         "title": "InvitationOut",
+        "type": "object"
+      },
+      "LinkIn": {
+        "properties": {
+          "kind": {
+            "enum": [
+              "figma_link",
+              "prototype_link"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "notes": {
+            "default": "",
+            "maxLength": 2000,
+            "title": "Notes",
+            "type": "string"
+          },
+          "url": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "url"
+        ],
+        "title": "LinkIn",
         "type": "object"
       },
       "LoadOut": {
@@ -3158,6 +3385,112 @@
           "reason"
         ],
         "title": "RecommendationOut",
+        "type": "object"
+      },
+      "RepositoryIn": {
+        "properties": {
+          "branch": {
+            "default": "main",
+            "maxLength": 255,
+            "minLength": 1,
+            "pattern": "^[^\\s~^:?*\\[\\\\]+$",
+            "title": "Branch",
+            "type": "string"
+          },
+          "clearToken": {
+            "default": false,
+            "title": "Cleartoken",
+            "type": "boolean"
+          },
+          "token": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "minLength": 8,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Token"
+          },
+          "url": {
+            "maxLength": 500,
+            "minLength": 9,
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "url"
+        ],
+        "title": "RepositoryIn",
+        "type": "object"
+      },
+      "RepositoryOut": {
+        "properties": {
+          "branch": {
+            "title": "Branch",
+            "type": "string"
+          },
+          "branches": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Branches",
+            "type": "array"
+          },
+          "hasToken": {
+            "title": "Hastoken",
+            "type": "boolean"
+          },
+          "lastCheckDetail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lastcheckdetail"
+          },
+          "lastCheckedAt": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lastcheckedat"
+          },
+          "status": {
+            "enum": [
+              "untested",
+              "ok",
+              "failed"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "url",
+          "branch",
+          "hasToken",
+          "status",
+          "lastCheckedAt",
+          "lastCheckDetail"
+        ],
+        "title": "RepositoryOut",
         "type": "object"
       },
       "ResolvedOut": {
@@ -6332,6 +6665,438 @@
         "summary": "Config Versions",
         "tags": [
           "projects"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/inputs": {
+      "get": {
+        "description": "Every input with its versions, including rejected uploads (why) and deleted ones (when).",
+        "operationId": "list_inputs_api_v1_projects__project_id__inputs_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/InputOut"
+                  },
+                  "title": "Response List Inputs Api V1 Projects  Project Id  Inputs Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Inputs",
+        "tags": [
+          "inputs"
+        ]
+      },
+      "post": {
+        "description": "Validate (type, size, zip safety, image header, secrets, malware, hash) and store. 422 with the reason on\nrejection; 503 when the scanner does not answer (fail closed, ADR-0008).",
+        "operationId": "upload_input_api_v1_projects__project_id__inputs_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_upload_input_api_v1_projects__project_id__inputs_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InputOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Upload Input",
+        "tags": [
+          "inputs"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/inputs/{input_id}": {
+      "delete": {
+        "description": "Remove the stored file (verifiable deletion, 15.3); the record stays, marked deleted, for the audit trail.",
+        "operationId": "delete_input_api_v1_projects__project_id__inputs__input_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "input_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Input Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Input",
+        "tags": [
+          "inputs"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/inputs/{input_id}/content": {
+      "get": {
+        "description": "The stored file. Code archives need code.download; images are served inline for thumbnails, everything else as\nan attachment, and nothing is ever sniffed or executed by the browser.",
+        "operationId": "input_content_api_v1_projects__project_id__inputs__input_id__content_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "input_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Input Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Input Content",
+        "tags": [
+          "inputs"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/inputs:link": {
+      "post": {
+        "description": "A Figma link (figma.com/file|design|proto) or a prototype link (https) with notes of what to respect.",
+        "operationId": "add_link_api_v1_projects__project_id__inputs_link_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LinkIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InputOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Add Link",
+        "tags": [
+          "inputs"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/repository": {
+      "delete": {
+        "operationId": "delete_repository_api_v1_projects__project_id__repository_delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Repository",
+        "tags": [
+          "inputs"
+        ]
+      },
+      "get": {
+        "operationId": "get_repository_api_v1_projects__project_id__repository_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/RepositoryOut"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "title": "Response Get Repository Api V1 Projects  Project Id  Repository Get"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Repository",
+        "tags": [
+          "inputs"
+        ]
+      },
+      "put": {
+        "operationId": "set_repository_api_v1_projects__project_id__repository_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RepositoryIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RepositoryOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Set Repository",
+        "tags": [
+          "inputs"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/repository:test": {
+      "post": {
+        "operationId": "test_repository_api_v1_projects__project_id__repository_test_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RepositoryOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Test Repository",
+        "tags": [
+          "inputs"
         ]
       }
     },

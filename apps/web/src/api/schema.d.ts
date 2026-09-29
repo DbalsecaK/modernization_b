@@ -630,6 +630,128 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/projects/{project_id}/inputs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Inputs
+         * @description Every input with its versions, including rejected uploads (why) and deleted ones (when).
+         */
+        get: operations["list_inputs_api_v1_projects__project_id__inputs_get"];
+        put?: never;
+        /**
+         * Upload Input
+         * @description Validate (type, size, zip safety, image header, secrets, malware, hash) and store. 422 with the reason on
+         *     rejection; 503 when the scanner does not answer (fail closed, ADR-0008).
+         */
+        post: operations["upload_input_api_v1_projects__project_id__inputs_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/projects/{project_id}/inputs/{input_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete Input
+         * @description Remove the stored file (verifiable deletion, 15.3); the record stays, marked deleted, for the audit trail.
+         */
+        delete: operations["delete_input_api_v1_projects__project_id__inputs__input_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/projects/{project_id}/inputs/{input_id}/content": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Input Content
+         * @description The stored file. Code archives need code.download; images are served inline for thumbnails, everything else as
+         *     an attachment, and nothing is ever sniffed or executed by the browser.
+         */
+        get: operations["input_content_api_v1_projects__project_id__inputs__input_id__content_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/projects/{project_id}/inputs:link": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Add Link
+         * @description A Figma link (figma.com/file|design|proto) or a prototype link (https) with notes of what to respect.
+         */
+        post: operations["add_link_api_v1_projects__project_id__inputs_link_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/projects/{project_id}/repository": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Repository */
+        get: operations["get_repository_api_v1_projects__project_id__repository_get"];
+        /** Set Repository */
+        put: operations["set_repository_api_v1_projects__project_id__repository_put"];
+        post?: never;
+        /** Delete Repository */
+        delete: operations["delete_repository_api_v1_projects__project_id__repository_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/projects/{project_id}/repository:test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Test Repository */
+        post: operations["test_repository_api_v1_projects__project_id__repository_test_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/projects:compose": {
         parameters: {
             query?: never;
@@ -1117,6 +1239,21 @@ export interface components {
             /** Nextbefore */
             nextBefore: number | null;
         };
+        /** Body_upload_input_api_v1_projects__project_id__inputs_post */
+        Body_upload_input_api_v1_projects__project_id__inputs_post: {
+            /** File */
+            file: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "source_archive" | "document" | "screenshot";
+            /**
+             * Notes
+             * @default
+             */
+            notes: string;
+        };
         /** BudgetIn */
         BudgetIn: {
             /**
@@ -1423,6 +1560,55 @@ export interface components {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
         };
+        /** InputOut */
+        InputOut: {
+            /** Contenttype */
+            contentType: string | null;
+            /**
+             * Createdat
+             * Format: date-time
+             */
+            createdAt: string;
+            /** Findings */
+            findings: {
+                [key: string]: unknown;
+            };
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "source_archive" | "document" | "screenshot" | "figma_link" | "prototype_link";
+            /** Name */
+            name: string;
+            /** Notes */
+            notes: string;
+            /** Rejectioncode */
+            rejectionCode: string | null;
+            /** Rejectiondetail */
+            rejectionDetail: string | null;
+            /** Sha256 */
+            sha256: string | null;
+            /** Sizebytes */
+            sizeBytes: number | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "accepted" | "rejected" | "deleted";
+            /** Uploadedby */
+            uploadedBy: string | null;
+            /** Uploadedbyname */
+            uploadedByName: string | null;
+            /** Url */
+            url: string | null;
+            /** Version */
+            version: number | null;
+        };
         /** InvitationCreate */
         InvitationCreate: {
             /** Displayname */
@@ -1510,6 +1696,21 @@ export interface components {
              * @enum {string}
              */
             status: "pending" | "accepted" | "revoked" | "expired";
+        };
+        /** LinkIn */
+        LinkIn: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "figma_link" | "prototype_link";
+            /**
+             * Notes
+             * @default
+             */
+            notes: string;
+            /** Url */
+            url: string;
         };
         /** LoadOut */
         LoadOut: {
@@ -2054,6 +2255,43 @@ export interface components {
             agent: string;
             /** Reason */
             reason: string;
+        };
+        /** RepositoryIn */
+        RepositoryIn: {
+            /**
+             * Branch
+             * @default main
+             */
+            branch: string;
+            /**
+             * Cleartoken
+             * @default false
+             */
+            clearToken: boolean;
+            /** Token */
+            token?: string | null;
+            /** Url */
+            url: string;
+        };
+        /** RepositoryOut */
+        RepositoryOut: {
+            /** Branch */
+            branch: string;
+            /** Branches */
+            branches?: string[];
+            /** Hastoken */
+            hasToken: boolean;
+            /** Lastcheckdetail */
+            lastCheckDetail: string | null;
+            /** Lastcheckedat */
+            lastCheckedAt: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "untested" | "ok" | "failed";
+            /** Url */
+            url: string;
         };
         /** ResolvedOut */
         ResolvedOut: {
@@ -3848,6 +4086,295 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ConfigVersionOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_inputs_api_v1_projects__project_id__inputs_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InputOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    upload_input_api_v1_projects__project_id__inputs_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_upload_input_api_v1_projects__project_id__inputs_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InputOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_input_api_v1_projects__project_id__inputs__input_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                input_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    input_content_api_v1_projects__project_id__inputs__input_id__content_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                input_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    add_link_api_v1_projects__project_id__inputs_link_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LinkIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InputOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_repository_api_v1_projects__project_id__repository_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RepositoryOut"] | null;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    set_repository_api_v1_projects__project_id__repository_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RepositoryIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RepositoryOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_repository_api_v1_projects__project_id__repository_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    test_repository_api_v1_projects__project_id__repository_test_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RepositoryOut"];
                 };
             };
             /** @description Validation Error */

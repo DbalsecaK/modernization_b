@@ -64,7 +64,27 @@ def default_checks(resources: Resources, settings: Settings) -> dict[str, Check]
         res = await resources.http.get(f"{settings.secrets_url.rstrip('/')}/v1/sys/health")
         res.raise_for_status()
 
-    return {"postgres": postgres, "redis": redis, "keycloak": keycloak, "openfga": openfga, "secrets": secrets}
+    async def storage() -> None:
+        if not settings.object_store_url:
+            raise NotConfiguredError("OBJECT_STORE_URL is not set")
+        from nexti_api.projects.services import build
+
+        found = build(settings).store
+        if found is None or not await found.healthy():
+            raise ConnectionError("the object store bucket is not reachable")
+
+    async def malware_scanner() -> None:
+        if not settings.malware_scanner_host:
+            raise NotConfiguredError("MALWARE_SCANNER_HOST is not set")
+        from nexti_ingest import ClamdScanner
+
+        if not await ClamdScanner(settings.malware_scanner_host, settings.malware_scanner_port, 10).ping():
+            raise ConnectionError("clamd did not answer PONG")
+
+    return {
+        "postgres": postgres, "redis": redis, "keycloak": keycloak, "openfga": openfga, "secrets": secrets,
+        "storage": storage, "malware_scanner": malware_scanner,
+    }  # fmt: skip
 
 
 async def _run(name: str, check: Check) -> CheckResult:

@@ -1,6 +1,8 @@
 """Every endpoint has an allowed and a denied authorization test against the real OpenFGA (M0 acceptance, rule of
 CLAUDE.md), every route declares its authorization, and every sensitive action lands in the audit log."""
 
+import hashlib
+import io
 import uuid
 from collections.abc import Awaitable, Callable, Iterator
 from dataclasses import dataclass
@@ -14,7 +16,9 @@ import respx
 from fastapi import FastAPI
 from fastapi.routing import APIRoute
 from fastapi.testclient import TestClient
+from PIL import Image
 from sqlalchemy import func, insert, select, text
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncEngine
 
 from nexti_api.authz.fga import OpenFga
@@ -26,6 +30,7 @@ from nexti_core.db.models import (
     AuditLog,
     Budget,
     EffortMapping,
+    InputArtifact,
     Invitation,
     Membership,
     ModelAssignment,
@@ -36,11 +41,13 @@ from nexti_core.db.models import (
     PlatformRoleAssignment,
     PriceVersion,
     Project,
+    ProjectRepository,
     ProviderConnection,
     Role,
     RoleAssignment,
     UsageLedger,
 )
+from nexti_core.object_store import ObjectStore, ObjectStoreConfig, input_key
 from nexti_model_gateway.secrets import SecretsConfig, SecretStore, connection_path
 
 from .conftest import SETTINGS, World
@@ -277,6 +284,31 @@ class Ctx:
             ).scalar_one()
         return found
 
+    async def stored_input(self, kind: str = "screenshot") -> uuid.UUID:
+        """An accepted input of project A with its object in MinIO (a small PNG)."""
+        input_id = uuid.uuid4()
+        key = input_key(self.world.tenant_a, self.world.project_a, input_id)
+        await object_store().put(key, io.BytesIO(PNG), len(PNG), "image/png")
+        async with self.owner.begin() as conn:
+            await conn.execute(
+                insert(InputArtifact).values(
+                    id=input_id, tenant_id=self.world.tenant_a, project_id=self.world.project_a, kind=kind,
+                    name=f"shot-{input_id.hex[:6]}.png", version=1, status="accepted", object_key=key,
+                    size_bytes=len(PNG), sha256=hashlib.sha256(PNG).hexdigest(), content_type="image/png",
+                )
+            )  # fmt: skip
+        return input_id
+
+    async def repository(self) -> uuid.UUID:
+        """Project A with a repository configured (no token)."""
+        async with self.owner.begin() as conn:
+            await conn.execute(
+                pg_insert(ProjectRepository)
+                .values(tenant_id=self.world.tenant_a, project_id=self.world.project_a, url=REPOSITORY_URL)
+                .on_conflict_do_nothing()
+            )
+        return self.world.project_a
+
     async def budget(self, tenant_id: uuid.UUID | None = None) -> uuid.UUID:
         """A project budget (one per scope and period, so each gets its own project)."""
         tenant_id = tenant_id or self.world.tenant_a
@@ -292,7 +324,21 @@ class Ctx:
         return found
 
 
-Request = tuple[str, dict[str, Any] | None]
+@dataclass(frozen=True)
+class Upload:
+    """A multipart body (file uploads)."""
+
+    files: dict[str, tuple[str, bytes, str]]
+    data: dict[str, str]
+
+
+Request = tuple[str, dict[str, Any] | Upload | None]
+
+
+def send(api: TestClient, method: str, path: str, body: dict[str, Any] | Upload | None, headers: dict[str, str]) -> Any:
+    if isinstance(body, Upload):
+        return api.request(method, path, files=body.files, data=body.data, headers=headers)
+    return api.request(method, path, json=body, headers=headers)
 
 
 @dataclass(frozen=True)
@@ -419,6 +465,40 @@ async def _set_assignment(ctx: Ctx) -> Request:
 
 async def _new_budget(ctx: Ctx) -> Request:
     return "/api/v1/budgets", {"projectId": str(await ctx.project()), "amountUsd": "50", "alertPct": 75}
+
+
+REPOSITORY_URL = "https://git.bank.example/cards/card-system.git"  # .example never resolves: the test fails softly
+
+
+def _png() -> bytes:
+    buffer = io.BytesIO()
+    Image.new("RGB", (16, 16), "white").save(buffer, "PNG")
+    return buffer.getvalue()
+
+
+PNG = _png()
+
+
+def object_store() -> ObjectStore:
+    return ObjectStore(
+        ObjectStoreConfig(
+            SETTINGS.object_store_url, SETTINGS.object_store_access_key,
+            SETTINGS.object_store_secret_key.get_secret_value(), SETTINGS.object_store_bucket,
+        )
+    )  # fmt: skip
+
+
+async def _upload(ctx: Ctx) -> Request:
+    body = Upload({"file": (f"login-{uuid.uuid4().hex[:6]}.png", PNG, "image/png")}, {"kind": "screenshot"})
+    return f"/api/v1/projects/{ctx.world.project_a}/inputs", body
+
+
+async def _content(ctx: Ctx) -> Request:
+    return f"/api/v1/projects/{ctx.world.project_a}/inputs/{await ctx.stored_input()}/content", None
+
+
+async def _delete_input(ctx: Ctx) -> Request:
+    return f"/api/v1/projects/{ctx.world.project_a}/inputs/{await ctx.stored_input()}", None
 
 
 TARGET = {"architecture": "microservices-hexagonal", "backend": "spring-boot", "frontend": "angular",
@@ -552,6 +632,34 @@ CASES = [
         "GET", "/api/v1/projects/{project_id}/config/versions", "member", "outsider",
         fixed("/api/v1/projects/{project_a}/config/versions"),
     ),
+    Case(
+        "GET", "/api/v1/projects/{project_id}/inputs", "member", "outsider",
+        fixed("/api/v1/projects/{project_a}/inputs"),
+    ),
+    Case("POST", "/api/v1/projects/{project_id}/inputs", "admin", "member", _upload),
+    Case(
+        "POST", "/api/v1/projects/{project_id}/inputs:link", "admin", "member",
+        fixed("/api/v1/projects/{project_a}/inputs:link",
+              {"kind": "figma_link", "url": "https://www.figma.com/design/AbCdEf1234567890/Cards"}),
+    ),
+    Case("GET", "/api/v1/projects/{project_id}/inputs/{input_id}/content", "member", "outsider", _content),
+    Case("DELETE", "/api/v1/projects/{project_id}/inputs/{input_id}", "admin", "member", _delete_input),
+    Case(
+        "GET", "/api/v1/projects/{project_id}/repository", "member", "outsider",
+        fixed("/api/v1/projects/{project_a}/repository"),
+    ),
+    Case(
+        "PUT", "/api/v1/projects/{project_id}/repository", "admin", "member",
+        fixed("/api/v1/projects/{project_a}/repository", {"url": REPOSITORY_URL, "branch": "main"}),
+    ),
+    Case(
+        "POST", "/api/v1/projects/{project_id}/repository:test", "admin", "member",
+        _with("repository", "/api/v1/projects/{id}/repository:test"),
+    ),
+    Case(
+        "DELETE", "/api/v1/projects/{project_id}/repository", "admin", "member",
+        _with("repository", "/api/v1/projects/{id}/repository"),
+    ),
 ]  # fmt: skip
 
 
@@ -640,7 +748,7 @@ async def test_allowed_and_denied(
     path, body = await case.make(ctx)
     if case.path == "/api/v1/session/tenant":
         body = {"tenantId": str(world.tenant_a)}
-    denied = api.request(case.method, path, json=body, headers=headers)
+    denied = send(api, case.method, path, body, headers)
     assert denied.status_code == (401 if case.denied == "anonymous" else 403), denied.text
 
     headers = act_as(api, case.allowed, ctx)
@@ -648,7 +756,7 @@ async def test_allowed_and_denied(
     if case.path == "/api/v1/session/tenant":
         body = {"tenantId": str(world.tenant_a)}
     before = await audit_count(owner_engine)
-    allowed = api.request(case.method, path, json=body, headers=headers)
+    allowed = send(api, case.method, path, body, headers)
     assert allowed.status_code in (200, 201, 204), allowed.text
     if case.method != "GET" and (case.method, case.path) not in NOT_AUDITED:
         assert await audit_count(owner_engine) > before, "a sensitive action left no audit entry"
