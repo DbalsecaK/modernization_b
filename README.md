@@ -19,6 +19,7 @@ El producto es **nativamente en inglés**, con cambio completo a español.
   UI y autenticación por etapas.
 - [Plan del hito M0](docs/planes/M0-fundaciones.md): pasos, tablas, endpoints y tests de las fundaciones.
 - [Plan del hito M1](docs/planes/M1-configuracion-ia.md): configuración IA, gateway de modelos y consumo.
+- [Plan del hito M2](docs/planes/M2-proyectos-insumos.md): proyectos, catálogo de agentes y skills, insumos.
 - [CLAUDE.md](CLAUDE.md): instrucciones para trabajar con Claude Code.
 
 ## Estado
@@ -45,7 +46,13 @@ El producto es **nativamente en inglés**, con cambio completo a español.
   (`packages/model_gateway`) con libro de consumo append-only, presupuestos y alertas, y las pantallas de
   Configuración IA y Consumo y costos conectadas. Criterios y evidencia:
   [docs/planes/M1-configuracion-ia.md](docs/planes/M1-configuracion-ia.md) (sección 7); capturas en `docs/m1/`.
-- Siguiente: **M2 — Proyectos e insumos**.
+- **Hito M2 — Proyectos e insumos terminado** (rama `m2-proyectos-insumos`): catálogo de agentes y skills como datos
+  versionados (`packages/agents`, `packages/skills`), motor determinista que propone el equipo y las skills con su
+  motivo y valida la composición (Control obligatorio), asistente de creación y proyectos con configuración
+  versionada, insumos validados por `packages/ingest` (tipo real, zip seguro, cabecera de imágenes, secretos,
+  ClamAV, hash y versión) en MinIO, links de Figma y prototipos, y conexión Git sin SSRF. Criterios y evidencia:
+  [docs/planes/M2-proyectos-insumos.md](docs/planes/M2-proyectos-insumos.md) (sección 7); capturas en `docs/m2/`.
+- Siguiente: **M3 — Motor de orquestación**.
 
 ## Probar la aplicación
 
@@ -58,8 +65,8 @@ pnpm web:dev      # web en http://localhost:5173 (proxy de /api y /auth hacia la
 
 El inicio de sesión va a Keycloak con los usuarios ficticios del realm (contraseña `KC_DEV_USER_PASSWORD` del
 `.env`), o en desarrollo con `dev-auth` eligiendo un usuario sembrado. Sesión, menú por permisos, selector de
-cliente e idioma, Administración, Configuración IA y Consumo y costos usan la API real; el resto de las
-pantallas sigue con datos de ejemplo hasta su hito.
+cliente e idioma, Administración, Configuración IA, Consumo y costos, Catálogo, Proyectos (asistente, resumen, insumos
+y configuración) usan la API real; el resto de las pantallas sigue con datos de ejemplo hasta su hito.
 
 ## Desarrollo
 
@@ -82,6 +89,7 @@ docker compose -f infra/docker-compose/compose.yaml up -d --wait
 python infra/docker-compose/smoke_check.py     # verifica servicios, realm de Keycloak y roles de BD
 pnpm db:migrate                                # esquema (Alembic, como platform_owner)
 pnpm db:seed                                   # datos ficticios de desarrollo (idempotente) + reconciliación OpenFGA
+uv run python -m nexti_api.cli catalog-sync    # carga el catálogo de agentes y skills (seed-dev ya lo hace)
 pnpm fga:test                                  # tests del modelo de OpenFGA (infra/openfga)
 pnpm authz:reconcile                           # iguala OpenFGA a lo que implica PostgreSQL
 uv run python -m nexti_api.cli keycloak-events # copia los eventos de Keycloak a la auditoría (también en segundo plano)
@@ -89,7 +97,7 @@ pnpm api:types                                 # regenera los tipos TypeScript d
 docker compose -f infra/docker-compose/compose.yaml --profile observability up -d --wait   # + Langfuse
 ```
 
-Servicios en `127.0.0.1`: PostgreSQL 5440, Redis 6380, Keycloak 8180 (realm `nexti`), OpenFGA 8190, OpenBao 8210,
+Servicios en `127.0.0.1`: PostgreSQL 5440, Redis 6380, Keycloak 8180 (realm `nexti`), OpenFGA 8190, OpenBao 8210, ClamAV 3310,
 Mailpit 8025, MinIO 9100/9101, Neo4j 7476/7689 y Langfuse 3100. Los puertos se cambian en `.env`.
 Los usuarios de desarrollo del realm son ficticios (`admin@nexti.example`, `mtorres@andesbank.example`, …) y su
 contraseña es `KC_DEV_USER_PASSWORD` del `.env`.

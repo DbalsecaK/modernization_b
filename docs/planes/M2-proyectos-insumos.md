@@ -1,6 +1,6 @@
 # Plan del hito M2 — Proyectos e insumos
 
-- **Estado:** en ejecución (2026-09-28). Se avanza de corrido; solo se detiene ante una decisión importante.
+- **Estado:** terminado (2026-09-28). Criterios y evidencia en la sección 7.
 - **Fuente:** `docs/ESPECIFICACION_PLATAFORMA.md` secciones 7.1, 8.3–8.7, 9, 15.3–15.4, 18.3, 19.4 y 20 (M2).
 - **Rama:** `m2-proyectos-insumos`, un commit por paso, PR a `main` al terminar.
 
@@ -58,7 +58,7 @@
 
 | Recurso | Operaciones | Permiso |
 |---|---|---|
-| `/catalog/{agents,skills,sources,targets,compatibility-rules,pipeline-templates}` | listar | miembro del tenant |
+| `/catalog` y `/catalog/skills/{key}` | el catálogo completo (sin el contenido de las skills) y el `SKILL.md` de una skill | miembro del tenant |
 | `/projects:compose` | recomendación y validación de una composición (sin guardar) | miembro del tenant |
 | `/projects` | listar (ya existe, se amplía), crear con toda la configuración | ver: OpenFGA; crear: `project.create` |
 | `/projects/{id}` | ver, editar nombre y descripción, archivar | `project.view` / `project.configure` |
@@ -91,3 +91,44 @@
 | 9 | Web: Proyectos y asistente conectados |
 | 10 | Web: pestañas Resumen, Insumos y Configuración del proyecto |
 | 11 | Recorrido de aceptación, CI y cierre |
+
+Los once pasos están hechos, un commit por paso en la rama `m2-proyectos-insumos`.
+
+## 7. Cierre de M2 (2026-09-28)
+
+Los criterios de aceptación de la sección 20 de la especificación se cumplen con tests automatizados que corren en CI
+contra los servicios reales (PostgreSQL, OpenFGA, OpenBao, MinIO, ClamAV, Keycloak).
+
+| Criterio | Evidencia (tests) | Estado |
+|---|---|---|
+| Un proyecto CICS + BMS → Spring Boot + Angular + PostgreSQL + AWS propone el equipo y las skills esperados | `packages/core/tests/test_composition.py` (17 agentes con su motivo y 13 skills exactos), `test_projects.py::test_compose_proposes_the_expected_team_and_skills` (API) y `e2e/projects.spec.ts` (asistente) | ✅ |
+| No se puede quitar un agente de Control | Motor (`test_a_control_agent_cannot_be_removed`), API al crear y al cambiar la configuración (`422 control_agent_required`) y e2e (card bloqueada en el asistente y en Configuración) | ✅ |
+| Subir un zip con path traversal es rechazado | `packages/ingest/tests/test_ingest.py` (`../`, rutas absolutas, unidades, barras invertidas; además enlaces simbólicos, cifrado y zip bombs), `test_inputs.py::test_a_zip_with_path_traversal_is_rejected_and_nothing_is_stored` (422, nada en MinIO, rechazo auditado) y e2e | ✅ |
+| Un link de Figma que no es `figma.com/file\|design\|proto` se rechaza y una captura pasa por las mismas validaciones | `test_ingest.py` (links aceptados y rechazados; capturas con tipo falso, sobredimensionadas o truncadas; ClamAV sobre capturas) y `test_inputs.py::test_figma_and_prototype_links` / `test_screenshots_go_through_the_same_validation` | ✅ |
+| Permitido y denegado por endpoint, aislamiento entre tenants y auditoría de toda mutación (reglas de CLAUDE.md) | `test_endpoints_authz.py` (matriz de las rutas nuevas con un usuario ajeno al tenant, subida multipart incluida), `test_projects.py` y `test_inputs.py` (aislamiento), `test_rls.py` (tablas nuevas) | ✅ |
+| Nada del catálogo ni de una configuración se cambia en el lugar | `test_rls.py::test_the_agent_catalog_and_project_configurations_are_not_editable_in_place` y `test_catalog_store.py` (versión nueva obligatoria) | ✅ |
+
+**Capturas** en `docs/m2/`: catálogo, equipo y skills propuestos por el asistente, resumen del proyecto, insumos con un zip
+rechazado (y su motivo) y los aceptados versionados, y la configuración con su historial.
+
+**Cambios respecto del plan**
+
+- El catálogo se sirve en un solo `GET /catalog` (más `GET /catalog/skills/{key}` con el `SKILL.md`), porque el
+  asistente y la pantalla de Catálogo lo necesitan completo.
+- `POST /projects:compose` también verifica el perfil de modelo que usaría cada agente contra sus capacidades (9.4);
+  es un aviso, porque los modelos pueden configurarse antes de ejecutar.
+- Al crear un proyecto, la API publica las tuplas de OpenFGA antes de responder (espera acotada) para que el creador
+  lo abra de inmediato.
+- Contraste AA de la insignia "info" (token `info-ink`) y franja de fases accesible por teclado: los detectó axe.
+- La guarda de la auditoría rechazó claves que parecían credenciales (`secrets`, `token_changed`): se renombraron.
+
+**Limitaciones conocidas (pasan a hitos posteriores)**
+
+- La validación es síncrona en la API (límites de 200 MB para zips, 25 MB para documentos y 10 MB para capturas): los
+  insumos grandes pasan a los workers de M3 con la misma función.
+- La prueba de Git resuelve el host antes de pedir `info/refs`; queda el riesgo residual de DNS rebinding, que el
+  sandbox sin red interna de M3 cierra para el clonado.
+- El object storage usa en desarrollo las credenciales raíz de MinIO; un despliegue da a la API un usuario limitado a
+  su bucket y llaves por tenant (M9).
+- Agentes y skills propios del cliente, lectura de Figma por API (M7) y vínculo con Jira / Azure DevOps (M7b).
+- Las demás pestañas del proyecto muestran un estado vacío hasta que el pipeline produzca su contenido (M3+).
