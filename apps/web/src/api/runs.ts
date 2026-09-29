@@ -58,6 +58,8 @@ export const useRun = (projectId: string, runId: string | null) =>
         }),
       ),
     enabled: !!runId,
+    // The event stream refreshes it; polling while the run is live is the backstop for a missed event.
+    refetchInterval: (query) => (query.state.data && ACTIVE_STATUSES.includes(query.state.data.status) ? 5_000 : false),
   })
 
 export function useStartRun(projectId: string) {
@@ -196,6 +198,21 @@ export function useActivityStream(scope?: { projectId: string; runId: string }, 
   }, [url, enabled, client])
 
   return { events: received.url === url ? received.events : [], connected }
+}
+
+/**
+ * Events are append-only: a "started" event stays running forever. It is still running only while no newer event of
+ * the same invocation (or, without one, of the same run and phase) has arrived. `events` is newest first.
+ */
+export function effectiveStatuses(events: ActivityEvent[]): Map<number, ActivityEvent['status']> {
+  const seen = new Set<string>()
+  const statuses = new Map<number, ActivityEvent['status']>()
+  for (const e of events) {
+    const key = e.invocationId ?? `${e.runId}:${e.phase ?? ''}`
+    statuses.set(e.id, e.status === 'running' && seen.has(key) ? 'succeeded' : e.status)
+    seen.add(key)
+  }
+  return statuses
 }
 
 /** The JSON of one event, without secrets (redacted by the server), as a file. */

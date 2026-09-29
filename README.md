@@ -20,6 +20,7 @@ El producto es **nativamente en inglés**, con cambio completo a español.
 - [Plan del hito M0](docs/planes/M0-fundaciones.md): pasos, tablas, endpoints y tests de las fundaciones.
 - [Plan del hito M1](docs/planes/M1-configuracion-ia.md): configuración IA, gateway de modelos y consumo.
 - [Plan del hito M2](docs/planes/M2-proyectos-insumos.md): proyectos, catálogo de agentes y skills, insumos.
+- [Plan del hito M3](docs/planes/M3-motor-orquestacion.md): motor de orquestación, worker, compuertas y preguntas.
 - [CLAUDE.md](CLAUDE.md): instrucciones para trabajar con Claude Code.
 
 ## Estado
@@ -52,7 +53,14 @@ El producto es **nativamente en inglés**, con cambio completo a español.
   versionada, insumos validados por `packages/ingest` (tipo real, zip seguro, cabecera de imágenes, secretos,
   ClamAV, hash y versión) en MinIO, links de Figma y prototipos, y conexión Git sin SSRF. Criterios y evidencia:
   [docs/planes/M2-proyectos-insumos.md](docs/planes/M2-proyectos-insumos.md) (sección 7); capturas en `docs/m2/`.
-- Siguiente: **M3 — Motor de orquestación**.
+- **Hito M3 — Motor de orquestación terminado** (rama `m3-motor-orquestacion`): worker (`apps/worker`) con cola
+  Procrastinate sobre PostgreSQL y reanudación tras caída, grafo LangGraph compuesto desde la configuración con
+  checkpointer PostgreSQL, compuertas C1–C4 con permiso y segregación de funciones, preguntas con respuesta
+  recomendada, hacer → verificar → corregir con máximo de iteraciones y escalamiento, sandbox Docker sin red, preflight
+  real y pipeline de demostración; en la web, pestaña Ejecuciones en vivo, Mis tareas, tarjetas de decisión y panel de
+  actividad por SSE. Criterios y evidencia:
+  [docs/planes/M3-motor-orquestacion.md](docs/planes/M3-motor-orquestacion.md) (sección 7); capturas en `docs/m3/`.
+- Siguiente: **M4 — primera vertical**.
 
 ## Probar la aplicación
 
@@ -60,13 +68,16 @@ Con el entorno local levantado (ver Desarrollo):
 
 ```bash
 pnpm api:dev      # API en http://localhost:8100
+pnpm worker:dev   # worker de ejecuciones (cola Procrastinate, sandbox con el Docker local)
 pnpm web:dev      # web en http://localhost:5173 (proxy de /api y /auth hacia la API)
 ```
 
 El inicio de sesión va a Keycloak con los usuarios ficticios del realm (contraseña `KC_DEV_USER_PASSWORD` del
 `.env`), o en desarrollo con `dev-auth` eligiendo un usuario sembrado. Sesión, menú por permisos, selector de
-cliente e idioma, Administración, Configuración IA, Consumo y costos, Catálogo, Proyectos (asistente, resumen, insumos
-y configuración) usan la API real; el resto de las pantallas sigue con datos de ejemplo hasta su hito.
+cliente e idioma, Administración, Configuración IA, Consumo y costos, Catálogo, Proyectos (asistente, resumen,
+insumos, ejecuciones, actividad y configuración), Mis tareas y el panel de actividad usan la API real; el resto de las
+pantallas sigue con datos de ejemplo hasta su hito. En desarrollo, la pestaña Ejecuciones ofrece además el pipeline
+de demostración, que ejercita el motor completo con el worker en marcha.
 
 ## Desarrollo
 

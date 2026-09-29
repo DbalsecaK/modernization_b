@@ -107,6 +107,6 @@ test('a run stops at its gates until another person approves them and then finis
   await expect(page.getByRole('heading', { name: 'Gate C4' })).toBeVisible({ timeout: 120_000 })
   await page.getByRole('textbox', { name: 'Comment (required to reject)' }).fill('Signed off in the E2E run')
   await page.getByRole('button', { name: 'Approve' }).click()
-  await expect(page.getByText('Finished').first()).toBeVisible({ timeout: 60_000 })
+  await expect(page.getByText(/^Finished · launched by/)).toBeVisible({ timeout: 60_000 })
   await expect(page.getByRole('row').filter({ hasText: 'module_a' }).first()).toBeVisible()
 })

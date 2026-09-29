@@ -1,6 +1,6 @@
 # Plan del hito M3 — Motor de orquestación
 
-- **Estado:** en ejecución (2026-09-29). Se avanza de corrido; solo se detiene ante una decisión importante.
+- **Estado:** terminado (2026-09-29). Criterios y evidencia en la sección 7.
 - **Fuente:** `docs/ESPECIFICACION_PLATAFORMA.md` secciones 10, 11.1, 15.5, 18.4, 18.8, 19.5 y 20 (M3).
 - **Rama:** `m3-motor-orquestacion`, un commit por paso, PR a `main` al terminar.
 - **Decisiones del aprobador (2026-09-29):** cola sobre PostgreSQL con **Procrastinate** (D-13, ADR-0009) y contenido
@@ -93,3 +93,49 @@ M0 se aplica tal cual y una ejecución nunca se consulta fuera del proyecto al q
 | 9 | Web: Mis tareas y tarjetas de decisión conectadas |
 | 10 | Web: panel de actividad conectado al SSE |
 | 11 | CI (worker y Docker), cierre y PR |
+
+Los once pasos están hechos, un commit por paso en la rama `m3-motor-orquestacion`.
+
+## 7. Cierre de M3 (2026-09-29)
+
+Los criterios de aceptación de la sección 20 de la especificación se cumplen con tests automatizados que corren en CI
+contra los servicios reales (PostgreSQL, OpenFGA, Keycloak) y el sandbox Docker.
+
+| Criterio | Evidencia (tests) | Estado |
+|---|---|---|
+| Matar un worker a mitad de una fase y reanudar sin perder trabajo | `test_acceptance_m3.py::test_a_killed_worker_is_replaced_and_the_run_finishes_through_its_gates`: un proceso `python -m nexti_worker` muere con SIGKILL dentro de una fase, otro toma el trabajo por latido vencido y sigue desde el checkpoint (el preflight no se repite, la fase interrumpida se rehace sobre las mismas filas) | ✅ |
+| Una compuerta detiene el flujo hasta la aprobación de un usuario con el permiso | Motor (`test_engine.py`), API (`test_runs_api.py`: sin permiso → 403, quien lanzó → `segregation_of_duties` auditado, con el permiso sigue), aceptación con procesos y `e2e/runs.spec.ts` (Mis tareas → aprobar C1 y C4) | ✅ |
+| La autocorrección respeta el máximo de iteraciones | `test_engine.py::test_verification_that_never_passes_escalates_after_exactly_max_iterations` y `test_acceptance_m3.py::test_a_verification_that_never_passes_escalates_after_exactly_max_iterations` (exactamente `max_iterations` intentos, pregunta `retriesExhausted` con el diagnóstico, reintentar hace otra ronda sin repetir la anterior) | ✅ |
+| El panel solo muestra eventos de proyectos autorizados y el JSON descargado no contiene secretos | `test_runs_api.py::test_tasks_and_activity_only_show_authorized_projects_and_exports_carry_no_secret` (SSE con un proyecto ajeno en el mismo tenant y otro tenant, Last-Event-ID, costo oculto sin `cost.view`, exportación con el token redactado), `test_worker.py` (redacción al escribir) y `test_redaction.py` | ✅ |
+| Permitido y denegado por endpoint, aislamiento y auditoría (CLAUDE.md) | `test_endpoints_authz.py` (13 rutas nuevas), `test_rls.py` (tablas nuevas), `test_worker.py` (el worker solo ve el tenant del trabajo), `test_architecture.py::test_the_api_never_runs_agents` | ✅ |
+
+**Capturas** en `docs/m3/`: ejecución esperando en C1 con la segregación de funciones, panel de actividad en vivo,
+Mis tareas con la compuerta pendiente, ejecución terminada con sus invocaciones y el Resumen con el estado de cada
+fase.
+
+**Cambios respecto del plan**
+
+- Las rutas de una ejecución cuelgan de su proyecto (`/projects/{id}/runs/{runId}`) para reutilizar la autorización
+  por proyecto de M0 (sección 4).
+- Una pregunta no bloquea el nodo de la fase: la fase se detiene, un nodo `ask` espera con `interrupt` y la fase se
+  reanuda con un diario de pasos, así la reanudación no vuelve a invocar agentes.
+- Qué reanuda una interrupción lo decide el worker desde la base (compuerta decidida, preguntas respondidas, fase
+  disponible); la API solo registra la decisión y encola, en la misma transacción.
+- El sandbox ejecuta el CLI de Docker en un hilo: psycopg exige el loop selector en Windows, donde los subprocesos de
+  asyncio necesitan el proactor.
+- El preflight fallido pregunta (arreglar y revisar de nuevo, o detener) en lugar de fallar la ejecución.
+- `nexti_core.redaction` es el filtro de secretos común de eventos, errores, exportación y logs del worker.
+- Al abrir, el SSE de actividad envía los últimos 100 eventos visibles, no toda la historia.
+
+**Limitaciones conocidas (pasan a hitos posteriores)**
+
+- Las fases reales de análisis, diseño y generación llegan con las verticales (M4+); hasta entonces un pipeline real
+  corre el preflight y espera en la primera fase ("disponible desde M4").
+- Continuar exactamente "todo lo que no depende" de una pregunta requiere el grafo de conocimiento (Neo4j, M4); en
+  M3 la fase que pregunta espera.
+- El sandbox de desarrollo usa el Docker local (acceso al socket equivale a root en esa máquina); producción usa un
+  servicio aparte con gVisor o Firecracker (M9).
+- El uso de modelos de la demo es simulado (costo cero); el consumo real llega con los agentes de M4 a través del
+  gateway.
+- Pendiente de M1: rotar la API key de OpenRouter de pruebas y cargar el secreto `OPENROUTER_API_KEY_FOR_TESTS` en
+  GitHub.

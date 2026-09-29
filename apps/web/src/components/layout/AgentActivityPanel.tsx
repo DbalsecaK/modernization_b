@@ -15,7 +15,7 @@ import {
 import { cn } from '@/lib/cn'
 import { formatUsd } from '@/lib/format'
 import { useProjectList } from '@/api/projects'
-import { downloadEvent, useActivityStream, type ActivityEvent } from '@/api/runs'
+import { downloadEvent, effectiveStatuses, useActivityStream, type ActivityEvent } from '@/api/runs'
 import { toast } from '@/components/ui/overlay'
 
 // Live agent activity (spec 18.8): events arrive over SSE from the workers, only for the projects the user may see.
@@ -45,7 +45,9 @@ const cost = (e: ActivityEvent) => Number(e.costUsd ?? 0)
 export function AgentActivityPanel() {
   const { t, i18n } = useTranslation()
   const [mode, setMode] = useState<Mode>('minimized')
-  const { events } = useActivityStream()
+  const { events: received } = useActivityStream()
+  const statuses = effectiveStatuses(received)
+  const events = received.map((e) => ({ ...e, status: statuses.get(e.id) ?? e.status }))
   const projects = useProjectList()
   const [filter, setFilter] = useState<'all' | Status>('all')
   const [expanded, setExpanded] = useState<number | null>(null)
