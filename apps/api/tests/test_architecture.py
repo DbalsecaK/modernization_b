@@ -127,3 +127,17 @@ def test_no_customer_reference_code_is_in_the_repository() -> None:
         if marker in (ROOT / name).read_text(encoding="utf-8", errors="ignore").lower()
     )
     assert offenders == []
+
+
+def test_only_the_graph_package_talks_to_neo4j() -> None:
+    """One access layer applies the tenant and project filters to every query (spec 5.3)."""
+    graph = ROOT / "packages" / "graph"
+    offenders = sorted(
+        str(p.relative_to(ROOT))
+        for r in (ROOT / "apps", ROOT / "packages")
+        for p in r.rglob("*.py")
+        if graph not in p.parents
+        and not {".venv", "node_modules", "__pycache__"} & set(p.relative_to(ROOT).parts)
+        and any(m.split(".")[0] == "neo4j" for m in imports(p))
+    )
+    assert offenders == []
