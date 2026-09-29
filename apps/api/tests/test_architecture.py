@@ -102,3 +102,28 @@ def test_the_api_never_runs_agents() -> None:
         if m.split(".")[0] in ENGINE_MODULES
     )
     assert offenders == []
+
+
+# Objects of the customer's reference application (ADR-0011): they may only exist in the local reference kit.
+REFERENCE_KIT_MARKERS = ("db_biz_pagos", "db_sat_his", "db_biz_admempresa", "bp_total_orden", "sp_debcred")
+CODE_SUFFIXES = {".py", ".ts", ".tsx", ".js", ".sp", ".sql", ".json", ".yaml", ".yml", ".feature", ".csv", ".txt"}
+
+
+def test_no_customer_reference_code_is_in_the_repository() -> None:
+    import shutil
+    import subprocess
+
+    git = shutil.which("git")
+    assert git is not None
+    tracked = subprocess.run(  # noqa: S603 - git with fixed arguments
+        [git, "ls-files", "-co", "--exclude-standard"], cwd=ROOT, capture_output=True, text=True, check=True
+    ).stdout.splitlines()
+    this = Path(__file__).resolve()
+    offenders = sorted(
+        f"{name}: {marker}"
+        for name in tracked
+        if Path(name).suffix in CODE_SUFFIXES and (ROOT / name).resolve() != this and (ROOT / name).is_file()
+        for marker in REFERENCE_KIT_MARKERS
+        if marker in (ROOT / name).read_text(encoding="utf-8", errors="ignore").lower()
+    )
+    assert offenders == []

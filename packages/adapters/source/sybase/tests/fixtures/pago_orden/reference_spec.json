@@ -1,0 +1,89 @@
+{
+  "application": "pago_orden (Banco Ficticio, fictitious)",
+  "note": "Reference spec written by hand for the fictitious application, following spec section 21.3.",
+  "rules": [
+    {
+      "id": "RULE-001",
+      "name": "Only current, savings and virtual accounts can be debited",
+      "category": "validation",
+      "priority": "P0",
+      "statement": "A payment order is only debited from a current (CTE), savings (AHO) or virtual (VIR) account; any other account type is rejected with error 50001.",
+      "condition": "account type not in (CTE, AHO, VIR)",
+      "action": "reject with 50001 'TIPO DE CUENTA NO PERMITIDO'",
+      "inputs": [{"name": "i_tipo_cuenta", "type": "text(fixed,3,iso8859-1)"}],
+      "scenarios": ["Scenario: A credit card account cannot be debited\n  Given an order to debit account type 'TCR'\n  When the order is paid\n  Then the payment is rejected with error 50001"],
+      "sources": [{"file": "sp_pago_orden.sp", "line_start": 34, "line_end": 39}]
+    },
+    {
+      "id": "RULE-002",
+      "name": "The order must exist and be pending",
+      "category": "validation",
+      "priority": "P0",
+      "statement": "The order of the company must exist (else error 50002) and be in state P, pending (else error 50003).",
+      "condition": "no order for (order, company) / order state <> 'P'",
+      "action": "reject with 50002 / 50003",
+      "sources": [{"file": "sp_pago_orden.sp", "line_start": 42, "line_end": 59}]
+    },
+    {
+      "id": "RULE-003",
+      "name": "The tariff comes from the company, else from the general service tariff",
+      "category": "calculation",
+      "priority": "P1",
+      "statement": "The service tariff and whether the commission is charged separately come from the company tariff table; without a company tariff the general service tariff applies, never separate; a missing tariff counts as 0.",
+      "sources": [{"file": "sp_pago_orden.sp", "line_start": 62, "line_end": 77}]
+    },
+    {
+      "id": "RULE-004",
+      "name": "Web orders pay half the tariff rounded to cents; payroll pays no commission",
+      "category": "calculation",
+      "priority": "P0",
+      "statement": "The commission is the tariff, or half the tariff rounded to 2 decimals for channel WEB; payroll (NOMINA) never pays commission.",
+      "condition": "channel = 'WEB' / service = 'NOMINA'",
+      "action": "commission = round(tariff / 2, 2) / commission = 0",
+      "scenarios": ["Scenario: A web order pays half\n  Given a tariff of 1.25 for the service\n  When a WEB order is paid\n  Then the commission is 0.63"],
+      "sources": [{"file": "sp_pago_orden.sp", "line_start": 80, "line_end": 86}]
+    },
+    {
+      "id": "RULE-005",
+      "name": "The debit includes the commission unless it is charged separately",
+      "category": "calculation",
+      "priority": "P1",
+      "statement": "The amount debited is the order value plus the commission, or only the order value when the commission is charged separately.",
+      "sources": [{"file": "sp_pago_orden.sp", "line_start": 89, "line_end": 92}]
+    },
+    {
+      "id": "RULE-006",
+      "name": "Virtual accounts cannot overdraw; others may overdraw up to 100.00",
+      "category": "validation",
+      "priority": "P0",
+      "statement": "A virtual account needs a balance at least equal to the total; other accounts may go down to -100.00; otherwise error 50004.",
+      "condition": "VIR and balance < total, or not VIR and balance + 100.00 < total",
+      "action": "reject with 50004 'FONDOS INSUFICIENTES'",
+      "sources": [{"file": "sp_pago_orden.sp", "line_start": 95, "line_end": 106}]
+    },
+    {
+      "id": "RULE-007",
+      "name": "A separate commission is a second debit; any failure undoes the payment",
+      "category": "lifecycle",
+      "priority": "P0",
+      "statement": "The payment is one transaction: the debit of the total, then, if the commission is separate and positive, a second debit of the commission; a failure of either rolls everything back (errors 50005 and 50006).",
+      "sources": [{"file": "sp_pago_orden.sp", "line_start": 108, "line_end": 141}]
+    },
+    {
+      "id": "RULE-008",
+      "name": "A paid order is marked A with the processing date and the commission",
+      "category": "lifecycle",
+      "priority": "P1",
+      "statement": "After the debits the order moves to state A with the processing date as payment date and the commission charged; if no order row is updated the payment is rolled back with error 50007.",
+      "sources": [{"file": "sp_pago_orden.sp", "line_start": 144, "line_end": 161}]
+    },
+    {
+      "id": "RULE-009",
+      "name": "Errors are reported with their code and message and returned",
+      "category": "policy",
+      "priority": "P2",
+      "statement": "Every rejection is reported to the error log with the error number and message, and the procedure returns the error number; a successful payment returns 0 with message 'PAGO REALIZADO'.",
+      "sources": [{"file": "sp_pago_orden.sp", "line_start": 163, "line_end": 171}]
+    }
+  ]
+}
