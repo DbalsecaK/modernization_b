@@ -56,14 +56,17 @@
 
 ## 4. Endpoints
 
+Las rutas de una ejecución cuelgan de su proyecto (`/projects/{id}/runs/{runId}`): la autorización por proyecto de
+M0 se aplica tal cual y una ejecución nunca se consulta fuera del proyecto al que pertenece.
+
 | Recurso | Operaciones | Permiso |
 |---|---|---|
 | `/projects/{id}/runs` | listar, lanzar (`pipeline`; `demo` solo en desarrollo/test) | `project.view` / `pipeline.run` |
-| `/runs/{id}` | detalle con fases, invocaciones, compuertas y preguntas; `:cancel` | `project.view` / `pipeline.run` |
-| `/runs/{id}/gates/{gate}:approve`, `:reject` | decidir una compuerta (no quien lanzó la ejecución) | `gate.c1/c2/c3.approve`, `signoff.sign` (C4) |
-| `/projects/{id}/questions`, `/questions/{id}:answer`, `/questions:accept-recommended` | preguntas del proyecto, responder, aceptar en bloque las de bajo impacto | `project.view` / `question.answer` |
-| `/tasks` | Mis tareas: preguntas y aprobaciones de todos los proyectos que el usuario puede resolver | sesión (filtrado por OpenFGA) |
-| `/runs/{id}/events`, `/activity/events` (SSE), `/activity/events/{id}/export` | eventos en vivo; JSON de un evento sin secretos | `project.view` (filtrado por OpenFGA) |
+| `/projects/{id}/runs/{runId}` | detalle con fases, invocaciones, compuertas y preguntas; `:cancel` | `project.view` / `pipeline.run` |
+| `/projects/{id}/runs/{runId}/gates/{gate}:approve`, `:reject` | decidir una compuerta (no quien lanzó la ejecución) | `gate.c1/c2/c3.approve`, `signoff.sign` (C4) |
+| `/projects/{id}/questions`, `/{questionId}:answer`, `:accept-recommended` | preguntas del proyecto, responder, aceptar en bloque las de bajo impacto | `project.view` / `question.answer` |
+| `/tasks` | Mis tareas: preguntas y aprobaciones de todos los proyectos que el usuario puede resolver | `tenant.view` (filtrado por OpenFGA) |
+| `/projects/{id}/runs/{runId}/events`, `/activity/events` (SSE), `/activity/events/{eventId}/export` | eventos en vivo; JSON de un evento sin secretos | `project.view` (filtrado por OpenFGA) |
 
 ## 5. Criterios de aceptación de M3 → tests
 

@@ -87,3 +87,18 @@ def test_only_the_repository_module_uses_the_secrets_client_outside_the_gateway(
     )
     assert offenders == []
     assert SECRETS_CLIENT.is_file()
+
+
+ENGINE_MODULES = ("langgraph", "procrastinate", "nexti_orchestration", "nexti_worker", "nexti_sandbox")
+
+
+def test_the_api_never_runs_agents() -> None:
+    """The API creates runs and enqueues them; the worker executes them (CLAUDE.md rule 3, plan M3)."""
+    api = ROOT / "apps" / "api" / "src"
+    offenders = sorted(
+        f"{p.relative_to(ROOT)}: {m}"
+        for p in api.rglob("*.py")
+        for m in imports(p)
+        if m.split(".")[0] in ENGINE_MODULES
+    )
+    assert offenders == []

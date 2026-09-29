@@ -51,6 +51,7 @@ from nexti_core.object_store import ObjectStore, ObjectStoreConfig, input_key
 from nexti_model_gateway.secrets import SecretsConfig, SecretStore, connection_path
 
 from .conftest import SETTINGS, World
+from .run_support import make_config, make_project, make_run
 
 # Routes that are public by design (no session): health, the sign-in flow and dev-auth (development only).
 PUBLIC = {
@@ -132,6 +133,13 @@ class Ctx:
     world: World
     root: uuid.UUID
     owner: AsyncEngine
+    # To publish the authorization tuples of objects made directly in the database (fresh projects).
+    app: AsyncEngine | None = None
+    fga: OpenFga | None = None
+
+    async def sync_authz(self) -> None:
+        if self.app is not None and self.fga is not None:
+            await reconcile(self.app, self.fga)
 
     async def member(self) -> uuid.UUID:
         """A throwaway member of tenant A (for destructive cases)."""
@@ -323,6 +331,58 @@ class Ctx:
             ).scalar_one()
         return found
 
+    async def run_project(self) -> tuple[uuid.UUID, uuid.UUID]:
+        """A project of tenant A with a configuration and a run waiting at C1 with an open question, launched by
+        someone other than the admin (who then may decide its gates)."""
+        project_id = await make_project(self.owner, self.world.tenant_a)
+        await self.sync_authz()
+        version = await make_config(self.owner, self.world.tenant_a, project_id)
+        run_id = await make_run(self.owner, self.world.tenant_a, project_id, version, started_by=self.world.shared)
+        async with self.owner.begin() as conn:
+            await conn.execute(
+                text(
+                    "UPDATE run SET status = 'waiting', waiting_reason = 'gate', current_phase = 'ruleReview' "
+                    "WHERE id = :r"
+                ),
+                {"r": run_id},
+            )
+            await conn.execute(
+                text("INSERT INTO gate (tenant_id, run_id, gate, required) VALUES (:t, :r, 'C1', true)"),
+                {"t": self.world.tenant_a, "r": run_id},
+            )
+        return project_id, run_id
+
+    async def question(self) -> tuple[uuid.UUID, uuid.UUID]:
+        project_id, run_id = await self.run_project()
+        async with self.owner.begin() as conn:
+            question_id: uuid.UUID = (
+                await conn.execute(
+                    text(
+                        "INSERT INTO question (tenant_id, project_id, run_id, phase, agent_key, question_text, "
+                        "reason, impact, recommended, alternatives) VALUES (:t, :p, :r, 'inventory', "
+                        "'legacy-analyst', 'Which rounding?', 'contradiction', 'low', "
+                        '\'{"key": "halfUp", "label": "Half up"}\', '
+                        '\'[{"key": "bankers", "label": "Bankers"}]\') RETURNING id'
+                    ),
+                    {"t": self.world.tenant_a, "p": project_id, "r": run_id},
+                )
+            ).scalar_one()
+        return project_id, question_id
+
+    async def event(self) -> int:
+        project_id, run_id = await self.run_project()
+        async with self.owner.begin() as conn:
+            event_id: int = (
+                await conn.execute(
+                    text(
+                        "INSERT INTO activity_event (tenant_id, project_id, run_id, kind, status, message) "
+                        "VALUES (:t, :p, :r, 'info', 'running', 'Preflight started') RETURNING id"
+                    ),
+                    {"t": self.world.tenant_a, "p": project_id, "r": run_id},
+                )
+            ).scalar_one()
+        return event_id
+
 
 @dataclass(frozen=True)
 class Upload:
@@ -511,6 +571,45 @@ async def _new_project(ctx: Ctx) -> Request:
     return "/api/v1/projects", {**CONFIG, "name": f"Project {uuid.uuid4().hex[:8]}", "flow": "modernization"}
 
 
+async def _new_run(ctx: Ctx) -> Request:
+    project_id = await make_project(ctx.owner, ctx.world.tenant_a)
+    await ctx.sync_authz()
+    await make_config(ctx.owner, ctx.world.tenant_a, project_id)
+    return f"/api/v1/projects/{project_id}/runs", {"kind": "pipeline"}
+
+
+def _run_path(suffix: str = "", body: dict[str, Any] | None = None) -> Callable[[Ctx], Awaitable[Request]]:
+    async def make(ctx: Ctx) -> Request:
+        project_id, run_id = await ctx.run_project()
+        return f"/api/v1/projects/{project_id}/runs/{run_id}{suffix}", body
+
+    return make
+
+
+async def _runs(ctx: Ctx) -> Request:
+    project_id, _ = await ctx.run_project()
+    return f"/api/v1/projects/{project_id}/runs", None
+
+
+async def _questions(ctx: Ctx) -> Request:
+    project_id, _ = await ctx.question()
+    return f"/api/v1/projects/{project_id}/questions", None
+
+
+async def _answer(ctx: Ctx) -> Request:
+    project_id, question_id = await ctx.question()
+    return f"/api/v1/projects/{project_id}/questions/{question_id}:answer", {"option": "bankers"}
+
+
+async def _accept(ctx: Ctx) -> Request:
+    project_id, _ = await ctx.question()
+    return f"/api/v1/projects/{project_id}/questions:accept-recommended", {}
+
+
+async def _export(ctx: Ctx) -> Request:
+    return f"/api/v1/activity/events/{await ctx.event()}/export", None
+
+
 AI_POLICY = {"openrouterAllowed": True, "deniedUpstreamProviders": ["deepinfra"], "denyDataCollection": True}
 
 
@@ -660,6 +759,29 @@ CASES = [
         "DELETE", "/api/v1/projects/{project_id}/repository", "admin", "member",
         _with("repository", "/api/v1/projects/{id}/repository"),
     ),
+    # Runs, gates, questions, tasks and activity (M3). Fresh projects: only the tenant admin sees them.
+    Case("GET", "/api/v1/projects/{project_id}/runs", "admin", "outsider", _runs),
+    Case("POST", "/api/v1/projects/{project_id}/runs", "admin", "member", _new_run),
+    Case("GET", "/api/v1/projects/{project_id}/runs/{run_id}", "admin", "outsider", _run_path()),
+    Case("POST", "/api/v1/projects/{project_id}/runs/{run_id}:cancel", "admin", "member", _run_path(":cancel")),
+    Case(
+        "POST", "/api/v1/projects/{project_id}/runs/{run_id}/gates/{gate}:approve", "admin", "member",
+        _run_path("/gates/C1:approve", {}),
+    ),
+    Case(
+        "POST", "/api/v1/projects/{project_id}/runs/{run_id}/gates/{gate}:reject", "admin", "member",
+        _run_path("/gates/C1:reject", {"comment": "Rules incomplete"}),
+    ),
+    Case(
+        "GET", "/api/v1/projects/{project_id}/runs/{run_id}/events", "admin", "outsider",
+        _run_path("/events?follow=false"),
+    ),
+    Case("GET", "/api/v1/projects/{project_id}/questions", "admin", "outsider", _questions),
+    Case("POST", "/api/v1/projects/{project_id}/questions/{question_id}:answer", "admin", "member", _answer),
+    Case("POST", "/api/v1/projects/{project_id}/questions:accept-recommended", "admin", "member", _accept),
+    Case("GET", "/api/v1/tasks", "member", "anonymous", fixed("/api/v1/tasks")),
+    Case("GET", "/api/v1/activity/events", "member", "anonymous", fixed("/api/v1/activity/events?follow=false")),
+    Case("GET", "/api/v1/activity/events/{event_id}/export", "admin", "member", _export),
 ]  # fmt: skip
 
 
@@ -742,7 +864,7 @@ async def test_allowed_and_denied(
     root: uuid.UUID,
 ) -> None:
     await reconcile(app_engine, fga)
-    ctx = Ctx(world, root, owner_engine)
+    ctx = Ctx(world, root, owner_engine, app_engine, fga)
 
     headers = act_as(api, case.denied, ctx)
     path, body = await case.make(ctx)

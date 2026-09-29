@@ -104,6 +104,33 @@ def require_project(permission: str) -> Dependency:
     return _mark(dependency, "project", permission)
 
 
+# Who decides each gate (spec 16.2): C1-C3 have their approval permission; C4 is the sign-off.
+GATE_PERMISSIONS = {"C1": "gate.c1.approve", "C2": "gate.c2.approve", "C3": "gate.c3.approve", "C4": "signoff.sign"}
+
+
+def require_gate() -> Dependency:
+    """The permission of the gate in the path (`gate`) on the project of the path."""
+
+    async def dependency(
+        request: Request,
+        project_id: uuid.UUID,
+        gate: str,
+        current: Annotated[CurrentSession, Depends(require_session)],
+    ) -> Authorized:
+        tenant_id = current.data.active_tenant_id
+        if tenant_id is None:
+            raise ProblemError(403, "no_active_tenant", "Select a tenant first.")
+        permission = GATE_PERMISSIONS.get(gate)
+        if permission is None:
+            raise ProblemError(404, "gate_not_found", "The gate does not exist.")
+        rel = names.relation(permission)
+        if not await _fga(request).check(names.user(current.data.user_id), rel, names.project(project_id)):
+            await deny(request, current, tenant_id, permission, names.project(project_id))
+        return Authorized(current, current.data.user_id, tenant_id)
+
+    return _mark(dependency, "project", "gate.approve")
+
+
 def require_platform(role: str = "superAdmin") -> Dependency:
     """A platform role (NexTI operators). Grants platform scope to the database session."""
     rel = names.PLATFORM_RELATION[role]  # type: ignore[index]
