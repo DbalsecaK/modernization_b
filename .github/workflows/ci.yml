@@ -34,7 +34,7 @@ jobs:
       - run: uv sync --all-packages --locked
       - run: uv run ruff check .
       - run: uv run ruff format --check .
-      - run: uv run mypy apps/api/src apps/api/tests packages/core/src packages/core/tests packages/model_gateway/src packages/model_gateway/tests packages/agents/src packages/skills/src packages/ingest/src packages/ingest/tests packages/sandbox/src packages/sandbox/tests packages/orchestration/src packages/orchestration/tests packages/adapters/source/sybase/src packages/adapters/source/sybase/tests packages/graph/src packages/graph/tests apps/worker/src apps/worker/tests
+      - run: uv run mypy apps/api/src apps/api/tests packages/core/src packages/core/tests packages/model_gateway/src packages/model_gateway/tests packages/agents/src packages/skills/src packages/ingest/src packages/ingest/tests packages/sandbox/src packages/sandbox/tests packages/orchestration/src packages/orchestration/tests packages/adapters/source/sybase/src packages/adapters/source/sybase/tests packages/graph/src packages/graph/tests packages/packs/target/spring_boot/src packages/packs/target/spring_boot/tests apps/worker/src apps/worker/tests
 
   web:
     name: Web · lint, types, tests, build, generated types
@@ -84,6 +84,8 @@ jobs:
           # shellcheck disable=SC2086 # the list of services must be split
           $COMPOSE up -d --wait $SERVICES
           docker pull "$SANDBOX_IMAGE"
+          # The Java sandbox of the Spring Boot pack (M4): Temurin 21 with the pack's libraries, no network at run time.
+          docker build -q -t nexti-sandbox-java:1 infra/sandbox/java
       # Includes the M3 acceptance: worker processes (python -m nexti_worker) killed and replaced, and generated code
       # tested in the Docker sandbox.
       - run: uv run pytest
