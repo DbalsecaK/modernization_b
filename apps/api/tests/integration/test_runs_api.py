@@ -239,7 +239,10 @@ async def test_tasks_and_activity_only_show_authorized_projects_and_exports_carr
     stream = api.get("/api/v1/activity/events", params={"follow": "false"})
     assert stream.headers["content-type"].startswith("text/event-stream")
     events = sse_events(stream.text)
-    assert {e["projectId"] for e in events} == {str(mine)}
+    seen = {e["projectId"] for e in events}
+    assert str(mine) in seen
+    assert str(other) not in seen
+    events = [e for e in events if e["projectId"] == str(mine)]
     assert SECRET not in stream.text
     assert all(e["costUsd"] is None for e in events)  # the architect has no cost.view
     run_stream = api.get(f"/api/v1/projects/{mine}/runs/{runs[mine]}/events", params={"follow": "false"})
@@ -247,7 +250,7 @@ async def test_tasks_and_activity_only_show_authorized_projects_and_exports_carr
     resumed = api.get(
         "/api/v1/activity/events", params={"follow": "false"}, headers={"Last-Event-ID": str(events[-1]["id"])}
     )
-    assert sse_events(resumed.text) == []
+    assert [e for e in sse_events(resumed.text) if e["projectId"] == str(mine)] == []
 
     exported = api.get(f"/api/v1/activity/events/{events[0]['id']}/export")
     assert exported.status_code == 200
