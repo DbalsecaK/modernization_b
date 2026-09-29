@@ -18,6 +18,7 @@ from typing import Any, Protocol
 from pydantic import ValidationError
 
 from nexti_agents import prompt
+from nexti_core.adapters import SourceFile
 from nexti_core.spec.model import Rule
 from nexti_orchestration.context import Attempt, PhaseContext, Verification
 from nexti_orchestration.extraction import ModelCaller, ReplyError, parse_json
@@ -54,6 +55,8 @@ class GenerationPort(Protocol):
         """Tables, procedures and parameters with neutral types, as text for the architect."""
         ...
 
+    async def source_files(self) -> list[SourceFile]: ...
+
     async def save_design(self, design: Design) -> None: ...
 
     async def load_design(self) -> Design | None: ...
@@ -79,7 +82,31 @@ def java_block(content: str) -> str:
     return code + "\n"
 
 
-def design_problems(design: Design, rules: Sequence[Rule]) -> list[str]:
+_NAME = re.compile(r"[@#]?[A-Za-z_][A-Za-z0-9_$#@]*")
+
+
+def legacy_names(files: Sequence[SourceFile]) -> set[str]:
+    """Every identifier of the legacy source, lowercase: what the design may name as legacy."""
+    return {m.group(0).lower() for f in files for m in _NAME.finditer(f.text)}
+
+
+def _invented(design: Design, names: set[str]) -> list[str]:
+    """Legacy names of the design that do not exist in the legacy code (the design cannot cite what is not there)."""
+    cited = [f.legacy for e in design.entities for f in e.fields]
+    cited += [f.legacy for u in design.use_cases for f in [*u.inputs, *u.outputs]]
+    cited += [u.legacy_message for u in design.use_cases]
+    cited += [f.legacy for p in design.ports for m in p.methods for f in m.inputs]
+    cited += [m.legacy_output for p in design.ports for m in p.methods]
+    cited += [e.legacy_table for e in design.entities] + [p.legacy_program for p in design.ports]
+    cited += [u.legacy_program for u in design.use_cases] + list(design.infrastructure)
+    missing = []
+    for name in cited:
+        if name and name.rsplit(".", 1)[-1].lower() not in names:
+            missing.append(name)
+    return sorted(set(missing))
+
+
+def design_problems(design: Design, rules: Sequence[Rule], names: set[str] | None = None) -> list[str]:
     missing = sorted({r.id for r in rules} - design.rules())
     unknown = sorted(design.rules() - {r.id for r in rules})
     problems = []
@@ -87,6 +114,22 @@ def design_problems(design: Design, rules: Sequence[Rule]) -> list[str]:
         problems.append(f"these rules are in no use case: {', '.join(missing)}")
     if unknown:
         problems.append(f"use cases list rules that do not exist: {', '.join(unknown)}")
+    # Traceability to the legacy: without it the golden master cannot be replayed on the target (spec 11.3).
+    unmapped = [f"{e.name}.{f.name}" for e in design.entities if e.legacy_table for f in e.fields if not f.legacy]
+    if unmapped:
+        problems.append(f"fields of entities with a legacy table need their legacy column: {', '.join(unmapped)}")
+    for use_case in design.use_cases:
+        loose = [f.name for f in [*use_case.inputs, *use_case.outputs] if not f.legacy]
+        if use_case.legacy_program and loose:
+            problems.append(f"{use_case.name}: inputs and outputs need their legacy parameter: {', '.join(loose)}")
+    external = [p.name for p in design.ports if p.legacy_program for m in p.methods for f in m.inputs if not f.legacy]
+    if external:
+        problems.append(f"methods of ports that replace a legacy program need the argument of each input: "
+                        f"{', '.join(sorted(set(external)))}")  # fmt: skip
+    invented = _invented(design, names) if names is not None else []
+    if invented:
+        problems.append(f"these legacy names are not in the legacy code (check the exact spelling): "
+                        f"{', '.join(invented)}")  # fmt: skip
     return problems
 
 
@@ -99,8 +142,9 @@ def _rules_text(rules: Sequence[Rule]) -> str:
 
 
 async def propose_design(
-    caller: ModelCaller, rules: Sequence[Rule], inventory: str, *, max_iterations: int = 3
-) -> tuple[Design, list[Usage]]:
+    caller: ModelCaller, rules: Sequence[Rule], inventory: str, *, max_iterations: int = 3,
+    names: set[str] | None = None,
+) -> tuple[Design, list[Usage]]:  # fmt: skip
     messages = [
         {"role": "system", "content": prompt(ARCHITECT)},
         {"role": "user", "content": f"Inventory:\n{inventory}\n\nApproved rules:\n{_rules_text(rules)}"},
@@ -113,7 +157,7 @@ async def propose_design(
         try:
             data = parse_json(reply.content)
             design = Design.model_validate(data)
-            problems = design_problems(design, rules)
+            problems = design_problems(design, rules, names)
             if problems:
                 raise ReplyError("\n".join(problems))
             return design, usage
@@ -167,8 +211,10 @@ class GenerationPhases:
 
         async def work() -> Attempt:
             try:
-                design, usage = await propose_design(self.port.models, rules, await self.port.inventory_digest(),
-                                                     max_iterations=ctx.run.max_iterations)  # fmt: skip
+                design, usage = await propose_design(
+                    self.port.models, rules, await self.port.inventory_digest(),
+                    max_iterations=ctx.run.max_iterations, names=legacy_names(await self.port.source_files()),
+                )  # fmt: skip
             except ReplyError as exc:
                 raise PhaseFailedError(str(exc)[:1500]) from exc
             await self.port.save_design(design)

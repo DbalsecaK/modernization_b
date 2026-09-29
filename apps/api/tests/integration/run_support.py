@@ -77,6 +77,7 @@ async def make_config(
     template: str = "internalAgile",
     autonomy: str = "balanced",
     max_iterations: int = 3,
+    team: Mapping[str, str] | None = None,
 ) -> int:
     async with owner.begin() as conn:
         version: int = (
@@ -96,7 +97,7 @@ async def make_config(
                 "template": template, "autonomy": autonomy, "max_iterations": max_iterations,
             },
         )  # fmt: skip
-        for key, agent_version in TEAM.items():
+        for key, agent_version in (team or TEAM).items():
             await conn.execute(
                 text(
                     "INSERT INTO project_agent (tenant_id, project_id, config_version, agent_key, agent_version) "

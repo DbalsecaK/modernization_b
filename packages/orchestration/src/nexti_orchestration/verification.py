@@ -102,14 +102,20 @@ class VerificationPhases:
         traced_check, optional = checks.rules_traced(traces)
         found.append(traced_check)
         masks = [f"{m.path} ({m.when}): {m.reason}" for m in golden_run.masks]
-        if golden_run.problem:
-            found.append(checks.Check("same_behaviour", "failed", f"the harness did not run: {golden_run.problem}"))
-        else:
-            found.append(checks.same_behaviour(golden, masks))
+        behaviour = (
+            checks.Check("same_behaviour", "failed", f"the harness did not run: {golden_run.problem}")
+            if golden_run.problem
+            else checks.same_behaviour(golden, masks)
+        )
+        found.append(behaviour)
 
         fresh, unavailable = await self._fresh(ctx, source, master, design, use_case, files, sandbox, defaults)
         found.append(checks.fresh_inputs(fresh, unavailable))
-        found.append(checks.canary(await self._canary(ctx, design, use_case, master, files, sandbox, defaults)))
+        if behaviour.status == "passed":
+            found.append(checks.canary(await self._canary(ctx, design, use_case, master, files, sandbox, defaults)))
+        else:  # red before any change: a caught canary would prove nothing
+            found.append(checks.Check("canary", "not_checked", "the unchanged code does not reproduce the golden "
+                                      "master, so a deliberate change cannot be told apart"))  # fmt: skip
         found.append(checks.source_intact(master.source_sha256, source_digest(source)))
 
         not_proven = [f"Declared mask {m}" for m in masks] + optional

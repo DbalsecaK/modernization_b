@@ -14,11 +14,19 @@ from typing import Any
 
 import pytest
 
+from nexti_core.adapters import SourceFile
 from nexti_core.spec.model import Rule
 from nexti_orchestration import PhaseSpec, RunContext
 from nexti_orchestration.context import PhaseContext
 from nexti_orchestration.extraction import ModelCaller, ModelReply, ReplyError
-from nexti_orchestration.generation import GenerationPhases, design_problems, java_block, propose_design, wiring
+from nexti_orchestration.generation import (
+    GenerationPhases,
+    design_problems,
+    java_block,
+    legacy_names,
+    propose_design,
+    wiring,
+)
 from nexti_orchestration.memory import MemoryStore
 from nexti_orchestration.model import PhaseUnavailableError
 from nexti_orchestration.store import Usage
@@ -34,6 +42,7 @@ RULES = [Rule.model_validate(r) for r in REFERENCE["rules"]]
 DESIGN_JSON = (PACK / "design.json").read_text(encoding="utf-8")
 SERVICE = (PACK / "PayOrderService.java").read_text(encoding="utf-8")
 TEST = (PACK / "PayOrderServiceTest.java").read_text(encoding="utf-8")
+SOURCE = (ROOT / "packages/adapters/source/sybase/tests/fixtures/pago_orden/sp_pago_orden.sp").read_text("utf-8")
 ADAPTER = """package com.bancoficticio.payments.adapters.out.jdbc;
 
 public class Jdbc{port} {{
@@ -82,6 +91,9 @@ class MemoryGenerationPort:
     async def inventory_digest(self) -> str:
         return "Procedure dbo.sp_pago_orden\nTable db_pagos..pg_orden"
 
+    async def source_files(self) -> list[SourceFile]:
+        return [SourceFile("sp/sp_pago_orden.sp", SOURCE)]
+
     async def save_design(self, design: Design) -> None:
         self.design = design
 
@@ -127,6 +139,29 @@ def test_every_rule_must_be_in_a_use_case() -> None:
     problems = design_problems(Design.model_validate(data), RULES)
     assert "RULE-002" in problems[0]
     assert "RULE-099" in problems[1]
+
+
+def test_legacy_names_the_code_does_not_have_are_invented() -> None:
+    names = legacy_names([SourceFile("sp/sp_pago_orden.sp", SOURCE)])
+    assert design_problems(Design.model_validate_json(DESIGN_JSON), RULES, names) == []
+    data = json.loads(DESIGN_JSON)
+    data["entities"][2]["fields"][0]["legacy"] = "cta_cuenta"  # the SP calls it cta_numero
+    problems = design_problems(Design.model_validate(data), RULES, names)
+    assert problems == ["these legacy names are not in the legacy code (check the exact spelling): cta_cuenta"]
+
+
+def test_the_design_must_map_the_legacy_to_replay_the_golden_master() -> None:
+    assert design_problems(Design.model_validate_json(DESIGN_JSON), RULES) == []
+    data = json.loads(DESIGN_JSON)
+    del data["entities"][2]["fields"][0]["legacy"]  # Account.number without its legacy column
+    del data["use_cases"][0]["inputs"][0]["legacy"]
+    del data["ports"][3]["methods"][0]["inputs"][0]["legacy"]
+    problems = design_problems(Design.model_validate(data), RULES)
+    assert problems == [
+        "fields of entities with a legacy table need their legacy column: Account.number",
+        "PayOrder: inputs and outputs need their legacy parameter: orderNumber",
+        "methods of ports that replace a legacy program need the argument of each input: DebitGateway",
+    ]
 
 
 async def test_an_invalid_design_goes_back_with_the_problems() -> None:
