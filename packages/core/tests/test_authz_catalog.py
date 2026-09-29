@@ -20,6 +20,7 @@ def test_every_permission_of_spec_16_2_is_in_the_catalog() -> None:
         "gate.c2.approve", "gate.c3.approve", "signoff.sign", "code.view", "code.download", "code.push",
         "models.configure", "usage.view", "cost.view", "agents.select", "skills.select", "skills.publish",
         "users.manage", "audit.view",
+        "question.answer",  # added with the questions of the agents (M3, 16.2 "pregunta.responder")
     }  # fmt: skip
     assert {p.key for p in PERMISSIONS} == spec
 

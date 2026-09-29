@@ -647,3 +647,140 @@ class ProjectRepository(Base):
     created_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("app_user.id"))
     created_at: Mapped[datetime] = _now()
     updated_at: Mapped[datetime] = _now()
+
+
+# Runs of the project pipeline (migration 0007). The queue (procrastinate_*) and the LangGraph checkpointer
+# (checkpoint*) are infrastructure outside this mapping (ADR-0009).
+class Run(Base):
+    __tablename__ = "run"
+    __table_args__ = (
+        UniqueConstraint("id", "tenant_id"),
+        ForeignKeyConstraint(["project_id", "tenant_id"], ["project.id", "project.tenant_id"], ondelete="CASCADE"),
+        ForeignKeyConstraint(
+            ["project_id", "config_version", "tenant_id"],
+            ["project_config.project_id", "project_config.version", "project_config.tenant_id"],
+        ),
+        Index("run_project_idx", "project_id", text("created_at DESC")),
+    )
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    project_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    config_version: Mapped[int] = mapped_column(Integer, nullable=False)
+    kind: Mapped[str] = mapped_column(Text, nullable=False)
+    status: Mapped[str] = mapped_column(Text, nullable=False, server_default="queued")
+    waiting_reason: Mapped[str | None] = mapped_column(Text)
+    current_phase: Mapped[str | None] = mapped_column(Text)
+    autonomy: Mapped[str] = mapped_column(Text, nullable=False)
+    max_iterations: Mapped[int] = mapped_column(Integer, nullable=False)
+    error: Mapped[str | None] = mapped_column(Text)
+    started_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("app_user.id"))
+    created_at: Mapped[datetime] = _now()
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    updated_at: Mapped[datetime] = _now()
+
+
+class PhaseRun(Base):
+    __tablename__ = "phase_run"
+    __table_args__ = (ForeignKeyConstraint(["run_id", "tenant_id"], ["run.id", "run.tenant_id"], ondelete="CASCADE"),)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    run_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
+    phase: Mapped[str] = mapped_column(Text, primary_key=True)
+    position: Mapped[int] = mapped_column(Integer, nullable=False)
+    status: Mapped[str] = mapped_column(Text, nullable=False, server_default="pending")
+    iterations: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
+    detail: Mapped[str | None] = mapped_column(Text)
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class AgentInvocation(Base):
+    __tablename__ = "agent_invocation"
+    __table_args__ = (
+        UniqueConstraint("id", "tenant_id"),
+        ForeignKeyConstraint(["run_id", "tenant_id"], ["run.id", "run.tenant_id"], ondelete="CASCADE"),
+        Index("agent_invocation_run_idx", "run_id", "started_at"),
+    )
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    run_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    phase: Mapped[str] = mapped_column(Text, nullable=False)
+    agent_key: Mapped[str] = mapped_column(Text, nullable=False)
+    shard: Mapped[str | None] = mapped_column(Text)
+    iteration: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("1"))
+    status: Mapped[str] = mapped_column(Text, nullable=False, server_default="running")
+    model: Mapped[str | None] = mapped_column(Text)
+    input_tokens: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
+    output_tokens: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
+    cost_usd: Mapped[Decimal] = mapped_column(Numeric(18, 8), nullable=False, server_default=text("0"))
+    summary: Mapped[str | None] = mapped_column(Text)
+    error: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    started_at: Mapped[datetime] = _now()
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class Gate(Base):
+    __tablename__ = "gate"
+    __table_args__ = (ForeignKeyConstraint(["run_id", "tenant_id"], ["run.id", "run.tenant_id"], ondelete="CASCADE"),)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    run_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
+    gate: Mapped[str] = mapped_column(Text, primary_key=True)
+    required: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    status: Mapped[str] = mapped_column(Text, nullable=False, server_default="pending")
+    requested_at: Mapped[datetime] = _now()
+    decided_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("app_user.id"))
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    comment: Mapped[str | None] = mapped_column(Text)
+
+
+class Question(Base):
+    __tablename__ = "question"
+    __table_args__ = (
+        ForeignKeyConstraint(["run_id", "tenant_id"], ["run.id", "run.tenant_id"], ondelete="CASCADE"),
+        ForeignKeyConstraint(["project_id", "tenant_id"], ["project.id", "project.tenant_id"], ondelete="CASCADE"),
+        Index("question_open_idx", "project_id", postgresql_where=text("status = 'open'")),
+    )
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    project_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    run_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    phase: Mapped[str] = mapped_column(Text, nullable=False)
+    agent_key: Mapped[str] = mapped_column(Text, nullable=False)
+    question_text: Mapped[str] = mapped_column(Text, nullable=False)
+    context: Mapped[str] = mapped_column(Text, nullable=False, server_default="")
+    evidence: Mapped[list[Any]] = mapped_column(JSONB, nullable=False, server_default=text("'[]'::jsonb"))
+    reason: Mapped[str] = mapped_column(Text, nullable=False)
+    impact: Mapped[str] = mapped_column(Text, nullable=False)
+    recommended: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    alternatives: Mapped[list[Any]] = mapped_column(JSONB, nullable=False, server_default=text("'[]'::jsonb"))
+    affects: Mapped[list[Any]] = mapped_column(JSONB, nullable=False, server_default=text("'[]'::jsonb"))
+    status: Mapped[str] = mapped_column(Text, nullable=False, server_default="open")
+    answer: Mapped[str | None] = mapped_column(Text)
+    was_recommended: Mapped[bool | None] = mapped_column(Boolean)
+    answered_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("app_user.id"))
+    answered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    comment: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = _now()
+
+
+class ActivityEvent(Base):
+    __tablename__ = "activity_event"
+    __table_args__ = (
+        ForeignKeyConstraint(["run_id", "tenant_id"], ["run.id", "run.tenant_id"], ondelete="CASCADE"),
+        Index("activity_event_project_idx", "project_id", "id"),
+    )
+    id: Mapped[int] = mapped_column(BigInteger, Identity(always=True), primary_key=True)
+    tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    project_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    run_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    invocation_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
+    agent_key: Mapped[str | None] = mapped_column(Text)
+    phase: Mapped[str | None] = mapped_column(Text)
+    kind: Mapped[str] = mapped_column(Text, nullable=False)
+    status: Mapped[str] = mapped_column(Text, nullable=False)
+    message: Mapped[str] = mapped_column(Text, nullable=False)
+    model: Mapped[str | None] = mapped_column(Text)
+    tokens: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
+    cost_usd: Mapped[Decimal] = mapped_column(Numeric(18, 8), nullable=False, server_default=text("0"))
+    payload: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))
+    occurred_at: Mapped[datetime] = _now()

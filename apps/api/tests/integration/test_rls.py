@@ -20,7 +20,8 @@ AI_TABLES = (
     "budget_alert",
 )
 PROJECT_TABLES = ("project_config", "project_agent", "project_skill", "input_artifact", "project_repository")
-RLS_TABLES = ("tenant", "app_user", *TENANT_TABLES, *AI_TABLES, *PROJECT_TABLES)
+RUN_TABLES = ("run", "phase_run", "agent_invocation", "gate", "question", "activity_event")
+RLS_TABLES = ("tenant", "app_user", *TENANT_TABLES, *AI_TABLES, *PROJECT_TABLES, *RUN_TABLES)
 
 
 async def ids(engine: AsyncEngine, scope: DbScope, sql: str) -> list[object]:
@@ -132,6 +133,8 @@ async def test_catalog_is_read_only_for_the_api(app_engine: AsyncEngine, world: 
         "UPDATE project_config SET autonomy = 'autonomous'",
         "DELETE FROM project_agent",
         "UPDATE input_artifact SET sha256 = NULL",
+        "UPDATE activity_event SET message = 'x'",
+        "DELETE FROM run",
     ],
 )
 async def test_the_agent_catalog_and_project_configurations_are_not_editable_in_place(

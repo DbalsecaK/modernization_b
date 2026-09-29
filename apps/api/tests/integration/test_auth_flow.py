@@ -21,6 +21,9 @@ from nexti_core.db.models import AppUser, Membership
 
 from .conftest import SETTINGS, World, compose_env
 
+# The response type of starlette's TestClient (httpx or httpx2, whichever the environment has).
+TestResponse = Any
+
 JWT = re.compile(r"eyJ[A-Za-z0-9_-]{5,}\.[A-Za-z0-9_-]{5,}\.")
 TOKEN_WORDS = re.compile(r"access_token|refresh_token|id_token", re.I)
 PASSWORD = compose_env("KC_DEV_USER_PASSWORD")
@@ -31,22 +34,22 @@ class Browser:
     """The API as a browser sees it, over https so __Host- cookies behave as in production."""
 
     client: TestClient
-    responses: list[httpx.Response]
+    responses: list[TestResponse]
 
-    def get(self, url: str, **kwargs: Any) -> httpx.Response:
-        res: httpx.Response = self.client.get(url, follow_redirects=False, **kwargs)
+    def get(self, url: str, **kwargs: Any) -> TestResponse:
+        res: TestResponse = self.client.get(url, follow_redirects=False, **kwargs)
         self.responses.append(res)
         return res
 
     def send(
         self, method: str, url: str, csrf: str | None = None, origin: str | None = None, **kwargs: Any
-    ) -> httpx.Response:
+    ) -> TestResponse:
         headers = {}
         if csrf is not None:
             headers["X-CSRF-Token"] = csrf
         if origin is not None:
             headers["Origin"] = origin
-        res: httpx.Response = self.client.request(method, url, headers=headers, follow_redirects=False, **kwargs)
+        res: TestResponse = self.client.request(method, url, headers=headers, follow_redirects=False, **kwargs)
         self.responses.append(res)
         return res
 
@@ -96,7 +99,7 @@ def browser(api_settings: Settings) -> Iterator[Browser]:
         yield Browser(client, [])
 
 
-def sign_in(browser: Browser, username: str, return_to: str = "/projects") -> httpx.Response:
+def sign_in(browser: Browser, username: str, return_to: str = "/projects") -> TestResponse:
     start = browser.get(f"/auth/login?returnTo={return_to}")
     assert start.status_code == 302
     callback = keycloak_sign_in(start.headers["location"], username, PASSWORD)

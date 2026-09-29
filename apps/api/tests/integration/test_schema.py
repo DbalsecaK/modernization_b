@@ -75,8 +75,18 @@ async def test_permission_catalog_matches_nexti_core(owner_engine: AsyncEngine) 
     assert in_db == in_code
 
 
+# Infrastructure outside the ORM (ADR-0009): the Procrastinate queue and the LangGraph checkpointer.
+INFRASTRUCTURE = ("procrastinate_", "checkpoint")
+
+
+def _include(name: str | None, type_: str, parent_names: Any) -> bool:
+    return not (type_ == "table" and name is not None and name.startswith(INFRASTRUCTURE))
+
+
 def _diffs(connection: Connection) -> list[Any]:
-    ctx = MigrationContext.configure(connection, opts={"compare_type": True, "compare_server_default": False})
+    ctx = MigrationContext.configure(
+        connection, opts={"compare_type": True, "compare_server_default": False, "include_name": _include}
+    )
     return list(compare_metadata(ctx, Base.metadata))
 
 

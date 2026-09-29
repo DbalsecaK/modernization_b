@@ -29,6 +29,7 @@ PERMISSIONS: tuple[Permission, ...] = (
     Permission("project.configure", ("project",), "Change the configuration of a project"),
     Permission("input.upload", ("project",), "Upload inputs to a project"),
     Permission("pipeline.run", ("project",), "Run the pipeline of a project"),
+    Permission("question.answer", ("project",), "Answer the questions of the agents"),
     Permission("gate.c1.approve", ("project",), "Approve gate C1"),
     Permission("gate.c2.approve", ("project",), "Approve gate C2"),
     Permission("gate.c3.approve", ("project",), "Approve gate C3"),
@@ -89,16 +90,24 @@ BASE_ROLES: tuple[BaseRole, ...] = (
             "usage.view",
             "agents.select",
             "skills.select",
+            "question.answer",
         ),
     ),
     BaseRole(
         "architect",
         "project",
         "Architect",
-        ("gate.c3.approve", "signoff.sign", "code.view", "agents.select", "skills.select"),
+        ("gate.c3.approve", "signoff.sign", "code.view", "agents.select", "skills.select", "question.answer"),
     ),
-    BaseRole("analyst", "project", "Analyst / Delivery", ("input.upload", "pipeline.run", "code.view")),
-    BaseRole("businessReviewer", "project", "Business reviewer / PO", ("gate.c1.approve", "gate.c2.approve")),
+    BaseRole(
+        "analyst", "project", "Analyst / Delivery", ("input.upload", "pipeline.run", "code.view", "question.answer")
+    ),
+    BaseRole(
+        "businessReviewer",
+        "project",
+        "Business reviewer / PO",
+        ("gate.c1.approve", "gate.c2.approve", "question.answer"),
+    ),
     BaseRole("developer", "project", "Developer", ("code.view", "code.download", "code.push")),
     BaseRole("observer", "project", "Observer / Customer", ()),
 )
