@@ -23,7 +23,8 @@
     "viewAll": "Ver todo",
     "yes": "Sí",
     "cancel": "Cancelar",
-    "discard": "Descartar cambios"
+    "discard": "Descartar cambios",
+    "error": "Algo salió mal."
   },
   "nav": {
     "main": "Navegación principal",
@@ -329,7 +330,8 @@
       "runs": "Las ejecuciones aparecen cuando arranca el pipeline",
       "costs": "Los costos aparecen con las primeras llamadas a modelos del pipeline",
       "activity": "La actividad aparece cuando los agentes empiezan a trabajar"
-    }
+    },
+    "openRuns": "Ejecuciones"
   },
   "overview": {
     "pipeline": "Pipeline",
@@ -357,7 +359,9 @@
     "fixInputs_other": "{{count}} insumos fueron rechazados: mira por qué y súbelos de nuevo.",
     "rejectedInputs_one": "{{count}} rechazado",
     "rejectedInputs_other": "{{count}} rechazados",
-    "reviewTeam": "Revisa el equipo de agentes, las skills y el pipeline."
+    "reviewTeam": "Revisa el equipo de agentes, las skills y el pipeline.",
+    "latestRun": "Última ejecución: {{status}}.",
+    "noRunYet": "Aún no hay ejecuciones."
   },
   "inputs": {
     "title": "Insumos",
@@ -764,7 +768,9 @@
         "waiting": "Esperando a una persona"
       },
       "tokens": "{{value}} tokens",
-      "downloadJson": "Descargar JSON completo"
+      "downloadJson": "Descargar JSON completo",
+      "platform": "Plataforma",
+      "empty": "Aún no hay actividad."
     }
   },
   "projectSettings": {
@@ -977,7 +983,13 @@
     "tabs": {
       "questions": "Preguntas para mí",
       "approvals": "Aprobaciones y revisiones"
-    }
+    },
+    "noQuestions": "No hay preguntas esperándote",
+    "noQuestionsHint": "Las preguntas de los agentes aparecen aquí cuando puedes responderlas.",
+    "noApprovals": "No hay aprobaciones esperándote",
+    "noApprovalsHint": "Las compuertas que puedes decidir aparecen aquí mientras una ejecución las espera.",
+    "gate": "Compuerta {{gate}}",
+    "since": "Esperando desde {{date}}"
   },
   "usage": {
     "title": "Consumo y costos",
@@ -2096,5 +2108,106 @@
     "user-manual": "Manual de usuario (PDF)",
     "figma": "Figma",
     "screenshots": "Capturas de pantalla"
+  },
+  "runsPage": {
+    "runPipeline": "Ejecutar pipeline",
+    "runDemo": "Ejecutar pipeline de demostración",
+    "started": "Ejecución lanzada. El worker la toma en un momento.",
+    "configureFirst": "Configura el proyecto primero.",
+    "oneAtATime": "Una ejecución a la vez por proyecto.",
+    "emptyHint": "Lanza el pipeline: el preflight revisa insumos, credenciales, modelos y presupuesto antes de que trabaje un agente.",
+    "history": "Ejecuciones",
+    "demo": "Demo",
+    "cancel": "Cancelar ejecución",
+    "summary": "{{status}} · lanzada por {{by}} el {{date}}",
+    "waiting": {
+      "gate": "Esperando la aprobación de una compuerta después de {{phase}}.",
+      "question": "Esperando respuestas a las preguntas de los agentes en {{phase}}.",
+      "escalation": "Un agente no logró pasar la verificación en {{phase}}: una persona decide cómo seguir.",
+      "phaseUnavailable": "{{phase}} está disponible desde M4: la ejecución espera ahí, nunca se salta una fase."
+    },
+    "attempts_one": "{{count}} intento",
+    "attempts_other": "{{count}} intentos",
+    "invocations_one": "{{count}} invocación de agente",
+    "invocations_other": "{{count}} invocaciones de agentes",
+    "questions": "Preguntas de esta ejecución",
+    "invocationsTitle": "Invocaciones de agentes",
+    "columns": {
+      "phase": "Fase",
+      "agent": "Agente",
+      "attempt": "Intento",
+      "status": "Estado",
+      "tokens": "Tokens",
+      "cost": "Costo"
+    },
+    "invocationStatus": {
+      "running": "En curso",
+      "succeeded": "Correcta",
+      "failed": "Fallida",
+      "escalated": "Escalada"
+    },
+    "gate": {
+      "title": "Compuerta {{gate}}",
+      "approve": "Aprobar",
+      "reject": "Rechazar",
+      "comment": "Comentario (obligatorio para rechazar)",
+      "approved": "Compuerta {{gate}} aprobada. La ejecución continúa.",
+      "rejected": "Compuerta {{gate}} rechazada. La ejecución se detiene.",
+      "segregation": "Tú lanzaste esta ejecución: otra persona debe decidir sus compuertas (segregación de funciones).",
+      "noPermission": "No tienes el permiso para decidir esta compuerta.",
+      "hint": {
+        "C1": "Reglas de negocio o especificación",
+        "C2": "Pantallas y prototipos",
+        "C3": "Arquitectura y diseño",
+        "C4": "Firma final"
+      }
+    },
+    "status": {
+      "queued": "En cola",
+      "running": "En ejecución",
+      "waiting": "Esperando a una persona",
+      "succeeded": "Terminada",
+      "failed": "Fallida",
+      "cancelled": "Cancelada"
+    },
+    "phaseStatus": {
+      "pending": "Pendiente",
+      "running": "En curso",
+      "waiting": "Esperando",
+      "succeeded": "Hecha",
+      "failed": "Fallida",
+      "skipped": "Omitida",
+      "unavailable": "Disponible desde M4"
+    },
+    "eventKind": {
+      "runStarted": "Ejecución iniciada",
+      "phaseStarted": "Fase iniciada",
+      "started": "Iniciado",
+      "completed": "Completado",
+      "failed": "Falló",
+      "verificationFailed": "Verificación fallida",
+      "selfCorrected": "Autocorregido",
+      "escalated": "Escalado",
+      "gateWaiting": "Compuerta en espera",
+      "gateDecided": "Compuerta decidida",
+      "questionAsked": "Pregunta",
+      "questionAnswered": "Respondida",
+      "fanOut": "Subagentes",
+      "phaseCompleted": "Fase hecha",
+      "runFinished": "Ejecución terminada",
+      "info": "Info"
+    }
+  },
+  "questions": {
+    "recorded": "Respuesta registrada. La ejecución se reanuda cuando no quede otra pregunta abierta.",
+    "cancelled": "Cancelada",
+    "confidence": "Confianza {{value}}%",
+    "reason": {
+      "lowConfidence": "Baja confianza",
+      "contradiction": "Contradicción",
+      "judgesDisagree": "Jueces en desacuerdo",
+      "missingInformation": "Falta información",
+      "retriesExhausted": "Intentos agotados"
+    }
   }
 }

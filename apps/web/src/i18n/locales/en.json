@@ -23,7 +23,8 @@
     "viewAll": "View all",
     "yes": "Yes",
     "cancel": "Cancel",
-    "discard": "Discard changes"
+    "discard": "Discard changes",
+    "error": "Something went wrong."
   },
   "nav": {
     "main": "Main navigation",
@@ -329,7 +330,8 @@
       "runs": "Runs appear when the pipeline starts",
       "costs": "Costs appear with the first model calls of the pipeline",
       "activity": "Activity appears when the agents start working"
-    }
+    },
+    "openRuns": "Runs"
   },
   "overview": {
     "pipeline": "Pipeline",
@@ -357,7 +359,9 @@
     "fixInputs_other": "{{count}} inputs were rejected: see why and upload them again.",
     "rejectedInputs_one": "{{count}} rejected",
     "rejectedInputs_other": "{{count}} rejected",
-    "reviewTeam": "Review the team of agents, the skills and the pipeline."
+    "reviewTeam": "Review the team of agents, the skills and the pipeline.",
+    "latestRun": "Latest run: {{status}}.",
+    "noRunYet": "No run yet."
   },
   "inputs": {
     "title": "Inputs",
@@ -764,7 +768,9 @@
         "waiting": "Waiting for a person"
       },
       "tokens": "{{value}} tokens",
-      "downloadJson": "Download full JSON"
+      "downloadJson": "Download full JSON",
+      "platform": "Platform",
+      "empty": "No activity yet."
     }
   },
   "projectSettings": {
@@ -977,7 +983,13 @@
     "tabs": {
       "questions": "Questions for me",
       "approvals": "Approvals & reviews"
-    }
+    },
+    "noQuestions": "No questions waiting for you",
+    "noQuestionsHint": "Questions of the agents appear here when you can answer them.",
+    "noApprovals": "No approvals waiting for you",
+    "noApprovalsHint": "Gates you can decide appear here while a run waits for them.",
+    "gate": "Gate {{gate}}",
+    "since": "Waiting since {{date}}"
   },
   "usage": {
     "title": "Usage & costs",
@@ -2096,5 +2108,106 @@
     "user-manual": "User manual (PDF)",
     "figma": "Figma",
     "screenshots": "Screenshots"
+  },
+  "runsPage": {
+    "runPipeline": "Run pipeline",
+    "runDemo": "Run demo pipeline",
+    "started": "Run launched. The worker picks it up in a moment.",
+    "configureFirst": "Configure the project first.",
+    "oneAtATime": "One run at a time per project.",
+    "emptyHint": "Launch the pipeline: the preflight checks inputs, credentials, models and budget before any agent works.",
+    "history": "Runs",
+    "demo": "Demo",
+    "cancel": "Cancel run",
+    "summary": "{{status}} · launched by {{by}} on {{date}}",
+    "waiting": {
+      "gate": "Waiting for the approval of a gate after {{phase}}.",
+      "question": "Waiting for answers to the agents' questions in {{phase}}.",
+      "escalation": "An agent could not pass verification in {{phase}}: a person decides how to continue.",
+      "phaseUnavailable": "{{phase}} is available from M4: the run waits there, it never skips a phase."
+    },
+    "attempts_one": "{{count}} attempt",
+    "attempts_other": "{{count}} attempts",
+    "invocations_one": "{{count}} agent invocation",
+    "invocations_other": "{{count}} agent invocations",
+    "questions": "Questions of this run",
+    "invocationsTitle": "Agent invocations",
+    "columns": {
+      "phase": "Phase",
+      "agent": "Agent",
+      "attempt": "Attempt",
+      "status": "Status",
+      "tokens": "Tokens",
+      "cost": "Cost"
+    },
+    "invocationStatus": {
+      "running": "Running",
+      "succeeded": "Succeeded",
+      "failed": "Failed",
+      "escalated": "Escalated"
+    },
+    "gate": {
+      "title": "Gate {{gate}}",
+      "approve": "Approve",
+      "reject": "Reject",
+      "comment": "Comment (required to reject)",
+      "approved": "Gate {{gate}} approved. The run continues.",
+      "rejected": "Gate {{gate}} rejected. The run stops.",
+      "segregation": "You launched this run: someone else must decide its gates (segregation of duties).",
+      "noPermission": "You do not have the permission to decide this gate.",
+      "hint": {
+        "C1": "Business rules or specification",
+        "C2": "Screens and prototypes",
+        "C3": "Architecture and design",
+        "C4": "Final sign-off"
+      }
+    },
+    "status": {
+      "queued": "Queued",
+      "running": "Running",
+      "waiting": "Waiting for a person",
+      "succeeded": "Finished",
+      "failed": "Failed",
+      "cancelled": "Cancelled"
+    },
+    "phaseStatus": {
+      "pending": "Pending",
+      "running": "Running",
+      "waiting": "Waiting",
+      "succeeded": "Done",
+      "failed": "Failed",
+      "skipped": "Skipped",
+      "unavailable": "Available from M4"
+    },
+    "eventKind": {
+      "runStarted": "Run started",
+      "phaseStarted": "Phase started",
+      "started": "Started",
+      "completed": "Completed",
+      "failed": "Failed",
+      "verificationFailed": "Verification failed",
+      "selfCorrected": "Self-corrected",
+      "escalated": "Escalated",
+      "gateWaiting": "Gate waiting",
+      "gateDecided": "Gate decided",
+      "questionAsked": "Question",
+      "questionAnswered": "Answered",
+      "fanOut": "Subagents",
+      "phaseCompleted": "Phase done",
+      "runFinished": "Run finished",
+      "info": "Info"
+    }
+  },
+  "questions": {
+    "recorded": "Answer recorded. The run resumes when no other question is open.",
+    "cancelled": "Cancelled",
+    "confidence": "Confidence {{value}}%",
+    "reason": {
+      "lowConfidence": "Low confidence",
+      "contradiction": "Contradiction",
+      "judgesDisagree": "Judges disagree",
+      "missingInformation": "Missing information",
+      "retriesExhausted": "Attempts exhausted"
+    }
   }
 }

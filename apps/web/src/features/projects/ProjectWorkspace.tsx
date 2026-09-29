@@ -8,6 +8,8 @@ import { Badge, Button, EmptyState, PageHeader, Tabs } from '@/components/ui/pri
 import { ProjectInputs } from './workspace/ProjectInputs'
 import { ProjectOverview } from './workspace/ProjectOverview'
 import { ProjectSettings } from './workspace/ProjectSettings'
+import { ProjectRuns } from './workspace/ProjectRuns'
+import { ProjectActivity } from './workspace/ProjectActivity'
 
 const TABS = [
   'overview',
@@ -26,8 +28,9 @@ const TABS = [
   'settings',
 ] as const
 export type ProjectTab = (typeof TABS)[number]
-// Connected in M2; the other tabs fill in as the pipeline produces their content (M3 onwards).
-const CONNECTED: ProjectTab[] = ['overview', 'inputs', 'settings']
+// Connected so far (M2: overview, inputs, settings; M3: runs, activity); the others fill in as the pipeline produces
+// their content (M4 onwards).
+const CONNECTED: ProjectTab[] = ['overview', 'inputs', 'runs', 'activity', 'settings']
 
 export function ProjectWorkspace() {
   const { t } = useTranslation()
@@ -76,14 +79,16 @@ export function ProjectWorkspace() {
           </span>
         }
         actions={
-          <Button variant="primary" disabled title={t('project.runsLater')}>
-            <Play size={16} /> {t('project.runNextPhase')}
+          <Button variant="primary" onClick={() => setTab('runs')}>
+            <Play size={16} /> {t('project.openRuns')}
           </Button>
         }
       />
       <Tabs tabs={visibleTabs.map((id) => ({ id, label: t(`project.tabs.${id}`) }))} value={tab} onChange={setTab} />
       {tab === 'overview' && <ProjectOverview project={p} onOpen={setTab} />}
       {tab === 'inputs' && <ProjectInputs project={p} />}
+      {tab === 'runs' && <ProjectRuns project={p} />}
+      {tab === 'activity' && <ProjectActivity project={p} />}
       {tab === 'settings' && <ProjectSettings project={p} />}
       {!CONNECTED.includes(tab) && (
         <EmptyState title={t(`project.later.${tab}`)} description={t('project.laterHint')} />

@@ -1,7 +1,9 @@
 import { useTranslation } from 'react-i18next'
 import { ArrowRight } from 'lucide-react'
+import { cn } from '@/lib/cn'
 import { formatUsd } from '@/lib/format'
 import { useCatalog, useInputs, type ProjectDetail } from '@/api/projects'
+import { useRun, useRuns } from '@/api/runs'
 import { Badge, Button, Card, CardBody, CardHeader, StatTile } from '@/components/ui/primitives'
 import { agentName } from '@/features/catalog/AgentCard'
 import { Notice } from '../NewProjectWizard'
@@ -18,6 +20,11 @@ export function ProjectOverview({ project, onOpen }: { project: ProjectDetail; o
   const optionName = (axis: string, key: string) =>
     catalog.data?.targets.find((o) => o.axis === axis && o.key === key)?.name ?? key
   const sourceName = (key: string) => catalog.data?.sources.find((s) => s.key === key)?.name ?? key
+  // The pipeline as the latest run left it (spec 18.4).
+  const runs = useRuns(project.id)
+  const latest = runs.data?.[0]
+  const run = useRun(project.id, latest?.id ?? null)
+  const phaseStatus = (key: string) => run.data?.phases.find((p) => p.phase === key)?.status ?? 'pending'
 
   return (
     <div className="space-y-6">
@@ -27,9 +34,18 @@ export function ProjectOverview({ project, onOpen }: { project: ProjectDetail; o
           <ol className="flex gap-2 overflow-x-auto pb-2" tabIndex={0} aria-label={t('overview.pipeline')}>
             {(flow?.phases ?? []).map((phase, i, all) => (
               <li key={phase.key} className="flex items-center gap-2">
-                <div className="min-w-32 rounded-md border border-dashed border-border px-3 py-2">
+                <div
+                  className={cn(
+                    'min-w-32 rounded-md border px-3 py-2',
+                    phaseStatus(phase.key) === 'pending' ? 'border-dashed border-border' : 'border-border',
+                    phaseStatus(phase.key) === 'succeeded' && 'bg-good/8',
+                    phaseStatus(phase.key) === 'running' && 'bg-info/8',
+                    ['waiting', 'unavailable'].includes(phaseStatus(phase.key)) && 'bg-warning/8',
+                    phaseStatus(phase.key) === 'failed' && 'bg-critical/8',
+                  )}
+                >
                   <div className="flex items-center gap-1.5 text-xs text-muted">
-                    {t('phaseStatus.pending')}
+                    {t(`runsPage.phaseStatus.${phaseStatus(phase.key)}`)}
                     {phase.gate && (
                       <Badge
                         className="ml-auto"
@@ -45,7 +61,14 @@ export function ProjectOverview({ project, onOpen }: { project: ProjectDetail; o
               </li>
             ))}
           </ol>
-          <p className="mt-2 text-xs text-muted">{t('project.runsLater')}</p>
+          <p className="mt-2 text-xs text-muted">
+            {latest
+              ? t('overview.latestRun', { status: t(`runsPage.status.${latest.status}`) })
+              : t('overview.noRunYet')}{' '}
+            <button className="font-medium text-text underline" onClick={() => onOpen('runs')}>
+              {t('overview.open')}
+            </button>
+          </p>
         </CardBody>
       </Card>
 
