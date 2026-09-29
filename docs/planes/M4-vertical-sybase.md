@@ -60,8 +60,8 @@
 | # | Paso |
 |---|---|
 | 1 | Plan, ADR-0010 (D-06), ADR-0011 (kit de referencia), ADR-0012 (respuestas grabadas y evaluación a demanda) |
-| 2 | `packages/spec`: modelo de la spec, tipos neutrales, validador Gherkin (en/es) y validador del plan por olas |
-| 3 | `packages/adapters/sybase`: tokenizador, inventario, tipos neutrales, clasificación, slicing; aplicación ficticia de referencia |
+| 2 | `nexti_core.spec` (19.3): modelo de la spec, tipos neutrales, validador Gherkin (en/es), plan por olas y cobertura |
+| 3 | `packages/adapters/source/sybase`: tokenizador, inventario, tipos neutrales, clasificación, slicing; aplicación ficticia de referencia |
 | 4 | `packages/graph`: capa de acceso a Neo4j con filtros obligatorios, carga del inventario y consultas (impacto, orden, huérfanos) |
 | 5 | Migración 0008: spec, HU con versiones, plan y olas, artefactos generados, veredictos, evaluaciones; permisos `story.edit` y `plan.edit` |
 | 6 | Gateway: grabar/reproducir para tests; agentes de extracción y revisión de reglas con cita verificada por código |
