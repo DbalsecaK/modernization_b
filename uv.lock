@@ -1353,6 +1353,7 @@ dependencies = [
     { name = "nexti-adapter-sybase" },
     { name = "nexti-agents" },
     { name = "nexti-core" },
+    { name = "nexti-pack-spring-boot" },
     { name = "nexti-sandbox" },
     { name = "psycopg", extra = ["binary"] },
 ]
@@ -1364,6 +1365,7 @@ requires-dist = [
     { name = "nexti-adapter-sybase", editable = "packages/adapters/source/sybase" },
     { name = "nexti-agents", editable = "packages/agents" },
     { name = "nexti-core", editable = "packages/core" },
+    { name = "nexti-pack-spring-boot", editable = "packages/packs/target/spring_boot" },
     { name = "nexti-sandbox", editable = "packages/sandbox" },
     { name = "psycopg", extras = ["binary"], specifier = ">=3.2" },
 ]
@@ -1412,6 +1414,7 @@ dependencies = [
     { name = "nexti-ingest" },
     { name = "nexti-model-gateway" },
     { name = "nexti-orchestration" },
+    { name = "nexti-pack-spring-boot" },
     { name = "nexti-sandbox" },
     { name = "procrastinate" },
     { name = "psycopg", extra = ["binary"] },
@@ -1427,6 +1430,7 @@ requires-dist = [
     { name = "nexti-ingest", editable = "packages/ingest" },
     { name = "nexti-model-gateway", editable = "packages/model_gateway" },
     { name = "nexti-orchestration", editable = "packages/orchestration" },
+    { name = "nexti-pack-spring-boot", editable = "packages/packs/target/spring_boot" },
     { name = "nexti-sandbox", editable = "packages/sandbox" },
     { name = "procrastinate", specifier = ">=3.0" },
     { name = "psycopg", extras = ["binary"], specifier = ">=3.2" },

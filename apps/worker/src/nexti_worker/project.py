@@ -3,11 +3,12 @@ services: the source code comes from the accepted zip inputs in the object store
 rules / stories / the plan are written as new versions in PostgreSQL (RLS by tenant) and mirrored in the knowledge
 graph, and every model call goes through the gateway (CLAUDE.md rule 2)."""
 
+import hashlib
 import io
 import json
 import uuid
 import zipfile
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from typing import Any
 
 from sqlalchemy import text
@@ -24,6 +25,8 @@ from nexti_orchestration import RunContext
 from nexti_orchestration.extraction import ModelCaller, ModelReply
 from nexti_orchestration.store import Usage
 from nexti_orchestration.stories import Stories
+from nexti_pack_spring_boot import Design
+from nexti_sandbox import Sandbox
 
 MAX_FILE_BYTES = 5 * 1024 * 1024
 MAX_TOTAL_BYTES = 50 * 1024 * 1024
@@ -86,6 +89,7 @@ class WorkerProjectPort:
         gateway: GatewayService,
         objects: ObjectStore | None,
         graph: GraphStore | None,
+        sandboxes: Callable[[str], Sandbox] | None = None,
     ) -> None:
         self.engine = engine
         self.run = run
@@ -94,6 +98,7 @@ class WorkerProjectPort:
         self.graph = graph
         self.scope = Scope(run.tenant_id, run.project_id)
         self._files: list[SourceFile] | None = None
+        self._sandboxes = sandboxes
 
     def _db(self) -> Any:
         return scoped_connection(self.engine, DbScope(tenant_id=self.run.tenant_id))
@@ -276,3 +281,92 @@ class WorkerProjectPort:
             edges += [Edge(f"story:{d.story}", "DEPENDS_ON", f"story:{d.on}", {"strength": d.strength})
                       for d in stories.dependencies]  # fmt: skip
             await self.graph.upsert_edges(self.scope, edges)
+
+    # -- design and generation (M4) ------------------------------------------------------------------------------
+    def _key(self, *parts: str) -> str:
+        return "/".join(["tenants", str(self.run.tenant_id), "projects", str(self.run.project_id), *parts])
+
+    async def _put(self, key: str, content: str, content_type: str) -> None:
+        if self.objects is None:
+            raise RuntimeError("the object store is not configured")
+        data = content.encode("utf-8")
+        await self.objects.put(key, io.BytesIO(data), len(data), content_type)
+
+    async def _get(self, key: str) -> str:
+        if self.objects is None:
+            raise RuntimeError("the object store is not configured")
+        return b"".join(await self.objects.read(key)).decode("utf-8")
+
+    async def inventory_digest(self) -> str:
+        from nexti_adapter_sybase import SybaseAdapter
+
+        files = await self.source_files()
+        adapter = SybaseAdapter()
+        inventory = adapter.inventory(files)
+        lines = [f"Metrics: {json.dumps(inventory.metrics)}"]
+        for node in inventory.nodes:
+            if node.label == "StoredProcedure" and not node.properties.get("external"):
+                lines.append(f"Procedure {node.name} ({node.file}:{node.line_start}-{node.line_end})")
+            elif node.label == "Field":
+                lines.append(f"  parameter {node.name}: {node.properties.get('neutral_type')}"
+                             f"{' OUTPUT' if node.properties.get('output') else ''}")  # fmt: skip
+            elif node.label == "Table":
+                lines.append(f"Table {node.name}")
+        for edge in inventory.edges:
+            if edge.type in ("READS", "WRITES", "CALLS"):
+                lines.append(f"{edge.source} {edge.type} {edge.target}")
+        return "\n".join(lines)
+
+    async def save_design(self, design: Design) -> None:
+        path = "design/design.json"
+        await self.save_artifacts({path: design.model_dump_json(indent=2)}, {path: "docs"},
+                                  {path: sorted(design.rules())})  # fmt: skip
+
+    async def load_design(self) -> Design | None:
+        async with self._db() as conn:
+            key = (
+                await conn.execute(
+                    text(
+                        "SELECT object_key FROM generated_artifact WHERE project_id = :p "
+                        "AND path = 'design/design.json' "
+                        "ORDER BY created_at DESC LIMIT 1"
+                    ),
+                    {"p": self.run.project_id},
+                )
+            ).scalar_one_or_none()
+        return Design.model_validate_json(await self._get(key)) if key else None
+
+    async def save_file(self, path: str, content: str) -> str:
+        digest = hashlib.sha256(content.encode("utf-8")).hexdigest()
+        key = self._key("runs", str(self.run.run_id), "drafts", digest)
+        await self._put(key, content, "text/plain; charset=utf-8")
+        return key
+
+    async def load_file(self, reference: str) -> str:
+        return await self._get(reference)
+
+    async def save_artifacts(self, files: dict[str, str], layers: dict[str, str], rules: dict[str, list[str]]) -> None:
+        """Every generated file in the object store and one row per file (references only, 10.2)."""
+        rows = []
+        for path, content in files.items():
+            digest = hashlib.sha256(content.encode("utf-8")).hexdigest()
+            key = self._key("runs", str(self.run.run_id), "files", path)
+            await self._put(key, content, "text/plain; charset=utf-8")
+            rows.append({"t": self.run.tenant_id, "p": self.run.project_id, "r": self.run.run_id,
+                         "l": layers.get(path, "docs"), "path": path, "k": key, "h": digest,
+                         "s": len(content.encode("utf-8")), "ru": json.dumps(rules.get(path, []))})  # fmt: skip
+        async with self._db() as conn:
+            for row in rows:
+                await conn.execute(
+                    text(
+                        "INSERT INTO generated_artifact (tenant_id, project_id, run_id, layer, path, object_key, "
+                        "sha256, size_bytes, rules) VALUES (:t, :p, :r, :l, :path, :k, :h, :s, CAST(:ru AS jsonb)) "
+                        "ON CONFLICT (run_id, path) DO NOTHING"
+                    ),
+                    row,
+                )
+
+    def sandbox(self, image: str) -> Sandbox:
+        if self._sandboxes is None:
+            raise RuntimeError("no sandbox is configured for the packs")
+        return self._sandboxes(image)

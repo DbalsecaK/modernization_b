@@ -4,15 +4,23 @@ arrive with the next steps and, until then, the run waits in them. Demo runs hav
 phase."""
 
 from collections.abc import Mapping
+from typing import Protocol, cast
 
 from nexti_orchestration.demo import demo_executors
+from nexti_orchestration.generation import GenerationPhases, GenerationPort
 from nexti_orchestration.graph import Executor
 from nexti_orchestration.model import RunContext
 from nexti_orchestration.modernization import ModernizationPhases, ProjectPort
 from nexti_orchestration.preflight import Preflight, PreflightProbe
 
 
-def executors_for(run: RunContext, probe: PreflightProbe, port: ProjectPort | None = None) -> Mapping[str, Executor]:
+class PipelinePort(ProjectPort, GenerationPort, Protocol):
+    """What the worker gives the executors of a real pipeline."""
+
+
+def executors_for(
+    run: RunContext, probe: PreflightProbe, port: ProjectPort | PipelinePort | None = None
+) -> Mapping[str, Executor]:
     if run.kind == "demo":
         return demo_executors(run)
     executors: dict[str, Executor] = {"preflight": Preflight(probe)}
@@ -26,4 +34,7 @@ def executors_for(run: RunContext, probe: PreflightProbe, port: ProjectPort | No
             "ruleReview": phases.rule_review,
             "ui": phases.ui,
         })  # fmt: skip
+        if hasattr(port, "save_design"):  # a port that can also keep designs and generated files
+            generation = GenerationPhases(cast(GenerationPort, port))
+            executors.update({"design": generation.design, "generation": generation.generation})
     return executors

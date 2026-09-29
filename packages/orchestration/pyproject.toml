@@ -10,6 +10,7 @@ dependencies = [
   "nexti-adapter-sybase",
   "nexti-agents",
   "nexti-core",
+  "nexti-pack-spring-boot",
   "nexti-sandbox",
 ]
 
@@ -17,6 +18,7 @@ dependencies = [
 nexti-adapter-sybase = { workspace = true }
 nexti-agents = { workspace = true }
 nexti-core = { workspace = true }
+nexti-pack-spring-boot = { workspace = true }
 nexti-sandbox = { workspace = true }
 
 [build-system]

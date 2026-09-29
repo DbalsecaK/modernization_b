@@ -131,7 +131,12 @@ async def test_the_port_reads_inputs_and_versions_rules_stories_and_the_plan(
             assert [(r["key"], r["version"], r["status"], r["links"]) for r in rows] == [
                 ("US-001", 1, "review", ["RULE-002"]), ("US-002", 1, "review", ["RULE-003"]),
             ]  # fmt: skip
-            (dep,) = await fetch(owner_engine, "SELECT strength, origin, reason FROM story_dependency")
+            (dep,) = await fetch(
+                owner_engine,
+                "SELECT d.strength, d.origin, d.reason FROM story_dependency d JOIN "
+                "user_story s ON s.id = d.story_id WHERE s.project_id = :p",
+                p=project_id,
+            )
             assert (dep["strength"], dep["origin"]) == ("hard", "graph")
             (plan,) = await fetch(owner_engine, "SELECT version, waves, suggested FROM migration_plan WHERE "
                                                 "project_id = :p", p=project_id)  # fmt: skip

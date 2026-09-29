@@ -8,7 +8,6 @@ phase never repeats a model call when the phase resumes.
 
 from collections.abc import Sequence
 from dataclasses import dataclass
-from decimal import Decimal
 from typing import Any, Protocol
 
 from nexti_adapter_sybase import SybaseAdapter
@@ -17,8 +16,8 @@ from nexti_core.spec.model import Rule
 from nexti_orchestration.context import Attempt, NeedsAnswer, PhaseContext
 from nexti_orchestration.extraction import EXTRACTOR, VERIFIER, ModelCaller, ReplyError, consolidate, extract, review
 from nexti_orchestration.model import Option, PhaseFailedError, PhaseResult, QuestionSpec
-from nexti_orchestration.store import Usage
 from nexti_orchestration.stories import FALLBACK_WRITER, STORY_WRITER, RuleData, Stories, derive
+from nexti_orchestration.usage import total
 
 ADAPTERS = (SybaseAdapter(),)
 DETECT_THRESHOLD = 0.5
@@ -38,15 +37,6 @@ class ProjectPort(Protocol):
     async def load_rules(self) -> list[Rule]: ...
 
     async def save_stories(self, stories: Stories) -> None: ...
-
-
-def total(usages: Sequence[Usage]) -> Usage:
-    return Usage(
-        model=next((u.model for u in usages if u.model), None),
-        input_tokens=sum(u.input_tokens for u in usages),
-        output_tokens=sum(u.output_tokens for u in usages),
-        cost_usd=sum((u.cost_usd for u in usages), Decimal(0)),
-    )
 
 
 def pick_adapter(files: list[SourceFile]) -> SybaseAdapter:

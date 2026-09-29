@@ -73,6 +73,7 @@ async def run_worker(settings: WorkerSettings, *, name: str | None = None, wait:
                 cassettes=(Path(settings.model_cassettes_dir), settings.model_cassettes_mode)
                 if settings.model_cassettes_mode else None,
             ) if settings.secrets_url else None,
+            sandboxes=lambda image: DockerSandbox(image=image, docker=settings.sandbox_docker),
             graph=GraphStore.connect(
                 settings.graph_uri, settings.graph_user, settings.graph_password.get_secret_value()
             ) if settings.graph_uri else None,

@@ -9,7 +9,7 @@ finishes or waits for a person again.
 """
 
 import uuid
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from typing import Any
 
@@ -51,6 +51,7 @@ class Runtime:
     allow_private_hosts: bool = False
     gateway: GatewayService | None = None  # models (M4); without it the analysis phases wait
     graph: GraphStore | None = None
+    sandboxes: Callable[[str], Sandbox] | None = None  # the sandbox of a pack, by image (M4)
 
 
 async def _resume_value(
@@ -111,7 +112,7 @@ async def execute_run(runtime: Runtime, run_id: uuid.UUID, tenant_id: uuid.UUID)
         http=runtime.http, allow_private_hosts=runtime.allow_private_hosts,
     )  # fmt: skip
     port = (
-        WorkerProjectPort(runtime.engine, run, runtime.gateway, runtime.objects, runtime.graph)
+        WorkerProjectPort(runtime.engine, run, runtime.gateway, runtime.objects, runtime.graph, runtime.sandboxes)
         if runtime.gateway is not None
         else None
     )

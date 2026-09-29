@@ -42,6 +42,7 @@ class RunContext:
     max_iterations: int
     agents: tuple[AgentSpec, ...]
     options: dict[str, Any] = field(default_factory=dict)
+    target: dict[str, str] = field(default_factory=dict)  # the five axes of the target (8.4): backend, database...
 
     @property
     def required_gates(self) -> tuple[str, ...]:
