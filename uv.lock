@@ -892,6 +892,7 @@ dependencies = [
     { name = "pyyaml" },
     { name = "sqlalchemy", extra = ["asyncio"] },
     { name = "structlog" },
+    { name = "urllib3" },
 ]
 
 [package.metadata]
@@ -901,6 +902,7 @@ requires-dist = [
     { name = "pyyaml", specifier = ">=6.0" },
     { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2.1" },
     { name = "structlog", specifier = ">=26.1" },
+    { name = "urllib3", specifier = ">=2.2" },
 ]
 
 [[package]]

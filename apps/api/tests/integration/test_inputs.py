@@ -202,6 +202,17 @@ async def test_without_the_scanner_uploads_fail_closed(api: TestClient, admin: d
     assert res.json()["code"] == "malware_scanner_unavailable"
 
 
+async def test_without_the_object_store_uploads_fail_closed(
+    api: TestClient, admin: dict[str, str], world: World
+) -> None:
+    api.app.state.inputs.store = ObjectStore(  # type: ignore[attr-defined]
+        ObjectStoreConfig("http://127.0.0.1:1", "nobody", "nothing", SETTINGS.object_store_bucket)
+    )
+    res = upload(api, admin, world.project_a, "login.png", png(), "screenshot")
+    assert res.status_code == 503
+    assert res.json()["code"] == "storage_unavailable"
+
+
 async def test_figma_and_prototype_links(api: TestClient, admin: dict[str, str], world: World) -> None:
     url = f"/api/v1/projects/{world.project_a}/inputs:link"
     bad = api.post(url, json={"kind": "figma_link", "url": "https://www.figma.com/community/file/123"}, headers=admin)

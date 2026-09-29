@@ -13,6 +13,10 @@ from urllib.parse import urlsplit
 
 from minio import Minio
 from minio.error import S3Error
+from urllib3.exceptions import HTTPError as TransportError
+
+# Anything the client can raise when the store is unreachable or refuses the request.
+FAILURES = (S3Error, TransportError, OSError)
 
 
 class ObjectStoreError(RuntimeError):
@@ -52,8 +56,8 @@ class ObjectStore:
             await asyncio.to_thread(
                 self._client.put_object, self.config.bucket, key, stream, size, content_type=content_type
             )
-        except S3Error as exc:
-            raise ObjectStoreError(f"object store write failed: {exc.code}") from exc
+        except FAILURES as exc:
+            raise ObjectStoreError(f"object store write failed: {getattr(exc, 'code', type(exc).__name__)}") from exc
         finally:
             stream.seek(0)
 
@@ -61,8 +65,8 @@ class ObjectStore:
         """The object's content in chunks (the response is released when the iterator ends)."""
         try:
             response = await asyncio.to_thread(self._client.get_object, self.config.bucket, key)
-        except S3Error as exc:
-            raise ObjectStoreError(f"object store read failed: {exc.code}") from exc
+        except FAILURES as exc:
+            raise ObjectStoreError(f"object store read failed: {getattr(exc, 'code', type(exc).__name__)}") from exc
 
         def chunks() -> Iterator[bytes]:
             try:
@@ -80,13 +84,15 @@ class ObjectStore:
             if exc.code in ("NoSuchKey", "NoSuchObject", "NotFound"):
                 return False
             raise ObjectStoreError(f"object store check failed: {exc.code}") from exc
+        except (TransportError, OSError) as exc:
+            raise ObjectStoreError(f"object store check failed: {type(exc).__name__}") from exc
         return True
 
     async def delete(self, key: str) -> None:
         try:
             await asyncio.to_thread(self._client.remove_object, self.config.bucket, key)
-        except S3Error as exc:
-            raise ObjectStoreError(f"object store delete failed: {exc.code}") from exc
+        except FAILURES as exc:
+            raise ObjectStoreError(f"object store delete failed: {getattr(exc, 'code', type(exc).__name__)}") from exc
 
     async def healthy(self) -> bool:
         try:

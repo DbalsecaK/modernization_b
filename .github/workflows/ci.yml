@@ -17,8 +17,8 @@ concurrency:
 
 env:
   COMPOSE: docker compose -f infra/docker-compose/compose.yaml
-  # The services the API needs (Neo4j and Langfuse are not used yet; MinIO and ClamAV arrive with the inputs of M2).
-  SERVICES: postgres redis keycloak openfga openbao clamav mailpit
+  # The services the API needs (Neo4j and Langfuse are not used yet; MinIO and ClamAV hold and scan the inputs, M2).
+  SERVICES: postgres redis keycloak openfga openbao minio clamav mailpit
 
 jobs:
   python-quality:
