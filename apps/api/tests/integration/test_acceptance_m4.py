@@ -118,7 +118,9 @@ def object_store() -> ObjectStore:
     )
 
 
-async def model_for(owner: AsyncEngine, gateway: GatewayService, tenant_id: uuid.UUID, project_id: uuid.UUID) -> str:
+async def model_for(
+    owner: AsyncEngine, gateway: GatewayService, tenant_id: uuid.UUID, project_id: uuid.UUID, *, live: bool = RECORD
+) -> str:
     """The recorded model for this project only: catalog row, an OpenRouter connection with its key in OpenBao (a
     placeholder when replaying: nothing leaves the machine), a profile and a project assignment. Returns the path."""
     async with owner.begin() as conn:
@@ -161,7 +163,7 @@ async def model_for(owner: AsyncEngine, gateway: GatewayService, tenant_id: uuid
                 )
             )
         connection = uuid.uuid4()
-        path = await gateway.store_credential(tenant_id, connection, _api_key() if RECORD else "replay-only")
+        path = await gateway.store_credential(tenant_id, connection, _api_key() if live else "replay-only")
         await conn.execute(
             insert(ProviderConnection).values(
                 id=connection,
@@ -192,7 +194,9 @@ async def model_for(owner: AsyncEngine, gateway: GatewayService, tenant_id: uuid
     return path
 
 
-async def spending_cap(owner: AsyncEngine, tenant_id: uuid.UUID, project_id: uuid.UUID) -> uuid.UUID:
+async def spending_cap(
+    owner: AsyncEngine, tenant_id: uuid.UUID, project_id: uuid.UUID, budget: Decimal = BUDGET_USD
+) -> uuid.UUID:
     """Recording spends real money: the gateway stops every call once this run has spent BUDGET_USD. The cap is a
     tenant budget (the gateway checks every budget that applies to a call) set to what the tenant spent so far plus
     the budget; the project budget only alerts, so the preflight's estimate from the configuration (9.4), meant
@@ -219,7 +223,7 @@ async def spending_cap(owner: AsyncEngine, tenant_id: uuid.UUID, project_id: uui
                     tenant_id=tenant_id,
                     project_id=None,
                     period="total",
-                    amount_usd=Decimal(spent) + BUDGET_USD,
+                    amount_usd=Decimal(spent) + budget,
                     hard_stop=True,
                 )
                 .returning(Budget.id)
@@ -228,10 +232,15 @@ async def spending_cap(owner: AsyncEngine, tenant_id: uuid.UUID, project_id: uui
     return cap
 
 
-async def upload_source(owner: AsyncEngine, store: ObjectStore, tenant_id: uuid.UUID, project_id: uuid.UUID) -> None:
+async def upload_source(
+    owner: AsyncEngine, store: ObjectStore, tenant_id: uuid.UUID, project_id: uuid.UUID,
+    files: dict[str, bytes] | None = None,
+) -> None:  # fmt: skip
+    sources = files or {"sp/sp_pago_orden.sp": (FIXTURES / "sp_pago_orden.sp").read_bytes()}
     archive = io.BytesIO()
     with zipfile.ZipFile(archive, "w") as zipped:
-        zipped.writestr("sp/sp_pago_orden.sp", (FIXTURES / "sp_pago_orden.sp").read_bytes())
+        for name, content in sources.items():
+            zipped.writestr(name, content)
     data = archive.getvalue()
     input_id = uuid.uuid4()
     key = input_key(tenant_id, project_id, input_id)
