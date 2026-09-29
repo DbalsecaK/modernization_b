@@ -1,0 +1,76 @@
+{
+  "model": "anthropic/claude-sonnet-5.5",
+  "mode": "record",
+  "verdict": "PROVEN",
+  "checks": {
+    "tests_ran": "passed",
+    "rules_traced": "passed",
+    "same_behaviour": "passed",
+    "fresh_inputs": "passed",
+    "canary": "passed",
+    "source_intact": "passed"
+  },
+  "details": {
+    "tests_ran": "39 test(s) passed in a clean build (JUnit XML)",
+    "rules_traced": "11 of 11 rule(s) verified by golden cases",
+    "same_behaviour": "28 golden case(s) reproduced",
+    "fresh_inputs": "12 fresh input(s) matched on both sides",
+    "canary": "line 23 changed (private static final BigDecimal OVERDRAFT_MARGIN = new BigDecimal(\"100.01\");) turned case fondos_no_vir_un_centavo_mas_alla_sobregiro red",
+    "source_intact": "the legacy is the code that was characterized (SHA-256)"
+  },
+  "not_proven": [
+    "Declared mask outputs:@o_movimiento (rejected): When the commission debit or the order update fails after the first debit succeeded, the legacy leaves the movement sequence in the output parameter even though the transaction is rolled back. The target returns no movement on any rejection, because the movement no longer exists after the rollback.",
+    "Declared mask calls:cobis..sp_cerror (always): infrastructure of the legacy: the target framework replaces it (6.2)",
+    "External programs are replaced by stubs that answer as the case says; their own logic is not verified here"
+  ],
+  "evaluation": {
+    "reference": "pago_orden (Banco Ficticio, fictitious)",
+    "reference_sha256": "81c670d21dcc3724ef1356a27f075004d21b0955af9882628ea449e929edede2",
+    "reference_rules": 9,
+    "found_rules": 11,
+    "omissions": [
+      "RULE-009"
+    ],
+    "omissions_p0": [],
+    "hallucinations": [
+      "RULE-003",
+      "RULE-004",
+      "RULE-009"
+    ],
+    "precision_errors": [
+      {
+        "reference": "RULE-002",
+        "found": "RULE-002",
+        "missing_values": [
+          "50002"
+        ]
+      },
+      {
+        "reference": "RULE-007",
+        "found": "RULE-010",
+        "missing_values": [
+          "50005"
+        ]
+      },
+      {
+        "reference": "RULE-008",
+        "found": "RULE-011",
+        "missing_values": [
+          "50007"
+        ]
+      }
+    ],
+    "known_bias": null,
+    "recall": 0.889,
+    "precision": 0.727
+  },
+  "model_calls": 51,
+  "cost_usd": "1.53039600",
+  "decisions": [
+    "questions",
+    "C1",
+    "C2",
+    "C3",
+    "C4"
+  ]
+}

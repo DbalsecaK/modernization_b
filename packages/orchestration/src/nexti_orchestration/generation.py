@@ -118,6 +118,11 @@ def design_problems(design: Design, rules: Sequence[Rule], names: set[str] | Non
     unmapped = [f"{e.name}.{f.name}" for e in design.entities if e.legacy_table for f in e.fields if not f.legacy]
     if unmapped:
         problems.append(f"fields of entities with a legacy table need their legacy column: {', '.join(unmapped)}")
+    not_columns = [f"{e.name}.{f.name} = {f.legacy}" for e in design.entities for f in e.fields
+                   if f.legacy and f.legacy[:1] in "@#"]  # fmt: skip
+    if not_columns:
+        problems.append("entity fields map to columns of their legacy table, not to parameters or variables: "
+                        f"{', '.join(not_columns)}")  # fmt: skip
     for use_case in design.use_cases:
         loose = [f.name for f in [*use_case.inputs, *use_case.outputs] if not f.legacy]
         if use_case.legacy_program and loose:
@@ -143,11 +148,15 @@ def _rules_text(rules: Sequence[Rule]) -> str:
 
 async def propose_design(
     caller: ModelCaller, rules: Sequence[Rule], inventory: str, *, max_iterations: int = 3,
-    names: set[str] | None = None,
+    names: set[str] | None = None, source: str = "",
 ) -> tuple[Design, list[Usage]]:  # fmt: skip
     messages = [
         {"role": "system", "content": prompt(ARCHITECT)},
-        {"role": "user", "content": f"Inventory:\n{inventory}\n\nApproved rules:\n{_rules_text(rules)}"},
+        {
+            "role": "user",
+            "content": f"Inventory:\n{inventory}\n\nApproved rules:\n{_rules_text(rules)}"
+            + (f"\n\nLegacy source (the columns and parameters to map):\n{source}" if source else ""),
+        },
     ]
     usage: list[Usage] = []
     last = ""
@@ -211,9 +220,11 @@ class GenerationPhases:
 
         async def work() -> Attempt:
             try:
+                files = await self.port.source_files()
                 design, usage = await propose_design(
                     self.port.models, rules, await self.port.inventory_digest(),
-                    max_iterations=ctx.run.max_iterations, names=legacy_names(await self.port.source_files()),
+                    max_iterations=ctx.run.max_iterations, names=legacy_names(files),
+                    source="\n\n".join(f"// {f.path}\n{f.text}" for f in files),
                 )  # fmt: skip
             except ReplyError as exc:
                 raise PhaseFailedError(str(exc)[:1500]) from exc

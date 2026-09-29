@@ -83,7 +83,7 @@ class RecordingClient(OpenRouterClient):
         result = await super().chat(api_key, body, timeout_seconds)
         self.directory.mkdir(parents=True, exist_ok=True)
         entry = {
-            "key": key,
+            "request_digest": key,  # the file name; not a credential
             "model": body.get("model"),
             "messages": body.get("messages"),
             "response": _dump(result),

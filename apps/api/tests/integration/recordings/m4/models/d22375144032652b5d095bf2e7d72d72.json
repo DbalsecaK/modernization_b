@@ -1,0 +1,28 @@
+{
+  "request_digest": "d22375144032652b5d095bf2e7d72d72",
+  "model": "anthropic/claude-sonnet-5.5",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are the Rules Verifier of a legacy modernization platform, an independent reviewer. You receive one business rule\nwritten by another agent and the exact source lines it cites. You did not write the rule: check it against the code\nonly.\n\nDecide:\n- `supported`: true only if the cited lines implement the rule as written, including its concrete values\n  (codes, amounts, states, limits) and its condition.\n- `problems`: every discrepancy you find: a value that differs from the code, a condition the code does not have, a\n  missing branch the rule should mention, a citation that does not contain the behaviour.\n- `corrected_statement`: if the rule is close but a detail is wrong, the statement rewritten to match the code;\n  otherwise null.\n\nAnswer with one JSON object and nothing else:\n{\"supported\": true, \"problems\": [], \"corrected_statement\": null}\n"
+    },
+    {
+      "role": "user",
+      "content": "Rule:\n{\"name\":\"Order payment debits the account and fails on debit error\",\"category\":\"lifecycle\",\"priority\":\"P0\",\"statement\":\"The total amount is debited from the customer's account with the reference 'PAGO ORDEN', and the movement sequence number is returned. If the debit fails, the payment ends with error 50005 'ERROR EN DEBITO'.\",\"condition\":\"db_cuentas..sp_debito returns a non-zero code or @@error <> 0.\",\"action\":\"Call sp_debito with the account, account type, @w_total and reference 'PAGO ORDEN', and return the sequence in @o_movimiento. On failure set @w_error = 50005 and @o_mensaje = 'ERROR EN DEBITO'.\"}\n\nCited lines:\nsp/sp_pago_orden.sp:110-115:\n  110  exec @w_return = db_cuentas..sp_debito\n  111       @i_cuenta     = @i_cuenta,\n  112       @i_tipo       = @i_tipo_cuenta,\n  113       @i_valor      = @w_total,\n  114       @i_referencia = 'PAGO ORDEN',\n  115       @o_secuencial = @o_movimiento output\n\nsp/sp_pago_orden.sp:117:\n  117  if @w_return <> 0 or @@error <> 0\n\nsp/sp_pago_orden.sp:120-121:\n  120      select @w_error = 50005,\n  121             @o_mensaje = 'ERROR EN DEBITO'"
+    }
+  ],
+  "response": {
+    "request_id": "gen-1790714492-BRCazdGrUBIZU2M66N2u",
+    "model": "anthropic/claude-sonnet-5.5",
+    "provider_name": "Anthropic",
+    "content": "{\"supported\": true, \"problems\": [], \"corrected_statement\": null}",
+    "usage": {
+      "input_tokens": 777,
+      "output_tokens": 287,
+      "reasoning_tokens": 262,
+      "cache_read_tokens": 0,
+      "cache_write_tokens": 0,
+      "provider_cost_usd": "0.004424"
+    }
+  }
+}

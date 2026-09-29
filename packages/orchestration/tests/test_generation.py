@@ -148,6 +148,11 @@ def test_legacy_names_the_code_does_not_have_are_invented() -> None:
     data["entities"][2]["fields"][0]["legacy"] = "cta_cuenta"  # the SP calls it cta_numero
     problems = design_problems(Design.model_validate(data), RULES, names)
     assert problems == ["these legacy names are not in the legacy code (check the exact spelling): cta_cuenta"]
+    data["entities"][2]["fields"][0]["legacy"] = "@i_cuenta"  # it exists, but it is a parameter, not a column
+    problems = design_problems(Design.model_validate(data), RULES, names)
+    assert problems == [
+        "entity fields map to columns of their legacy table, not to parameters or variables: Account.number = @i_cuenta"
+    ]
 
 
 def test_the_design_must_map_the_legacy_to_replay_the_golden_master() -> None:
