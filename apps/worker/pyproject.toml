@@ -10,6 +10,7 @@ dependencies = [
   "pydantic-settings>=2.10",
   "structlog>=25.4",
   "nexti-core",
+  "nexti-graph",
   "nexti-ingest",
   "nexti-model-gateway",
   "nexti-orchestration",
@@ -18,6 +19,7 @@ dependencies = [
 
 [tool.uv.sources]
 nexti-core = { workspace = true }
+nexti-graph = { workspace = true }
 nexti-ingest = { workspace = true }
 nexti-model-gateway = { workspace = true }
 nexti-orchestration = { workspace = true }

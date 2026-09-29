@@ -7,7 +7,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Literal
 
-from pydantic import SecretStr
+from pydantic import SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 WORKER_DIR = Path(__file__).resolve().parents[2]
@@ -36,6 +36,23 @@ class WorkerSettings(BaseSettings):
     git_allow_private_hosts: bool = False
     sandbox_image: str = ""
     sandbox_docker: str = "docker"
+    # Models (M4): through the gateway with the tenant's connection; OpenRouter base URL for tests.
+    openrouter_url: str | None = None
+    # Recorded responses (ADR-0012), development and test only: a folder and replay|record.
+    model_cassettes_dir: str = ""
+    model_cassettes_mode: Literal["", "replay", "record"] = ""
+    # Knowledge graph (M4), through packages/graph only.
+    graph_uri: str = ""
+    graph_user: str = "neo4j"
+    graph_password: SecretStr = SecretStr("")
+
+    @model_validator(mode="after")
+    def cassettes_only_locally(self) -> "WorkerSettings":
+        if (self.model_cassettes_dir or self.model_cassettes_mode) and not self.is_local:
+            raise ValueError("recorded model responses are only allowed in development and test")
+        if bool(self.model_cassettes_dir) != bool(self.model_cassettes_mode):
+            raise ValueError("MODEL_CASSETTES_DIR and MODEL_CASSETTES_MODE go together")
+        return self
 
     @property
     def is_local(self) -> bool:

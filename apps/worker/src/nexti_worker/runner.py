@@ -25,10 +25,13 @@ from sqlalchemy.ext.asyncio import AsyncEngine
 from nexti_core.db.session import DbScope, scoped_connection
 from nexti_core.object_store import ObjectStore
 from nexti_core.secrets import SecretStore
+from nexti_graph import GraphStore
+from nexti_model_gateway.service import GatewayService
 from nexti_orchestration import Executor, compile_graph, executors_for, pending_interrupts, thread_config
 from nexti_sandbox import Sandbox
 from nexti_worker.loading import load_run
 from nexti_worker.probe import ServicesProbe
+from nexti_worker.project import WorkerProjectPort
 from nexti_worker.store import DbRunStore
 
 log = structlog.get_logger("nexti_worker")
@@ -46,6 +49,8 @@ class Runtime:
     objects: ObjectStore | None = None
     secrets: SecretStore | None = None
     allow_private_hosts: bool = False
+    gateway: GatewayService | None = None  # models (M4); without it the analysis phases wait
+    graph: GraphStore | None = None
 
 
 async def _resume_value(
@@ -105,7 +110,12 @@ async def execute_run(runtime: Runtime, run_id: uuid.UUID, tenant_id: uuid.UUID)
         runtime.engine, run, loaded.relative_cost, objects=runtime.objects, secrets=runtime.secrets,
         http=runtime.http, allow_private_hosts=runtime.allow_private_hosts,
     )  # fmt: skip
-    executors = executors_for(run, probe)
+    port = (
+        WorkerProjectPort(runtime.engine, run, runtime.gateway, runtime.objects, runtime.graph)
+        if runtime.gateway is not None
+        else None
+    )
+    executors = executors_for(run, probe, port)
     async with await AsyncConnection.connect(
         runtime.dsn, autocommit=True, prepare_threshold=0, row_factory=dict_row
     ) as conn:

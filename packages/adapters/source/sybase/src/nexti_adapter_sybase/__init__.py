@@ -114,6 +114,30 @@ class SybaseAdapter:
                 result[source] = str(mapping.neutral) if mapping.neutral else ""
         return result
 
+    def classification(self, files: list[SourceFile]) -> dict[str, int]:
+        """How many statements are infrastructure, control flow or business logic (6.1 phase 4)."""
+        counts: dict[str, int] = {}
+        for _, proc in _procedures(files):
+            for hint in classify(proc):
+                counts[hint.label] = counts.get(hint.label, 0) + 1
+        return counts
+
+    def data_of(
+        self, files: list[SourceFile], file: str, ranges: list[tuple[int, int]]
+    ) -> tuple[frozenset[str], frozenset[str]]:
+        """Tables read and written by the statements inside the given line ranges of `file` (work tables excluded):
+        what a rule reads and writes, for the dependencies between user stories (7.7)."""
+        reads: set[str] = set()
+        writes: set[str] = set()
+        for source, proc in _procedures(files):
+            if source.path != file:
+                continue
+            for stmt in proc.statements():
+                if any(stmt.line_start <= end and stmt.line_end >= start for start, end in ranges):
+                    reads |= {t for t in stmt.reads if not t.startswith("#")}
+                    writes |= {t for t in stmt.writes if not t.startswith("#")}
+        return frozenset(reads), frozenset(writes)
+
     def slices(self, files: list[SourceFile]) -> list[SliceView]:
         views: list[SliceView] = []
         for file, proc in _procedures(files):

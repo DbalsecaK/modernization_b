@@ -52,7 +52,10 @@
 7. **Spec de referencia de Bolivariano:** las 39 reglas de `BUSINESS_RULES.md` revisadas por el aprobador
    (análisis previo con el plugin). Salió de una extracción revisada por una persona, no de una spec escrita a
    mano antes (21.2): las métricas lo declaran como sesgo conocido.
-8. **Permisos nuevos:** `story.edit` (dueño del proyecto, analista, revisor de negocio) y `plan.edit` (dueño
+8. **Quién escribe las HU del Flujo 1:** el *Analista funcional* (7.7) cuando está en el equipo; el catálogo de M2 no
+   lo recomienda para modernización, así que sin él las escribe el *Extractor de reglas* con el mismo prompt. Las
+   dependencias entre HU no las decide el modelo: salen de los datos (una HU que lee una tabla que otra escribe).
+9. **Permisos nuevos:** `story.edit` (dueño del proyecto, analista, revisor de negocio) y `plan.edit` (dueño
    del proyecto, arquitecto), registrados en 16.2 y en el catálogo.
 
 ## 3. Pasos y commits

@@ -1349,6 +1349,7 @@ source = { editable = "packages/orchestration" }
 dependencies = [
     { name = "langgraph" },
     { name = "langgraph-checkpoint-postgres" },
+    { name = "nexti-adapter-sybase" },
     { name = "nexti-agents" },
     { name = "nexti-core" },
     { name = "nexti-sandbox" },
@@ -1359,6 +1360,7 @@ dependencies = [
 requires-dist = [
     { name = "langgraph", specifier = ">=1.0" },
     { name = "langgraph-checkpoint-postgres", specifier = ">=3.0" },
+    { name = "nexti-adapter-sybase", editable = "packages/adapters/source/sybase" },
     { name = "nexti-agents", editable = "packages/agents" },
     { name = "nexti-core", editable = "packages/core" },
     { name = "nexti-sandbox", editable = "packages/sandbox" },
@@ -1388,6 +1390,7 @@ source = { editable = "apps/worker" }
 dependencies = [
     { name = "httpx" },
     { name = "nexti-core" },
+    { name = "nexti-graph" },
     { name = "nexti-ingest" },
     { name = "nexti-model-gateway" },
     { name = "nexti-orchestration" },
@@ -1402,6 +1405,7 @@ dependencies = [
 requires-dist = [
     { name = "httpx", specifier = ">=0.28" },
     { name = "nexti-core", editable = "packages/core" },
+    { name = "nexti-graph", editable = "packages/graph" },
     { name = "nexti-ingest", editable = "packages/ingest" },
     { name = "nexti-model-gateway", editable = "packages/model_gateway" },
     { name = "nexti-orchestration", editable = "packages/orchestration" },

@@ -103,6 +103,7 @@ class Completion:
     offering_id: uuid.UUID
     was_fallback: bool
     request_id: str | None
+    model: str = ""  # the model slug that answered
 
 
 @dataclass(frozen=True)
@@ -466,6 +467,7 @@ class ModelGateway:
                     offering_id=plan.offering_id,
                     was_fallback=len(attempts) > 1,
                     request_id=attempt.result.request_id,
+                    model=plan.model,
                 )
         await self._record(ctx, attempts)
         if all(a.outcome == "blocked" for a in attempts):

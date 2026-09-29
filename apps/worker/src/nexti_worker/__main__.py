@@ -4,6 +4,7 @@ import asyncio
 import logging
 import sys
 from collections.abc import Mapping, MutableMapping
+from pathlib import Path
 from typing import Any
 
 import httpx
@@ -14,6 +15,9 @@ from nexti_core.jobs import RUNS_QUEUE
 from nexti_core.object_store import ObjectStore, ObjectStoreConfig
 from nexti_core.redaction import redact
 from nexti_core.secrets import SecretsConfig, SecretStore
+from nexti_graph import GraphStore
+from nexti_model_gateway.service import GatewayService
+from nexti_model_gateway.service import SecretsConfig as GatewaySecrets
 from nexti_sandbox import DEFAULT_IMAGE, DockerSandbox
 from nexti_worker.queue import MAINTENANCE_QUEUE, create_app
 from nexti_worker.runner import Runtime
@@ -62,6 +66,16 @@ async def run_worker(settings: WorkerSettings, *, name: str | None = None, wait:
                 ), http,
             ) if settings.secrets_url else None,
             allow_private_hosts=settings.git_allow_private_hosts and settings.is_local,
+            gateway=GatewayService(
+                engine, http,
+                GatewaySecrets(settings.secrets_url, settings.secrets_token.get_secret_value(), settings.secrets_mount),
+                settings.openrouter_url,
+                cassettes=(Path(settings.model_cassettes_dir), settings.model_cassettes_mode)
+                if settings.model_cassettes_mode else None,
+            ) if settings.secrets_url else None,
+            graph=GraphStore.connect(
+                settings.graph_uri, settings.graph_user, settings.graph_password.get_secret_value()
+            ) if settings.graph_uri else None,
         )  # fmt: skip
         app = create_app(settings.psycopg_dsn)
         try:

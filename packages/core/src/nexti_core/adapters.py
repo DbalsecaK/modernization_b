@@ -8,8 +8,16 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field
 from typing import Literal, Protocol
 
-NodeLabel = Literal["StoredProcedure", "Program", "Paragraph", "Statement", "Table", "Column", "Field", "File"]
-EdgeType = Literal["CALLS", "READS", "WRITES", "CONTAINS", "DECLARES", "EXEC_SQL"]
+# Code and data layers (what adapters produce) and knowledge / target layers (spec 5.1).
+NodeLabel = Literal[
+    "StoredProcedure", "Program", "Paragraph", "Statement", "Table", "Column", "Field", "File",
+    "Rule", "Capability", "Contract", "Story", "TestCase", "Question", "Domain",
+    "Service", "Module", "Class", "Method", "Endpoint",
+]  # fmt: skip
+EdgeType = Literal[
+    "CALLS", "READS", "WRITES", "CONTAINS", "DECLARES", "EXEC_SQL",
+    "DERIVED_FROM", "BELONGS_TO", "VERIFIES", "COVERS", "DEPENDS_ON", "IMPLEMENTS", "MAPS_TO",
+]  # fmt: skip
 
 
 @dataclass(frozen=True)
@@ -75,4 +83,14 @@ class SourceAdapter(Protocol):
 
     def slices(self, files: list[SourceFile]) -> list[SliceView]:
         """The units for rule extraction, each with its slice."""
+        ...
+
+    def classification(self, files: list[SourceFile]) -> dict[str, int]:
+        """Statements (or paragraphs) by label: infrastructure, control_flow, business."""
+        ...
+
+    def data_of(
+        self, files: list[SourceFile], file: str, ranges: list[tuple[int, int]]
+    ) -> tuple[frozenset[str], frozenset[str]]:
+        """Tables (or files) read and written by the code inside the line ranges."""
         ...
