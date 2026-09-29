@@ -313,6 +313,22 @@
       "activity": "Activity",
       "settings": "Settings",
       "backlog": "Backlog"
+    },
+    "createdOn": "Created {{date}}",
+    "runsLater": "Runs start with the orchestration engine (next milestone).",
+    "laterHint": "The project is set up; this view fills in as the pipeline produces its content.",
+    "later": {
+      "inventory": "The legacy map appears after the inventory phase",
+      "specification": "The specification appears as the agents extract it",
+      "uiDesign": "Screens and prototypes appear in the UI phase",
+      "architecture": "The architecture appears in the design phase",
+      "code": "Code appears in the generation phase",
+      "traceability": "Source ↔ target comparisons appear after generation",
+      "validation": "Validation results appear in the verification phase",
+      "backlog": "The backlog appears with the Jira / Azure DevOps link",
+      "runs": "Runs appear when the pipeline starts",
+      "costs": "Costs appear with the first model calls of the pipeline",
+      "activity": "Activity appears when the agents start working"
     }
   },
   "overview": {
@@ -335,7 +351,13 @@
     "reviewStories_one": "{{count}} user story to review before the migration starts",
     "reviewStories_other": "{{count}} user stories to review before the migration starts",
     "openStories": "Review stories",
-    "openPlan": "Migration plan"
+    "openPlan": "Migration plan",
+    "addInputs": "Add the code, documents or UI references of the project.",
+    "fixInputs_one": "{{count}} input was rejected: see why and upload it again.",
+    "fixInputs_other": "{{count}} inputs were rejected: see why and upload them again.",
+    "rejectedInputs_one": "{{count}} rejected",
+    "rejectedInputs_other": "{{count}} rejected",
+    "reviewTeam": "Review the team of agents, the skills and the pipeline."
   },
   "inputs": {
     "title": "Inputs",
@@ -347,8 +369,9 @@
     "added": "Added",
     "status": "Status",
     "statuses": {
-      "scanned": "Scanned",
-      "quarantined": "In quarantine"
+      "accepted": "Accepted",
+      "rejected": "Rejected",
+      "deleted": "Deleted"
     },
     "securityNote": "Uploaded files are untrusted: they are checked for malware, path traversal and zip bombs, and credentials are masked before any model sees them.",
     "rejections": {
@@ -374,7 +397,37 @@
       "malware_scanner_unavailable": "The malware scanner is not available; try again later.",
       "inputs_unavailable": "Input storage is not available.",
       "project_name_taken": "A project with that name already exists."
-    }
+    },
+    "none": "No inputs yet.",
+    "kind": "Kind of input",
+    "kinds": {
+      "source_archive": "Code archive (zip)",
+      "document": "Document",
+      "screenshot": "Screenshot",
+      "figma_link": "Figma link",
+      "prototype_link": "Prototype link"
+    },
+    "secretsFound_one": "{{count}} credential found",
+    "secretsFound_other": "{{count}} credentials found",
+    "archiveOnly": "One zip with the legacy code; validated before it is stored.",
+    "deleteInput": "Delete {{name}}",
+    "confirmDelete": "Delete \"{{name}}\"? The stored file is removed; the record stays in the history.",
+    "deleted": "\"{{name}}\" deleted.",
+    "repository": "Git repository",
+    "repositoryHint": "The platform checks it can read the branch; the clone happens in the preflight of the pipeline.",
+    "connectRepository": "Connect repository",
+    "noRepository": "No repository connected.",
+    "repositorySaved": "Repository saved.",
+    "repositoryRemoved": "Repository removed.",
+    "confirmRemoveRepository": "Remove the repository? Its token is deleted from the secrets store.",
+    "repositoryStatus": {
+      "untested": "Not tested",
+      "ok": "Reachable",
+      "failed": "Failed"
+    },
+    "withToken": "With token",
+    "tokenKept": "Leave empty to keep the current token.",
+    "branches": "Branches: {{branches}}"
   },
   "inventory": {
     "programs": "Programs",
@@ -725,7 +778,21 @@
     "versions": "Agent and skill versions",
     "pinned": "Pinned",
     "changeNote": "Changes only affect phases that have not started. They are recorded in the audit log.",
-    "integrations": "Integrations"
+    "integrations": "Integrations",
+    "saved": "Project saved.",
+    "archive": "Archive project",
+    "restore": "Restore project",
+    "archived": "Project archived.",
+    "restored": "Project restored.",
+    "editConfig": "Edit configuration",
+    "noConfig": "This project has no configuration yet.",
+    "configSaved": "New configuration version saved.",
+    "changeNoteLabel": "Reason for the change (optional)",
+    "needsAgentsSelect": "Changing the team of agents needs the \"Select agents\" permission.",
+    "needsSkillsSelect": "Changing the skills needs the \"Select skills\" permission.",
+    "history": "Configuration history",
+    "historyHint": "Every change is a new version; the audit log records who made it.",
+    "note": "Note"
   },
   "wizard": {
     "title": "New project",

@@ -1,17 +1,7 @@
 import { useTranslation } from 'react-i18next'
-import {
-  AlertTriangle,
-  CheckCircle2,
-  CircleDashed,
-  GitBranch,
-  RefreshCw,
-  ShieldCheck,
-  Split,
-  XCircle,
-} from 'lucide-react'
-import { cn } from '@/lib/cn'
+import { AlertTriangle, CheckCircle2, CircleDashed, RefreshCw, ShieldCheck, Split, XCircle } from 'lucide-react'
 import { formatCompact, formatDateTime, formatUsd } from '@/lib/format'
-import { agents, auditLog, costByAgent, costByPhase, invocationDetails, projects, runEvents } from '@/mocks/data'
+import { agents, auditLog, costByAgent, costByPhase, invocationDetails, runEvents } from '@/mocks/data'
 import { useState } from 'react'
 import { Drawer, toast } from '@/components/ui/overlay'
 import type { Project, RunEvent } from '@/mocks/types'
@@ -354,75 +344,11 @@ export function ActivityTab({ project }: { project: Project }) {
   )
 }
 
-export function SettingsTab({ project }: { project: Project }) {
-  const { t } = useTranslation()
-  const other = projects.filter((p) => p.id !== project.id).length
-  return (
-    <div className="grid gap-6 lg:grid-cols-2">
-      <Card>
-        <CardHeader title={t('projectSettings.general')} />
-        <CardBody className="space-y-4">
-          <Field label={t('wizard.projectName')}>
-            <Input defaultValue={project.name} />
-          </Field>
-          <Field label={t('wizard.budget')}>
-            <Input type="number" defaultValue={project.budgetUsd} />
-          </Field>
-          <Field label={t('wizard.maxIterations')}>
-            <Input type="number" defaultValue={3} />
-          </Field>
-          <Button variant="primary">{t('common.save')}</Button>
-        </CardBody>
-      </Card>
-      <Card>
-        <CardHeader title={t('projectSettings.teamAndAgents')} />
-        <CardBody className="space-y-3 text-sm">
-          <SettingRow label={t('projectSettings.agents')} value={t('wizard.agentsSelected', { count: 15 })} />
-          <SettingRow label={t('projectSettings.skills')} value={t('wizard.skillsSelected', { count: 14 })} />
-          <SettingRow label={t('projectSettings.models')} value={t('projectSettings.inherited')} />
-          <SettingRow label={t('projectSettings.pipeline')} value={t('templates.bankStandard.name')} />
-          <SettingRow label={t('hitl.autonomyTitle')} value={t('hitl.levels.balanced.name')} />
-          <SettingRow label={t('projectSettings.versions')} value={t('projectSettings.pinned')} />
-          <p className="pt-2 text-xs text-muted">{t('projectSettings.changeNote', { count: other })}</p>
-        </CardBody>
-      </Card>
-      <Card className="lg:col-span-2">
-        <CardHeader title={t('projectSettings.integrations')} />
-        <CardBody className="grid gap-3 sm:grid-cols-3">
-          {[
-            ['GitHub', 'andesbank/card-management', true],
-            ['Jira', 'CARDS', true],
-            ['Figma', '—', false],
-          ].map(([name, detail, on]) => (
-            <div key={name as string} className={cn('flex items-center gap-3 rounded-md border border-border p-3')}>
-              <GitBranch size={16} className="text-muted" />
-              <div className="flex-1 text-sm">
-                <div className="text-text">{name}</div>
-                <div className="text-xs text-muted">{detail}</div>
-              </div>
-              <Badge tone={on ? 'good' : 'neutral'}>{on ? t('common.connected') : t('common.notConnected')}</Badge>
-            </div>
-          ))}
-        </CardBody>
-      </Card>
-    </div>
-  )
-}
-
 function DetailItem({ label, value }: { label: string; value: string }) {
   return (
     <div>
       <dt className="text-xs text-muted">{label}</dt>
       <dd className="text-text">{value}</dd>
-    </div>
-  )
-}
-
-function SettingRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex items-center justify-between gap-4 border-b border-border pb-2 last:border-0">
-      <span className="text-muted">{label}</span>
-      <span className="text-right text-text">{value}</span>
     </div>
   )
 }

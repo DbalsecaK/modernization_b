@@ -313,6 +313,22 @@
       "activity": "Actividad",
       "settings": "Configuración",
       "backlog": "Backlog"
+    },
+    "createdOn": "Creado el {{date}}",
+    "runsLater": "Las ejecuciones arrancan con el motor de orquestación (próximo hito).",
+    "laterHint": "El proyecto está configurado; esta vista se llena a medida que el pipeline produce su contenido.",
+    "later": {
+      "inventory": "El mapa del legacy aparece después de la fase de inventario",
+      "specification": "La especificación aparece a medida que los agentes la extraen",
+      "uiDesign": "Las pantallas y prototipos aparecen en la fase de UI",
+      "architecture": "La arquitectura aparece en la fase de diseño",
+      "code": "El código aparece en la fase de generación",
+      "traceability": "Las comparaciones origen ↔ destino aparecen después de la generación",
+      "validation": "Los resultados de validación aparecen en la fase de verificación",
+      "backlog": "El backlog aparece con el vínculo a Jira / Azure DevOps",
+      "runs": "Las ejecuciones aparecen cuando arranca el pipeline",
+      "costs": "Los costos aparecen con las primeras llamadas a modelos del pipeline",
+      "activity": "La actividad aparece cuando los agentes empiezan a trabajar"
     }
   },
   "overview": {
@@ -335,7 +351,13 @@
     "reviewStories_one": "{{count}} historia de usuario por revisar antes de iniciar la migración",
     "reviewStories_other": "{{count}} historias de usuario por revisar antes de iniciar la migración",
     "openStories": "Revisar historias",
-    "openPlan": "Plan de migración"
+    "openPlan": "Plan de migración",
+    "addInputs": "Agrega el código, los documentos o las referencias de UI del proyecto.",
+    "fixInputs_one": "{{count}} insumo fue rechazado: mira por qué y súbelo de nuevo.",
+    "fixInputs_other": "{{count}} insumos fueron rechazados: mira por qué y súbelos de nuevo.",
+    "rejectedInputs_one": "{{count}} rechazado",
+    "rejectedInputs_other": "{{count}} rechazados",
+    "reviewTeam": "Revisa el equipo de agentes, las skills y el pipeline."
   },
   "inputs": {
     "title": "Insumos",
@@ -347,8 +369,9 @@
     "added": "Agregado",
     "status": "Estado",
     "statuses": {
-      "scanned": "Analizado",
-      "quarantined": "En cuarentena"
+      "accepted": "Aceptado",
+      "rejected": "Rechazado",
+      "deleted": "Eliminado"
     },
     "securityNote": "Los archivos subidos no son confiables: se revisan en busca de malware, path traversal y zip bombs, y las credenciales se enmascaran antes de que un modelo los vea.",
     "rejections": {
@@ -374,7 +397,37 @@
       "malware_scanner_unavailable": "El antivirus no está disponible; intenta más tarde.",
       "inputs_unavailable": "El almacenamiento de insumos no está disponible.",
       "project_name_taken": "Ya existe un proyecto con ese nombre."
-    }
+    },
+    "none": "Aún no hay insumos.",
+    "kind": "Tipo de insumo",
+    "kinds": {
+      "source_archive": "Archivo de código (zip)",
+      "document": "Documento",
+      "screenshot": "Captura de pantalla",
+      "figma_link": "Link de Figma",
+      "prototype_link": "Link de prototipo"
+    },
+    "secretsFound_one": "{{count}} credencial encontrada",
+    "secretsFound_other": "{{count}} credenciales encontradas",
+    "archiveOnly": "Un zip con el código legacy; se valida antes de guardarse.",
+    "deleteInput": "Eliminar {{name}}",
+    "confirmDelete": "¿Eliminar «{{name}}»? Se borra el archivo guardado; el registro queda en el historial.",
+    "deleted": "«{{name}}» eliminado.",
+    "repository": "Repositorio Git",
+    "repositoryHint": "La plataforma comprueba que puede leer la rama; el clonado ocurre en el preflight del pipeline.",
+    "connectRepository": "Conectar repositorio",
+    "noRepository": "No hay repositorio conectado.",
+    "repositorySaved": "Repositorio guardado.",
+    "repositoryRemoved": "Repositorio quitado.",
+    "confirmRemoveRepository": "¿Quitar el repositorio? Su token se borra del almacén de secretos.",
+    "repositoryStatus": {
+      "untested": "Sin probar",
+      "ok": "Accesible",
+      "failed": "Falló"
+    },
+    "withToken": "Con token",
+    "tokenKept": "Déjalo vacío para conservar el token actual.",
+    "branches": "Ramas: {{branches}}"
   },
   "inventory": {
     "programs": "Programas",
@@ -725,7 +778,21 @@
     "versions": "Versiones de agentes y skills",
     "pinned": "Fijadas",
     "changeNote": "Los cambios solo afectan a las fases que no han empezado y quedan en la auditoría.",
-    "integrations": "Integraciones"
+    "integrations": "Integraciones",
+    "saved": "Proyecto guardado.",
+    "archive": "Archivar proyecto",
+    "restore": "Restaurar proyecto",
+    "archived": "Proyecto archivado.",
+    "restored": "Proyecto restaurado.",
+    "editConfig": "Editar configuración",
+    "noConfig": "Este proyecto aún no tiene configuración.",
+    "configSaved": "Nueva versión de configuración guardada.",
+    "changeNoteLabel": "Motivo del cambio (opcional)",
+    "needsAgentsSelect": "Cambiar el equipo de agentes requiere el permiso «Seleccionar agentes».",
+    "needsSkillsSelect": "Cambiar las skills requiere el permiso «Seleccionar skills».",
+    "history": "Historial de configuración",
+    "historyHint": "Cada cambio es una nueva versión; la auditoría registra quién lo hizo.",
+    "note": "Nota"
   },
   "wizard": {
     "title": "Nuevo proyecto",

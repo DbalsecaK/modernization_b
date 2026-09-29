@@ -24,6 +24,19 @@ export type LinkKind = 'figma_link' | 'prototype_link'
 
 export const AXES = ['architecture', 'backend', 'frontend', 'database', 'cloud'] as const
 
+// Project permissions the screens use to show or hide actions (the API checks them anyway).
+const PROJECT_PERMISSIONS = {
+  configure: 'project.configure',
+  upload: 'input.upload',
+  selectAgents: 'agents.select',
+  selectSkills: 'skills.select',
+  downloadCode: 'code.download',
+} as const
+
+export function hasProjectPermission(project: ProjectDetail, action: keyof typeof PROJECT_PERMISSIONS): boolean {
+  return project.permissions.includes(PROJECT_PERMISSIONS[action])
+}
+
 type Result<T> = { data?: T; error?: unknown; response: Response }
 
 async function unwrap<T>(call: Promise<Result<T>>): Promise<T> {
