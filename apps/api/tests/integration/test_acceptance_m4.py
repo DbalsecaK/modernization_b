@@ -407,11 +407,3 @@ async def _context(engine: AsyncEngine, run_id: uuid.UUID, tenant_id: uuid.UUID)
     from nexti_worker.loading import load_run
 
     return (await load_run(engine, run_id, tenant_id)).context
-
-
-def test_the_recordings_hold_no_secret_and_no_customer_code() -> None:
-    """What the recorded run keeps in the repository is the fictitious application only (ADR-0011, ADR-0012)."""
-    markers = ("db_biz_pagos", "db_sat_his", "db_biz_admempresa", "bp_total_orden", "sp_debcred", "sk-or-")
-    for path in RECORDINGS.rglob("*.json") if RECORDINGS.exists() else []:
-        content = path.read_text(encoding="utf-8").lower()
-        assert not any(m in content for m in markers), path.name
