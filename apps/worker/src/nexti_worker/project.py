@@ -11,7 +11,6 @@ import zipfile
 from collections.abc import Callable, Sequence
 from typing import Any
 
-from nexti_verification import Verdict
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine
 
@@ -29,6 +28,8 @@ from nexti_orchestration.store import Usage
 from nexti_orchestration.stories import Stories
 from nexti_pack_spring_boot import Design
 from nexti_sandbox import Sandbox
+from nexti_verification import Verdict
+from nexti_verification.evaluation import Evaluation
 
 MAX_FILE_BYTES = 5 * 1024 * 1024
 MAX_TOTAL_BYTES = 50 * 1024 * 1024
@@ -431,3 +432,15 @@ class WorkerProjectPort:
                  "v": verdict.verdict, "c": json.dumps(checks), "n": json.dumps(verdict.not_proven), "k": key},
             )  # fmt: skip
         return key
+
+    # -- evaluation against a reference (M4) ---------------------------------------------------------------------
+    async def save_evaluation(self, evaluation: Evaluation) -> None:
+        """The metrics with the name and hash of the reference, never its content (ADR-0011)."""
+        async with self._db() as conn:
+            await conn.execute(
+                text("INSERT INTO evaluation (tenant_id, project_id, run_id, reference, reference_sha256, metrics) "
+                     "VALUES (:t, :p, :r, :n, :h, CAST(:m AS jsonb))"),
+                {"t": self.run.tenant_id, "p": self.run.project_id, "r": self.run.run_id,
+                 "n": evaluation.reference[:200], "h": evaluation.reference_sha256,
+                 "m": json.dumps(evaluation.metrics())},
+            )  # fmt: skip

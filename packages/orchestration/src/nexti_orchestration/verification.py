@@ -7,10 +7,6 @@ verdict from that evidence with fixed rules. No model takes part. The proof pack
 from collections.abc import Mapping, Sequence
 from typing import Any, Protocol
 
-from nexti_verification import Verdict, build_proof_pack, differences, fresh_suite
-from nexti_verification import verdict as checks
-from nexti_verification.verdict import CaseOutcome
-
 from nexti_adapter_sybase.golden import parameter_defaults
 from nexti_core.adapters import LegacyRunner, LegacyUnavailableError, SourceFile
 from nexti_core.spec.characterization import GoldenMaster, Suite, source_digest
@@ -21,6 +17,9 @@ from nexti_pack_spring_boot import IMAGE, Design, UseCase, service_path
 from nexti_pack_spring_boot.canary import mutations
 from nexti_pack_spring_boot.equivalence import EquivalenceRun, run_equivalence
 from nexti_sandbox import Sandbox
+from nexti_verification import Verdict, build_proof_pack, differences, fresh_suite
+from nexti_verification import verdict as checks
+from nexti_verification.verdict import CaseOutcome
 
 VALIDATOR = "equivalence-validator"
 

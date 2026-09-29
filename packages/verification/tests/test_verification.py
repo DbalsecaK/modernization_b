@@ -6,11 +6,10 @@ import json
 import zipfile
 from datetime import UTC, datetime
 
-from nexti_verification import CaseOutcome, build_proof_pack, compute, differences, fresh_suite, trace_rules
-from nexti_verification import verdict as checks
-
 from nexti_core.spec.characterization import Call, Case, Observation, Suite
 from nexti_core.spec.model import Rule
+from nexti_verification import CaseOutcome, build_proof_pack, compute, differences, fresh_suite, trace_rules
+from nexti_verification import verdict as checks
 
 BASE = Observation(returns=0, outputs={"@o_msg": "OK"}, tables={"db..t": [{"a": "1.0000"}]},
                    calls=[Call(program="db..debit", arguments={"@v": "100.6300"})])  # fmt: skip

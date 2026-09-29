@@ -11,8 +11,6 @@ from pathlib import Path
 
 import httpx
 import pytest
-from nexti_verification import compute
-from nexti_verification import verdict as checks
 from sqlalchemy.ext.asyncio import AsyncEngine
 
 from nexti_core.object_store import ObjectStore, ObjectStoreConfig, input_key
@@ -23,6 +21,9 @@ from nexti_graph import GraphStore, Scope
 from nexti_model_gateway.service import GatewayService, SecretsConfig
 from nexti_orchestration.stories import Stories, StoryDraft
 from nexti_pack_spring_boot import Design
+from nexti_verification import compute
+from nexti_verification import verdict as checks
+from nexti_verification.evaluation import evaluate, load_reference
 from nexti_worker.loading import load_run
 from nexti_worker.project import WorkerProjectPort, read_zip
 
@@ -216,6 +217,13 @@ async def test_the_port_keeps_designs_drafts_and_the_golden_master_as_references
         assert row["verdict"] == "PARTLY PROVEN"
         assert row["checks"][0]["key"] == "tests_ran"
         assert row["not_proven"][0] == "a note"
+        reference = fixtures / "reference_spec.json"
+        await port.save_evaluation(evaluate(load_reference(reference), []))
+        (stored,) = await fetch(owner_engine, "SELECT reference, reference_sha256, metrics FROM evaluation "
+                                "WHERE project_id = :p", p=project_id)  # fmt: skip
+        assert stored["reference_sha256"] == hashlib.sha256(reference.read_bytes()).hexdigest()
+        assert stored["metrics"]["omissions_p0"] == ["RULE-001", "RULE-002", "RULE-004", "RULE-006", "RULE-007"]
+        assert "statement" not in json.dumps(stored["metrics"])  # the metrics, never the content of the reference
 
     rows = await fetch(owner_engine, "SELECT path, layer, rules, object_key FROM generated_artifact "
                                      "WHERE project_id = :p ORDER BY path", p=project_id)  # fmt: skip

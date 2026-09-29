@@ -122,3 +122,12 @@
   - Un veredicto no se reescribe: una verificación nueva va en otra corrida.
   - Con la aplicación ficticia, el veredicto es PROVEN (6 de 6). La máscara declarada queda en "lo que no
     prueba": el legacy deja en `@o_movimiento` el número de un débito ya revertido.
+- **Paso 12, evaluación:**
+  - `nexti_verification.evaluation` mide omisiones (P0 aparte), alucinaciones y errores de precisión contra una
+    spec de referencia.
+  - El emparejamiento es uno a uno, primero el mejor, por solape de líneas y palabras en común. Un error de
+    precisión es un valor concreto de la referencia (código, monto, límite) que falta en la regla extraída.
+  - La referencia puede ser JSON (modelo de reglas) o tarjetas de reglas en Markdown. El kit se lee de
+    `NEXTI_REFERENCE_DIR/<app>` (`kit.json`, `source/`, spec de referencia).
+  - `python -m nexti_worker.evaluate` evalúa una corrida a demanda y guarda solo métricas, nombre y hash.
+    Una referencia revisada desde una extracción previa (`written_blind: false`) declara su sesgo.

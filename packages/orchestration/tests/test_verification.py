@@ -13,7 +13,6 @@ import zipfile
 from pathlib import Path
 
 import pytest
-from nexti_verification import Verdict
 
 from nexti_adapter_sybase.ase import RecordedRunner
 from nexti_core.adapters import LegacyRunner, SourceFile
@@ -26,6 +25,7 @@ from nexti_orchestration.memory import MemoryStore
 from nexti_orchestration.verification import VerificationPhases
 from nexti_pack_spring_boot import IMAGE, Design, adapter_path, junit_path, service_path, skeleton
 from nexti_sandbox import DockerSandbox, Sandbox
+from nexti_verification import Verdict
 
 PACKAGES = Path(__file__).resolve().parents[2]
 LEGACY = PACKAGES / "adapters/source/sybase/tests/fixtures/pago_orden"
