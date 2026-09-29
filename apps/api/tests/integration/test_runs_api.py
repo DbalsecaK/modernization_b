@@ -231,7 +231,8 @@ async def test_tasks_and_activity_only_show_authorized_projects_and_exports_carr
         runs[project_id] = run_id
 
     sign_in(api, world.shared)
-    tasks = api.get("/api/v1/tasks").json()
+    # Only this test's projects: other tests leave tasks for the same user in projects of their own.
+    tasks = [t for t in api.get("/api/v1/tasks").json() if t["projectId"] in (str(mine), str(other))]
     assert {(t["kind"], t["projectId"]) for t in tasks} == {("question", str(mine)), ("gate", str(mine))}
     assert next(t for t in tasks if t["kind"] == "gate")["gate"] == "C4"
 

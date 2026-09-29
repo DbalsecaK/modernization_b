@@ -64,6 +64,19 @@ def _safe_relative(name: str) -> PurePosixPath:
     return path
 
 
+def _write_inputs(input_dir: Path, files: Mapping[str, bytes]) -> None:
+    """The container runs as nobody: the inputs must be world-readable (mkdtemp creates the folder 0700). They are
+    mounted read-only, so readable is all they need to be."""
+    input_dir.chmod(0o755)
+    for relative, content in files.items():
+        target = input_dir.joinpath(*_safe_relative(relative).parts)
+        for parent in reversed(target.relative_to(input_dir).parents[:-1]):
+            (input_dir / parent).mkdir(mode=0o755, exist_ok=True)
+            (input_dir / parent).chmod(0o755)
+        target.write_bytes(content)
+        target.chmod(0o644)
+
+
 class DockerSandbox:
     def __init__(self, image: str = DEFAULT_IMAGE, docker: str = "docker", limits: Limits | None = None) -> None:
         self.image = image
@@ -99,10 +112,7 @@ class DockerSandbox:
         input_dir = Path(tempfile.mkdtemp(prefix="nexti-sandbox-"))
         started = time.monotonic()
         try:
-            for relative, content in (files or {}).items():
-                target = input_dir.joinpath(*_safe_relative(relative).parts)
-                target.parent.mkdir(parents=True, exist_ok=True)
-                target.write_bytes(content)
+            await asyncio.to_thread(_write_inputs, input_dir, files or {})
             timed_out = False
             try:
                 # The docker CLI runs in a thread: this works on any event loop (psycopg needs the selector loop on
