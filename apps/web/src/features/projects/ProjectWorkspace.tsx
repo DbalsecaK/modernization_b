@@ -11,6 +11,8 @@ import { ProjectSettings } from './workspace/ProjectSettings'
 import { ProjectRuns } from './workspace/ProjectRuns'
 import { ProjectActivity } from './workspace/ProjectActivity'
 import { ProjectSpecification } from './workspace/ProjectSpecification'
+import { ProjectTraceability } from './workspace/ProjectTraceability'
+import { ProjectValidation } from './workspace/ProjectValidation'
 
 const TABS = [
   'overview',
@@ -29,9 +31,18 @@ const TABS = [
   'settings',
 ] as const
 export type ProjectTab = (typeof TABS)[number]
-// Connected so far (M2: overview, inputs, settings; M3: runs, activity; M4: specification); the others fill in as the
-// pipeline produces their content.
-const CONNECTED: ProjectTab[] = ['overview', 'inputs', 'specification', 'runs', 'activity', 'settings']
+// Connected so far (M2: overview, inputs, settings; M3: runs, activity; M4: specification, traceability, validation);
+// the others fill in as the pipeline produces their content.
+const CONNECTED: ProjectTab[] = [
+  'overview',
+  'inputs',
+  'specification',
+  'traceability',
+  'validation',
+  'runs',
+  'activity',
+  'settings',
+]
 
 export function ProjectWorkspace() {
   const { t } = useTranslation()
@@ -89,6 +100,8 @@ export function ProjectWorkspace() {
       {tab === 'overview' && <ProjectOverview project={p} onOpen={setTab} />}
       {tab === 'inputs' && <ProjectInputs project={p} />}
       {tab === 'specification' && <ProjectSpecification project={p} onOpenRuns={() => setTab('runs')} />}
+      {tab === 'traceability' && <ProjectTraceability project={p} onOpenRuns={() => setTab('runs')} />}
+      {tab === 'validation' && <ProjectValidation project={p} onOpenRuns={() => setTab('runs')} />}
       {tab === 'runs' && <ProjectRuns project={p} />}
       {tab === 'activity' && <ProjectActivity project={p} />}
       {tab === 'settings' && <ProjectSettings project={p} />}

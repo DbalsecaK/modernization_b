@@ -167,11 +167,17 @@ class CodeExcerptOut(ApiModel):
     truncated: bool
 
 
+class DifferenceOut(ApiModel):
+    path: str
+    expected: str | None
+    actual: str | None
+
+
 class CaseOut(ApiModel):
     name: str
     matched: bool
     failure: str | None
-    differences: list[dict[str, Any]]
+    differences: list[DifferenceOut]
 
 
 class TraceDetailOut(ApiModel):
@@ -182,4 +188,4 @@ class TraceDetailOut(ApiModel):
     target: list[CodeExcerptOut]
     cases: list[CaseOut]
     verified: bool | None
-    verdict: str | None
+    verdict: Literal["PROVEN", "PARTLY PROVEN", "NOT PROVEN"] | None

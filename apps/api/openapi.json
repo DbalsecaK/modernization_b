@@ -788,8 +788,7 @@
         "properties": {
           "differences": {
             "items": {
-              "additionalProperties": true,
-              "type": "object"
+              "$ref": "#/components/schemas/DifferenceOut"
             },
             "title": "Differences",
             "type": "array"
@@ -1777,6 +1776,43 @@
           "displayName"
         ],
         "title": "DevUser",
+        "type": "object"
+      },
+      "DifferenceOut": {
+        "properties": {
+          "actual": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actual"
+          },
+          "expected": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          }
+        },
+        "required": [
+          "path",
+          "expected",
+          "actual"
+        ],
+        "title": "DifferenceOut",
         "type": "object"
       },
       "DiscardIn": {
@@ -6315,6 +6351,11 @@
           "verdict": {
             "anyOf": [
               {
+                "enum": [
+                  "PROVEN",
+                  "PARTLY PROVEN",
+                  "NOT PROVEN"
+                ],
                 "type": "string"
               },
               {

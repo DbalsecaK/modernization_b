@@ -1965,9 +1965,7 @@ export interface components {
         /** CaseOut */
         CaseOut: {
             /** Differences */
-            differences: {
-                [key: string]: unknown;
-            }[];
+            differences: components["schemas"]["DifferenceOut"][];
             /** Failure */
             failure: string | null;
             /** Matched */
@@ -2288,6 +2286,15 @@ export interface components {
              * Format: uuid
              */
             id: string;
+        };
+        /** DifferenceOut */
+        DifferenceOut: {
+            /** Actual */
+            actual: string | null;
+            /** Expected */
+            expected: string | null;
+            /** Path */
+            path: string;
         };
         /** DiscardIn */
         DiscardIn: {
@@ -3874,7 +3881,7 @@ export interface components {
             /** Target */
             target: components["schemas"]["CodeExcerptOut"][];
             /** Verdict */
-            verdict: string | null;
+            verdict: ("PROVEN" | "PARTLY PROVEN" | "NOT PROVEN") | null;
             /** Verified */
             verified: boolean | null;
         };
