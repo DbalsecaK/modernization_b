@@ -8,7 +8,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from nexti_api import health, me, usage
-from nexti_api.admin import assignments, audit_log, invitations, projects, roles, tenants, users
+from nexti_api.admin import assignments, audit_log, invitations, roles, tenants, users
 from nexti_api.ai import assignments as ai_assignments
 from nexti_api.ai import catalog as ai_catalog
 from nexti_api.ai import connections as ai_connections
@@ -24,6 +24,7 @@ from nexti_api.authz.relay import OutboxRelay
 from nexti_api.errors import install_error_handlers
 from nexti_api.keycloak_admin import KeycloakAdmin
 from nexti_api.observability import RequestLogMiddleware, configure_logging, log
+from nexti_api.projects import router as projects_router
 from nexti_api.resources import Resources
 from nexti_api.settings import Settings, get_settings
 from nexti_model_gateway.service import GatewayService, SecretsConfig
@@ -145,7 +146,7 @@ def create_app(settings: Settings | None = None, health_checks: dict[str, health
         invitations.router,
         roles.router,
         assignments.router,
-        projects.router,
+        projects_router.router,
     ):
         app.include_router(admin_router)
     app.include_router(audit_log.router)

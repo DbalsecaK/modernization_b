@@ -10,8 +10,9 @@ from sqlalchemy.ext.asyncio import create_async_engine
 from nexti_api.audit.keycloak_events import pull_keycloak_events
 from nexti_api.authz import fga as fga_module
 from nexti_api.authz.reconcile import reconcile
+from nexti_api.catalog_store import sync_catalog
 from nexti_api.keycloak_admin import KeycloakAdmin
-from nexti_api.seed import seed_dev
+from nexti_api.seed import seed_dev, seed_project_configs
 from nexti_api.settings import Settings, get_settings
 
 
@@ -43,13 +44,35 @@ async def _seed_dev(settings: Settings) -> int:
     engine = create_async_engine(url)
     try:
         async with engine.begin() as conn:
+            await sync_catalog(conn)
             seeded = await seed_dev(conn)
+            configured = await seed_project_configs(conn)
     finally:
         await engine.dispose()
     print("Development data seeded." if seeded else "Development data already present; nothing changed.")
+    if configured:
+        print(f"{configured} seeded projects got their configuration.")
     if settings.openfga_url:
         # The seed writes rows directly; the reconciliation derives their OpenFGA tuples.
         return await _reconcile(settings, apply=True)
+    return 0
+
+
+async def _catalog_sync(settings: Settings) -> int:
+    """Load the repository catalog (agents, skills, options, rules, templates) as the schema owner."""
+    url = settings.migration_database_url.get_secret_value()
+    if not url:
+        print("MIGRATION_DATABASE_URL is not set.", file=sys.stderr)
+        return 2
+    engine = create_async_engine(url)
+    try:
+        async with engine.begin() as conn:
+            report = await sync_catalog(conn)
+    finally:
+        await engine.dispose()
+    print(f"Catalog synced: {len(report.added)} added, {report.unchanged} unchanged, {len(report.retired)} retired.")
+    for line in report.added + report.retired:
+        print(f"  {line}")
     return 0
 
 
@@ -86,6 +109,7 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="nexti_api.cli")
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("seed-dev", help="insert the fictitious development data (development/test only)")
+    sub.add_parser("catalog-sync", help="load the agent and skill catalog from the repository files")
     rec = sub.add_parser("reconcile", help="make OpenFGA equal to what PostgreSQL implies")
     rec.add_argument("--check", action="store_true", help="only report differences (exit 1 if any)")
     sub.add_parser("keycloak-events", help="copy new Keycloak events to the audit log")
@@ -97,6 +121,8 @@ def main(argv: list[str] | None = None) -> int:
     settings = get_settings()
     if args.command == "seed-dev":
         return asyncio.run(_seed_dev(settings))
+    if args.command == "catalog-sync":
+        return asyncio.run(_catalog_sync(settings))
     if args.command == "keycloak-events":
         return asyncio.run(_keycloak_events(settings))
     if args.command == "reconcile":
