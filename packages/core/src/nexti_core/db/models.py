@@ -785,3 +785,151 @@ class ActivityEvent(Base):
     cost_usd: Mapped[Decimal] = mapped_column(Numeric(18, 8), nullable=False, server_default=text("0"))
     payload: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))
     occurred_at: Mapped[datetime] = _now()
+
+
+# The spec, user stories and the plan (migration 0008). Append-only: every change is a new version row.
+class SpecElement(Base):
+    __tablename__ = "spec_element"
+    __table_args__ = (
+        UniqueConstraint("project_id", "element_type", "key", "version"),
+        ForeignKeyConstraint(["project_id", "tenant_id"], ["project.id", "project.tenant_id"], ondelete="CASCADE"),
+        Index("spec_element_current_idx", "project_id", "element_type", "key", text("version DESC")),
+    )
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    project_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    element_type: Mapped[str] = mapped_column(Text, nullable=False)
+    key: Mapped[str] = mapped_column(Text, nullable=False)
+    version: Mapped[int] = mapped_column(Integer, nullable=False)
+    status: Mapped[str] = mapped_column(Text, nullable=False, server_default="draft")
+    data: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    run_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
+    origin: Mapped[str] = mapped_column(Text, nullable=False, server_default="extracted")
+    change_note: Mapped[str | None] = mapped_column(Text)
+    created_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("app_user.id"))
+    created_at: Mapped[datetime] = _now()
+
+
+class UserStory(Base):
+    __tablename__ = "user_story"
+    __table_args__ = (
+        UniqueConstraint("project_id", "key"),
+        UniqueConstraint("id", "tenant_id"),
+        ForeignKeyConstraint(["project_id", "tenant_id"], ["project.id", "project.tenant_id"], ondelete="CASCADE"),
+    )
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    project_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    key: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = _now()
+
+
+class UserStoryVersion(Base):
+    __tablename__ = "user_story_version"
+    __table_args__ = (
+        ForeignKeyConstraint(["story_id", "tenant_id"], ["user_story.id", "user_story.tenant_id"], ondelete="CASCADE"),
+    )
+    tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    story_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
+    version: Mapped[int] = mapped_column(Integer, primary_key=True)
+    feature: Mapped[str] = mapped_column(Text, nullable=False, server_default="")
+    title: Mapped[str] = mapped_column(Text, nullable=False)
+    narrative: Mapped[str] = mapped_column(Text, nullable=False, server_default="")
+    criteria: Mapped[list[Any]] = mapped_column(JSONB, nullable=False, server_default=text("'[]'::jsonb"))
+    links: Mapped[list[Any]] = mapped_column(JSONB, nullable=False, server_default=text("'[]'::jsonb"))
+    priority: Mapped[str] = mapped_column(Text, nullable=False, server_default="P1")
+    estimate: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("1"))
+    status: Mapped[str] = mapped_column(Text, nullable=False, server_default="draft")
+    origin: Mapped[str] = mapped_column(Text, nullable=False, server_default="extracted")
+    out_of_scope: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
+    merged_into: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
+    reason: Mapped[str | None] = mapped_column(Text)
+    action: Mapped[str] = mapped_column(Text, nullable=False, server_default="create")
+    created_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("app_user.id"))
+    created_at: Mapped[datetime] = _now()
+
+
+class StoryDependency(Base):
+    __tablename__ = "story_dependency"
+    __table_args__ = (
+        ForeignKeyConstraint(["story_id", "tenant_id"], ["user_story.id", "user_story.tenant_id"], ondelete="CASCADE"),
+        ForeignKeyConstraint(
+            ["depends_on", "tenant_id"], ["user_story.id", "user_story.tenant_id"], ondelete="CASCADE"
+        ),
+    )
+    tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    story_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
+    depends_on: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
+    strength: Mapped[str] = mapped_column(Text, nullable=False)
+    reason: Mapped[str] = mapped_column(Text, nullable=False, server_default="")
+    origin: Mapped[str] = mapped_column(Text, nullable=False, server_default="graph")
+    created_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("app_user.id"))
+    created_at: Mapped[datetime] = _now()
+
+
+class MigrationPlan(Base):
+    __tablename__ = "migration_plan"
+    __table_args__ = (
+        ForeignKeyConstraint(["project_id", "tenant_id"], ["project.id", "project.tenant_id"], ondelete="CASCADE"),
+    )
+    tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    project_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
+    version: Mapped[int] = mapped_column(Integer, primary_key=True)
+    waves: Mapped[list[Any]] = mapped_column(JSONB, nullable=False)
+    suggested: Mapped[list[Any]] = mapped_column(JSONB, nullable=False)
+    warnings: Mapped[list[Any]] = mapped_column(JSONB, nullable=False, server_default=text("'[]'::jsonb"))
+    change_note: Mapped[str | None] = mapped_column(Text)
+    created_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("app_user.id"))
+    created_at: Mapped[datetime] = _now()
+
+
+class GeneratedArtifact(Base):
+    __tablename__ = "generated_artifact"
+    __table_args__ = (
+        UniqueConstraint("run_id", "path"),
+        ForeignKeyConstraint(["run_id", "tenant_id"], ["run.id", "run.tenant_id"], ondelete="CASCADE"),
+    )
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    project_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    run_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    layer: Mapped[str] = mapped_column(Text, nullable=False)
+    path: Mapped[str] = mapped_column(Text, nullable=False)
+    object_key: Mapped[str] = mapped_column(Text, nullable=False)
+    sha256: Mapped[str] = mapped_column(Text, nullable=False)
+    size_bytes: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    rules: Mapped[list[Any]] = mapped_column(JSONB, nullable=False, server_default=text("'[]'::jsonb"))
+    created_at: Mapped[datetime] = _now()
+
+
+class Verdict(Base):
+    __tablename__ = "verdict"
+    __table_args__ = (
+        UniqueConstraint("run_id", "module"),
+        ForeignKeyConstraint(["run_id", "tenant_id"], ["run.id", "run.tenant_id"], ondelete="CASCADE"),
+    )
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    project_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    run_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    module: Mapped[str] = mapped_column(Text, nullable=False)
+    verdict: Mapped[str] = mapped_column(Text, nullable=False)
+    checks: Mapped[list[Any]] = mapped_column(JSONB, nullable=False)
+    not_proven: Mapped[list[Any]] = mapped_column(JSONB, nullable=False, server_default=text("'[]'::jsonb"))
+    proof_pack_key: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = _now()
+
+
+class Evaluation(Base):
+    __tablename__ = "evaluation"
+    __table_args__ = (
+        ForeignKeyConstraint(["project_id", "tenant_id"], ["project.id", "project.tenant_id"], ondelete="CASCADE"),
+    )
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    project_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    run_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
+    reference: Mapped[str] = mapped_column(Text, nullable=False)
+    reference_sha256: Mapped[str] = mapped_column(Text, nullable=False)
+    metrics: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    created_at: Mapped[datetime] = _now()
