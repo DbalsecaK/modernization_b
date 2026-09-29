@@ -15,6 +15,138 @@
         "title": "ActiveTenantIn",
         "type": "object"
       },
+      "AdapterOut": {
+        "properties": {
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "level": {
+            "title": "Level",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "validation": {
+            "title": "Validation",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "name",
+          "level",
+          "version",
+          "validation"
+        ],
+        "title": "AdapterOut",
+        "type": "object"
+      },
+      "AgentOut": {
+        "properties": {
+          "capabilities": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Capabilities",
+            "type": "array"
+          },
+          "defaultProfile": {
+            "title": "Defaultprofile",
+            "type": "string"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "descriptionEs": {
+            "title": "Descriptiones",
+            "type": "string"
+          },
+          "group": {
+            "enum": [
+              "analysis",
+              "design",
+              "build",
+              "quality",
+              "control"
+            ],
+            "title": "Group",
+            "type": "string"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "level": {
+            "enum": [
+              "certified",
+              "assisted",
+              "experimental"
+            ],
+            "title": "Level",
+            "type": "string"
+          },
+          "mandatory": {
+            "title": "Mandatory",
+            "type": "boolean"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "nameEs": {
+            "title": "Namees",
+            "type": "string"
+          },
+          "phases": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Phases",
+            "type": "array"
+          },
+          "relativeCost": {
+            "title": "Relativecost",
+            "type": "integer"
+          },
+          "tools": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Tools",
+            "type": "array"
+          },
+          "version": {
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "version",
+          "name",
+          "nameEs",
+          "group",
+          "description",
+          "descriptionEs",
+          "phases",
+          "capabilities",
+          "tools",
+          "mandatory",
+          "level",
+          "defaultProfile",
+          "relativeCost"
+        ],
+        "title": "AgentOut",
+        "type": "object"
+      },
       "AssignmentCreate": {
         "properties": {
           "projectId": {
@@ -402,6 +534,83 @@
         "title": "BudgetOut",
         "type": "object"
       },
+      "CatalogOut": {
+        "properties": {
+          "adapters": {
+            "items": {
+              "$ref": "#/components/schemas/AdapterOut"
+            },
+            "title": "Adapters",
+            "type": "array"
+          },
+          "agents": {
+            "items": {
+              "$ref": "#/components/schemas/AgentOut"
+            },
+            "title": "Agents",
+            "type": "array"
+          },
+          "compatibilityRules": {
+            "items": {
+              "$ref": "#/components/schemas/RuleOut"
+            },
+            "title": "Compatibilityrules",
+            "type": "array"
+          },
+          "costUnitUsd": {
+            "title": "Costunitusd",
+            "type": "integer"
+          },
+          "flows": {
+            "items": {
+              "$ref": "#/components/schemas/FlowOut"
+            },
+            "title": "Flows",
+            "type": "array"
+          },
+          "pipelineTemplates": {
+            "items": {
+              "$ref": "#/components/schemas/TemplateOut"
+            },
+            "title": "Pipelinetemplates",
+            "type": "array"
+          },
+          "skills": {
+            "items": {
+              "$ref": "#/components/schemas/SkillOut"
+            },
+            "title": "Skills",
+            "type": "array"
+          },
+          "sources": {
+            "items": {
+              "$ref": "#/components/schemas/SourceOptionOut"
+            },
+            "title": "Sources",
+            "type": "array"
+          },
+          "targets": {
+            "items": {
+              "$ref": "#/components/schemas/TargetOptionOut"
+            },
+            "title": "Targets",
+            "type": "array"
+          }
+        },
+        "required": [
+          "agents",
+          "skills",
+          "adapters",
+          "sources",
+          "targets",
+          "compatibilityRules",
+          "pipelineTemplates",
+          "flows",
+          "costUnitUsd"
+        ],
+        "title": "CatalogOut",
+        "type": "object"
+      },
       "ChainOut": {
         "properties": {
           "checked": {
@@ -464,6 +673,432 @@
           "latency_ms"
         ],
         "title": "CheckResult",
+        "type": "object"
+      },
+      "ComposeIn": {
+        "properties": {
+          "agents": {
+            "anyOf": [
+              {
+                "items": {
+                  "maxLength": 64,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "maxItems": 40,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agents"
+          },
+          "flow": {
+            "enum": [
+              "modernization",
+              "newFeature"
+            ],
+            "title": "Flow",
+            "type": "string"
+          },
+          "projectId": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Projectid"
+          },
+          "skills": {
+            "anyOf": [
+              {
+                "items": {
+                  "maxLength": 64,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "maxItems": 100,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Skills"
+          },
+          "sources": {
+            "items": {
+              "maxLength": 64,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 20,
+            "title": "Sources",
+            "type": "array"
+          },
+          "target": {
+            "$ref": "#/components/schemas/TargetIn"
+          }
+        },
+        "required": [
+          "flow",
+          "sources",
+          "target"
+        ],
+        "title": "ComposeIn",
+        "type": "object"
+      },
+      "CompositionOut": {
+        "properties": {
+          "agents": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Agents",
+            "type": "array"
+          },
+          "conflicts": {
+            "items": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "title": "Conflicts",
+            "type": "array"
+          },
+          "estimateUsd": {
+            "title": "Estimateusd",
+            "type": "integer"
+          },
+          "missingSkills": {
+            "items": {
+              "$ref": "#/components/schemas/MissingSkillOut"
+            },
+            "title": "Missingskills",
+            "type": "array"
+          },
+          "models": {
+            "items": {
+              "$ref": "#/components/schemas/ModelCheckOut"
+            },
+            "title": "Models",
+            "type": "array"
+          },
+          "problems": {
+            "items": {
+              "$ref": "#/components/schemas/ProblemOut"
+            },
+            "title": "Problems",
+            "type": "array"
+          },
+          "recommendedAgents": {
+            "items": {
+              "$ref": "#/components/schemas/RecommendationOut"
+            },
+            "title": "Recommendedagents",
+            "type": "array"
+          },
+          "recommendedSkills": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Recommendedskills",
+            "type": "array"
+          },
+          "skills": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Skills",
+            "type": "array"
+          },
+          "uncoveredPhases": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Uncoveredphases",
+            "type": "array"
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Warnings",
+            "type": "array"
+          }
+        },
+        "required": [
+          "recommendedAgents",
+          "agents",
+          "recommendedSkills",
+          "skills",
+          "warnings",
+          "missingSkills",
+          "conflicts",
+          "uncoveredPhases",
+          "problems",
+          "estimateUsd",
+          "models"
+        ],
+        "title": "CompositionOut",
+        "type": "object"
+      },
+      "ConfigIn": {
+        "properties": {
+          "agents": {
+            "anyOf": [
+              {
+                "items": {
+                  "maxLength": 64,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "maxItems": 40,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agents"
+          },
+          "autonomy": {
+            "default": "balanced",
+            "enum": [
+              "guided",
+              "balanced",
+              "autonomous"
+            ],
+            "title": "Autonomy",
+            "type": "string"
+          },
+          "changeNote": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Changenote"
+          },
+          "maxIterations": {
+            "default": 3,
+            "maximum": 10.0,
+            "minimum": 1.0,
+            "title": "Maxiterations",
+            "type": "integer"
+          },
+          "pipelineTemplate": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Pipelinetemplate",
+            "type": "string"
+          },
+          "samplingPct": {
+            "default": 10,
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Samplingpct",
+            "type": "integer"
+          },
+          "skills": {
+            "anyOf": [
+              {
+                "items": {
+                  "maxLength": 64,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "maxItems": 100,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Skills"
+          },
+          "sources": {
+            "items": {
+              "maxLength": 64,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 20,
+            "minItems": 1,
+            "title": "Sources",
+            "type": "array"
+          },
+          "target": {
+            "$ref": "#/components/schemas/TargetIn"
+          }
+        },
+        "required": [
+          "sources",
+          "target",
+          "pipelineTemplate"
+        ],
+        "title": "ConfigIn",
+        "type": "object"
+      },
+      "ConfigOut": {
+        "properties": {
+          "autonomy": {
+            "enum": [
+              "guided",
+              "balanced",
+              "autonomous"
+            ],
+            "title": "Autonomy",
+            "type": "string"
+          },
+          "changeNote": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Changenote"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "title": "Createdat",
+            "type": "string"
+          },
+          "createdBy": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Createdby"
+          },
+          "maxIterations": {
+            "title": "Maxiterations",
+            "type": "integer"
+          },
+          "pipelineTemplate": {
+            "title": "Pipelinetemplate",
+            "type": "string"
+          },
+          "samplingPct": {
+            "title": "Samplingpct",
+            "type": "integer"
+          },
+          "sources": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Sources",
+            "type": "array"
+          },
+          "target": {
+            "$ref": "#/components/schemas/TargetOut"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Warnings",
+            "type": "array"
+          }
+        },
+        "required": [
+          "version",
+          "sources",
+          "target",
+          "pipelineTemplate",
+          "autonomy",
+          "maxIterations",
+          "samplingPct",
+          "warnings",
+          "changeNote",
+          "createdAt",
+          "createdBy"
+        ],
+        "title": "ConfigOut",
+        "type": "object"
+      },
+      "ConfigVersionOut": {
+        "properties": {
+          "agents": {
+            "title": "Agents",
+            "type": "integer"
+          },
+          "changeNote": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Changenote"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "title": "Createdat",
+            "type": "string"
+          },
+          "createdBy": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Createdby"
+          },
+          "skills": {
+            "title": "Skills",
+            "type": "integer"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Warnings",
+            "type": "array"
+          }
+        },
+        "required": [
+          "version",
+          "changeNote",
+          "warnings",
+          "agents",
+          "skills",
+          "createdAt",
+          "createdBy"
+        ],
+        "title": "ConfigVersionOut",
         "type": "object"
       },
       "ConnectionCreate": {
@@ -652,6 +1287,31 @@
           "parameters"
         ],
         "title": "EffortMappingIn",
+        "type": "object"
+      },
+      "FlowOut": {
+        "properties": {
+          "key": {
+            "enum": [
+              "modernization",
+              "newFeature"
+            ],
+            "title": "Key",
+            "type": "string"
+          },
+          "phases": {
+            "items": {
+              "$ref": "#/components/schemas/PhaseOut"
+            },
+            "title": "Phases",
+            "type": "array"
+          }
+        },
+        "required": [
+          "key",
+          "phases"
+        ],
+        "title": "FlowOut",
         "type": "object"
       },
       "HTTPValidationError": {
@@ -1123,6 +1783,24 @@
         "title": "MemberUpdate",
         "type": "object"
       },
+      "MissingSkillOut": {
+        "properties": {
+          "skill": {
+            "title": "Skill",
+            "type": "string"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          }
+        },
+        "required": [
+          "source",
+          "skill"
+        ],
+        "title": "MissingSkillOut",
+        "type": "object"
+      },
       "ModelAssignmentIn": {
         "properties": {
           "agentRole": {
@@ -1233,6 +1911,73 @@
           "profileId"
         ],
         "title": "ModelAssignmentOut",
+        "type": "object"
+      },
+      "ModelCheckOut": {
+        "properties": {
+          "agent": {
+            "title": "Agent",
+            "type": "string"
+          },
+          "missing": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Missing",
+            "type": "array"
+          },
+          "profileId": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profileid"
+          },
+          "profileName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profilename"
+          }
+        },
+        "required": [
+          "agent",
+          "profileId",
+          "profileName",
+          "missing"
+        ],
+        "title": "ModelCheckOut",
+        "type": "object"
+      },
+      "ModelChoiceIn": {
+        "properties": {
+          "agentRole": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Agentrole",
+            "type": "string"
+          },
+          "profileId": {
+            "format": "uuid",
+            "title": "Profileid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "agentRole",
+          "profileId"
+        ],
+        "title": "ModelChoiceIn",
         "type": "object"
       },
       "OfferingOut": {
@@ -1356,6 +2101,36 @@
           "description"
         ],
         "title": "PermissionOut",
+        "type": "object"
+      },
+      "PhaseOut": {
+        "properties": {
+          "agentRequired": {
+            "title": "Agentrequired",
+            "type": "boolean"
+          },
+          "gate": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gate"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "gate",
+          "agentRequired"
+        ],
+        "title": "PhaseOut",
         "type": "object"
       },
       "PolicyIn": {
@@ -1541,6 +2316,31 @@
           "source"
         ],
         "title": "PriceOut",
+        "type": "object"
+      },
+      "ProblemOut": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "subject": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Subject"
+          }
+        },
+        "required": [
+          "code",
+          "subject"
+        ],
+        "title": "ProblemOut",
         "type": "object"
       },
       "ProfileIn": {
@@ -1795,8 +2595,267 @@
         "title": "ProfileTestOut",
         "type": "object"
       },
-      "ProjectOut": {
+      "ProjectAgentOut": {
         "properties": {
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "version": {
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "version",
+          "reason"
+        ],
+        "title": "ProjectAgentOut",
+        "type": "object"
+      },
+      "ProjectCreate": {
+        "properties": {
+          "agents": {
+            "anyOf": [
+              {
+                "items": {
+                  "maxLength": 64,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "maxItems": 40,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agents"
+          },
+          "artifactLanguage": {
+            "default": "en",
+            "enum": [
+              "en",
+              "es"
+            ],
+            "title": "Artifactlanguage",
+            "type": "string"
+          },
+          "autonomy": {
+            "default": "balanced",
+            "enum": [
+              "guided",
+              "balanced",
+              "autonomous"
+            ],
+            "title": "Autonomy",
+            "type": "string"
+          },
+          "budgetUsd": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,12}|(?=[\\d.]{1,15}0*$)\\d{0,12}\\.\\d{0,2}0*$)",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Budgetusd"
+          },
+          "changeNote": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Changenote"
+          },
+          "description": {
+            "default": "",
+            "maxLength": 2000,
+            "title": "Description",
+            "type": "string"
+          },
+          "flow": {
+            "enum": [
+              "modernization",
+              "newFeature"
+            ],
+            "title": "Flow",
+            "type": "string"
+          },
+          "maxIterations": {
+            "default": 3,
+            "maximum": 10.0,
+            "minimum": 1.0,
+            "title": "Maxiterations",
+            "type": "integer"
+          },
+          "modelChoices": {
+            "items": {
+              "$ref": "#/components/schemas/ModelChoiceIn"
+            },
+            "maxItems": 40,
+            "title": "Modelchoices",
+            "type": "array"
+          },
+          "name": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "pipelineTemplate": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Pipelinetemplate",
+            "type": "string"
+          },
+          "samplingPct": {
+            "default": 10,
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Samplingpct",
+            "type": "integer"
+          },
+          "skills": {
+            "anyOf": [
+              {
+                "items": {
+                  "maxLength": 64,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                "maxItems": 100,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Skills"
+          },
+          "sources": {
+            "items": {
+              "maxLength": 64,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 20,
+            "minItems": 1,
+            "title": "Sources",
+            "type": "array"
+          },
+          "target": {
+            "$ref": "#/components/schemas/TargetIn"
+          },
+          "team": {
+            "items": {
+              "$ref": "#/components/schemas/TeamMemberIn"
+            },
+            "maxItems": 50,
+            "title": "Team",
+            "type": "array"
+          }
+        },
+        "required": [
+          "sources",
+          "target",
+          "pipelineTemplate",
+          "name",
+          "flow"
+        ],
+        "title": "ProjectCreate",
+        "type": "object"
+      },
+      "ProjectDetail": {
+        "properties": {
+          "agents": {
+            "items": {
+              "$ref": "#/components/schemas/ProjectAgentOut"
+            },
+            "title": "Agents",
+            "type": "array"
+          },
+          "artifactLanguage": {
+            "enum": [
+              "en",
+              "es"
+            ],
+            "title": "Artifactlanguage",
+            "type": "string"
+          },
+          "budgetUsd": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Budgetusd"
+          },
+          "config": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ConfigOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "configVersion": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Configversion"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "title": "Createdat",
+            "type": "string"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "flow": {
+            "enum": [
+              "modernization",
+              "newFeature"
+            ],
+            "title": "Flow",
+            "type": "string"
+          },
           "id": {
             "format": "uuid",
             "title": "Id",
@@ -1806,6 +2865,27 @@
             "title": "Name",
             "type": "string"
           },
+          "permissions": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Permissions",
+            "type": "array"
+          },
+          "skills": {
+            "items": {
+              "$ref": "#/components/schemas/ProjectSkillOut"
+            },
+            "title": "Skills",
+            "type": "array"
+          },
+          "sources": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Sources",
+            "type": "array"
+          },
           "status": {
             "enum": [
               "active",
@@ -1813,14 +2893,228 @@
             ],
             "title": "Status",
             "type": "string"
+          },
+          "target": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TargetOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "team": {
+            "items": {
+              "$ref": "#/components/schemas/TeamMemberOut"
+            },
+            "title": "Team",
+            "type": "array"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "title": "Updatedat",
+            "type": "string"
           }
         },
         "required": [
           "id",
           "name",
-          "status"
+          "status",
+          "flow",
+          "artifactLanguage",
+          "description",
+          "sources",
+          "target",
+          "configVersion",
+          "createdAt",
+          "updatedAt",
+          "config",
+          "agents",
+          "skills",
+          "team",
+          "budgetUsd",
+          "permissions"
+        ],
+        "title": "ProjectDetail",
+        "type": "object"
+      },
+      "ProjectOut": {
+        "properties": {
+          "artifactLanguage": {
+            "enum": [
+              "en",
+              "es"
+            ],
+            "title": "Artifactlanguage",
+            "type": "string"
+          },
+          "configVersion": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Configversion"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "title": "Createdat",
+            "type": "string"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "flow": {
+            "enum": [
+              "modernization",
+              "newFeature"
+            ],
+            "title": "Flow",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "sources": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Sources",
+            "type": "array"
+          },
+          "status": {
+            "enum": [
+              "active",
+              "archived"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "target": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TargetOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "title": "Updatedat",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "status",
+          "flow",
+          "artifactLanguage",
+          "description",
+          "sources",
+          "target",
+          "configVersion",
+          "createdAt",
+          "updatedAt"
         ],
         "title": "ProjectOut",
+        "type": "object"
+      },
+      "ProjectSkillOut": {
+        "properties": {
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "recommended": {
+            "title": "Recommended",
+            "type": "boolean"
+          },
+          "version": {
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "version",
+          "recommended"
+        ],
+        "title": "ProjectSkillOut",
+        "type": "object"
+      },
+      "ProjectUpdate": {
+        "properties": {
+          "artifactLanguage": {
+            "anyOf": [
+              {
+                "enum": [
+                  "en",
+                  "es"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Artifactlanguage"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "enum": [
+                  "active",
+                  "archived"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          }
+        },
+        "title": "ProjectUpdate",
         "type": "object"
       },
       "Readiness": {
@@ -1846,6 +3140,24 @@
           "checks"
         ],
         "title": "Readiness",
+        "type": "object"
+      },
+      "RecommendationOut": {
+        "properties": {
+          "agent": {
+            "title": "Agent",
+            "type": "string"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "agent",
+          "reason"
+        ],
+        "title": "RecommendationOut",
         "type": "object"
       },
       "ResolvedOut": {
@@ -2047,6 +3359,24 @@
         "title": "RoleUpdate",
         "type": "object"
       },
+      "RuleOut": {
+        "properties": {
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "message"
+        ],
+        "title": "RuleOut",
+        "type": "object"
+      },
       "SessionTenantOut": {
         "properties": {
           "id": {
@@ -2071,6 +3401,248 @@
         "title": "SessionTenantOut",
         "type": "object"
       },
+      "SkillDetailOut": {
+        "properties": {
+          "agents": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Agents",
+            "type": "array"
+          },
+          "conflicts": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Conflicts",
+            "type": "array"
+          },
+          "content": {
+            "title": "Content",
+            "type": "string"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "evalScore": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Evalscore"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "requires": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Requires",
+            "type": "array"
+          },
+          "status": {
+            "enum": [
+              "draft",
+              "evaluating",
+              "published",
+              "obsolete"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "technologies": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Technologies",
+            "type": "array"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "source",
+              "target",
+              "conversion",
+              "crossCutting",
+              "customer"
+            ],
+            "title": "Type",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "version",
+          "title",
+          "description",
+          "type",
+          "agents",
+          "technologies",
+          "conflicts",
+          "requires",
+          "status",
+          "evalScore",
+          "content"
+        ],
+        "title": "SkillDetailOut",
+        "type": "object"
+      },
+      "SkillOut": {
+        "properties": {
+          "agents": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Agents",
+            "type": "array"
+          },
+          "conflicts": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Conflicts",
+            "type": "array"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "evalScore": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Evalscore"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "requires": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Requires",
+            "type": "array"
+          },
+          "status": {
+            "enum": [
+              "draft",
+              "evaluating",
+              "published",
+              "obsolete"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "technologies": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Technologies",
+            "type": "array"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "source",
+              "target",
+              "conversion",
+              "crossCutting",
+              "customer"
+            ],
+            "title": "Type",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "version",
+          "title",
+          "description",
+          "type",
+          "agents",
+          "technologies",
+          "conflicts",
+          "requires",
+          "status",
+          "evalScore"
+        ],
+        "title": "SkillOut",
+        "type": "object"
+      },
+      "SourceOptionOut": {
+        "properties": {
+          "adapter": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Adapter"
+          },
+          "flow": {
+            "enum": [
+              "modernization",
+              "newFeature"
+            ],
+            "title": "Flow",
+            "type": "string"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "requiredSkills": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Requiredskills",
+            "type": "array"
+          }
+        },
+        "required": [
+          "key",
+          "name",
+          "flow",
+          "adapter",
+          "requiredSkills"
+        ],
+        "title": "SourceOptionOut",
+        "type": "object"
+      },
       "SyncOut": {
         "properties": {
           "families": {
@@ -2087,6 +3659,232 @@
           "versions"
         ],
         "title": "SyncOut",
+        "type": "object"
+      },
+      "TargetIn": {
+        "properties": {
+          "architecture": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Architecture",
+            "type": "string"
+          },
+          "backend": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Backend",
+            "type": "string"
+          },
+          "cloud": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Cloud",
+            "type": "string"
+          },
+          "database": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Database",
+            "type": "string"
+          },
+          "frontend": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Frontend",
+            "type": "string"
+          }
+        },
+        "required": [
+          "architecture",
+          "backend",
+          "frontend",
+          "database",
+          "cloud"
+        ],
+        "title": "TargetIn",
+        "type": "object"
+      },
+      "TargetOptionOut": {
+        "properties": {
+          "axis": {
+            "enum": [
+              "architecture",
+              "backend",
+              "frontend",
+              "database",
+              "cloud"
+            ],
+            "title": "Axis",
+            "type": "string"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "level": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Level"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "wave": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Wave"
+          }
+        },
+        "required": [
+          "axis",
+          "key",
+          "name",
+          "level",
+          "wave"
+        ],
+        "title": "TargetOptionOut",
+        "type": "object"
+      },
+      "TargetOut": {
+        "properties": {
+          "architecture": {
+            "title": "Architecture",
+            "type": "string"
+          },
+          "backend": {
+            "title": "Backend",
+            "type": "string"
+          },
+          "cloud": {
+            "title": "Cloud",
+            "type": "string"
+          },
+          "database": {
+            "title": "Database",
+            "type": "string"
+          },
+          "frontend": {
+            "title": "Frontend",
+            "type": "string"
+          }
+        },
+        "required": [
+          "architecture",
+          "backend",
+          "frontend",
+          "database",
+          "cloud"
+        ],
+        "title": "TargetOut",
+        "type": "object"
+      },
+      "TeamMemberIn": {
+        "properties": {
+          "roleKey": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Rolekey",
+            "type": "string"
+          },
+          "userId": {
+            "format": "uuid",
+            "title": "Userid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "userId",
+          "roleKey"
+        ],
+        "title": "TeamMemberIn",
+        "type": "object"
+      },
+      "TeamMemberOut": {
+        "properties": {
+          "displayName": {
+            "title": "Displayname",
+            "type": "string"
+          },
+          "email": {
+            "title": "Email",
+            "type": "string"
+          },
+          "roleKey": {
+            "title": "Rolekey",
+            "type": "string"
+          },
+          "roleName": {
+            "title": "Rolename",
+            "type": "string"
+          },
+          "userId": {
+            "format": "uuid",
+            "title": "Userid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "userId",
+          "displayName",
+          "email",
+          "roleKey",
+          "roleName"
+        ],
+        "title": "TeamMemberOut",
+        "type": "object"
+      },
+      "TemplateOut": {
+        "properties": {
+          "defaultAutonomy": {
+            "enum": [
+              "guided",
+              "balanced",
+              "autonomous"
+            ],
+            "title": "Defaultautonomy",
+            "type": "string"
+          },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "requiredGates": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Requiredgates",
+            "type": "array"
+          }
+        },
+        "required": [
+          "key",
+          "name",
+          "description",
+          "requiredGates",
+          "defaultAutonomy"
+        ],
+        "title": "TemplateOut",
         "type": "object"
       },
       "TenantCreate": {
@@ -3931,6 +5729,70 @@
         ]
       }
     },
+    "/api/v1/catalog": {
+      "get": {
+        "operationId": "get_catalog_api_v1_catalog_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CatalogOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Catalog",
+        "tags": [
+          "catalog"
+        ]
+      }
+    },
+    "/api/v1/catalog/skills/{skill_key}": {
+      "get": {
+        "description": "A skill with the instructions its agents load on demand (SKILL.md body).",
+        "operationId": "get_skill_api_v1_catalog_skills__skill_key__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "skill_key",
+            "required": true,
+            "schema": {
+              "title": "Skill Key",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SkillDetailOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Skill",
+        "tags": [
+          "catalog"
+        ]
+      }
+    },
     "/api/v1/health/live": {
       "get": {
         "description": "The process is up. Does not touch dependencies.",
@@ -4234,6 +6096,282 @@
           }
         },
         "summary": "List Projects",
+        "tags": [
+          "projects"
+        ]
+      },
+      "post": {
+        "operationId": "create_project_api_v1_projects_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Project",
+        "tags": [
+          "projects"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}": {
+      "get": {
+        "operationId": "get_project_api_v1_projects__project_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Project",
+        "tags": [
+          "projects"
+        ]
+      },
+      "patch": {
+        "operationId": "update_project_api_v1_projects__project_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Project",
+        "tags": [
+          "projects"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/config": {
+      "put": {
+        "description": "A new configuration version. Changing the team needs agents.select; changing skills needs skills.select.",
+        "operationId": "change_config_api_v1_projects__project_id__config_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfigIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Change Config",
+        "tags": [
+          "projects"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/config/versions": {
+      "get": {
+        "operationId": "config_versions_api_v1_projects__project_id__config_versions_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ConfigVersionOut"
+                  },
+                  "title": "Response Config Versions Api V1 Projects  Project Id  Config Versions Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Config Versions",
+        "tags": [
+          "projects"
+        ]
+      }
+    },
+    "/api/v1/projects:compose": {
+      "post": {
+        "description": "The recommended team and skills for a choice, with the problems that would block it (nothing is saved).",
+        "operationId": "compose_api_v1_projects_compose_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ComposeIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CompositionOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Compose",
         "tags": [
           "projects"
         ]

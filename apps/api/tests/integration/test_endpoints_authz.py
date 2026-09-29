@@ -54,8 +54,8 @@ PUBLIC = {
     ("GET", "/auth/dev/users"),
     ("POST", "/auth/dev/login"),
 }
-# Mutations that are not sensitive actions and therefore not audited.
-NOT_AUDITED = {("PATCH", "/api/v1/me")}
+# Mutations that are not sensitive actions and therefore not audited; projects:compose is a POST that saves nothing.
+NOT_AUDITED = {("PATCH", "/api/v1/me"), ("POST", "/api/v1/projects:compose")}
 
 # OpenRouter is simulated in these tests (shapes recorded from the real API, packages/model_gateway/tests).
 OPENROUTER = "https://openrouter.test/api/v1"
@@ -308,7 +308,7 @@ class Case:
 
 def fixed(path: str, body: dict[str, Any] | None = None) -> Callable[[Ctx], Awaitable[Request]]:
     async def make(ctx: Ctx) -> Request:
-        return path.format(a=ctx.world.tenant_a, shared=ctx.world.shared), body
+        return path.format(a=ctx.world.tenant_a, shared=ctx.world.shared, project_a=ctx.world.project_a), body
 
     return make
 
@@ -421,11 +421,21 @@ async def _new_budget(ctx: Ctx) -> Request:
     return "/api/v1/budgets", {"projectId": str(await ctx.project()), "amountUsd": "50", "alertPct": 75}
 
 
+TARGET = {"architecture": "microservices-hexagonal", "backend": "spring-boot", "frontend": "angular",
+          "database": "postgresql", "cloud": "aws"}  # fmt: skip
+COMPOSE = {"flow": "modernization", "sources": ["cobol-cics", "bms"], "target": TARGET}
+CONFIG = {"sources": ["cobol-cics", "bms"], "target": TARGET, "pipelineTemplate": "bankStandard"}
+
+
+async def _new_project(ctx: Ctx) -> Request:
+    return "/api/v1/projects", {**CONFIG, "name": f"Project {uuid.uuid4().hex[:8]}", "flow": "modernization"}
+
+
 AI_POLICY = {"openrouterAllowed": True, "deniedUpstreamProviders": ["deepinfra"], "denyDataCollection": True}
 
 
 # allowed/denied: "root" super administrator; "admin" tenant admin of A; "member" plain member of A (architect in
-# one project); "anonymous" no session.
+# project A); "outsider" a user of tenant B only; "anonymous" no session.
 CASES = [
     Case("GET", "/api/v1/tenants", "root", "admin", fixed("/api/v1/tenants")),
     Case("POST", "/api/v1/tenants", "root", "admin", _new_tenant),
@@ -522,7 +532,27 @@ CASES = [
         _with("budget", "/api/v1/budgets/{id}", {"amountUsd": "80", "alertPct": 90, "hardStop": False}),
     ),
     Case("DELETE", "/api/v1/budgets/{budget_id}", "admin", "member", _with("budget", "/api/v1/budgets/{id}")),
-]
+    # Projects and catalog (M2).
+    Case("GET", "/api/v1/catalog", "member", "anonymous", fixed("/api/v1/catalog")),
+    Case(
+        "GET", "/api/v1/catalog/skills/{skill_key}", "member", "anonymous", fixed("/api/v1/catalog/skills/bms-parsing")
+    ),
+    Case("POST", "/api/v1/projects:compose", "member", "anonymous", fixed("/api/v1/projects:compose", COMPOSE)),
+    Case("POST", "/api/v1/projects", "admin", "member", _new_project),
+    Case("GET", "/api/v1/projects/{project_id}", "member", "outsider", fixed("/api/v1/projects/{project_a}")),
+    Case(
+        "PATCH", "/api/v1/projects/{project_id}", "admin", "member",
+        fixed("/api/v1/projects/{project_a}", {"description": "Cards, CICS to Spring Boot."}),
+    ),
+    Case(
+        "PUT", "/api/v1/projects/{project_id}/config", "admin", "member",
+        fixed("/api/v1/projects/{project_a}/config", CONFIG),
+    ),
+    Case(
+        "GET", "/api/v1/projects/{project_id}/config/versions", "member", "outsider",
+        fixed("/api/v1/projects/{project_a}/config/versions"),
+    ),
+]  # fmt: skip
 
 
 @pytest.fixture(scope="module")
@@ -566,7 +596,7 @@ def act_as(api: TestClient, who: str, ctx: Ctx) -> dict[str, str]:
     api.cookies.clear()
     if who == "anonymous":
         return {}
-    user = {"root": ctx.root, "admin": ctx.world.a_user, "member": ctx.world.shared}[who]
+    user = {"root": ctx.root, "admin": ctx.world.a_user, "member": ctx.world.shared, "outsider": ctx.world.b_user}[who]
     assert api.post("/auth/dev/login", json={"userId": str(user)}).status_code == 204
     return {"X-CSRF-Token": api.get("/api/v1/me").json()["csrfToken"]}
 

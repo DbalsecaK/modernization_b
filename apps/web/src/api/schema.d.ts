@@ -384,6 +384,43 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/catalog": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Catalog */
+        get: operations["get_catalog_api_v1_catalog_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/catalog/skills/{skill_key}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Skill
+         * @description A skill with the instructions its agents load on demand (SKILL.md body).
+         */
+        get: operations["get_skill_api_v1_catalog_skills__skill_key__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/health/live": {
         parameters: {
             query?: never;
@@ -530,7 +567,83 @@ export interface paths {
          */
         get: operations["list_projects_api_v1_projects_get"];
         put?: never;
+        /** Create Project */
+        post: operations["create_project_api_v1_projects_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/projects/{project_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Project */
+        get: operations["get_project_api_v1_projects__project_id__get"];
+        put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update Project */
+        patch: operations["update_project_api_v1_projects__project_id__patch"];
+        trace?: never;
+    };
+    "/api/v1/projects/{project_id}/config": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Change Config
+         * @description A new configuration version. Changing the team needs agents.select; changing skills needs skills.select.
+         */
+        put: operations["change_config_api_v1_projects__project_id__config_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/projects/{project_id}/config/versions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Config Versions */
+        get: operations["config_versions_api_v1_projects__project_id__config_versions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/projects:compose": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Compose
+         * @description The recommended team and skills for a choice, with the problems that would block it (nothing is saved).
+         */
+        post: operations["compose_api_v1_projects_compose_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -857,6 +970,56 @@ export interface components {
              */
             tenantId: string;
         };
+        /** AdapterOut */
+        AdapterOut: {
+            /** Key */
+            key: string;
+            /** Level */
+            level: string;
+            /** Name */
+            name: string;
+            /** Validation */
+            validation: string;
+            /** Version */
+            version: string;
+        };
+        /** AgentOut */
+        AgentOut: {
+            /** Capabilities */
+            capabilities: string[];
+            /** Defaultprofile */
+            defaultProfile: string;
+            /** Description */
+            description: string;
+            /** Descriptiones */
+            descriptionEs: string;
+            /**
+             * Group
+             * @enum {string}
+             */
+            group: "analysis" | "design" | "build" | "quality" | "control";
+            /** Key */
+            key: string;
+            /**
+             * Level
+             * @enum {string}
+             */
+            level: "certified" | "assisted" | "experimental";
+            /** Mandatory */
+            mandatory: boolean;
+            /** Name */
+            name: string;
+            /** Namees */
+            nameEs: string;
+            /** Phases */
+            phases: string[];
+            /** Relativecost */
+            relativeCost: number;
+            /** Tools */
+            tools: string[];
+            /** Version */
+            version: string;
+        };
         /** AssignmentCreate */
         AssignmentCreate: {
             /** Projectid */
@@ -1006,6 +1169,27 @@ export interface components {
             /** Spentusd */
             spentUsd: string;
         };
+        /** CatalogOut */
+        CatalogOut: {
+            /** Adapters */
+            adapters: components["schemas"]["AdapterOut"][];
+            /** Agents */
+            agents: components["schemas"]["AgentOut"][];
+            /** Compatibilityrules */
+            compatibilityRules: components["schemas"]["RuleOut"][];
+            /** Costunitusd */
+            costUnitUsd: number;
+            /** Flows */
+            flows: components["schemas"]["FlowOut"][];
+            /** Pipelinetemplates */
+            pipelineTemplates: components["schemas"]["TemplateOut"][];
+            /** Skills */
+            skills: components["schemas"]["SkillOut"][];
+            /** Sources */
+            sources: components["schemas"]["SourceOptionOut"][];
+            /** Targets */
+            targets: components["schemas"]["TargetOptionOut"][];
+        };
         /** ChainOut */
         ChainOut: {
             /** Checked */
@@ -1026,6 +1210,128 @@ export interface components {
              * @enum {string}
              */
             status: "ok" | "fail";
+        };
+        /** ComposeIn */
+        ComposeIn: {
+            /** Agents */
+            agents?: string[] | null;
+            /**
+             * Flow
+             * @enum {string}
+             */
+            flow: "modernization" | "newFeature";
+            /** Projectid */
+            projectId?: string | null;
+            /** Skills */
+            skills?: string[] | null;
+            /** Sources */
+            sources: string[];
+            target: components["schemas"]["TargetIn"];
+        };
+        /** CompositionOut */
+        CompositionOut: {
+            /** Agents */
+            agents: string[];
+            /** Conflicts */
+            conflicts: string[][];
+            /** Estimateusd */
+            estimateUsd: number;
+            /** Missingskills */
+            missingSkills: components["schemas"]["MissingSkillOut"][];
+            /** Models */
+            models: components["schemas"]["ModelCheckOut"][];
+            /** Problems */
+            problems: components["schemas"]["ProblemOut"][];
+            /** Recommendedagents */
+            recommendedAgents: components["schemas"]["RecommendationOut"][];
+            /** Recommendedskills */
+            recommendedSkills: string[];
+            /** Skills */
+            skills: string[];
+            /** Uncoveredphases */
+            uncoveredPhases: string[];
+            /** Warnings */
+            warnings: string[];
+        };
+        /** ConfigIn */
+        ConfigIn: {
+            /** Agents */
+            agents?: string[] | null;
+            /**
+             * Autonomy
+             * @default balanced
+             * @enum {string}
+             */
+            autonomy: "guided" | "balanced" | "autonomous";
+            /** Changenote */
+            changeNote?: string | null;
+            /**
+             * Maxiterations
+             * @default 3
+             */
+            maxIterations: number;
+            /** Pipelinetemplate */
+            pipelineTemplate: string;
+            /**
+             * Samplingpct
+             * @default 10
+             */
+            samplingPct: number;
+            /** Skills */
+            skills?: string[] | null;
+            /** Sources */
+            sources: string[];
+            target: components["schemas"]["TargetIn"];
+        };
+        /** ConfigOut */
+        ConfigOut: {
+            /**
+             * Autonomy
+             * @enum {string}
+             */
+            autonomy: "guided" | "balanced" | "autonomous";
+            /** Changenote */
+            changeNote: string | null;
+            /**
+             * Createdat
+             * Format: date-time
+             */
+            createdAt: string;
+            /** Createdby */
+            createdBy: string | null;
+            /** Maxiterations */
+            maxIterations: number;
+            /** Pipelinetemplate */
+            pipelineTemplate: string;
+            /** Samplingpct */
+            samplingPct: number;
+            /** Sources */
+            sources: string[];
+            target: components["schemas"]["TargetOut"];
+            /** Version */
+            version: number;
+            /** Warnings */
+            warnings: string[];
+        };
+        /** ConfigVersionOut */
+        ConfigVersionOut: {
+            /** Agents */
+            agents: number;
+            /** Changenote */
+            changeNote: string | null;
+            /**
+             * Createdat
+             * Format: date-time
+             */
+            createdAt: string;
+            /** Createdby */
+            createdBy: string | null;
+            /** Skills */
+            skills: number;
+            /** Version */
+            version: number;
+            /** Warnings */
+            warnings: string[];
         };
         /** ConnectionCreate */
         ConnectionCreate: {
@@ -1101,6 +1407,16 @@ export interface components {
                     [key: string]: unknown;
                 };
             };
+        };
+        /** FlowOut */
+        FlowOut: {
+            /**
+             * Key
+             * @enum {string}
+             */
+            key: "modernization" | "newFeature";
+            /** Phases */
+            phases: components["schemas"]["PhaseOut"][];
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -1268,6 +1584,13 @@ export interface components {
              */
             status: "active" | "suspended";
         };
+        /** MissingSkillOut */
+        MissingSkillOut: {
+            /** Skill */
+            skill: string;
+            /** Source */
+            source: string;
+        };
         /** ModelAssignmentIn */
         ModelAssignmentIn: {
             /** Agentrole */
@@ -1297,6 +1620,27 @@ export interface components {
             profileId: string;
             /** Projectid */
             projectId: string | null;
+        };
+        /** ModelCheckOut */
+        ModelCheckOut: {
+            /** Agent */
+            agent: string;
+            /** Missing */
+            missing: string[];
+            /** Profileid */
+            profileId: string | null;
+            /** Profilename */
+            profileName: string | null;
+        };
+        /** ModelChoiceIn */
+        ModelChoiceIn: {
+            /** Agentrole */
+            agentRole: string;
+            /**
+             * Profileid
+             * Format: uuid
+             */
+            profileId: string;
         };
         /** OfferingOut */
         OfferingOut: {
@@ -1334,6 +1678,15 @@ export interface components {
             key: string;
             /** Scopes */
             scopes: ("tenant" | "project")[];
+        };
+        /** PhaseOut */
+        PhaseOut: {
+            /** Agentrequired */
+            agentRequired: boolean;
+            /** Gate */
+            gate: string | null;
+            /** Key */
+            key: string;
         };
         /** PolicyIn */
         PolicyIn: {
@@ -1399,6 +1752,13 @@ export interface components {
             validFrom: string;
             /** Validto */
             validTo: string | null;
+        };
+        /** ProblemOut */
+        ProblemOut: {
+            /** Code */
+            code: string;
+            /** Subject */
+            subject: string | null;
         };
         /** ProfileIn */
         ProfileIn: {
@@ -1498,8 +1858,95 @@ export interface components {
             /** Wasfallback */
             wasFallback: boolean;
         };
-        /** ProjectOut */
-        ProjectOut: {
+        /** ProjectAgentOut */
+        ProjectAgentOut: {
+            /** Key */
+            key: string;
+            /** Reason */
+            reason: string | null;
+            /** Version */
+            version: string;
+        };
+        /** ProjectCreate */
+        ProjectCreate: {
+            /** Agents */
+            agents?: string[] | null;
+            /**
+             * Artifactlanguage
+             * @default en
+             * @enum {string}
+             */
+            artifactLanguage: "en" | "es";
+            /**
+             * Autonomy
+             * @default balanced
+             * @enum {string}
+             */
+            autonomy: "guided" | "balanced" | "autonomous";
+            /** Budgetusd */
+            budgetUsd?: number | string | null;
+            /** Changenote */
+            changeNote?: string | null;
+            /**
+             * Description
+             * @default
+             */
+            description: string;
+            /**
+             * Flow
+             * @enum {string}
+             */
+            flow: "modernization" | "newFeature";
+            /**
+             * Maxiterations
+             * @default 3
+             */
+            maxIterations: number;
+            /** Modelchoices */
+            modelChoices?: components["schemas"]["ModelChoiceIn"][];
+            /** Name */
+            name: string;
+            /** Pipelinetemplate */
+            pipelineTemplate: string;
+            /**
+             * Samplingpct
+             * @default 10
+             */
+            samplingPct: number;
+            /** Skills */
+            skills?: string[] | null;
+            /** Sources */
+            sources: string[];
+            target: components["schemas"]["TargetIn"];
+            /** Team */
+            team?: components["schemas"]["TeamMemberIn"][];
+        };
+        /** ProjectDetail */
+        ProjectDetail: {
+            /** Agents */
+            agents: components["schemas"]["ProjectAgentOut"][];
+            /**
+             * Artifactlanguage
+             * @enum {string}
+             */
+            artifactLanguage: "en" | "es";
+            /** Budgetusd */
+            budgetUsd: string | null;
+            config: components["schemas"]["ConfigOut"] | null;
+            /** Configversion */
+            configVersion: number | null;
+            /**
+             * Createdat
+             * Format: date-time
+             */
+            createdAt: string;
+            /** Description */
+            description: string;
+            /**
+             * Flow
+             * @enum {string}
+             */
+            flow: "modernization" | "newFeature";
             /**
              * Id
              * Format: uuid
@@ -1507,11 +1954,87 @@ export interface components {
             id: string;
             /** Name */
             name: string;
+            /** Permissions */
+            permissions: string[];
+            /** Skills */
+            skills: components["schemas"]["ProjectSkillOut"][];
+            /** Sources */
+            sources: string[];
             /**
              * Status
              * @enum {string}
              */
             status: "active" | "archived";
+            target: components["schemas"]["TargetOut"] | null;
+            /** Team */
+            team: components["schemas"]["TeamMemberOut"][];
+            /**
+             * Updatedat
+             * Format: date-time
+             */
+            updatedAt: string;
+        };
+        /** ProjectOut */
+        ProjectOut: {
+            /**
+             * Artifactlanguage
+             * @enum {string}
+             */
+            artifactLanguage: "en" | "es";
+            /** Configversion */
+            configVersion: number | null;
+            /**
+             * Createdat
+             * Format: date-time
+             */
+            createdAt: string;
+            /** Description */
+            description: string;
+            /**
+             * Flow
+             * @enum {string}
+             */
+            flow: "modernization" | "newFeature";
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
+            /** Sources */
+            sources: string[];
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "active" | "archived";
+            target: components["schemas"]["TargetOut"] | null;
+            /**
+             * Updatedat
+             * Format: date-time
+             */
+            updatedAt: string;
+        };
+        /** ProjectSkillOut */
+        ProjectSkillOut: {
+            /** Key */
+            key: string;
+            /** Recommended */
+            recommended: boolean;
+            /** Version */
+            version: string;
+        };
+        /** ProjectUpdate */
+        ProjectUpdate: {
+            /** Artifactlanguage */
+            artifactLanguage?: ("en" | "es") | null;
+            /** Description */
+            description?: string | null;
+            /** Name */
+            name?: string | null;
+            /** Status */
+            status?: ("active" | "archived") | null;
         };
         /** Readiness */
         Readiness: {
@@ -1524,6 +2047,13 @@ export interface components {
              * @enum {string}
              */
             status: "ok" | "fail";
+        };
+        /** RecommendationOut */
+        RecommendationOut: {
+            /** Agent */
+            agent: string;
+            /** Reason */
+            reason: string;
         };
         /** ResolvedOut */
         ResolvedOut: {
@@ -1601,6 +2131,13 @@ export interface components {
             /** Name */
             name: string;
         };
+        /** RuleOut */
+        RuleOut: {
+            /** Key */
+            key: string;
+            /** Message */
+            message: string;
+        };
         /** SessionTenantOut */
         SessionTenantOut: {
             /**
@@ -1613,12 +2150,176 @@ export interface components {
             /** Slug */
             slug: string;
         };
+        /** SkillDetailOut */
+        SkillDetailOut: {
+            /** Agents */
+            agents: string[];
+            /** Conflicts */
+            conflicts: string[];
+            /** Content */
+            content: string;
+            /** Description */
+            description: string;
+            /** Evalscore */
+            evalScore: number | null;
+            /** Key */
+            key: string;
+            /** Requires */
+            requires: string[];
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "draft" | "evaluating" | "published" | "obsolete";
+            /** Technologies */
+            technologies: string[];
+            /** Title */
+            title: string;
+            /**
+             * Type
+             * @enum {string}
+             */
+            type: "source" | "target" | "conversion" | "crossCutting" | "customer";
+            /** Version */
+            version: string;
+        };
+        /** SkillOut */
+        SkillOut: {
+            /** Agents */
+            agents: string[];
+            /** Conflicts */
+            conflicts: string[];
+            /** Description */
+            description: string;
+            /** Evalscore */
+            evalScore: number | null;
+            /** Key */
+            key: string;
+            /** Requires */
+            requires: string[];
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "draft" | "evaluating" | "published" | "obsolete";
+            /** Technologies */
+            technologies: string[];
+            /** Title */
+            title: string;
+            /**
+             * Type
+             * @enum {string}
+             */
+            type: "source" | "target" | "conversion" | "crossCutting" | "customer";
+            /** Version */
+            version: string;
+        };
+        /** SourceOptionOut */
+        SourceOptionOut: {
+            /** Adapter */
+            adapter: string | null;
+            /**
+             * Flow
+             * @enum {string}
+             */
+            flow: "modernization" | "newFeature";
+            /** Key */
+            key: string;
+            /** Name */
+            name: string;
+            /** Requiredskills */
+            requiredSkills: string[];
+        };
         /** SyncOut */
         SyncOut: {
             /** Families */
             families: number;
             /** Versions */
             versions: number;
+        };
+        /** TargetIn */
+        TargetIn: {
+            /** Architecture */
+            architecture: string;
+            /** Backend */
+            backend: string;
+            /** Cloud */
+            cloud: string;
+            /** Database */
+            database: string;
+            /** Frontend */
+            frontend: string;
+        };
+        /** TargetOptionOut */
+        TargetOptionOut: {
+            /**
+             * Axis
+             * @enum {string}
+             */
+            axis: "architecture" | "backend" | "frontend" | "database" | "cloud";
+            /** Key */
+            key: string;
+            /** Level */
+            level: string | null;
+            /** Name */
+            name: string;
+            /** Wave */
+            wave: number | null;
+        };
+        /** TargetOut */
+        TargetOut: {
+            /** Architecture */
+            architecture: string;
+            /** Backend */
+            backend: string;
+            /** Cloud */
+            cloud: string;
+            /** Database */
+            database: string;
+            /** Frontend */
+            frontend: string;
+        };
+        /** TeamMemberIn */
+        TeamMemberIn: {
+            /** Rolekey */
+            roleKey: string;
+            /**
+             * Userid
+             * Format: uuid
+             */
+            userId: string;
+        };
+        /** TeamMemberOut */
+        TeamMemberOut: {
+            /** Displayname */
+            displayName: string;
+            /** Email */
+            email: string;
+            /** Rolekey */
+            roleKey: string;
+            /** Rolename */
+            roleName: string;
+            /**
+             * Userid
+             * Format: uuid
+             */
+            userId: string;
+        };
+        /** TemplateOut */
+        TemplateOut: {
+            /**
+             * Defaultautonomy
+             * @enum {string}
+             */
+            defaultAutonomy: "guided" | "balanced" | "autonomous";
+            /** Description */
+            description: string;
+            /** Key */
+            key: string;
+            /** Name */
+            name: string;
+            /** Requiredgates */
+            requiredGates: string[];
         };
         /** TenantCreate */
         TenantCreate: {
@@ -2689,6 +3390,57 @@ export interface operations {
             };
         };
     };
+    get_catalog_api_v1_catalog_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CatalogOut"];
+                };
+            };
+        };
+    };
+    get_skill_api_v1_catalog_skills__skill_key__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                skill_key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SkillDetailOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     live_api_v1_health_live_get: {
         parameters: {
             query?: never;
@@ -2940,6 +3692,204 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ProjectOut"][];
+                };
+            };
+        };
+    };
+    create_project_api_v1_projects_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProjectCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_project_api_v1_projects__project_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_project_api_v1_projects__project_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProjectUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    change_config_api_v1_projects__project_id__config_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConfigIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    config_versions_api_v1_projects__project_id__config_versions_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConfigVersionOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    compose_api_v1_projects_compose_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ComposeIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompositionOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

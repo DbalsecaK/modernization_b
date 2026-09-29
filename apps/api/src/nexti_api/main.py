@@ -24,6 +24,7 @@ from nexti_api.authz.relay import OutboxRelay
 from nexti_api.errors import install_error_handlers
 from nexti_api.keycloak_admin import KeycloakAdmin
 from nexti_api.observability import RequestLogMiddleware, configure_logging, log
+from nexti_api.projects import catalog_api
 from nexti_api.projects import router as projects_router
 from nexti_api.resources import Resources
 from nexti_api.settings import Settings, get_settings
@@ -147,6 +148,7 @@ def create_app(settings: Settings | None = None, health_checks: dict[str, health
         roles.router,
         assignments.router,
         projects_router.router,
+        catalog_api.router,
     ):
         app.include_router(admin_router)
     app.include_router(audit_log.router)
