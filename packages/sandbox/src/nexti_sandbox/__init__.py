@@ -9,6 +9,7 @@ Firecracker (M9); callers only see `Sandbox.run`.
 
 import asyncio
 import shutil
+import subprocess
 import tempfile
 import time
 import uuid
@@ -102,26 +103,27 @@ class DockerSandbox:
                 target = input_dir.joinpath(*_safe_relative(relative).parts)
                 target.parent.mkdir(parents=True, exist_ok=True)
                 target.write_bytes(content)
-            try:
-                process = await asyncio.create_subprocess_exec(
-                    *self._args(name, input_dir, limits), *command,
-                    stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
-                )  # fmt: skip
-            except FileNotFoundError as exc:
-                raise SandboxUnavailableError(f"{self.docker} is not installed") from exc
             timed_out = False
             try:
-                stdout, stderr = await asyncio.wait_for(process.communicate(), timeout=limits.timeout_seconds)
-            except TimeoutError:
+                # The docker CLI runs in a thread: this works on any event loop (psycopg needs the selector loop on
+                # Windows, where asyncio subprocesses need the proactor loop).
+                process = await asyncio.to_thread(
+                    subprocess.run, [*self._args(name, input_dir, limits), *command], capture_output=True,
+                    timeout=limits.timeout_seconds, check=False,
+                )  # fmt: skip
+                returncode, stdout, stderr = process.returncode, process.stdout, process.stderr
+            except FileNotFoundError as exc:
+                raise SandboxUnavailableError(f"{self.docker} is not installed") from exc
+            except subprocess.TimeoutExpired as exc:
                 timed_out = True
                 await self._kill(name)
-                stdout, stderr = await process.communicate()
-            if process.returncode == 125 and not timed_out and b"Cannot connect" in stderr:
+                returncode, stdout, stderr = -1, exc.stdout or b"", exc.stderr or b""
+            if returncode == 125 and not timed_out and b"Cannot connect" in stderr:
                 raise SandboxUnavailableError(stderr.decode("utf-8", "replace")[:300])
             cap = limits.max_output_bytes
             truncated = len(stdout) > cap or len(stderr) > cap
             return SandboxResult(
-                exit_code=process.returncode if process.returncode is not None else -1,
+                exit_code=returncode,
                 stdout=stdout[:cap].decode("utf-8", "replace"),
                 stderr=stderr[:cap].decode("utf-8", "replace"),
                 timed_out=timed_out,
@@ -132,20 +134,19 @@ class DockerSandbox:
             shutil.rmtree(input_dir, ignore_errors=True)
 
     async def _kill(self, name: str) -> None:
-        killer = await asyncio.create_subprocess_exec(
-            self.docker, "kill", name, stdout=asyncio.subprocess.DEVNULL, stderr=asyncio.subprocess.DEVNULL
+        await asyncio.to_thread(
+            subprocess.run, [self.docker, "kill", name], capture_output=True, timeout=30, check=False
         )
-        await killer.wait()
 
     async def available(self) -> bool:
         try:
-            probe = await asyncio.create_subprocess_exec(
-                self.docker, "version", "--format", "{{.Server.Version}}",
-                stdout=asyncio.subprocess.DEVNULL, stderr=asyncio.subprocess.DEVNULL,
+            probe = await asyncio.to_thread(
+                subprocess.run, [self.docker, "version", "--format", "{{.Server.Version}}"], capture_output=True,
+                timeout=30, check=False,
             )  # fmt: skip
-        except FileNotFoundError:
+        except (FileNotFoundError, subprocess.TimeoutExpired):
             return False
-        return await probe.wait() == 0
+        return probe.returncode == 0
 
 
 __all__ = ["DEFAULT_IMAGE", "DockerSandbox", "Limits", "Sandbox", "SandboxResult", "SandboxUnavailableError"]

@@ -16,7 +16,13 @@ ALLOWED = {"nexti_model_gateway.service", "nexti_model_gateway.gateway", "nexti_
 # Signs of a direct call to the provider or the secrets store.
 FORBIDDEN_TEXT = ("openrouter.ai/api", "X-Vault-Token", "/v1/secret/data")
 SECRETS_CLIENT = ROOT / "packages" / "core" / "src" / "nexti_core" / "secrets.py"
-SECRETS_USERS = {ROOT / "apps" / "api" / "src" / "nexti_api" / "projects" / "repository.py"}
+SECRETS_USERS = {
+    ROOT / "apps" / "api" / "src" / "nexti_api" / "projects" / "repository.py",
+    # The worker's preflight resolves the repository token (read only) to check the repository (spec 11.1).
+    ROOT / "apps" / "worker" / "src" / "nexti_worker" / "probe.py",
+    ROOT / "apps" / "worker" / "src" / "nexti_worker" / "runner.py",
+    ROOT / "apps" / "worker" / "src" / "nexti_worker" / "__main__.py",
+}
 
 
 def production_python() -> list[Path]:

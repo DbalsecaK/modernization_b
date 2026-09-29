@@ -1342,22 +1342,30 @@ name = "nexti-worker"
 version = "0.1.0"
 source = { editable = "apps/worker" }
 dependencies = [
+    { name = "httpx" },
     { name = "nexti-core" },
     { name = "nexti-ingest" },
+    { name = "nexti-model-gateway" },
     { name = "nexti-orchestration" },
+    { name = "nexti-sandbox" },
     { name = "procrastinate" },
     { name = "psycopg", extra = ["binary"] },
     { name = "pydantic-settings" },
+    { name = "structlog" },
 ]
 
 [package.metadata]
 requires-dist = [
+    { name = "httpx", specifier = ">=0.28" },
     { name = "nexti-core", editable = "packages/core" },
     { name = "nexti-ingest", editable = "packages/ingest" },
+    { name = "nexti-model-gateway", editable = "packages/model_gateway" },
     { name = "nexti-orchestration", editable = "packages/orchestration" },
+    { name = "nexti-sandbox", editable = "packages/sandbox" },
     { name = "procrastinate", specifier = ">=3.0" },
     { name = "psycopg", extras = ["binary"], specifier = ">=3.2" },
     { name = "pydantic-settings", specifier = ">=2.10" },
+    { name = "structlog", specifier = ">=25.4" },
 ]
 
 [[package]]
