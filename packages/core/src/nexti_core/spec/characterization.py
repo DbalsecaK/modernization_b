@@ -7,13 +7,17 @@ so the legacy and the target are compared by value and never by how each engine 
 import hashlib
 import json
 import re
+from collections.abc import Sequence
 from datetime import date, datetime
 from decimal import Decimal, InvalidOperation
-from typing import Annotated
+from typing import TYPE_CHECKING, Annotated
 
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_validator
 
 from nexti_core.spec import neutral_types as nt
+
+if TYPE_CHECKING:
+    from nexti_core.adapters import SourceFile
 
 Scalar = str | int | float | bool | None
 Identifier = Annotated[str, StringConstraints(pattern=r"^[A-Za-z_#@][A-Za-z0-9_#$@.]*$", max_length=200)]
@@ -123,6 +127,14 @@ class GoldenMaster(CharacterizationModel):
     results: list[Recorded]
 
     model_config = ConfigDict(extra="forbid", frozen=True, populate_by_name=True)
+
+
+def source_digest(files: "Sequence[SourceFile]") -> str:
+    """SHA-256 of the legacy as characterized (spec 11.3 check 6: the source stays intact)."""
+    digest = hashlib.sha256()
+    for file in sorted(files, key=lambda f: f.path):
+        digest.update(file.path.encode() + b"\0" + file.text.encode() + b"\0")
+    return digest.hexdigest()
 
 
 def suite_key(source: str, suite: Suite) -> str:

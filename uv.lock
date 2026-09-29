@@ -20,6 +20,7 @@ members = [
     "nexti-pack-spring-boot",
     "nexti-sandbox",
     "nexti-skills",
+    "nexti-verification",
     "nexti-worker",
 ]
 
@@ -1355,6 +1356,7 @@ dependencies = [
     { name = "nexti-core" },
     { name = "nexti-pack-spring-boot" },
     { name = "nexti-sandbox" },
+    { name = "nexti-verification" },
     { name = "psycopg", extra = ["binary"] },
 ]
 
@@ -1367,6 +1369,7 @@ requires-dist = [
     { name = "nexti-core", editable = "packages/core" },
     { name = "nexti-pack-spring-boot", editable = "packages/packs/target/spring_boot" },
     { name = "nexti-sandbox", editable = "packages/sandbox" },
+    { name = "nexti-verification", editable = "packages/verification" },
     { name = "psycopg", extras = ["binary"], specifier = ">=3.2" },
 ]
 
@@ -1404,11 +1407,23 @@ dependencies = [
 requires-dist = [{ name = "pyyaml", specifier = ">=6.0" }]
 
 [[package]]
+name = "nexti-verification"
+version = "0.1.0"
+source = { editable = "packages/verification" }
+dependencies = [
+    { name = "nexti-core" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "nexti-core", editable = "packages/core" }]
+
+[[package]]
 name = "nexti-worker"
 version = "0.1.0"
 source = { editable = "apps/worker" }
 dependencies = [
     { name = "httpx" },
+    { name = "nexti-adapter-sybase" },
     { name = "nexti-core" },
     { name = "nexti-graph" },
     { name = "nexti-ingest" },
@@ -1416,6 +1431,7 @@ dependencies = [
     { name = "nexti-orchestration" },
     { name = "nexti-pack-spring-boot" },
     { name = "nexti-sandbox" },
+    { name = "nexti-verification" },
     { name = "procrastinate" },
     { name = "psycopg", extra = ["binary"] },
     { name = "pydantic-settings" },
@@ -1425,6 +1441,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "httpx", specifier = ">=0.28" },
+    { name = "nexti-adapter-sybase", editable = "packages/adapters/source/sybase" },
     { name = "nexti-core", editable = "packages/core" },
     { name = "nexti-graph", editable = "packages/graph" },
     { name = "nexti-ingest", editable = "packages/ingest" },
@@ -1432,6 +1449,7 @@ requires-dist = [
     { name = "nexti-orchestration", editable = "packages/orchestration" },
     { name = "nexti-pack-spring-boot", editable = "packages/packs/target/spring_boot" },
     { name = "nexti-sandbox", editable = "packages/sandbox" },
+    { name = "nexti-verification", editable = "packages/verification" },
     { name = "procrastinate", specifier = ">=3.0" },
     { name = "psycopg", extras = ["binary"], specifier = ">=3.2" },
     { name = "pydantic-settings", specifier = ">=2.10" },

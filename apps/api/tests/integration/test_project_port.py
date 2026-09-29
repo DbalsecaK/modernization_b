@@ -11,6 +11,8 @@ from pathlib import Path
 
 import httpx
 import pytest
+from nexti_verification import compute
+from nexti_verification import verdict as checks
 from sqlalchemy.ext.asyncio import AsyncEngine
 
 from nexti_core.object_store import ObjectStore, ObjectStoreConfig, input_key
@@ -181,7 +183,7 @@ async def test_the_port_keeps_designs_drafts_and_the_golden_master_as_references
                                           SETTINGS.object_store_bucket))  # fmt: skip
     loaded = await load_run(app_engine, run_id, world.tenant_a)
     fixtures = ROOT / "packages/adapters/source/sybase/tests/fixtures/pago_orden"
-    master = next((fixtures / "golden").glob("*.json")).read_text(encoding="utf-8")
+    master = (fixtures / "golden" / "086a748602b848d260c4abb97357af67.json").read_text(encoding="utf-8")
     design = (ROOT / "packages/packs/target/spring_boot/tests/fixtures/pago_orden/design.json").read_text("utf-8")
     async with httpx.AsyncClient() as http:
         gateway = GatewayService(app_engine, http, SecretsConfig(SETTINGS.secrets_url, "unused"))
@@ -197,11 +199,29 @@ async def test_the_port_keeps_designs_drafts_and_the_golden_master_as_references
         assert reference.startswith(f"tenants/{world.tenant_a}/projects/{project_id}/runs/{run_id}/drafts/")
         assert await port.load_file(reference) == "class A {}"
         await port.save_golden_master(GoldenMaster.model_validate_json(master))
+        loaded_master = await port.load_golden_master()
+        assert loaded_master is not None
+        assert len(loaded_master.results) == 12
+        await port.save_artifacts({"src/main/java/A.java": "class A {}"}, {"src/main/java/A.java": "domain"},
+                                  {"src/main/java/A.java": ["RULE-001"]})  # fmt: skip
+        generated, traced = await port.load_generated()
+        assert generated == {"src/main/java/A.java": "class A {}"}  # the design and the golden master apart
+        assert traced == {"src/main/java/A.java": ["RULE-001"]}
+        verdict = compute("PayOrder", [checks.tests_ran(7, 0, True)], ["a note"])
+        pack_key = await port.save_verdict(verdict, b"PK-proof")
+        assert pack_key.endswith("/verification/PayOrder/proof-pack.zip")
+        assert b"".join(await store.read(pack_key)) == b"PK-proof"
+        (row,) = await fetch(owner_engine, "SELECT verdict, checks, not_proven FROM verdict WHERE run_id = :r",
+                             r=run_id)  # fmt: skip
+        assert row["verdict"] == "PARTLY PROVEN"
+        assert row["checks"][0]["key"] == "tests_ran"
+        assert row["not_proven"][0] == "a note"
 
     rows = await fetch(owner_engine, "SELECT path, layer, rules, object_key FROM generated_artifact "
                                      "WHERE project_id = :p ORDER BY path", p=project_id)  # fmt: skip
     assert [(r["path"], r["layer"]) for r in rows] == [
         ("characterization/golden_master.json", "tests"), ("design/design.json", "docs"),
+        ("src/main/java/A.java", "domain"),
     ]  # fmt: skip
     assert rows[0]["rules"] == [f"RULE-00{n}" for n in range(1, 10)]
     kept = b"".join(await store.read(rows[0]["object_key"])).decode("utf-8")

@@ -12,6 +12,7 @@ dependencies = [
   "nexti-core",
   "nexti-pack-spring-boot",
   "nexti-sandbox",
+  "nexti-verification",
 ]
 
 [tool.uv.sources]
@@ -20,6 +21,7 @@ nexti-agents = { workspace = true }
 nexti-core = { workspace = true }
 nexti-pack-spring-boot = { workspace = true }
 nexti-sandbox = { workspace = true }
+nexti-verification = { workspace = true }
 
 [build-system]
 requires = ["hatchling"]

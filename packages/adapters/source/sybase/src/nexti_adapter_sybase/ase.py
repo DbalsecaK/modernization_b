@@ -6,7 +6,6 @@ the customer runs outside an isolated container). The scripts come from `nexti_a
 recording without starting Sybase (plan M4, golden master decision)."""
 
 import asyncio
-import hashlib
 import subprocess
 import time
 import uuid
@@ -15,7 +14,7 @@ from typing import Literal
 
 from nexti_adapter_sybase import golden
 from nexti_core.adapters import LegacyUnavailableError, SourceFile
-from nexti_core.spec.characterization import GoldenMaster, Recorded, Suite, suite_key
+from nexti_core.spec.characterization import GoldenMaster, Recorded, Suite, source_digest, suite_key
 
 IMAGE = "datagrip/sybase:16.0"
 # The public default of the test image (not a secret): the engine has no network and lives for one suite.
@@ -29,13 +28,6 @@ class LegacyEngineError(LegacyUnavailableError):
 
 class MissingGoldenMasterError(LegacyUnavailableError):
     """Replay mode found no recording for this code and suite."""
-
-
-def _source_sha256(files: list[SourceFile]) -> str:
-    digest = hashlib.sha256()
-    for file in sorted(files, key=lambda f: f.path):
-        digest.update(file.path.encode() + b"\0" + file.text.encode() + b"\0")
-    return digest.hexdigest()
 
 
 class AseRunner:
@@ -101,7 +93,7 @@ class AseRunner:
                 results.append(Recorded(case=case, observation=golden.observe(plan, output)))
         finally:
             await self._stop(name)
-        return GoldenMaster(program=suite.program, source_sha256=_source_sha256(files), engine=self.engine,
+        return GoldenMaster(program=suite.program, source_sha256=source_digest(files), engine=self.engine,
                             schema_=suite.schema_, results=results)  # fmt: skip
 
 

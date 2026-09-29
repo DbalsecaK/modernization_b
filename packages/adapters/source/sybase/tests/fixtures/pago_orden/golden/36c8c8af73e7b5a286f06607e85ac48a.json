@@ -1,0 +1,1579 @@
+{
+  "program": "dbo.sp_pago_orden",
+  "source_sha256": "07998b222357bba56acc622ec842a24786f06e24c2277d865c1fc6773affe001",
+  "engine": "sybase-ase-16.0",
+  "schema": {
+    "tables": [
+      {
+        "name": "db_pagos..pg_orden",
+        "columns": [
+          {
+            "name": "ord_numero",
+            "type": "int",
+            "nullable": false
+          },
+          {
+            "name": "ord_empresa",
+            "type": "int",
+            "nullable": false
+          },
+          {
+            "name": "ord_estado",
+            "type": "char(1)",
+            "nullable": false
+          },
+          {
+            "name": "ord_fecha_pago",
+            "type": "datetime",
+            "nullable": true
+          },
+          {
+            "name": "ord_comision",
+            "type": "money",
+            "nullable": true
+          }
+        ],
+        "key": [
+          "ord_numero",
+          "ord_empresa"
+        ]
+      },
+      {
+        "name": "db_admin..ad_tarifa_empresa",
+        "columns": [
+          {
+            "name": "tar_empresa",
+            "type": "int",
+            "nullable": false
+          },
+          {
+            "name": "tar_servicio",
+            "type": "varchar(10)",
+            "nullable": false
+          },
+          {
+            "name": "tar_valor",
+            "type": "money",
+            "nullable": true
+          },
+          {
+            "name": "tar_separada",
+            "type": "char(1)",
+            "nullable": false
+          }
+        ],
+        "key": [
+          "tar_empresa",
+          "tar_servicio"
+        ]
+      },
+      {
+        "name": "db_admin..ad_servicio",
+        "columns": [
+          {
+            "name": "srv_codigo",
+            "type": "varchar(10)",
+            "nullable": false
+          },
+          {
+            "name": "srv_tarifa",
+            "type": "money",
+            "nullable": true
+          }
+        ],
+        "key": [
+          "srv_codigo"
+        ]
+      },
+      {
+        "name": "db_cuentas..ct_cuenta",
+        "columns": [
+          {
+            "name": "cta_numero",
+            "type": "char(10)",
+            "nullable": false
+          },
+          {
+            "name": "cta_tipo",
+            "type": "char(3)",
+            "nullable": false
+          },
+          {
+            "name": "cta_saldo",
+            "type": "money",
+            "nullable": false
+          }
+        ],
+        "key": [
+          "cta_numero",
+          "cta_tipo"
+        ]
+      }
+    ]
+  },
+  "results": [
+    {
+      "case": {
+        "name": "fresh_01_web_order_pays_half_the_service_tariff",
+        "description": "web_order_pays_half_the_service_tariff with its amounts scaled by 0.5",
+        "rules": [
+          "RULE-003",
+          "RULE-004",
+          "RULE-005",
+          "RULE-008"
+        ],
+        "inputs": {
+          "@i_orden": 7001,
+          "@i_empresa": 10,
+          "@i_servicio": "AGUA",
+          "@i_tipo_cuenta": "CTE",
+          "@i_cuenta": "1000000001",
+          "@i_valor": 50.0,
+          "@i_canal": "WEB",
+          "@i_fecha_proceso": "2026-03-02T09:30:00"
+        },
+        "setup": {
+          "db_pagos..pg_orden": [
+            {
+              "ord_numero": 7001,
+              "ord_empresa": 10,
+              "ord_estado": "P",
+              "ord_fecha_pago": null,
+              "ord_comision": null
+            }
+          ],
+          "db_admin..ad_tarifa_empresa": [],
+          "db_admin..ad_servicio": [
+            {
+              "srv_codigo": "AGUA",
+              "srv_tarifa": 0.63
+            },
+            {
+              "srv_codigo": "NOMINA",
+              "srv_tarifa": 1.5
+            },
+            {
+              "srv_codigo": "LUZ",
+              "srv_tarifa": 0.38
+            }
+          ],
+          "db_cuentas..ct_cuenta": [
+            {
+              "cta_numero": "1000000001",
+              "cta_tipo": "CTE",
+              "cta_saldo": 250.0
+            }
+          ]
+        },
+        "stubs": {
+          "db_cuentas..sp_debito": [
+            {
+              "returns": 0,
+              "outputs": {
+                "@o_secuencial": 900001
+              }
+            },
+            {
+              "returns": 0,
+              "outputs": {}
+            }
+          ]
+        }
+      },
+      "observation": {
+        "returns": 0,
+        "outputs": {
+          "@o_movimiento": "900001",
+          "@o_mensaje": "PAGO REALIZADO"
+        },
+        "tables": {
+          "db_pagos..pg_orden": [
+            {
+              "ord_numero": "7001",
+              "ord_empresa": "10",
+              "ord_estado": "A",
+              "ord_fecha_pago": "2026-03-02T09:30:00.000",
+              "ord_comision": "0.3200"
+            }
+          ],
+          "db_admin..ad_tarifa_empresa": [],
+          "db_admin..ad_servicio": [
+            {
+              "srv_codigo": "AGUA",
+              "srv_tarifa": "0.6300"
+            },
+            {
+              "srv_codigo": "LUZ",
+              "srv_tarifa": "0.3800"
+            },
+            {
+              "srv_codigo": "NOMINA",
+              "srv_tarifa": "1.5000"
+            }
+          ],
+          "db_cuentas..ct_cuenta": [
+            {
+              "cta_numero": "1000000001",
+              "cta_tipo": "CTE",
+              "cta_saldo": "250.0000"
+            }
+          ]
+        },
+        "calls": [
+          {
+            "program": "db_cuentas..sp_debito",
+            "arguments": {
+              "@i_cuenta": "1000000001",
+              "@i_tipo": "CTE",
+              "@i_valor": "50.3200",
+              "@i_referencia": "PAGO ORDEN"
+            }
+          }
+        ],
+        "messages": [],
+        "error": null
+      }
+    },
+    {
+      "case": {
+        "name": "fresh_02_branch_order_pays_the_full_company_tariff",
+        "description": "branch_order_pays_the_full_company_tariff with its amounts scaled by 1.5",
+        "rules": [
+          "RULE-003",
+          "RULE-004",
+          "RULE-005",
+          "RULE-008"
+        ],
+        "inputs": {
+          "@i_orden": 7001,
+          "@i_empresa": 10,
+          "@i_servicio": "AGUA",
+          "@i_tipo_cuenta": "CTE",
+          "@i_cuenta": "1000000001",
+          "@i_valor": 150.0,
+          "@i_canal": "OFI",
+          "@i_fecha_proceso": "2026-03-02T09:30:00"
+        },
+        "setup": {
+          "db_pagos..pg_orden": [
+            {
+              "ord_numero": 7001,
+              "ord_empresa": 10,
+              "ord_estado": "P",
+              "ord_fecha_pago": null,
+              "ord_comision": null
+            }
+          ],
+          "db_admin..ad_tarifa_empresa": [
+            {
+              "tar_empresa": 10,
+              "tar_servicio": "AGUA",
+              "tar_valor": 3.15,
+              "tar_separada": "N"
+            }
+          ],
+          "db_admin..ad_servicio": [
+            {
+              "srv_codigo": "AGUA",
+              "srv_tarifa": 1.88
+            },
+            {
+              "srv_codigo": "NOMINA",
+              "srv_tarifa": 4.5
+            },
+            {
+              "srv_codigo": "LUZ",
+              "srv_tarifa": 1.13
+            }
+          ],
+          "db_cuentas..ct_cuenta": [
+            {
+              "cta_numero": "1000000001",
+              "cta_tipo": "CTE",
+              "cta_saldo": 750.0
+            }
+          ]
+        },
+        "stubs": {
+          "db_cuentas..sp_debito": [
+            {
+              "returns": 0,
+              "outputs": {
+                "@o_secuencial": 900001
+              }
+            },
+            {
+              "returns": 0,
+              "outputs": {}
+            }
+          ]
+        }
+      },
+      "observation": {
+        "returns": 0,
+        "outputs": {
+          "@o_movimiento": "900001",
+          "@o_mensaje": "PAGO REALIZADO"
+        },
+        "tables": {
+          "db_pagos..pg_orden": [
+            {
+              "ord_numero": "7001",
+              "ord_empresa": "10",
+              "ord_estado": "A",
+              "ord_fecha_pago": "2026-03-02T09:30:00.000",
+              "ord_comision": "3.1500"
+            }
+          ],
+          "db_admin..ad_tarifa_empresa": [
+            {
+              "tar_empresa": "10",
+              "tar_servicio": "AGUA",
+              "tar_valor": "3.1500",
+              "tar_separada": "N"
+            }
+          ],
+          "db_admin..ad_servicio": [
+            {
+              "srv_codigo": "AGUA",
+              "srv_tarifa": "1.8800"
+            },
+            {
+              "srv_codigo": "LUZ",
+              "srv_tarifa": "1.1300"
+            },
+            {
+              "srv_codigo": "NOMINA",
+              "srv_tarifa": "4.5000"
+            }
+          ],
+          "db_cuentas..ct_cuenta": [
+            {
+              "cta_numero": "1000000001",
+              "cta_tipo": "CTE",
+              "cta_saldo": "750.0000"
+            }
+          ]
+        },
+        "calls": [
+          {
+            "program": "db_cuentas..sp_debito",
+            "arguments": {
+              "@i_cuenta": "1000000001",
+              "@i_tipo": "CTE",
+              "@i_valor": "153.1500",
+              "@i_referencia": "PAGO ORDEN"
+            }
+          }
+        ],
+        "messages": [],
+        "error": null
+      }
+    },
+    {
+      "case": {
+        "name": "fresh_03_payroll_never_pays_commission",
+        "description": "payroll_never_pays_commission with its amounts scaled by 0.99",
+        "rules": [
+          "RULE-004"
+        ],
+        "inputs": {
+          "@i_orden": 7001,
+          "@i_empresa": 10,
+          "@i_servicio": "NOMINA",
+          "@i_tipo_cuenta": "CTE",
+          "@i_cuenta": "1000000001",
+          "@i_valor": 99.0,
+          "@i_canal": "OFI",
+          "@i_fecha_proceso": "2026-03-02T09:30:00"
+        },
+        "setup": {
+          "db_pagos..pg_orden": [
+            {
+              "ord_numero": 7001,
+              "ord_empresa": 10,
+              "ord_estado": "P",
+              "ord_fecha_pago": null,
+              "ord_comision": null
+            }
+          ],
+          "db_admin..ad_tarifa_empresa": [],
+          "db_admin..ad_servicio": [
+            {
+              "srv_codigo": "AGUA",
+              "srv_tarifa": 1.24
+            },
+            {
+              "srv_codigo": "NOMINA",
+              "srv_tarifa": 2.97
+            },
+            {
+              "srv_codigo": "LUZ",
+              "srv_tarifa": 0.74
+            }
+          ],
+          "db_cuentas..ct_cuenta": [
+            {
+              "cta_numero": "1000000001",
+              "cta_tipo": "CTE",
+              "cta_saldo": 495.0
+            }
+          ]
+        },
+        "stubs": {
+          "db_cuentas..sp_debito": [
+            {
+              "returns": 0,
+              "outputs": {
+                "@o_secuencial": 900001
+              }
+            },
+            {
+              "returns": 0,
+              "outputs": {}
+            }
+          ]
+        }
+      },
+      "observation": {
+        "returns": 0,
+        "outputs": {
+          "@o_movimiento": "900001",
+          "@o_mensaje": "PAGO REALIZADO"
+        },
+        "tables": {
+          "db_pagos..pg_orden": [
+            {
+              "ord_numero": "7001",
+              "ord_empresa": "10",
+              "ord_estado": "A",
+              "ord_fecha_pago": "2026-03-02T09:30:00.000",
+              "ord_comision": "0.0000"
+            }
+          ],
+          "db_admin..ad_tarifa_empresa": [],
+          "db_admin..ad_servicio": [
+            {
+              "srv_codigo": "AGUA",
+              "srv_tarifa": "1.2400"
+            },
+            {
+              "srv_codigo": "LUZ",
+              "srv_tarifa": "0.7400"
+            },
+            {
+              "srv_codigo": "NOMINA",
+              "srv_tarifa": "2.9700"
+            }
+          ],
+          "db_cuentas..ct_cuenta": [
+            {
+              "cta_numero": "1000000001",
+              "cta_tipo": "CTE",
+              "cta_saldo": "495.0000"
+            }
+          ]
+        },
+        "calls": [
+          {
+            "program": "db_cuentas..sp_debito",
+            "arguments": {
+              "@i_cuenta": "1000000001",
+              "@i_tipo": "CTE",
+              "@i_valor": "99.0000",
+              "@i_referencia": "PAGO ORDEN"
+            }
+          }
+        ],
+        "messages": [],
+        "error": null
+      }
+    },
+    {
+      "case": {
+        "name": "fresh_04_separate_commission_is_a_second_debit",
+        "description": "separate_commission_is_a_second_debit with its amounts scaled by 1.01",
+        "rules": [
+          "RULE-005",
+          "RULE-007"
+        ],
+        "inputs": {
+          "@i_orden": 7001,
+          "@i_empresa": 10,
+          "@i_servicio": "AGUA",
+          "@i_tipo_cuenta": "CTE",
+          "@i_cuenta": "1000000001",
+          "@i_valor": 101.0,
+          "@i_canal": "OFI",
+          "@i_fecha_proceso": "2026-03-02T09:30:00"
+        },
+        "setup": {
+          "db_pagos..pg_orden": [
+            {
+              "ord_numero": 7001,
+              "ord_empresa": 10,
+              "ord_estado": "P",
+              "ord_fecha_pago": null,
+              "ord_comision": null
+            }
+          ],
+          "db_admin..ad_tarifa_empresa": [
+            {
+              "tar_empresa": 10,
+              "tar_servicio": "AGUA",
+              "tar_valor": 1.52,
+              "tar_separada": "S"
+            }
+          ],
+          "db_admin..ad_servicio": [
+            {
+              "srv_codigo": "AGUA",
+              "srv_tarifa": 1.26
+            },
+            {
+              "srv_codigo": "NOMINA",
+              "srv_tarifa": 3.03
+            },
+            {
+              "srv_codigo": "LUZ",
+              "srv_tarifa": 0.76
+            }
+          ],
+          "db_cuentas..ct_cuenta": [
+            {
+              "cta_numero": "1000000001",
+              "cta_tipo": "CTE",
+              "cta_saldo": 505.0
+            }
+          ]
+        },
+        "stubs": {
+          "db_cuentas..sp_debito": [
+            {
+              "returns": 0,
+              "outputs": {
+                "@o_secuencial": 900001
+              }
+            },
+            {
+              "returns": 0,
+              "outputs": {}
+            }
+          ]
+        }
+      },
+      "observation": {
+        "returns": 0,
+        "outputs": {
+          "@o_movimiento": "900001",
+          "@o_mensaje": "PAGO REALIZADO"
+        },
+        "tables": {
+          "db_pagos..pg_orden": [
+            {
+              "ord_numero": "7001",
+              "ord_empresa": "10",
+              "ord_estado": "A",
+              "ord_fecha_pago": "2026-03-02T09:30:00.000",
+              "ord_comision": "1.5200"
+            }
+          ],
+          "db_admin..ad_tarifa_empresa": [
+            {
+              "tar_empresa": "10",
+              "tar_servicio": "AGUA",
+              "tar_valor": "1.5200",
+              "tar_separada": "S"
+            }
+          ],
+          "db_admin..ad_servicio": [
+            {
+              "srv_codigo": "AGUA",
+              "srv_tarifa": "1.2600"
+            },
+            {
+              "srv_codigo": "LUZ",
+              "srv_tarifa": "0.7600"
+            },
+            {
+              "srv_codigo": "NOMINA",
+              "srv_tarifa": "3.0300"
+            }
+          ],
+          "db_cuentas..ct_cuenta": [
+            {
+              "cta_numero": "1000000001",
+              "cta_tipo": "CTE",
+              "cta_saldo": "505.0000"
+            }
+          ]
+        },
+        "calls": [
+          {
+            "program": "db_cuentas..sp_debito",
+            "arguments": {
+              "@i_cuenta": "1000000001",
+              "@i_tipo": "CTE",
+              "@i_valor": "101.0000",
+              "@i_referencia": "PAGO ORDEN"
+            }
+          },
+          {
+            "program": "db_cuentas..sp_debito",
+            "arguments": {
+              "@i_cuenta": "1000000001",
+              "@i_tipo": "CTE",
+              "@i_valor": "1.5200",
+              "@i_referencia": "COMISION PAGO"
+            }
+          }
+        ],
+        "messages": [],
+        "error": null
+      }
+    },
+    {
+      "case": {
+        "name": "fresh_05_account_type_not_allowed",
+        "description": "account_type_not_allowed with its amounts scaled by 2",
+        "rules": [
+          "RULE-001",
+          "RULE-009"
+        ],
+        "inputs": {
+          "@i_orden": 7001,
+          "@i_empresa": 10,
+          "@i_servicio": "AGUA",
+          "@i_tipo_cuenta": "PRE",
+          "@i_cuenta": "1000000001",
+          "@i_valor": 200.0,
+          "@i_canal": "WEB",
+          "@i_fecha_proceso": "2026-03-02T09:30:00"
+        },
+        "setup": {
+          "db_pagos..pg_orden": [
+            {
+              "ord_numero": 7001,
+              "ord_empresa": 10,
+              "ord_estado": "P",
+              "ord_fecha_pago": null,
+              "ord_comision": null
+            }
+          ],
+          "db_admin..ad_tarifa_empresa": [],
+          "db_admin..ad_servicio": [
+            {
+              "srv_codigo": "AGUA",
+              "srv_tarifa": 2.5
+            },
+            {
+              "srv_codigo": "NOMINA",
+              "srv_tarifa": 6.0
+            },
+            {
+              "srv_codigo": "LUZ",
+              "srv_tarifa": 1.5
+            }
+          ],
+          "db_cuentas..ct_cuenta": [
+            {
+              "cta_numero": "1000000001",
+              "cta_tipo": "CTE",
+              "cta_saldo": 1000.0
+            }
+          ]
+        },
+        "stubs": {
+          "db_cuentas..sp_debito": [
+            {
+              "returns": 0,
+              "outputs": {
+                "@o_secuencial": 900001
+              }
+            },
+            {
+              "returns": 0,
+              "outputs": {}
+            }
+          ]
+        }
+      },
+      "observation": {
+        "returns": 50001,
+        "outputs": {
+          "@o_movimiento": null,
+          "@o_mensaje": "TIPO DE CUENTA NO PERMITIDO"
+        },
+        "tables": {
+          "db_pagos..pg_orden": [
+            {
+              "ord_numero": "7001",
+              "ord_empresa": "10",
+              "ord_estado": "P",
+              "ord_fecha_pago": null,
+              "ord_comision": null
+            }
+          ],
+          "db_admin..ad_tarifa_empresa": [],
+          "db_admin..ad_servicio": [
+            {
+              "srv_codigo": "AGUA",
+              "srv_tarifa": "2.5000"
+            },
+            {
+              "srv_codigo": "LUZ",
+              "srv_tarifa": "1.5000"
+            },
+            {
+              "srv_codigo": "NOMINA",
+              "srv_tarifa": "6.0000"
+            }
+          ],
+          "db_cuentas..ct_cuenta": [
+            {
+              "cta_numero": "1000000001",
+              "cta_tipo": "CTE",
+              "cta_saldo": "1000.0000"
+            }
+          ]
+        },
+        "calls": [
+          {
+            "program": "cobis..sp_cerror",
+            "arguments": {
+              "@t_from": "sp_pago_orden",
+              "@i_num": "50001",
+              "@i_msg": "TIPO DE CUENTA NO PERMITIDO"
+            }
+          }
+        ],
+        "messages": [],
+        "error": null
+      }
+    },
+    {
+      "case": {
+        "name": "fresh_06_order_does_not_exist",
+        "description": "order_does_not_exist with its amounts scaled by 0.1",
+        "rules": [
+          "RULE-002",
+          "RULE-009"
+        ],
+        "inputs": {
+          "@i_orden": 7001,
+          "@i_empresa": 10,
+          "@i_servicio": "AGUA",
+          "@i_tipo_cuenta": "CTE",
+          "@i_cuenta": "1000000001",
+          "@i_valor": 10.0,
+          "@i_canal": "WEB",
+          "@i_fecha_proceso": "2026-03-02T09:30:00"
+        },
+        "setup": {
+          "db_pagos..pg_orden": [],
+          "db_admin..ad_tarifa_empresa": [],
+          "db_admin..ad_servicio": [
+            {
+              "srv_codigo": "AGUA",
+              "srv_tarifa": 0.13
+            },
+            {
+              "srv_codigo": "NOMINA",
+              "srv_tarifa": 0.3
+            },
+            {
+              "srv_codigo": "LUZ",
+              "srv_tarifa": 0.08
+            }
+          ],
+          "db_cuentas..ct_cuenta": [
+            {
+              "cta_numero": "1000000001",
+              "cta_tipo": "CTE",
+              "cta_saldo": 50.0
+            }
+          ]
+        },
+        "stubs": {
+          "db_cuentas..sp_debito": [
+            {
+              "returns": 0,
+              "outputs": {
+                "@o_secuencial": 900001
+              }
+            },
+            {
+              "returns": 0,
+              "outputs": {}
+            }
+          ]
+        }
+      },
+      "observation": {
+        "returns": 50002,
+        "outputs": {
+          "@o_movimiento": null,
+          "@o_mensaje": "ORDEN NO EXISTE"
+        },
+        "tables": {
+          "db_pagos..pg_orden": [],
+          "db_admin..ad_tarifa_empresa": [],
+          "db_admin..ad_servicio": [
+            {
+              "srv_codigo": "AGUA",
+              "srv_tarifa": "0.1300"
+            },
+            {
+              "srv_codigo": "LUZ",
+              "srv_tarifa": "0.0800"
+            },
+            {
+              "srv_codigo": "NOMINA",
+              "srv_tarifa": "0.3000"
+            }
+          ],
+          "db_cuentas..ct_cuenta": [
+            {
+              "cta_numero": "1000000001",
+              "cta_tipo": "CTE",
+              "cta_saldo": "50.0000"
+            }
+          ]
+        },
+        "calls": [
+          {
+            "program": "cobis..sp_cerror",
+            "arguments": {
+              "@t_from": "sp_pago_orden",
+              "@i_num": "50002",
+              "@i_msg": "ORDEN NO EXISTE"
+            }
+          }
+        ],
+        "messages": [],
+        "error": null
+      }
+    },
+    {
+      "case": {
+        "name": "fresh_07_order_already_paid",
+        "description": "order_already_paid with its amounts scaled by 3.3",
+        "rules": [
+          "RULE-002",
+          "RULE-009"
+        ],
+        "inputs": {
+          "@i_orden": 7001,
+          "@i_empresa": 10,
+          "@i_servicio": "AGUA",
+          "@i_tipo_cuenta": "CTE",
+          "@i_cuenta": "1000000001",
+          "@i_valor": 330.0,
+          "@i_canal": "WEB",
+          "@i_fecha_proceso": "2026-03-02T09:30:00"
+        },
+        "setup": {
+          "db_pagos..pg_orden": [
+            {
+              "ord_numero": 7001,
+              "ord_empresa": 10,
+              "ord_estado": "A",
+              "ord_fecha_pago": null,
+              "ord_comision": null
+            }
+          ],
+          "db_admin..ad_tarifa_empresa": [],
+          "db_admin..ad_servicio": [
+            {
+              "srv_codigo": "AGUA",
+              "srv_tarifa": 4.13
+            },
+            {
+              "srv_codigo": "NOMINA",
+              "srv_tarifa": 9.9
+            },
+            {
+              "srv_codigo": "LUZ",
+              "srv_tarifa": 2.48
+            }
+          ],
+          "db_cuentas..ct_cuenta": [
+            {
+              "cta_numero": "1000000001",
+              "cta_tipo": "CTE",
+              "cta_saldo": 1650.0
+            }
+          ]
+        },
+        "stubs": {
+          "db_cuentas..sp_debito": [
+            {
+              "returns": 0,
+              "outputs": {
+                "@o_secuencial": 900001
+              }
+            },
+            {
+              "returns": 0,
+              "outputs": {}
+            }
+          ]
+        }
+      },
+      "observation": {
+        "returns": 50003,
+        "outputs": {
+          "@o_movimiento": null,
+          "@o_mensaje": "ORDEN NO ESTA PENDIENTE"
+        },
+        "tables": {
+          "db_pagos..pg_orden": [
+            {
+              "ord_numero": "7001",
+              "ord_empresa": "10",
+              "ord_estado": "A",
+              "ord_fecha_pago": null,
+              "ord_comision": null
+            }
+          ],
+          "db_admin..ad_tarifa_empresa": [],
+          "db_admin..ad_servicio": [
+            {
+              "srv_codigo": "AGUA",
+              "srv_tarifa": "4.1300"
+            },
+            {
+              "srv_codigo": "LUZ",
+              "srv_tarifa": "2.4800"
+            },
+            {
+              "srv_codigo": "NOMINA",
+              "srv_tarifa": "9.9000"
+            }
+          ],
+          "db_cuentas..ct_cuenta": [
+            {
+              "cta_numero": "1000000001",
+              "cta_tipo": "CTE",
+              "cta_saldo": "1650.0000"
+            }
+          ]
+        },
+        "calls": [
+          {
+            "program": "cobis..sp_cerror",
+            "arguments": {
+              "@t_from": "sp_pago_orden",
+              "@i_num": "50003",
+              "@i_msg": "ORDEN NO ESTA PENDIENTE"
+            }
+          }
+        ],
+        "messages": [],
+        "error": null
+      }
+    },
+    {
+      "case": {
+        "name": "fresh_08_virtual_account_cannot_overdraw",
+        "description": "virtual_account_cannot_overdraw with its amounts scaled by 0.75",
+        "rules": [
+          "RULE-006",
+          "RULE-009"
+        ],
+        "inputs": {
+          "@i_orden": 7001,
+          "@i_empresa": 10,
+          "@i_servicio": "AGUA",
+          "@i_tipo_cuenta": "VIR",
+          "@i_cuenta": "2000000002",
+          "@i_valor": 75.0,
+          "@i_canal": "WEB",
+          "@i_fecha_proceso": "2026-03-02T09:30:00"
+        },
+        "setup": {
+          "db_pagos..pg_orden": [
+            {
+              "ord_numero": 7001,
+              "ord_empresa": 10,
+              "ord_estado": "P",
+              "ord_fecha_pago": null,
+              "ord_comision": null
+            }
+          ],
+          "db_admin..ad_tarifa_empresa": [],
+          "db_admin..ad_servicio": [
+            {
+              "srv_codigo": "AGUA",
+              "srv_tarifa": 0.94
+            },
+            {
+              "srv_codigo": "NOMINA",
+              "srv_tarifa": 2.25
+            },
+            {
+              "srv_codigo": "LUZ",
+              "srv_tarifa": 0.56
+            }
+          ],
+          "db_cuentas..ct_cuenta": [
+            {
+              "cta_numero": "2000000002",
+              "cta_tipo": "VIR",
+              "cta_saldo": 75.38
+            }
+          ]
+        },
+        "stubs": {
+          "db_cuentas..sp_debito": [
+            {
+              "returns": 0,
+              "outputs": {
+                "@o_secuencial": 900001
+              }
+            },
+            {
+              "returns": 0,
+              "outputs": {}
+            }
+          ]
+        }
+      },
+      "observation": {
+        "returns": 50004,
+        "outputs": {
+          "@o_movimiento": null,
+          "@o_mensaje": "FONDOS INSUFICIENTES"
+        },
+        "tables": {
+          "db_pagos..pg_orden": [
+            {
+              "ord_numero": "7001",
+              "ord_empresa": "10",
+              "ord_estado": "P",
+              "ord_fecha_pago": null,
+              "ord_comision": null
+            }
+          ],
+          "db_admin..ad_tarifa_empresa": [],
+          "db_admin..ad_servicio": [
+            {
+              "srv_codigo": "AGUA",
+              "srv_tarifa": "0.9400"
+            },
+            {
+              "srv_codigo": "LUZ",
+              "srv_tarifa": "0.5600"
+            },
+            {
+              "srv_codigo": "NOMINA",
+              "srv_tarifa": "2.2500"
+            }
+          ],
+          "db_cuentas..ct_cuenta": [
+            {
+              "cta_numero": "2000000002",
+              "cta_tipo": "VIR",
+              "cta_saldo": "75.3800"
+            }
+          ]
+        },
+        "calls": [
+          {
+            "program": "cobis..sp_cerror",
+            "arguments": {
+              "@t_from": "sp_pago_orden",
+              "@i_num": "50004",
+              "@i_msg": "FONDOS INSUFICIENTES"
+            }
+          }
+        ],
+        "messages": [],
+        "error": null
+      }
+    },
+    {
+      "case": {
+        "name": "fresh_09_current_account_overdraws_up_to_100",
+        "description": "current_account_overdraws_up_to_100 with its amounts scaled by 1.25",
+        "rules": [
+          "RULE-006"
+        ],
+        "inputs": {
+          "@i_orden": 7001,
+          "@i_empresa": 10,
+          "@i_servicio": "AGUA",
+          "@i_tipo_cuenta": "CTE",
+          "@i_cuenta": "1000000001",
+          "@i_valor": 125.0,
+          "@i_canal": "WEB",
+          "@i_fecha_proceso": "2026-03-02T09:30:00"
+        },
+        "setup": {
+          "db_pagos..pg_orden": [
+            {
+              "ord_numero": 7001,
+              "ord_empresa": 10,
+              "ord_estado": "P",
+              "ord_fecha_pago": null,
+              "ord_comision": null
+            }
+          ],
+          "db_admin..ad_tarifa_empresa": [],
+          "db_admin..ad_servicio": [
+            {
+              "srv_codigo": "AGUA",
+              "srv_tarifa": 1.56
+            },
+            {
+              "srv_codigo": "NOMINA",
+              "srv_tarifa": 3.75
+            },
+            {
+              "srv_codigo": "LUZ",
+              "srv_tarifa": 0.94
+            }
+          ],
+          "db_cuentas..ct_cuenta": [
+            {
+              "cta_numero": "1000000001",
+              "cta_tipo": "CTE",
+              "cta_saldo": 0.79
+            }
+          ]
+        },
+        "stubs": {
+          "db_cuentas..sp_debito": [
+            {
+              "returns": 0,
+              "outputs": {
+                "@o_secuencial": 900001
+              }
+            },
+            {
+              "returns": 0,
+              "outputs": {}
+            }
+          ]
+        }
+      },
+      "observation": {
+        "returns": 50004,
+        "outputs": {
+          "@o_movimiento": null,
+          "@o_mensaje": "FONDOS INSUFICIENTES"
+        },
+        "tables": {
+          "db_pagos..pg_orden": [
+            {
+              "ord_numero": "7001",
+              "ord_empresa": "10",
+              "ord_estado": "P",
+              "ord_fecha_pago": null,
+              "ord_comision": null
+            }
+          ],
+          "db_admin..ad_tarifa_empresa": [],
+          "db_admin..ad_servicio": [
+            {
+              "srv_codigo": "AGUA",
+              "srv_tarifa": "1.5600"
+            },
+            {
+              "srv_codigo": "LUZ",
+              "srv_tarifa": "0.9400"
+            },
+            {
+              "srv_codigo": "NOMINA",
+              "srv_tarifa": "3.7500"
+            }
+          ],
+          "db_cuentas..ct_cuenta": [
+            {
+              "cta_numero": "1000000001",
+              "cta_tipo": "CTE",
+              "cta_saldo": "0.7900"
+            }
+          ]
+        },
+        "calls": [
+          {
+            "program": "cobis..sp_cerror",
+            "arguments": {
+              "@t_from": "sp_pago_orden",
+              "@i_num": "50004",
+              "@i_msg": "FONDOS INSUFICIENTES"
+            }
+          }
+        ],
+        "messages": [],
+        "error": null
+      }
+    },
+    {
+      "case": {
+        "name": "fresh_10_overdraft_beyond_100_is_rejected",
+        "description": "overdraft_beyond_100_is_rejected with its amounts scaled by 10",
+        "rules": [
+          "RULE-006",
+          "RULE-009"
+        ],
+        "inputs": {
+          "@i_orden": 7001,
+          "@i_empresa": 10,
+          "@i_servicio": "AGUA",
+          "@i_tipo_cuenta": "CTE",
+          "@i_cuenta": "1000000001",
+          "@i_valor": 1000.0,
+          "@i_canal": "WEB",
+          "@i_fecha_proceso": "2026-03-02T09:30:00"
+        },
+        "setup": {
+          "db_pagos..pg_orden": [
+            {
+              "ord_numero": 7001,
+              "ord_empresa": 10,
+              "ord_estado": "P",
+              "ord_fecha_pago": null,
+              "ord_comision": null
+            }
+          ],
+          "db_admin..ad_tarifa_empresa": [],
+          "db_admin..ad_servicio": [
+            {
+              "srv_codigo": "AGUA",
+              "srv_tarifa": 12.5
+            },
+            {
+              "srv_codigo": "NOMINA",
+              "srv_tarifa": 30.0
+            },
+            {
+              "srv_codigo": "LUZ",
+              "srv_tarifa": 7.5
+            }
+          ],
+          "db_cuentas..ct_cuenta": [
+            {
+              "cta_numero": "1000000001",
+              "cta_tipo": "CTE",
+              "cta_saldo": 6.2
+            }
+          ]
+        },
+        "stubs": {
+          "db_cuentas..sp_debito": [
+            {
+              "returns": 0,
+              "outputs": {
+                "@o_secuencial": 900001
+              }
+            },
+            {
+              "returns": 0,
+              "outputs": {}
+            }
+          ]
+        }
+      },
+      "observation": {
+        "returns": 50004,
+        "outputs": {
+          "@o_movimiento": null,
+          "@o_mensaje": "FONDOS INSUFICIENTES"
+        },
+        "tables": {
+          "db_pagos..pg_orden": [
+            {
+              "ord_numero": "7001",
+              "ord_empresa": "10",
+              "ord_estado": "P",
+              "ord_fecha_pago": null,
+              "ord_comision": null
+            }
+          ],
+          "db_admin..ad_tarifa_empresa": [],
+          "db_admin..ad_servicio": [
+            {
+              "srv_codigo": "AGUA",
+              "srv_tarifa": "12.5000"
+            },
+            {
+              "srv_codigo": "LUZ",
+              "srv_tarifa": "7.5000"
+            },
+            {
+              "srv_codigo": "NOMINA",
+              "srv_tarifa": "30.0000"
+            }
+          ],
+          "db_cuentas..ct_cuenta": [
+            {
+              "cta_numero": "1000000001",
+              "cta_tipo": "CTE",
+              "cta_saldo": "6.2000"
+            }
+          ]
+        },
+        "calls": [
+          {
+            "program": "cobis..sp_cerror",
+            "arguments": {
+              "@t_from": "sp_pago_orden",
+              "@i_num": "50004",
+              "@i_msg": "FONDOS INSUFICIENTES"
+            }
+          }
+        ],
+        "messages": [],
+        "error": null
+      }
+    },
+    {
+      "case": {
+        "name": "fresh_11_failed_debit_undoes_the_payment",
+        "description": "failed_debit_undoes_the_payment with its amounts scaled by 0.01",
+        "rules": [
+          "RULE-007",
+          "RULE-009"
+        ],
+        "inputs": {
+          "@i_orden": 7001,
+          "@i_empresa": 10,
+          "@i_servicio": "AGUA",
+          "@i_tipo_cuenta": "CTE",
+          "@i_cuenta": "1000000001",
+          "@i_valor": 1.0,
+          "@i_canal": "WEB",
+          "@i_fecha_proceso": "2026-03-02T09:30:00"
+        },
+        "setup": {
+          "db_pagos..pg_orden": [
+            {
+              "ord_numero": 7001,
+              "ord_empresa": 10,
+              "ord_estado": "P",
+              "ord_fecha_pago": null,
+              "ord_comision": null
+            }
+          ],
+          "db_admin..ad_tarifa_empresa": [],
+          "db_admin..ad_servicio": [
+            {
+              "srv_codigo": "AGUA",
+              "srv_tarifa": 0.01
+            },
+            {
+              "srv_codigo": "NOMINA",
+              "srv_tarifa": 0.03
+            },
+            {
+              "srv_codigo": "LUZ",
+              "srv_tarifa": 0.01
+            }
+          ],
+          "db_cuentas..ct_cuenta": [
+            {
+              "cta_numero": "1000000001",
+              "cta_tipo": "CTE",
+              "cta_saldo": 5.0
+            }
+          ]
+        },
+        "stubs": {
+          "db_cuentas..sp_debito": [
+            {
+              "returns": 1,
+              "outputs": {}
+            }
+          ]
+        }
+      },
+      "observation": {
+        "returns": 50005,
+        "outputs": {
+          "@o_movimiento": null,
+          "@o_mensaje": "ERROR EN DEBITO"
+        },
+        "tables": {
+          "db_pagos..pg_orden": [
+            {
+              "ord_numero": "7001",
+              "ord_empresa": "10",
+              "ord_estado": "P",
+              "ord_fecha_pago": null,
+              "ord_comision": null
+            }
+          ],
+          "db_admin..ad_tarifa_empresa": [],
+          "db_admin..ad_servicio": [
+            {
+              "srv_codigo": "AGUA",
+              "srv_tarifa": "0.0100"
+            },
+            {
+              "srv_codigo": "LUZ",
+              "srv_tarifa": "0.0100"
+            },
+            {
+              "srv_codigo": "NOMINA",
+              "srv_tarifa": "0.0300"
+            }
+          ],
+          "db_cuentas..ct_cuenta": [
+            {
+              "cta_numero": "1000000001",
+              "cta_tipo": "CTE",
+              "cta_saldo": "5.0000"
+            }
+          ]
+        },
+        "calls": [
+          {
+            "program": "cobis..sp_cerror",
+            "arguments": {
+              "@t_from": "sp_pago_orden",
+              "@i_num": "50005",
+              "@i_msg": "ERROR EN DEBITO"
+            }
+          }
+        ],
+        "messages": [],
+        "error": null
+      }
+    },
+    {
+      "case": {
+        "name": "fresh_12_failed_commission_undoes_the_payment",
+        "description": "failed_commission_undoes_the_payment with its amounts scaled by 1.7",
+        "rules": [
+          "RULE-007",
+          "RULE-009"
+        ],
+        "inputs": {
+          "@i_orden": 7001,
+          "@i_empresa": 10,
+          "@i_servicio": "AGUA",
+          "@i_tipo_cuenta": "CTE",
+          "@i_cuenta": "1000000001",
+          "@i_valor": 170.0,
+          "@i_canal": "OFI",
+          "@i_fecha_proceso": "2026-03-02T09:30:00"
+        },
+        "setup": {
+          "db_pagos..pg_orden": [
+            {
+              "ord_numero": 7001,
+              "ord_empresa": 10,
+              "ord_estado": "P",
+              "ord_fecha_pago": null,
+              "ord_comision": null
+            }
+          ],
+          "db_admin..ad_tarifa_empresa": [
+            {
+              "tar_empresa": 10,
+              "tar_servicio": "AGUA",
+              "tar_valor": 2.55,
+              "tar_separada": "S"
+            }
+          ],
+          "db_admin..ad_servicio": [
+            {
+              "srv_codigo": "AGUA",
+              "srv_tarifa": 2.13
+            },
+            {
+              "srv_codigo": "NOMINA",
+              "srv_tarifa": 5.1
+            },
+            {
+              "srv_codigo": "LUZ",
+              "srv_tarifa": 1.28
+            }
+          ],
+          "db_cuentas..ct_cuenta": [
+            {
+              "cta_numero": "1000000001",
+              "cta_tipo": "CTE",
+              "cta_saldo": 850.0
+            }
+          ]
+        },
+        "stubs": {
+          "db_cuentas..sp_debito": [
+            {
+              "returns": 0,
+              "outputs": {
+                "@o_secuencial": 900001
+              }
+            },
+            {
+              "returns": 7,
+              "outputs": {}
+            }
+          ]
+        }
+      },
+      "observation": {
+        "returns": 50006,
+        "outputs": {
+          "@o_movimiento": "900001",
+          "@o_mensaje": "ERROR EN COMISION"
+        },
+        "tables": {
+          "db_pagos..pg_orden": [
+            {
+              "ord_numero": "7001",
+              "ord_empresa": "10",
+              "ord_estado": "P",
+              "ord_fecha_pago": null,
+              "ord_comision": null
+            }
+          ],
+          "db_admin..ad_tarifa_empresa": [
+            {
+              "tar_empresa": "10",
+              "tar_servicio": "AGUA",
+              "tar_valor": "2.5500",
+              "tar_separada": "S"
+            }
+          ],
+          "db_admin..ad_servicio": [
+            {
+              "srv_codigo": "AGUA",
+              "srv_tarifa": "2.1300"
+            },
+            {
+              "srv_codigo": "LUZ",
+              "srv_tarifa": "1.2800"
+            },
+            {
+              "srv_codigo": "NOMINA",
+              "srv_tarifa": "5.1000"
+            }
+          ],
+          "db_cuentas..ct_cuenta": [
+            {
+              "cta_numero": "1000000001",
+              "cta_tipo": "CTE",
+              "cta_saldo": "850.0000"
+            }
+          ]
+        },
+        "calls": [
+          {
+            "program": "cobis..sp_cerror",
+            "arguments": {
+              "@t_from": "sp_pago_orden",
+              "@i_num": "50006",
+              "@i_msg": "ERROR EN COMISION"
+            }
+          }
+        ],
+        "messages": [],
+        "error": null
+      }
+    }
+  ]
+}

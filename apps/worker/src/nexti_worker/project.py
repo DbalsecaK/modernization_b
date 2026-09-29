@@ -11,6 +11,7 @@ import zipfile
 from collections.abc import Callable, Sequence
 from typing import Any
 
+from nexti_verification import Verdict
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine
 
@@ -384,3 +385,49 @@ class WorkerProjectPort:
         rules = sorted({r for recorded in master.results for r in recorded.case.rules})
         await self.save_artifacts({path: master.model_dump_json(indent=1, by_alias=True)}, {path: "tests"},
                                   {path: rules})  # fmt: skip
+
+    # -- verification (M4) ---------------------------------------------------------------------------------------
+    async def _artifact_key(self, path: str) -> str | None:
+        async with self._db() as conn:
+            key: str | None = (
+                await conn.execute(
+                    text("SELECT object_key FROM generated_artifact WHERE project_id = :p AND path = :path "
+                         "ORDER BY created_at DESC LIMIT 1"),
+                    {"p": self.run.project_id, "path": path},
+                )
+            ).scalar_one_or_none()  # fmt: skip
+        return key
+
+    async def load_golden_master(self) -> GoldenMaster | None:
+        key = await self._artifact_key("characterization/golden_master.json")
+        return GoldenMaster.model_validate_json(await self._get(key)) if key else None
+
+    async def load_generated(self) -> tuple[dict[str, str], dict[str, list[str]]]:
+        """The latest version of every generated file of the project (the design and the golden master apart)."""
+        async with self._db() as conn:
+            rows = (
+                await conn.execute(
+                    text("SELECT DISTINCT ON (path) path, object_key, rules FROM generated_artifact "
+                         "WHERE project_id = :p AND path NOT LIKE 'design/%' AND path NOT LIKE 'characterization/%' "
+                         "ORDER BY path, created_at DESC"),
+                    {"p": self.run.project_id},
+                )
+            ).all()  # fmt: skip
+        files = {row.path: await self._get(row.object_key) for row in rows}
+        return files, {row.path: list(row.rules) for row in rows if row.rules}
+
+    async def save_verdict(self, verdict: Verdict, proof_pack: bytes) -> str:
+        key = self._key("runs", str(self.run.run_id), "verification", verdict.module, "proof-pack.zip")
+        if self.objects is None:
+            raise RuntimeError("the object store is not configured")
+        await self.objects.put(key, io.BytesIO(proof_pack), len(proof_pack), "application/zip")
+        checks = [{"key": c.key, "title": c.title, "status": c.status, "detail": c.detail} for c in verdict.checks]
+        async with self._db() as conn:
+            await conn.execute(
+                text("INSERT INTO verdict (tenant_id, project_id, run_id, module, verdict, checks, not_proven, "
+                     "proof_pack_key) VALUES (:t, :p, :r, :m, :v, CAST(:c AS jsonb), CAST(:n AS jsonb), :k) "
+                     "ON CONFLICT (run_id, module) DO NOTHING"),  # a verdict is evidence: never rewritten
+                {"t": self.run.tenant_id, "p": self.run.project_id, "r": self.run.run_id, "m": verdict.module,
+                 "v": verdict.verdict, "c": json.dumps(checks), "n": json.dumps(verdict.not_proven), "k": key},
+            )  # fmt: skip
+        return key

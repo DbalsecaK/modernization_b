@@ -413,3 +413,22 @@ def observe(p: Plan, output: str) -> Observation:
     if returns is None and error is None:
         error = "the program did not return (no result was printed)"
     return Observation(returns=returns, outputs=outputs, tables=tables, calls=calls, messages=messages, error=error)
+
+
+def parameter_defaults(files: list[SourceFile], program: str) -> dict[str, Scalar]:
+    """The literal defaults of the program's parameters: a case that omits one runs with it on both sides."""
+    found = next((p for _, p in procedures(files) if _short(p.name) == _short(program)), None)
+    defaults: dict[str, Scalar] = {}
+    for parameter in found.parameters if found else []:
+        text = (parameter.default or "").strip()
+        if not text or parameter.output:
+            continue
+        if text.lower() == "null":
+            defaults[parameter.name] = None
+        elif len(text) >= 2 and text[0] == text[-1] and text[0] in "'\"":
+            defaults[parameter.name] = text[1:-1].replace(text[0] * 2, text[0])
+        elif re.fullmatch(r"-?\d+", text):
+            defaults[parameter.name] = int(text)
+        elif re.fullmatch(r"-?\d+\.\d+", text):
+            defaults[parameter.name] = text
+    return defaults

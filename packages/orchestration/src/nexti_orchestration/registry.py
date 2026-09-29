@@ -13,6 +13,7 @@ from nexti_orchestration.graph import Executor
 from nexti_orchestration.model import RunContext
 from nexti_orchestration.modernization import ModernizationPhases, ProjectPort
 from nexti_orchestration.preflight import Preflight, PreflightProbe
+from nexti_orchestration.verification import VerificationPhases, VerificationPort
 
 
 class PipelinePort(ProjectPort, GenerationPort, Protocol):
@@ -41,4 +42,6 @@ def executors_for(
         if hasattr(port, "save_design"):  # a port that can also keep designs and generated files
             generation = GenerationPhases(cast(GenerationPort, port))
             executors.update({"design": generation.design, "generation": generation.generation})
+        if hasattr(port, "save_verdict"):  # a port that can also keep verdicts and proof packs
+            executors["verification"] = VerificationPhases(cast(VerificationPort, port)).verification
     return executors

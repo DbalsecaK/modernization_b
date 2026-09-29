@@ -108,3 +108,17 @@
   - El CI reproduce la grabación de `packages/adapters/source/sybase/tests/fixtures/pago_orden/golden/`.
     `NEXTI_LIVE_ASE=1` vuelve a correr ASE y comprueba que reproduce la grabación.
   - El worker usa `GOLDEN_MASTER_MODE=live` por defecto; `replay` y `record` son solo para desarrollo y test.
+- **Paso 11, verificación independiente:**
+  - El diseño declara la correspondencia con el legacy de cada campo, puerto y caso de uso, los programas de
+    infraestructura y las máscaras. Las máscaras son diferencias deliberadas, con motivo, aprobadas en C3.
+  - Un harness escrito por la plataforma corre los casos del golden master sobre el proyecto generado. Usa los
+    adaptadores JDBC reales contra un PostgreSQL que vive dentro del mismo sandbox (solo loopback, sin red).
+    Los programas externos se reemplazan por fakes, y el caso de uso corre en una transacción.
+  - Ambos lados se comparan en nombres del legacy y en tipos canónicos del destino.
+  - `packages/verification` calcula los seis chequeos de 11.3 y el veredicto con reglas fijas, y arma el proof
+    pack: VERIFICATION, EQUIVALENCE, TRACE, junit.xml, máscaras y huella del fuente.
+  - Los inputs frescos se derivan por código del golden master (montos escalados) y se graban como el golden
+    master. El canario del pack cambia una línea del servicio.
+  - Un veredicto no se reescribe: una verificación nueva va en otra corrida.
+  - Con la aplicación ficticia, el veredicto es PROVEN (6 de 6). La máscara declarada queda en "lo que no
+    prueba": el legacy deja en `@o_movimiento` el número de un débito ya revertido.
