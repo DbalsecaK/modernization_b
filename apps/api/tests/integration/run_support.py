@@ -170,10 +170,10 @@ async def seed_spec(owner: AsyncEngine, tenant_id: uuid.UUID, project_id: uuid.U
                 ),
                 {"t": tenant_id, "p": project_id, "k": f"RULE-00{number}", "d": json.dumps(data)},
             )
-        ids = {}
+        ids: dict[str, uuid.UUID] = {}
         for number in (1, 2, 3):
             key = f"US-00{number}"
-            story_id = (
+            story_id: uuid.UUID = (
                 await conn.execute(
                     text("INSERT INTO user_story (tenant_id, project_id, key) VALUES (:t, :p, :k) RETURNING id"),
                     {"t": tenant_id, "p": project_id, "k": key},
