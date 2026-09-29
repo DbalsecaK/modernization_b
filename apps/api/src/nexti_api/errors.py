@@ -8,6 +8,8 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
+from nexti_core.object_store import ObjectStoreError
+
 PROBLEM_JSON = "application/problem+json"
 
 
@@ -43,6 +45,11 @@ def install_error_handlers(app: FastAPI) -> None:
     @app.exception_handler(ProblemError)
     async def handle_problem(request: Request, exc: ProblemError) -> JSONResponse:
         return problem_response(exc.status, exc.code, exc.detail, request.url.path, **exc.extra)
+
+    @app.exception_handler(ObjectStoreError)
+    async def handle_storage(request: Request, exc: ObjectStoreError) -> JSONResponse:
+        # Input storage down: fail closed with a clear answer, never a raw 500 (the detail stays in the logs).
+        return problem_response(503, "storage_unavailable", "Input storage is not available.", request.url.path)
 
     @app.exception_handler(StarletteHTTPException)
     async def handle_http(request: Request, exc: StarletteHTTPException) -> JSONResponse:

@@ -1,0 +1,20 @@
+# Agent card (spec 9.2). The system prompt arrives with the orchestration engine (M3).
+id: data-analyst
+version: 1.2.0
+order: 3
+name: "Data analyst"
+name_es: "Analista de datos"
+group: analysis
+description: "Maps copybooks, tables and files to neutral types, including COMP-3, zoned and EBCDIC semantics."
+description_es: "Mapea copybooks, tablas y archivos a tipos neutrales, incluida la semántica COMP-3, zoned y EBCDIC."
+phases: ["inventory", "design"]
+capabilities: ["structuredOutput"]
+tools: ["readGraph", "readCode"]
+mandatory: false
+level: certified
+default_profile: fast-analysis
+relative_cost: 1
+# Deterministic recommendation (spec 9.4): the first rule that matches gives the reason.
+recommend:
+  - when: {flow: modernization}
+    reason: legacySource

@@ -280,7 +280,18 @@
     "cost": "Cost / budget",
     "updated": "updated {{date}}",
     "emptyTitle": "No projects match your filters",
-    "emptyBody": "Clear the search or create a new project."
+    "emptyBody": "Clear the search or create a new project.",
+    "configuration": "Configuration",
+    "configVersion": "Version {{version}}",
+    "created": "Created",
+    "status": "Status",
+    "statuses": {
+      "active": "Active",
+      "archived": "Archived",
+      "all": "All"
+    },
+    "noneTitle": "No projects yet",
+    "noneBody": "Create the first project with the wizard."
   },
   "project": {
     "notFound": "Project not found",
@@ -302,6 +313,22 @@
       "activity": "Activity",
       "settings": "Settings",
       "backlog": "Backlog"
+    },
+    "createdOn": "Created {{date}}",
+    "runsLater": "Runs start with the orchestration engine (next milestone).",
+    "laterHint": "The project is set up; this view fills in as the pipeline produces its content.",
+    "later": {
+      "inventory": "The legacy map appears after the inventory phase",
+      "specification": "The specification appears as the agents extract it",
+      "uiDesign": "Screens and prototypes appear in the UI phase",
+      "architecture": "The architecture appears in the design phase",
+      "code": "Code appears in the generation phase",
+      "traceability": "Source ↔ target comparisons appear after generation",
+      "validation": "Validation results appear in the verification phase",
+      "backlog": "The backlog appears with the Jira / Azure DevOps link",
+      "runs": "Runs appear when the pipeline starts",
+      "costs": "Costs appear with the first model calls of the pipeline",
+      "activity": "Activity appears when the agents start working"
     }
   },
   "overview": {
@@ -324,7 +351,13 @@
     "reviewStories_one": "{{count}} user story to review before the migration starts",
     "reviewStories_other": "{{count}} user stories to review before the migration starts",
     "openStories": "Review stories",
-    "openPlan": "Migration plan"
+    "openPlan": "Migration plan",
+    "addInputs": "Add the code, documents or UI references of the project.",
+    "fixInputs_one": "{{count}} input was rejected: see why and upload it again.",
+    "fixInputs_other": "{{count}} inputs were rejected: see why and upload them again.",
+    "rejectedInputs_one": "{{count}} rejected",
+    "rejectedInputs_other": "{{count}} rejected",
+    "reviewTeam": "Review the team of agents, the skills and the pipeline."
   },
   "inputs": {
     "title": "Inputs",
@@ -336,10 +369,65 @@
     "added": "Added",
     "status": "Status",
     "statuses": {
-      "scanned": "Scanned",
-      "quarantined": "In quarantine"
+      "accepted": "Accepted",
+      "rejected": "Rejected",
+      "deleted": "Deleted"
     },
-    "securityNote": "Uploaded files are untrusted: they are checked for malware, path traversal and zip bombs, and credentials are masked before any model sees them."
+    "securityNote": "Uploaded files are untrusted: they are checked for malware, path traversal and zip bombs, and credentials are masked before any model sees them.",
+    "rejections": {
+      "path_traversal": "The zip has an entry that could escape its folder.",
+      "symlink": "The zip contains a symbolic link.",
+      "encrypted_entry": "The zip has encrypted entries that cannot be checked.",
+      "too_many_entries": "The zip has too many entries.",
+      "archive_too_large": "The zip expands beyond the size limit.",
+      "compression_bomb": "The zip expands suspiciously (compression bomb).",
+      "corrupt_archive": "The zip cannot be read.",
+      "type_not_allowed": "The content of the file is not an accepted type for this input.",
+      "file_too_large": "The file is larger than allowed.",
+      "empty_file": "The file is empty.",
+      "image_too_large": "The image has too many pixels.",
+      "corrupt_image": "The image cannot be read.",
+      "type_mismatch": "The content does not match the type of the file.",
+      "malware_detected": "The malware scanner flagged the file.",
+      "invalid_figma_link": "A Figma link must be figma.com/file/…, /design/… or /proto/….",
+      "invalid_url": "Enter a valid https link.",
+      "url_too_long": "The link is too long.",
+      "invalid_repository_url": "Enter an https repository URL without credentials.",
+      "repository_host_not_allowed": "The repository host resolves to an internal address.",
+      "malware_scanner_unavailable": "The malware scanner is not available; try again later.",
+      "inputs_unavailable": "Input storage is not available.",
+      "project_name_taken": "A project with that name already exists."
+    },
+    "none": "No inputs yet.",
+    "kind": "Kind of input",
+    "kinds": {
+      "source_archive": "Code archive (zip)",
+      "document": "Document",
+      "screenshot": "Screenshot",
+      "figma_link": "Figma link",
+      "prototype_link": "Prototype link"
+    },
+    "secretsFound_one": "{{count}} credential found",
+    "secretsFound_other": "{{count}} credentials found",
+    "archiveOnly": "One zip with the legacy code; validated before it is stored.",
+    "deleteInput": "Delete {{name}}",
+    "confirmDelete": "Delete \"{{name}}\"? The stored file is removed; the record stays in the history.",
+    "deleted": "\"{{name}}\" deleted.",
+    "repository": "Git repository",
+    "repositoryHint": "The platform checks it can read the branch; the clone happens in the preflight of the pipeline.",
+    "connectRepository": "Connect repository",
+    "noRepository": "No repository connected.",
+    "repositorySaved": "Repository saved.",
+    "repositoryRemoved": "Repository removed.",
+    "confirmRemoveRepository": "Remove the repository? Its token is deleted from the secrets store.",
+    "repositoryStatus": {
+      "untested": "Not tested",
+      "ok": "Reachable",
+      "failed": "Failed"
+    },
+    "withToken": "With token",
+    "tokenKept": "Leave empty to keep the current token.",
+    "branches": "Branches: {{branches}}"
   },
   "inventory": {
     "programs": "Programs",
@@ -690,7 +778,21 @@
     "versions": "Agent and skill versions",
     "pinned": "Pinned",
     "changeNote": "Changes only affect phases that have not started. They are recorded in the audit log.",
-    "integrations": "Integrations"
+    "integrations": "Integrations",
+    "saved": "Project saved.",
+    "archive": "Archive project",
+    "restore": "Restore project",
+    "archived": "Project archived.",
+    "restored": "Project restored.",
+    "editConfig": "Edit configuration",
+    "noConfig": "This project has no configuration yet.",
+    "configSaved": "New configuration version saved.",
+    "changeNoteLabel": "Reason for the change (optional)",
+    "needsAgentsSelect": "Changing the team of agents needs the \"Select agents\" permission.",
+    "needsSkillsSelect": "Changing the skills needs the \"Select skills\" permission.",
+    "history": "Configuration history",
+    "historyHint": "Every change is a new version; the audit log records who made it.",
+    "note": "Note"
   },
   "wizard": {
     "title": "New project",
@@ -783,6 +885,33 @@
       "frontend": "The target has a frontend.",
       "cloud": "Deployment to the selected cloud.",
       "control": "Mandatory control agent."
+    },
+    "projectDescription": "Description (optional)",
+    "noFrontend": "No frontend",
+    "noProfile": "No model profile assigned yet: configure one in AI configuration before running.",
+    "modelMissing": "Its model lacks: {{caps}}",
+    "modelsNeedPermission": "Choosing models per agent needs the \"Configure AI\" permission; the customer's assignment applies.",
+    "inherited": "Customer assignment",
+    "youAreOwner": "You will be the owner of the project.",
+    "teamLater": "Add the rest of the team later from the project (needs the permission to manage users).",
+    "creatingTitle": "Creating the project",
+    "creatingHint": "The inputs are validated one by one before they are stored.",
+    "projectCreated": "Project created.",
+    "openProject": "Open the project",
+    "problems": {
+      "control_agent_required": "Control agents are mandatory: add {{subject}}.",
+      "uncovered_phase": "No agent covers the phase {{subject}}.",
+      "skill_conflict": "Conflicting skills: {{subject}}.",
+      "skill_not_applicable": "No selected agent uses the skill {{subject}}.",
+      "skill_requirement_missing": "A skill needs another one: {{subject}}.",
+      "unknown_agent": "Unknown agent: {{subject}}.",
+      "unknown_skill": "Unknown skill: {{subject}}.",
+      "unknown_source": "Not a source of this flow: {{subject}}.",
+      "unknown_target_option": "Unknown target option: {{subject}}.",
+      "no_sources": "Select at least one source or input.",
+      "unknown_flow": "Unknown flow.",
+      "unknown_pipeline_template": "Unknown pipeline template: {{subject}}.",
+      "unknown_autonomy": "Unknown autonomy level."
     }
   },
   "compat": {
@@ -1101,8 +1230,6 @@
       "compatibility": "Compatibility",
       "templates": "Pipeline templates"
     },
-    "newAgent": "New agent",
-    "newSkill": "New skill",
     "group": "Group",
     "allGroups": "All groups",
     "skillsTitle_one": "{{count}} skill",
@@ -1131,7 +1258,9 @@
     "compatHint": "Applied by the architecture advisor and recorded as ADRs.",
     "gateRequired": "Gate {{gate}} required",
     "maxIterations_one": "{{count}} self-correction iteration",
-    "maxIterations_other": "Up to {{count}} self-correction iterations"
+    "maxIterations_other": "Up to {{count}} self-correction iterations",
+    "customLater": "Customer agents and skills arrive later, with an approval and evaluation flow before they are published.",
+    "skillFile": "SKILL.md · {{key}} v{{version}}"
   },
   "roles": {
     "superAdmin": "Super admin",
@@ -1369,43 +1498,6 @@
     "readWorkspace": "Read workspace",
     "writeWorkspace": "Write workspace",
     "sandbox": "Run in sandbox"
-  },
-  "catalogForms": {
-    "newAgentTitle": "New agent",
-    "newAgentHint": "Define the role, what it may do and its default model. It is evaluated on the reference apps before it can be used.",
-    "nameEn": "Name (English)",
-    "nameEs": "Name (Spanish)",
-    "optionalTranslation": "Optional. English is shown when missing.",
-    "descriptionEn": "Short description (English)",
-    "descriptionEs": "Short description (Spanish)",
-    "descriptionHint": "Shown on the agent card. Up to 200 characters.",
-    "phases": "Phases",
-    "capabilities": "Required model capabilities",
-    "capabilitiesHint": "Only compatible model profiles can be assigned.",
-    "tools": "Allowed tools",
-    "toolsHint": "Allow-list. Analysis agents should not write or execute.",
-    "writeWarning": "This agent can write files or run code. It will only do so inside the sandbox, without network access.",
-    "defaultProfile": "Default model profile",
-    "systemPrompt": "System prompt (English)",
-    "systemPromptHint": "Versioned. Every run records the version it used.",
-    "evaluationNotice": "New agents and skills start as experimental and are evaluated on the reference apps before being published.",
-    "submitForEvaluation": "Submit for evaluation",
-    "agentSubmitted": "Agent \"{{name}}\" submitted for evaluation.",
-    "newSkillTitle": "New skill",
-    "newSkillHint": "A package of knowledge (SKILL.md plus resources) that agents load when a task needs it.",
-    "skillName": "Skill name",
-    "skillDescriptionHint": "Agents always see this description; the full content loads only when needed.",
-    "tags": "Applies to technologies",
-    "tagsHint": "Comma-separated, e.g. COBOL CICS, Java Spring Boot. Use * for any.",
-    "conflicts": "Conflicts with",
-    "addConflict": "Add a conflicting skill…",
-    "package": "Skill package",
-    "packageHint": "SKILL.md or a .zip with SKILL.md and its resources.",
-    "choosePackage": "Choose a file",
-    "scope": "Visibility",
-    "scopeTenant": "This customer only",
-    "scopeGlobal": "All customers (NexTI)",
-    "skillSubmitted": "Skill \"{{name}}\" submitted for evaluation."
   },
   "aiForms": {
     "editConnection": "Edit connection",
@@ -1715,7 +1807,18 @@
     "jiraProject": "Jira project key",
     "adoProject": "Azure DevOps project",
     "autoCreate": "Create features, stories and tasks automatically when the spec is approved (C1)",
-    "summaryUi": "{{screens}} screenshots · {{figma}} Figma · {{prototypes}} prototypes"
+    "summaryUi": "{{screens}} screenshots · {{figma}} Figma · {{prototypes}} prototypes",
+    "dropDocuments": "Choose documents and user stories",
+    "dropArchive": "Choose the zip with the legacy code",
+    "archiveHint": "Validated (paths, links, size, malware, secrets) before anything reads it.",
+    "gitUrl": "Repository URL (https)",
+    "gitUrlHint": "The platform checks it can read the branch; the clone happens in the preflight.",
+    "gitUrlInvalid": "Enter an https URL, without credentials.",
+    "gitBranch": "Branch",
+    "gitToken": "Access token (optional)",
+    "gitTokenHint": "Stored in the secrets store; never shown again.",
+    "removeFile": "Remove {{name}}",
+    "trackingLater": "Linking Jira or Azure DevOps arrives in a later milestone."
   },
   "backlog": {
     "types": {
@@ -1986,5 +2089,12 @@
       "unknownPlaceholder": "Line {{line}}: <{{detail}}> is not a column of the Examples table.",
       "emptyExamples": "Line {{line}}: the Examples table has no rows."
     }
+  },
+  "sourceOptions": {
+    "user-stories": "User stories (Jira)",
+    "functional-document": "Functional document (Word)",
+    "user-manual": "User manual (PDF)",
+    "figma": "Figma",
+    "screenshots": "Screenshots"
   }
 }

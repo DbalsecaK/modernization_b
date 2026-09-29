@@ -9,7 +9,7 @@
     "format": "node tools/lint/node_modules/prettier/bin/prettier.cjs --write apps/web",
     "format:check": "node tools/lint/node_modules/prettier/bin/prettier.cjs --check apps/web",
     "api:dev": "uv run uvicorn --factory nexti_api.main:create_app --reload --port 8100",
-    "py:check": "uv run ruff check . && uv run ruff format --check . && uv run mypy apps/api/src apps/api/tests packages/core/src packages/core/tests packages/model_gateway/src packages/model_gateway/tests && uv run pytest",
+    "py:check": "uv run ruff check . && uv run ruff format --check . && uv run mypy apps/api/src apps/api/tests packages/core/src packages/core/tests packages/model_gateway/src packages/model_gateway/tests packages/agents/src packages/skills/src packages/ingest/src packages/ingest/tests && uv run pytest",
     "db:migrate": "uv run alembic -c apps/api/alembic.ini upgrade head",
     "db:seed": "uv run python -m nexti_api.cli seed-dev",
     "fga:test": "docker run --rm -v ./infra/openfga:/model openfga/cli:v0.8.1 model test --tests /model/model.tests.yaml",

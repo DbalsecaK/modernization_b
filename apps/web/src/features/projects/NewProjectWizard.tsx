@@ -1,94 +1,146 @@
-import { useMemo, useState, type ReactNode } from 'react'
-import { useNavigate } from '@tanstack/react-router'
+import { useState, type ReactNode } from 'react'
+import { Link, useNavigate } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
-import { AlertTriangle, ArrowLeftRight, Check, Info, Lock, Sparkles, X } from 'lucide-react'
+import {
+  AlertTriangle,
+  ArrowLeftRight,
+  Check,
+  CheckCircle2,
+  Info,
+  Loader2,
+  Lock,
+  Sparkles,
+  X,
+  XCircle,
+} from 'lucide-react'
 import { cn } from '@/lib/cn'
 import { formatUsd } from '@/lib/format'
+import { can, useMe } from '@/api/session'
+import { ApiError } from '@/api/client'
+import { useMembers } from '@/api/admin'
+import { useProfiles } from '@/api/ai'
 import {
-  compatibilityWarnings,
-  INPUT_OPTIONS,
-  mandatoryAgentIds,
-  missingSkills,
-  recommendAgents,
-  recommendSkills,
-  skillConflicts,
-  SOURCE_OPTIONS,
-  TARGET_OPTIONS,
-  uncoveredPhases,
-} from '@/lib/recommend'
-import { agents, profiles, skills, users } from '@/mocks/data'
-import type { AgentGroup, Flow, TargetStack } from '@/mocks/types'
+  AXES,
+  addLink,
+  setRepository,
+  uploadInput,
+  useCatalog,
+  useComposition,
+  useCreateProject,
+  type Catalog,
+  type Composition,
+  type Flow,
+  type Target,
+} from '@/api/projects'
 import { Badge, Button, Card, CardBody, Field, Input, PageHeader, Select, Toggle } from '@/components/ui/primitives'
+import { Textarea } from '@/components/ui/overlay'
 import { AgentCard, agentName } from '@/features/catalog/AgentCard'
 import {
+  ArchiveSection,
   DocumentsSection,
+  EMPTY_UI_REFERENCES,
+  GitSection,
   UiReferencesSection,
   WorkTrackingSection,
+  type GitInput,
   type UiReferences,
-  type WorkTracking,
 } from './ProjectSetupSections'
 
 const STEPS = ['basics', 'source', 'target', 'agents', 'skills', 'models', 'pipeline', 'team', 'review'] as const
 type Step = (typeof STEPS)[number]
+const GROUPS = ['analysis', 'design', 'build', 'quality', 'control'] as const
+const PROJECT_ROLES = ['projectOwner', 'architect', 'analyst', 'businessReviewer', 'developer', 'observer'] as const
+const DEFAULT_SOURCES: Record<Flow, string[]> = {
+  modernization: ['cobol-cics', 'bms'],
+  newFeature: ['user-stories', 'figma'],
+}
+const DEFAULT_TARGET: Target = {
+  architecture: 'microservices-hexagonal',
+  backend: 'spring-boot',
+  frontend: 'angular',
+  database: 'postgresql',
+  cloud: 'aws',
+}
 
-const GROUPS: AgentGroup[] = ['analysis', 'design', 'build', 'quality', 'control']
+type TaskState = { label: string; status: 'pending' | 'ok' | 'failed'; detail?: string }
 
 export function NewProjectWizard() {
+  const { t } = useTranslation()
+  const catalog = useCatalog()
+  if (!catalog.data) return <PageHeader title={t('wizard.title')} description={t('wizard.description')} />
+  return <Wizard catalog={catalog.data} />
+}
+
+function errorText(t: (k: string, o?: Record<string, unknown>) => string, error: unknown) {
+  if (error instanceof ApiError) return t(`inputs.rejections.${error.code}`, { defaultValue: error.message })
+  return String(error)
+}
+
+function Wizard({ catalog }: { catalog: Catalog }) {
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
+  const me = useMe()
+  const canConfigureModels = can(me, 'models.configure')
+  const canManageUsers = can(me, 'users.manage')
+  const members = useMembers(canManageUsers)
+  const profiles = useProfiles(canConfigureModels)
+  const create = useCreateProject()
+
   const [step, setStep] = useState<Step>('basics')
-  const [name, setName] = useState('Card Management — CICS to Spring Boot')
+  const [name, setName] = useState('')
+  const [description, setDescription] = useState('')
   const [flow, setFlow] = useState<Flow>('modernization')
   const [language, setLanguage] = useState<'en' | 'es'>('en')
-  const [sources, setSources] = useState<string[]>(['COBOL CICS', 'BMS maps', 'DB2'])
-  const [delivery, setDelivery] = useState<'zip' | 'git'>('git')
-  const [documents, setDocuments] = useState<string[]>([])
-  const [uiRefs, setUiRefs] = useState<UiReferences>({ documents: [], screens: [], figma: [], prototypes: [] })
-  const [tracking, setTracking] = useState<WorkTracking>({ integration: 'jira', project: '', autoCreate: true })
-  const [target, setTarget] = useState<TargetStack>({
-    architecture: 'Microservices (hexagonal)',
-    backend: 'Java Spring Boot',
-    frontend: 'Angular',
-    database: 'PostgreSQL',
-    cloud: 'AWS',
-  })
+  const [sources, setSources] = useState<string[]>(DEFAULT_SOURCES.modernization)
+  const [delivery, setDelivery] = useState<'git' | 'zip'>('git')
+  const [git, setGit] = useState<GitInput>({ url: '', branch: 'main', token: '' })
+  const [archive, setArchive] = useState<File | null>(null)
+  const [documents, setDocuments] = useState<File[]>([])
+  const [uiRefs, setUiRefs] = useState<UiReferences>(EMPTY_UI_REFERENCES)
+  const [target, setTarget] = useState<Target>(DEFAULT_TARGET)
   const [agentOverride, setAgentOverride] = useState<string[] | null>(null)
   const [skillOverride, setSkillOverride] = useState<string[] | null>(null)
   const [inheritModels, setInheritModels] = useState(true)
   const [modelChoice, setModelChoice] = useState<Record<string, string>>({})
-  const [template, setTemplate] = useState('bankStandard')
-  const [budget, setBudget] = useState(5000)
+  const [template, setTemplate] = useState(catalog.pipelineTemplates[0]?.key ?? 'bankStandard')
+  const [budget, setBudget] = useState('5000')
   const [maxIterations, setMaxIterations] = useState(3)
   const [autonomy, setAutonomy] = useState<'guided' | 'balanced' | 'autonomous'>('balanced')
   const [sampling, setSampling] = useState(10)
-  const [team, setTeam] = useState<{ userId: string; role: string }[]>([
-    { userId: 'u2', role: 'projectOwner' },
-    { userId: 'u3', role: 'architect' },
-  ])
+  const [team, setTeam] = useState<{ userId: string; role: string }[]>([])
+  const [tasks, setTasks] = useState<TaskState[] | null>(null)
+  const [createdId, setCreatedId] = useState<string | null>(null)
 
-  const recommendations = useMemo(() => recommendAgents(flow, sources, target), [flow, sources, target])
-  // Control agents are always part of the team (spec 9.4).
-  const agentIds = Array.from(new Set([...(agentOverride ?? recommendations.map((r) => r.id)), ...mandatoryAgentIds()]))
-  const recommendedSkills = useMemo(() => recommendSkills(agentIds, sources, target), [agentIds, sources, target])
-  const skillIds = skillOverride ?? recommendedSkills
-  const warnings = compatibilityWarnings(sources, target)
-  const conflicts = skillConflicts(skillIds)
-  const missing = missingSkills(sources, skillIds)
-  const uncovered = uncoveredPhases(flow, agentIds)
+  const composition = useComposition({ flow, sources, target, agents: agentOverride, skills: skillOverride })
+  const result: Composition | undefined = composition.data
+  const agentIds = result?.agents ?? []
+  const skillIds = result?.skills ?? []
+  const agentByKey = new Map(catalog.agents.map((a) => [a.key, a]))
+  const skillTitle = (key: string) => catalog.skills.find((s) => s.key === key)?.title ?? key
+  const sourceName = (key: string) => catalog.sources.find((s) => s.key === key)?.name ?? key
+  const optionName = (axis: string, key: string) =>
+    catalog.targets.find((o) => o.axis === axis && o.key === key)?.name ?? key
   const index = STEPS.indexOf(step)
-  const sourceOptions: readonly string[] = flow === 'modernization' ? SOURCE_OPTIONS : INPUT_OPTIONS
-  const estimate = agents.filter((a) => agentIds.includes(a.id)).reduce((s, a) => s + a.relativeCost * 260, 0)
+  const resetComposition = () => {
+    setAgentOverride(null)
+    setSkillOverride(null)
+  }
 
   const blockers: string[] = []
   if (!name.trim()) blockers.push(t('wizard.blockers.name'))
   if (sources.length === 0) blockers.push(t('wizard.blockers.source'))
-  if (uncovered.length)
-    blockers.push(t('wizard.blockers.phases', { phases: uncovered.map((p) => t(`phases.${p}`)).join(', ') }))
-  if (conflicts.length) blockers.push(t('wizard.blockers.conflicts'))
+  for (const p of result?.problems ?? []) {
+    blockers.push(
+      t(`wizard.problems.${p.code}`, {
+        defaultValue: `${p.code}${p.subject ? `: ${p.subject}` : ''}`,
+        subject: p.code.startsWith('uncovered') ? t(`phases.${p.subject}`) : (p.subject ?? ''),
+      }),
+    )
+  }
 
-  function toggleAgent(id: string) {
-    if (mandatoryAgentIds().includes(id)) return
-    setAgentOverride(agentIds.includes(id) ? agentIds.filter((a) => a !== id) : [...agentIds, id])
+  function toggleAgent(key: string) {
+    if (agentByKey.get(key)?.mandatory) return
+    setAgentOverride(agentIds.includes(key) ? agentIds.filter((a) => a !== key) : [...agentIds, key])
     setSkillOverride(null)
   }
 
@@ -103,9 +155,84 @@ export function NewProjectWizard() {
     setSkillOverride(null)
   }
 
-  function toggleSkill(id: string) {
-    setSkillOverride(skillIds.includes(id) ? skillIds.filter((s) => s !== id) : [...skillIds, id])
+  function toggleSkill(key: string) {
+    setSkillOverride(skillIds.includes(key) ? skillIds.filter((s) => s !== key) : [...skillIds, key])
   }
+
+  function modelWarning(agent: string) {
+    const check = result?.models.find((m) => m.agent === agent)
+    if (!check) return undefined
+    if (!check.profileId) return t('wizard.noProfile')
+    if (check.missing.length)
+      return t('wizard.modelMissing', { caps: check.missing.map((c) => t(`capabilities.${c}`)).join(', ') })
+    return undefined
+  }
+
+  async function submit() {
+    if (!result) return
+    const items: { label: string; run: (id: string) => Promise<unknown> }[] = []
+    if (flow === 'modernization' && delivery === 'zip' && archive)
+      items.push({ label: archive.name, run: (id) => uploadInput(id, archive, 'source_archive') })
+    if (flow === 'modernization' && delivery === 'git' && git.url.trim())
+      items.push({
+        label: git.url.trim(),
+        run: (id) =>
+          setRepository(id, {
+            url: git.url.trim(),
+            branch: git.branch || 'main',
+            token: git.token || null,
+            clearToken: false,
+          }),
+      })
+    for (const f of flow === 'newFeature' ? documents : [])
+      items.push({ label: f.name, run: (id) => uploadInput(id, f, 'document') })
+    for (const s of uiRefs.screens)
+      items.push({ label: s.file.name, run: (id) => uploadInput(id, s.file, 'screenshot') })
+    for (const l of uiRefs.figma) items.push({ label: l, run: (id) => addLink(id, 'figma_link', l) })
+    for (const l of uiRefs.prototypes) items.push({ label: l, run: (id) => addLink(id, 'prototype_link', l) })
+
+    try {
+      const project = await create.mutateAsync({
+        name: name.trim(),
+        description,
+        flow,
+        artifactLanguage: language,
+        sources,
+        target,
+        agents: result.agents,
+        skills: result.skills,
+        pipelineTemplate: template,
+        autonomy,
+        maxIterations,
+        samplingPct: sampling,
+        budgetUsd: Number(budget) > 0 ? budget : null,
+        team: team.map((m) => ({ userId: m.userId, roleKey: m.role })),
+        modelChoices: inheritModels
+          ? []
+          : Object.entries(modelChoice)
+              .filter(([agent, profile]) => profile && agentIds.includes(agent))
+              .map(([agentRole, profileId]) => ({ agentRole, profileId })),
+      })
+      setCreatedId(project.id)
+      const states: TaskState[] = items.map((i) => ({ label: i.label, status: 'pending' }))
+      setTasks([...states])
+      for (const [i, item] of items.entries()) {
+        try {
+          await item.run(project.id)
+          states[i] = { ...states[i], status: 'ok' }
+        } catch (error) {
+          states[i] = { ...states[i], status: 'failed', detail: errorText(t, error) }
+        }
+        setTasks([...states])
+      }
+      if (states.every((s) => s.status === 'ok'))
+        void navigate({ to: '/projects/$projectId', params: { projectId: project.id } })
+    } catch (error) {
+      setTasks([{ label: t('wizard.create'), status: 'failed', detail: errorText(t, error) }])
+    }
+  }
+
+  if (tasks) return <Creating tasks={tasks} projectId={createdId} onBack={() => setTasks(null)} />
 
   return (
     <>
@@ -148,7 +275,14 @@ export function NewProjectWizard() {
               <>
                 <StepTitle title={t('wizard.stepNames.basics')} hint={t('wizard.basicsHint')} />
                 <Field label={t('wizard.projectName')}>
-                  <Input value={name} onChange={(e) => setName(e.target.value)} />
+                  <Input
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="Card Management — CICS to Spring Boot"
+                  />
+                </Field>
+                <Field label={t('wizard.projectDescription')}>
+                  <Textarea rows={2} value={description} onChange={(e) => setDescription(e.target.value)} />
                 </Field>
                 <div>
                   <div className="mb-2 text-sm font-medium text-text">{t('wizard.flow')}</div>
@@ -159,11 +293,8 @@ export function NewProjectWizard() {
                         selected={flow === f}
                         onClick={() => {
                           setFlow(f)
-                          setSources(
-                            f === 'modernization' ? ['COBOL CICS', 'BMS maps'] : ['User stories (Jira)', 'Figma'],
-                          )
-                          setAgentOverride(null)
-                          setSkillOverride(null)
+                          setSources(DEFAULT_SOURCES[f])
+                          resetComposition()
                         }}
                         title={t(`flows.${f}`)}
                         body={t(`wizard.flowHint.${f}`)}
@@ -187,40 +318,48 @@ export function NewProjectWizard() {
                   hint={t(flow === 'modernization' ? 'wizard.sourceHint' : 'wizard.inputsHint')}
                 />
                 <div className="flex flex-wrap gap-2">
-                  {sourceOptions.map((s) => (
-                    <Chip
-                      key={s}
-                      selected={sources.includes(s)}
-                      onClick={() => {
-                        setSources(sources.includes(s) ? sources.filter((x) => x !== s) : [...sources, s])
-                        setAgentOverride(null)
-                        setSkillOverride(null)
-                      }}
-                    >
-                      {s}
-                    </Chip>
-                  ))}
+                  {catalog.sources
+                    .filter((s) => s.flow === flow)
+                    .map((s) => (
+                      <Chip
+                        key={s.key}
+                        selected={sources.includes(s.key)}
+                        onClick={() => {
+                          setSources(sources.includes(s.key) ? sources.filter((x) => x !== s.key) : [...sources, s.key])
+                          resetComposition()
+                        }}
+                      >
+                        {t(`sourceOptions.${s.key}`, { defaultValue: s.name })}
+                      </Chip>
+                    ))}
                 </div>
                 {flow === 'modernization' ? (
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <ChoiceCard
-                      selected={delivery === 'git'}
-                      onClick={() => setDelivery('git')}
-                      title={t('wizard.connectGit')}
-                      body={t('wizard.connectGitHint')}
-                    />
-                    <ChoiceCard
-                      selected={delivery === 'zip'}
-                      onClick={() => setDelivery('zip')}
-                      title={t('wizard.uploadZip')}
-                      body={t('wizard.uploadZipHint')}
-                    />
-                  </div>
+                  <>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <ChoiceCard
+                        selected={delivery === 'git'}
+                        onClick={() => setDelivery('git')}
+                        title={t('wizard.connectGit')}
+                        body={t('wizard.connectGitHint')}
+                      />
+                      <ChoiceCard
+                        selected={delivery === 'zip'}
+                        onClick={() => setDelivery('zip')}
+                        title={t('wizard.uploadZip')}
+                        body={t('wizard.uploadZipHint')}
+                      />
+                    </div>
+                    {delivery === 'git' ? (
+                      <GitSection value={git} onChange={setGit} />
+                    ) : (
+                      <ArchiveSection value={archive} onChange={setArchive} />
+                    )}
+                  </>
                 ) : (
                   <DocumentsSection value={documents} onChange={setDocuments} />
                 )}
                 <UiReferencesSection value={uiRefs} onChange={setUiRefs} />
-                <WorkTrackingSection value={tracking} onChange={setTracking} />
+                <WorkTrackingSection />
                 <Notice tone="info">{t('wizard.untrustedNotice')}</Notice>
               </>
             )}
@@ -229,26 +368,29 @@ export function NewProjectWizard() {
               <>
                 <StepTitle title={t('wizard.targetTitle')} hint={t('wizard.targetHint')} />
                 <div className="grid gap-4 sm:grid-cols-2">
-                  {(Object.keys(TARGET_OPTIONS) as (keyof TargetStack)[]).map((axis) => (
+                  {AXES.map((axis) => (
                     <Field key={axis} label={t(`target.${axis}`)}>
                       <Select
                         value={target[axis]}
                         onChange={(e) => {
                           setTarget({ ...target, [axis]: e.target.value })
-                          setAgentOverride(null)
-                          setSkillOverride(null)
+                          resetComposition()
                         }}
                       >
-                        {TARGET_OPTIONS[axis].map((o) => (
-                          <option key={o}>{o}</option>
-                        ))}
+                        {catalog.targets
+                          .filter((o) => o.axis === axis)
+                          .map((o) => (
+                            <option key={o.key} value={o.key}>
+                              {o.key === 'none' ? t('wizard.noFrontend') : o.name}
+                            </option>
+                          ))}
                       </Select>
                     </Field>
                   ))}
                 </div>
-                {warnings.length > 0 ? (
+                {result && result.warnings.length > 0 ? (
                   <div className="space-y-2">
-                    {warnings.map((w) => (
+                    {result.warnings.map((w) => (
                       <Notice key={w} tone="warning">
                         {t(`compat.${w}`)}
                       </Notice>
@@ -270,38 +412,34 @@ export function NewProjectWizard() {
                     </Button>
                   )}
                   {agentOverride && (
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => {
-                        setAgentOverride(null)
-                        setSkillOverride(null)
-                      }}
-                    >
+                    <Button size="sm" variant="ghost" onClick={resetComposition}>
                       <Sparkles size={14} /> {t('wizard.restoreRecommended')}
                     </Button>
                   )}
                   <span className="text-sm text-muted">{t('wizard.agentsSelected', { count: agentIds.length })}</span>
                 </div>
                 {usesFullStack && <Notice tone="info">{t('wizard.fullStackConsequence')}</Notice>}
-                {uncovered.length > 0 && (
+                {(result?.uncoveredPhases.length ?? 0) > 0 && (
                   <Notice tone="warning">
-                    {t('wizard.blockers.phases', { phases: uncovered.map((p) => t(`phases.${p}`)).join(', ') })}
+                    {t('wizard.blockers.phases', {
+                      phases: result!.uncoveredPhases.map((p) => t(`phases.${p}`)).join(', '),
+                    })}
                   </Notice>
                 )}
                 {GROUPS.map((group) => (
                   <section key={group}>
                     <h3 className="mb-3 text-sm font-semibold text-text">{t(`agentGroups.${group}`)}</h3>
                     <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-                      {agents
+                      {catalog.agents
                         .filter((a) => a.group === group)
                         .map((a) => (
                           <AgentCard
-                            key={a.id}
+                            key={a.key}
                             agent={a}
-                            selected={agentIds.includes(a.id)}
-                            recommendedReason={recommendations.find((r) => r.id === a.id)?.reason}
-                            onToggle={() => toggleAgent(a.id)}
+                            selected={agentIds.includes(a.key)}
+                            recommendedReason={result?.recommendedAgents.find((r) => r.agent === a.key)?.reason}
+                            modelWarning={agentIds.includes(a.key) ? modelWarning(a.key) : undefined}
+                            onToggle={() => toggleAgent(a.key)}
                           />
                         ))}
                     </div>
@@ -313,35 +451,32 @@ export function NewProjectWizard() {
             {step === 'skills' && (
               <>
                 <StepTitle title={t('wizard.skillsTitle')} hint={t('wizard.skillsHint')} />
-                {conflicts.map(([a, b]) => (
+                {result?.conflicts.map(([a, b]) => (
                   <Notice key={a + b} tone="critical">
-                    {t('wizard.skillConflict', {
-                      a: skills.find((s) => s.id === a)?.name,
-                      b: skills.find((s) => s.id === b)?.name,
-                    })}
+                    {t('wizard.skillConflict', { a: skillTitle(a), b: skillTitle(b) })}
                   </Notice>
                 ))}
-                {missing.map((m) => (
+                {result?.missingSkills.map((m) => (
                   <Notice key={m.skill} tone="warning">
-                    {t('wizard.skillMissing', { source: m.source, skill: skills.find((s) => s.id === m.skill)?.name })}
+                    {t('wizard.skillMissing', { source: sourceName(m.source), skill: skillTitle(m.skill) })}
                   </Notice>
                 ))}
-                {agents
-                  .filter((a) => agentIds.includes(a.id))
+                {catalog.agents
+                  .filter((a) => agentIds.includes(a.key))
                   .map((agent) => {
-                    const available = skills.filter((s) => s.appliesTo.includes(agent.id))
+                    const available = catalog.skills.filter((s) => s.agents.includes(agent.key))
                     if (available.length === 0) return null
                     return (
-                      <section key={agent.id}>
+                      <section key={agent.key}>
                         <h3 className="mb-2 text-sm font-semibold text-text">{agentName(agent, i18n.language)}</h3>
                         <div className="grid gap-2 md:grid-cols-2">
                           {available.map((skill) => {
-                            const on = skillIds.includes(skill.id)
-                            const inConflict = conflicts.some((c) => c.includes(skill.id))
+                            const on = skillIds.includes(skill.key)
+                            const inConflict = result?.conflicts.some((c) => c.includes(skill.key))
                             return (
                               <button
-                                key={skill.id}
-                                onClick={() => toggleSkill(skill.id)}
+                                key={skill.key}
+                                onClick={() => toggleSkill(skill.key)}
                                 className={cn(
                                   'flex items-start gap-3 rounded-md border p-3 text-left',
                                   inConflict
@@ -362,8 +497,8 @@ export function NewProjectWizard() {
                                 </span>
                                 <span className="min-w-0 flex-1">
                                   <span className="flex flex-wrap items-center gap-1.5 text-sm font-medium text-text">
-                                    {skill.name}
-                                    {recommendedSkills.includes(skill.id) && (
+                                    {skill.title}
+                                    {result?.recommendedSkills.includes(skill.key) && (
                                       <Badge tone="accent">{t('agents.recommended')}</Badge>
                                     )}
                                     {skill.status !== 'published' && <Badge>{t(`skillStatus.${skill.status}`)}</Badge>}
@@ -371,7 +506,7 @@ export function NewProjectWizard() {
                                   <span className="mt-0.5 block text-xs text-muted">{skill.description}</span>
                                   <span className="mt-1 block text-xs text-muted">
                                     {t(`skillTypes.${skill.type}`)} · v{skill.version}
-                                    {skill.evalScore !== null &&
+                                    {skill.evalScore != null &&
                                       ` · ${t('skills.evalScore', { score: Math.round(skill.evalScore * 100) })}`}
                                   </span>
                                 </span>
@@ -388,7 +523,13 @@ export function NewProjectWizard() {
             {step === 'models' && (
               <>
                 <StepTitle title={t('wizard.modelsTitle')} hint={t('wizard.modelsHint')} />
-                <Toggle checked={inheritModels} onChange={setInheritModels} label={t('wizard.inheritModels')} />
+                <Toggle
+                  checked={inheritModels}
+                  onChange={setInheritModels}
+                  disabled={!canConfigureModels}
+                  label={t('wizard.inheritModels')}
+                />
+                {!canConfigureModels && <Notice tone="info">{t('wizard.modelsNeedPermission')}</Notice>}
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
@@ -398,27 +539,41 @@ export function NewProjectWizard() {
                       </tr>
                     </thead>
                     <tbody>
-                      {agents
-                        .filter((a) => agentIds.includes(a.id))
-                        .map((a) => (
-                          <tr key={a.id} className="border-t border-border">
-                            <td className="py-2 pr-4 text-text">{agentName(a, i18n.language)}</td>
-                            <td className="py-2 pr-4">
-                              <Select
-                                disabled={inheritModels}
-                                value={modelChoice[a.id] ?? a.defaultProfile}
-                                onChange={(e) => setModelChoice({ ...modelChoice, [a.id]: e.target.value })}
-                                className="h-9"
-                              >
-                                {profiles.map((p) => (
-                                  <option key={p.id} value={p.id}>
-                                    {p.name} — {p.providerParameter}
-                                  </option>
-                                ))}
-                              </Select>
-                            </td>
-                          </tr>
-                        ))}
+                      {catalog.agents
+                        .filter((a) => agentIds.includes(a.key))
+                        .map((a) => {
+                          const check = result?.models.find((m) => m.agent === a.key)
+                          const warning = modelWarning(a.key)
+                          return (
+                            <tr key={a.key} className="border-t border-border">
+                              <td className="py-2 pr-4 text-text">{agentName(a, i18n.language)}</td>
+                              <td className="py-2 pr-4">
+                                {inheritModels ? (
+                                  <span className="text-text-2">{check?.profileName ?? t('wizard.inherited')}</span>
+                                ) : (
+                                  <Select
+                                    value={modelChoice[a.key] ?? ''}
+                                    onChange={(e) => setModelChoice({ ...modelChoice, [a.key]: e.target.value })}
+                                    className="h-9"
+                                    aria-label={`${t('wizard.profile')} · ${agentName(a, i18n.language)}`}
+                                  >
+                                    <option value="">{t('wizard.inherited')}</option>
+                                    {(profiles.data ?? []).map((p) => (
+                                      <option key={p.id} value={p.id}>
+                                        {p.name} — {p.model}
+                                      </option>
+                                    ))}
+                                  </Select>
+                                )}
+                                {warning && (
+                                  <div className="mt-1 flex items-center gap-1 text-xs text-warning-ink">
+                                    <AlertTriangle size={12} /> {warning}
+                                  </div>
+                                )}
+                              </td>
+                            </tr>
+                          )
+                        })}
                     </tbody>
                   </table>
                 </div>
@@ -430,13 +585,13 @@ export function NewProjectWizard() {
               <>
                 <StepTitle title={t('wizard.pipelineTitle')} hint={t('wizard.pipelineHint')} />
                 <div className="grid gap-3 sm:grid-cols-2">
-                  {(['bankStandard', 'internalAgile'] as const).map((tpl) => (
+                  {catalog.pipelineTemplates.map((tpl) => (
                     <ChoiceCard
-                      key={tpl}
-                      selected={template === tpl}
-                      onClick={() => setTemplate(tpl)}
-                      title={t(`templates.${tpl}.name`)}
-                      body={t(`templates.${tpl}.body`)}
+                      key={tpl.key}
+                      selected={template === tpl.key}
+                      onClick={() => setTemplate(tpl.key)}
+                      title={t(`templates.${tpl.key}.name`, { defaultValue: tpl.name })}
+                      body={t(`templates.${tpl.key}.body`, { defaultValue: tpl.description })}
                     />
                   ))}
                 </div>
@@ -458,7 +613,12 @@ export function NewProjectWizard() {
                   <div className="text-sm font-medium text-text">{t('hitl.whenTitle')}</div>
                   <ul className="mt-2 space-y-1.5 text-sm text-text-2">
                     <li>
-                      • {t('hitl.when.gates', { gates: autonomy === 'autonomous' ? 'C1, C4' : 'C1, C2, C3, C4' })}
+                      •{' '}
+                      {t('hitl.when.gates', {
+                        gates: (catalog.pipelineTemplates.find((x) => x.key === template)?.requiredGates ?? []).join(
+                          ', ',
+                        ),
+                      })}
                     </li>
                     <li>• {t('hitl.when.questions')}</li>
                     <li>
@@ -486,7 +646,7 @@ export function NewProjectWizard() {
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <Field label={t('wizard.budget')} hint={t('wizard.budgetHint')}>
-                    <Input type="number" min={0} value={budget} onChange={(e) => setBudget(Number(e.target.value))} />
+                    <Input type="number" min={0} value={budget} onChange={(e) => setBudget(e.target.value)} />
                   </Field>
                   <Field label={t('wizard.maxIterations')} hint={t('wizard.maxIterationsHint')}>
                     <Input
@@ -504,58 +664,69 @@ export function NewProjectWizard() {
             {step === 'team' && (
               <>
                 <StepTitle title={t('wizard.teamTitle')} hint={t('wizard.teamHint')} />
-                <div className="space-y-2">
-                  {team.map((member, i) => {
-                    const user = users.find((u) => u.id === member.userId)!
-                    return (
-                      <div
-                        key={member.userId}
-                        className="flex flex-wrap items-center gap-3 rounded-md border border-border p-3"
-                      >
-                        <div className="min-w-0 flex-1">
-                          <div className="text-sm font-medium text-text">{user.name}</div>
-                          <div className="text-xs text-muted">{user.email}</div>
-                        </div>
-                        <Select
-                          className="h-9 w-48"
-                          value={member.role}
-                          onChange={(e) => setTeam(team.map((m, j) => (j === i ? { ...m, role: e.target.value } : m)))}
-                          aria-label={t('wizard.role')}
-                        >
-                          {['projectOwner', 'architect', 'analyst', 'businessReviewer', 'developer', 'observer'].map(
-                            (r) => (
-                              <option key={r} value={r}>
-                                {t(`roles.${r}`)}
-                              </option>
-                            ),
-                          )}
-                        </Select>
-                        <button
-                          onClick={() => setTeam(team.filter((_, j) => j !== i))}
-                          className="rounded p-1 text-muted hover:text-critical"
-                          aria-label={t('common.remove')}
-                        >
-                          <X size={16} />
-                        </button>
-                      </div>
-                    )
-                  })}
-                </div>
-                <Select
-                  className="max-w-sm"
-                  value=""
-                  onChange={(e) => e.target.value && setTeam([...team, { userId: e.target.value, role: 'observer' }])}
-                  aria-label={t('wizard.addMember')}
-                >
-                  <option value="">{t('wizard.addMember')}</option>
-                  {users
-                    .filter((u) => !team.some((m) => m.userId === u.id))
-                    .map((u) => (
-                      <option key={u.id} value={u.id}>
-                        {u.name}
-                      </option>
-                    ))}
-                </Select>
+                <Notice tone="info">{t('wizard.youAreOwner')}</Notice>
+                {canManageUsers ? (
+                  <>
+                    <div className="space-y-2">
+                      {team.map((member, i) => {
+                        const user = members.data?.find((u) => u.id === member.userId)
+                        return (
+                          <div
+                            key={member.userId}
+                            className="flex flex-wrap items-center gap-3 rounded-md border border-border p-3"
+                          >
+                            <div className="min-w-0 flex-1">
+                              <div className="text-sm font-medium text-text">{user?.displayName}</div>
+                              <div className="text-xs text-muted">{user?.email}</div>
+                            </div>
+                            <Select
+                              className="h-9 w-48"
+                              value={member.role}
+                              onChange={(e) =>
+                                setTeam(team.map((m, j) => (j === i ? { ...m, role: e.target.value } : m)))
+                              }
+                              aria-label={t('wizard.role')}
+                            >
+                              {PROJECT_ROLES.map((r) => (
+                                <option key={r} value={r}>
+                                  {t(`roles.${r}`)}
+                                </option>
+                              ))}
+                            </Select>
+                            <button
+                              onClick={() => setTeam(team.filter((_, j) => j !== i))}
+                              className="rounded p-1 text-muted hover:text-critical"
+                              aria-label={t('common.remove')}
+                            >
+                              <X size={16} />
+                            </button>
+                          </div>
+                        )
+                      })}
+                    </div>
+                    <Select
+                      className="max-w-sm"
+                      value=""
+                      onChange={(e) =>
+                        e.target.value && setTeam([...team, { userId: e.target.value, role: 'observer' }])
+                      }
+                      aria-label={t('wizard.addMember')}
+                    >
+                      <option value="">{t('wizard.addMember')}</option>
+                      {(members.data ?? [])
+                        .filter(
+                          (u) => u.status === 'active' && u.id !== me?.user.id && !team.some((m) => m.userId === u.id),
+                        )
+                        .map((u) => (
+                          <option key={u.id} value={u.id}>
+                            {u.displayName}
+                          </option>
+                        ))}
+                    </Select>
+                  </>
+                ) : (
+                  <Notice tone="info">{t('wizard.teamLater')}</Notice>
+                )}
                 <Notice tone="info">{t('wizard.segregation')}</Notice>
               </>
             )}
@@ -564,9 +735,9 @@ export function NewProjectWizard() {
               <>
                 <StepTitle title={t('wizard.reviewTitle')} hint={t('wizard.reviewHint')} />
                 <dl className="grid gap-x-6 gap-y-3 text-sm sm:grid-cols-2">
-                  <Summary label={t('wizard.projectName')}>{name}</Summary>
+                  <Summary label={t('wizard.projectName')}>{name || '—'}</Summary>
                   <Summary label={t('wizard.flow')}>{t(`flows.${flow}`)}</Summary>
-                  <Summary label={t('wizard.stepNames.source')}>{sources.join(', ')}</Summary>
+                  <Summary label={t('wizard.stepNames.source')}>{sources.map(sourceName).join(', ')}</Summary>
                   <Summary label={t('setup.uiTitle')}>
                     {t('setup.summaryUi', {
                       screens: uiRefs.screens.length,
@@ -574,13 +745,8 @@ export function NewProjectWizard() {
                       prototypes: uiRefs.prototypes.length,
                     })}
                   </Summary>
-                  <Summary label={t('setup.trackingTitle')}>
-                    {tracking.integration === 'none'
-                      ? t('setup.noIntegration')
-                      : `${tracking.integration === 'jira' ? 'Jira' : 'Azure DevOps'} · ${tracking.project || '—'}`}
-                  </Summary>
                   <Summary label={t('wizard.stepNames.target')}>
-                    {target.architecture} · {target.backend} · {target.frontend} · {target.database} · {target.cloud}
+                    {AXES.map((axis) => optionName(axis, target[axis])).join(' · ')}
                   </Summary>
                   <Summary label={t('wizard.stepNames.agents')}>
                     {t('wizard.agentsSelected', { count: agentIds.length })}
@@ -589,12 +755,14 @@ export function NewProjectWizard() {
                     {t('wizard.skillsSelected', { count: skillIds.length })}
                   </Summary>
                   <Summary label={t('wizard.artifactLanguage')}>{language === 'en' ? 'English' : 'Español'}</Summary>
-                  <Summary label={t('wizard.budget')}>{formatUsd(budget)}</Summary>
-                  <Summary label={t('wizard.estimate')}>{formatUsd(estimate)}</Summary>
-                  <Summary label={t('wizard.stepNames.pipeline')}>{t(`templates.${template}.name`)}</Summary>
+                  <Summary label={t('wizard.budget')}>{Number(budget) > 0 ? formatUsd(Number(budget)) : '—'}</Summary>
+                  <Summary label={t('wizard.estimate')}>{formatUsd(result?.estimateUsd ?? 0)}</Summary>
+                  <Summary label={t('wizard.stepNames.pipeline')}>
+                    {t(`templates.${template}.name`, { defaultValue: template })}
+                  </Summary>
                   <Summary label={t('hitl.autonomyTitle')}>{t(`hitl.levels.${autonomy}.name`)}</Summary>
                 </dl>
-                {warnings.map((w) => (
+                {result?.warnings.map((w) => (
                   <Notice key={w} tone="warning">
                     {t(`compat.${w}`)}
                   </Notice>
@@ -615,10 +783,10 @@ export function NewProjectWizard() {
               {step === 'review' ? (
                 <Button
                   variant="primary"
-                  disabled={blockers.length > 0}
-                  onClick={() => void navigate({ to: '/projects/$projectId', params: { projectId: 'p1' } })}
+                  disabled={blockers.length > 0 || !result || create.isPending}
+                  onClick={() => void submit()}
                 >
-                  {t('wizard.create')}
+                  {create.isPending && <Loader2 size={14} className="animate-spin" />} {t('wizard.create')}
                 </Button>
               ) : (
                 <Button variant="primary" onClick={() => setStep(STEPS[index + 1])}>
@@ -629,6 +797,53 @@ export function NewProjectWizard() {
           </CardBody>
         </Card>
       </div>
+    </>
+  )
+}
+
+function Creating({ tasks, projectId, onBack }: { tasks: TaskState[]; projectId: string | null; onBack: () => void }) {
+  const { t } = useTranslation()
+  const done = tasks.every((task) => task.status !== 'pending')
+  return (
+    <>
+      <PageHeader title={t('wizard.creatingTitle')} description={t('wizard.creatingHint')} />
+      <Card>
+        <CardBody className="space-y-3">
+          {projectId && (
+            <div className="flex items-center gap-2 text-sm text-text">
+              <CheckCircle2 size={16} className="text-good" /> {t('wizard.projectCreated')}
+            </div>
+          )}
+          <ul className="space-y-2" aria-live="polite">
+            {tasks.map((task) => (
+              <li key={task.label} className="flex items-start gap-2 text-sm">
+                {task.status === 'pending' ? (
+                  <Loader2 size={16} className="mt-0.5 animate-spin text-muted" />
+                ) : task.status === 'ok' ? (
+                  <CheckCircle2 size={16} className="mt-0.5 text-good" />
+                ) : (
+                  <XCircle size={16} className="mt-0.5 text-critical" />
+                )}
+                <span>
+                  <span className="font-mono text-xs text-text">{task.label}</span>
+                  {task.detail && <span className="block text-text-2">{task.detail}</span>}
+                </span>
+              </li>
+            ))}
+          </ul>
+          {done && (
+            <div className="flex gap-2 border-t border-border pt-4">
+              {projectId ? (
+                <Link to="/projects/$projectId" params={{ projectId }}>
+                  <Button variant="primary">{t('wizard.openProject')}</Button>
+                </Link>
+              ) : (
+                <Button onClick={onBack}>{t('common.back')}</Button>
+              )}
+            </div>
+          )}
+        </CardBody>
+      </Card>
     </>
   )
 }

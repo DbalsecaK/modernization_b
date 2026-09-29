@@ -1,0 +1,20 @@
+# Agent card (spec 9.2). The system prompt arrives with the orchestration engine (M3).
+id: acceptance-judge
+version: 1.0.0
+order: 19
+name: "Acceptance judge"
+name_es: "Juez de aceptación"
+group: control
+description: "Runs acceptance, contract and visual checks against the approved specification."
+description_es: "Ejecuta las pruebas de aceptación, contrato y fidelidad visual contra la especificación aprobada."
+phases: ["validation"]
+capabilities: ["toolCalling", "vision"]
+tools: ["readWorkspace", "sandbox"]
+mandatory: true
+level: certified
+default_profile: review
+relative_cost: 2
+# Deterministic recommendation (spec 9.4): the first rule that matches gives the reason.
+recommend:
+  - when: {}
+    reason: control

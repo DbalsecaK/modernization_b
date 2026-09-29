@@ -1,15 +1,13 @@
-import { Link, useNavigate, useParams } from '@tanstack/react-router'
+import { Link, useParams } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
 import { ChevronLeft, Play } from 'lucide-react'
 import { useTab } from '@/lib/useTab'
-import { formatUsd } from '@/lib/format'
-import { projects, tenants } from '@/mocks/data'
+import { formatDate } from '@/lib/format'
+import { useProject } from '@/api/projects'
 import { Badge, Button, EmptyState, PageHeader, Tabs } from '@/components/ui/primitives'
-import { VerdictBadge } from '@/components/ui/status'
-import { InputsTab, InventoryTab, OverviewTab } from './tabs/OverviewTabs'
-import { ArchitectureTab, CodeTab, SpecificationTab, TraceabilityTab, UiDesignTab } from './tabs/SpecTabs'
-import { BacklogTab } from './tabs/BacklogTab'
-import { ActivityTab, CostsTab, RunsTab, SettingsTab, ValidationTab } from './tabs/QualityTabs'
+import { ProjectInputs } from './workspace/ProjectInputs'
+import { ProjectOverview } from './workspace/ProjectOverview'
+import { ProjectSettings } from './workspace/ProjectSettings'
 
 const TABS = [
   'overview',
@@ -28,16 +26,16 @@ const TABS = [
   'settings',
 ] as const
 export type ProjectTab = (typeof TABS)[number]
+// Connected in M2; the other tabs fill in as the pipeline produces their content (M3 onwards).
+const CONNECTED: ProjectTab[] = ['overview', 'inputs', 'settings']
 
 export function ProjectWorkspace() {
   const { t } = useTranslation()
   const { projectId } = useParams({ strict: false }) as { projectId: string }
   const [tab, setTab] = useTab(TABS, 'overview')
-  const navigate = useNavigate()
-  const openCompare = (rule: string) => void navigate({ to: '.', search: { tab: 'traceability', rule } as never })
-  const project = projects.find((p) => p.id === projectId)
+  const project = useProject(projectId)
 
-  if (!project) {
+  if (project.isError) {
     return (
       <EmptyState
         title={t('project.notFound')}
@@ -49,9 +47,11 @@ export function ProjectWorkspace() {
       />
     )
   }
-
+  if (!project.data) return null
+  const p = project.data
   // The inventory tab only applies to modernization projects (the legacy map).
-  const visibleTabs = TABS.filter((id) => project.flow === 'modernization' || id !== 'inventory')
+  const visibleTabs = TABS.filter((id) => p.flow === 'modernization' || id !== 'inventory')
+  const owners = p.team.filter((m) => m.roleKey === 'projectOwner').map((m) => m.displayName)
 
   return (
     <>
@@ -59,41 +59,35 @@ export function ProjectWorkspace() {
         <ChevronLeft size={16} /> {t('project.back')}
       </Link>
       <PageHeader
-        title={project.name}
+        title={p.name}
         description={
           <span className="flex flex-wrap items-center gap-2">
-            <Badge tone={project.flow === 'modernization' ? 'brand' : 'accent'}>{t(`flows.${project.flow}`)}</Badge>
-            <span>{tenants.find((x) => x.id === project.tenantId)?.name}</span>
+            <Badge tone={p.flow === 'modernization' ? 'brand' : 'accent'}>{t(`flows.${p.flow}`)}</Badge>
+            {p.status === 'archived' && <Badge>{t('projects.statuses.archived')}</Badge>}
+            {owners.length > 0 && <span>{t('project.owner', { name: owners.join(', ') })}</span>}
             <span>·</span>
-            <span>{t('project.owner', { name: project.owner })}</span>
-            <span>·</span>
-            <span className="tabular">
-              {formatUsd(project.costUsd)} / {formatUsd(project.budgetUsd)}
-            </span>
-            <VerdictBadge verdict={project.verdict} />
+            <span>{t('project.createdOn', { date: formatDate(p.createdAt) })}</span>
+            {p.config && (
+              <>
+                <span>·</span>
+                <span>{t('projects.configVersion', { version: p.config.version })}</span>
+              </>
+            )}
           </span>
         }
         actions={
-          <Button variant="primary">
+          <Button variant="primary" disabled title={t('project.runsLater')}>
             <Play size={16} /> {t('project.runNextPhase')}
           </Button>
         }
       />
       <Tabs tabs={visibleTabs.map((id) => ({ id, label: t(`project.tabs.${id}`) }))} value={tab} onChange={setTab} />
-      {tab === 'overview' && <OverviewTab project={project} onOpen={setTab} />}
-      {tab === 'inputs' && <InputsTab project={project} />}
-      {tab === 'inventory' && <InventoryTab onCompare={openCompare} />}
-      {tab === 'specification' && <SpecificationTab project={project} />}
-      {tab === 'uiDesign' && <UiDesignTab project={project} />}
-      {tab === 'architecture' && <ArchitectureTab project={project} />}
-      {tab === 'code' && <CodeTab project={project} />}
-      {tab === 'traceability' && <TraceabilityTab />}
-      {tab === 'validation' && <ValidationTab project={project} />}
-      {tab === 'backlog' && <BacklogTab project={project} />}
-      {tab === 'runs' && <RunsTab project={project} />}
-      {tab === 'costs' && <CostsTab project={project} />}
-      {tab === 'activity' && <ActivityTab project={project} />}
-      {tab === 'settings' && <SettingsTab project={project} />}
+      {tab === 'overview' && <ProjectOverview project={p} onOpen={setTab} />}
+      {tab === 'inputs' && <ProjectInputs project={p} />}
+      {tab === 'settings' && <ProjectSettings project={p} />}
+      {!CONNECTED.includes(tab) && (
+        <EmptyState title={t(`project.later.${tab}`)} description={t('project.laterHint')} />
+      )}
     </>
   )
 }

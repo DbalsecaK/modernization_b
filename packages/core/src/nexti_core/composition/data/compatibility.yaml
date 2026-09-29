@@ -1,0 +1,24 @@
+# Compatibility rules (spec 8.5): conditions over the flow, the sources and the target axes, not a lookup table.
+# Each warning that applies becomes an ADR of the project when the pipeline designs the architecture (M3+).
+#
+# Condition keys (all must hold): flow, sources_any, sources_none, target (axis -> allowed keys), target_not.
+
+rules:
+  - key: mongoModeling
+    when: {target: {database: [mongodb]}}
+    message: "MongoDB needs an extra aggregate modeling step: what is embedded and what is referenced."
+  - key: serverlessBatch
+    when: {target: {architecture: [serverless]}, sources_any: [cobol]}
+    message: "Long-running COBOL batch does not fit serverless functions; it will use batch or workflow services."
+  - key: serverlessCics
+    when: {target: {architecture: [serverless]}, sources_any: [cobol-cics]}
+    message: "CICS pseudo-conversational transactions fit stateless serverless services well."
+  - key: nextBff
+    when: {target: {backend: [nextjs]}, target_not: {frontend: [nextjs]}}
+    message: "Next.js as backend acts as a BFF; domain services are still generated separately."
+  - key: goConventions
+    when: {target: {backend: [go]}}
+    message: "Go uses its own idiomatic pack, not a translation of the Java pack."
+  - key: upliftOption
+    when: {target: {backend: [dotnet-10]}, sources_any: [dotnet-framework]}
+    message: ".NET Framework to .NET 10 can be an uplift (same structure) or a rewrite. Choose before generation."

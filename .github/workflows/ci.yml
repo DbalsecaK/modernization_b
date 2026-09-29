@@ -17,8 +17,8 @@ concurrency:
 
 env:
   COMPOSE: docker compose -f infra/docker-compose/compose.yaml
-  # The services the API needs (Neo4j, MinIO and Langfuse are not used in M0).
-  SERVICES: postgres redis keycloak openfga openbao mailpit
+  # The services the API needs (Neo4j and Langfuse are not used yet; MinIO and ClamAV hold and scan the inputs, M2).
+  SERVICES: postgres redis keycloak openfga openbao minio clamav mailpit
 
 jobs:
   python-quality:
@@ -30,7 +30,7 @@ jobs:
       - run: uv sync --all-packages --locked
       - run: uv run ruff check .
       - run: uv run ruff format --check .
-      - run: uv run mypy apps/api/src apps/api/tests packages/core/src packages/core/tests packages/model_gateway/src packages/model_gateway/tests
+      - run: uv run mypy apps/api/src apps/api/tests packages/core/src packages/core/tests packages/model_gateway/src packages/model_gateway/tests packages/agents/src packages/skills/src packages/ingest/src packages/ingest/tests
 
   web:
     name: Web · lint, types, tests, build, generated types

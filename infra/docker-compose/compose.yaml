@@ -156,6 +156,19 @@ services:
       <<: *healthcheck
       test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:8200/v1/sys/health || exit 1"]
 
+  clamav:
+    # Malware scanning of uploaded inputs (ADR-0008). The first start downloads the signatures (several minutes);
+    # the volume keeps them between restarts and freshclam updates them.
+    image: docker.io/clamav/clamav:1.4@sha256:57deb108fc4c72778aa83eafbca7bb7153e28c3f57c005afd38d31f16da86f23
+    ports:
+      - 127.0.0.1:${CLAMAV_PORT:-3310}:3310
+    volumes:
+      - clamav_data:/var/lib/clamav
+    healthcheck:
+      <<: *healthcheck
+      test: ["CMD", "clamdcheck.sh"]
+      start_period: 600s
+
   mailpit:
     # Captures outgoing mail (Keycloak invitations and password actions) in development.
     image: docker.io/axllent/mailpit:v1.31.3
@@ -234,6 +247,7 @@ services:
 
 volumes:
   postgres_data:
+  clamav_data:
   redis_data:
   neo4j_data:
   minio_data:

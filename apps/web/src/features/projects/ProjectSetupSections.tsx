@@ -5,54 +5,122 @@ import { Button, Field, Input, Select, Toggle } from '@/components/ui/primitives
 import { Notice } from './NewProjectWizard'
 
 // Sections of the "Source" step of the new-project wizard: documents, UI references (screenshots, Figma and
-// prototype links) and the work-tracking project (Jira or Azure DevOps). Everything can be extended later from
-// the project's Inputs, UI design and Backlog tabs.
+// prototype links) and the work-tracking project. The files are uploaded right after the project is created and go
+// through the server's validation (type, size, zip safety, malware, secrets); everything can be extended later from
+// the project's Inputs tab.
 
 export interface UiReferences {
-  documents: string[]
-  screens: { name: string; url: string }[]
+  screens: { file: File; url: string }[]
   figma: string[]
   prototypes: string[]
 }
 
-export interface WorkTracking {
-  integration: 'none' | 'jira' | 'azureDevOps'
-  project: string
-  autoCreate: boolean
+export const EMPTY_UI_REFERENCES: UiReferences = { screens: [], figma: [], prototypes: [] }
+
+// A first check in the browser; the server validates again and decides (figma.com/file|design|proto, https).
+export const FIGMA_LINK = /^https:\/\/(www\.)?figma\.com\/(file|design|proto)\/[A-Za-z0-9]{10,}/
+const HTTPS_LINK = /^https:\/\/[^\s/@]+\.[^\s/@]+(\/\S*)?$/
+
+function FileChips({ files, onRemove }: { files: File[]; onRemove: (f: File) => void }) {
+  const { t } = useTranslation()
+  if (files.length === 0) return null
+  return (
+    <ul className="mt-2 flex flex-wrap gap-2">
+      {files.map((f) => (
+        <li
+          key={`${f.name}-${f.size}-${f.lastModified}`}
+          className="flex items-center gap-1 rounded bg-surface-2 px-2 py-1 font-mono text-xs text-text"
+        >
+          {f.name}
+          <button
+            type="button"
+            onClick={() => onRemove(f)}
+            aria-label={t('setup.removeFile', { name: f.name })}
+            className="text-muted hover:text-critical"
+          >
+            <X size={12} />
+          </button>
+        </li>
+      ))}
+    </ul>
+  )
 }
 
-export function DocumentsSection({ value, onChange }: { value: string[]; onChange: (v: string[]) => void }) {
+export function DocumentsSection({ value, onChange }: { value: File[]; onChange: (v: File[]) => void }) {
   const { t } = useTranslation()
   return (
     <div>
       <div className="mb-2 text-sm font-medium text-text">{t('setup.documents')}</div>
       <label className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-border px-6 py-6 text-center hover:bg-surface-2">
         <FileText size={20} className="text-muted" />
-        <span className="text-sm text-text">{t('wizard.dropInputs')}</span>
+        <span className="text-sm text-text">{t('setup.dropDocuments')}</span>
         <span className="text-xs text-muted">{t('inputForms.acceptedDocs')}</span>
         <input
           type="file"
           multiple
+          accept=".pdf,.docx,.xlsx,.md,.txt"
           className="sr-only"
-          onChange={(e) => onChange([...value, ...Array.from(e.target.files ?? []).map((f) => f.name)])}
+          aria-label={t('setup.documents')}
+          onChange={(e) => onChange([...value, ...Array.from(e.target.files ?? [])])}
         />
       </label>
-      {value.length > 0 && (
-        <ul className="mt-2 flex flex-wrap gap-2">
-          {value.map((d) => (
-            <li key={d} className="flex items-center gap-1 rounded bg-surface-2 px-2 py-1 font-mono text-xs text-text">
-              {d}
-              <button
-                onClick={() => onChange(value.filter((x) => x !== d))}
-                aria-label={t('common.remove')}
-                className="text-muted hover:text-critical"
-              >
-                <X size={12} />
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
+      <FileChips files={value} onRemove={(f) => onChange(value.filter((x) => x !== f))} />
+    </div>
+  )
+}
+
+export function ArchiveSection({ value, onChange }: { value: File | null; onChange: (v: File | null) => void }) {
+  const { t } = useTranslation()
+  return (
+    <div>
+      <label className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-border px-6 py-6 text-center hover:bg-surface-2">
+        <Upload size={20} className="text-muted" />
+        <span className="text-sm text-text">{t('setup.dropArchive')}</span>
+        <span className="text-xs text-muted">{t('setup.archiveHint')}</span>
+        <input
+          type="file"
+          accept=".zip,application/zip"
+          className="sr-only"
+          aria-label={t('wizard.uploadZip')}
+          onChange={(e) => onChange(e.target.files?.[0] ?? null)}
+        />
+      </label>
+      <FileChips files={value ? [value] : []} onRemove={() => onChange(null)} />
+    </div>
+  )
+}
+
+export interface GitInput {
+  url: string
+  branch: string
+  token: string
+}
+
+export function GitSection({ value, onChange }: { value: GitInput; onChange: (v: GitInput) => void }) {
+  const { t } = useTranslation()
+  const invalid = value.url.trim() !== '' && !HTTPS_LINK.test(value.url.trim())
+  return (
+    <div className="grid gap-4 sm:grid-cols-2">
+      <div className="sm:col-span-2">
+        <Field label={t('setup.gitUrl')} hint={invalid ? t('setup.gitUrlInvalid') : t('setup.gitUrlHint')}>
+          <Input
+            value={value.url}
+            onChange={(e) => onChange({ ...value, url: e.target.value })}
+            placeholder="https://git.bank.example/cards/card-system.git"
+          />
+        </Field>
+      </div>
+      <Field label={t('setup.gitBranch')}>
+        <Input value={value.branch} onChange={(e) => onChange({ ...value, branch: e.target.value })} />
+      </Field>
+      <Field label={t('setup.gitToken')} hint={t('setup.gitTokenHint')}>
+        <Input
+          type="password"
+          autoComplete="off"
+          value={value.token}
+          onChange={(e) => onChange({ ...value, token: e.target.value })}
+        />
+      </Field>
     </div>
   )
 }
@@ -61,8 +129,8 @@ export function UiReferencesSection({ value, onChange }: { value: UiReferences; 
   const { t } = useTranslation()
   const [figma, setFigma] = useState('')
   const [proto, setProto] = useState('')
-  const figmaValid = /^https:\/\/(www\.)?figma\.com\/(file|design|proto)\//.test(figma.trim())
-  const protoValid = /^https:\/\/\S+/.test(proto.trim())
+  const figmaValid = FIGMA_LINK.test(figma.trim())
+  const protoValid = HTTPS_LINK.test(proto.trim())
 
   return (
     <div className="space-y-4 rounded-lg border border-border p-4">
@@ -79,15 +147,16 @@ export function UiReferencesSection({ value, onChange }: { value: UiReferences; 
           <Upload size={16} /> {t('inputForms.dropScreens')}
           <input
             type="file"
-            accept="image/*"
+            accept="image/png,image/jpeg,image/webp"
             multiple
             className="sr-only"
+            aria-label={t('setup.screens')}
             onChange={(e) =>
               onChange({
                 ...value,
                 screens: [
                   ...value.screens,
-                  ...Array.from(e.target.files ?? []).map((f) => ({ name: f.name, url: URL.createObjectURL(f) })),
+                  ...Array.from(e.target.files ?? []).map((file) => ({ file, url: URL.createObjectURL(file) })),
                 ],
               })
             }
@@ -97,12 +166,13 @@ export function UiReferencesSection({ value, onChange }: { value: UiReferences; 
           <div className="mt-2 grid grid-cols-3 gap-2 sm:grid-cols-5">
             {value.screens.map((s) => (
               <figure key={s.url} className="relative overflow-hidden rounded-md border border-border">
-                <img src={s.url} alt={s.name} className="aspect-video w-full object-cover" />
-                <figcaption className="truncate px-1.5 py-1 text-[10px] text-muted">{s.name}</figcaption>
+                <img src={s.url} alt={s.file.name} className="aspect-video w-full object-cover" />
+                <figcaption className="truncate px-1.5 py-1 text-[10px] text-muted">{s.file.name}</figcaption>
                 <button
+                  type="button"
                   onClick={() => onChange({ ...value, screens: value.screens.filter((x) => x.url !== s.url) })}
                   className="absolute top-1 right-1 rounded-full bg-surface/90 p-0.5 text-muted hover:text-critical"
-                  aria-label={t('common.remove')}
+                  aria-label={t('setup.removeFile', { name: s.file.name })}
                 >
                   <X size={12} />
                 </button>
@@ -114,7 +184,7 @@ export function UiReferencesSection({ value, onChange }: { value: UiReferences; 
 
       <LinkList
         label={t('setup.figmaLinks')}
-        placeholder="https://www.figma.com/design/AbC123/Onboarding"
+        placeholder="https://www.figma.com/design/AbC123DeF4/Onboarding"
         hint={t('inputForms.figmaHint')}
         input={figma}
         setInput={setFigma}
@@ -125,7 +195,7 @@ export function UiReferencesSection({ value, onChange }: { value: UiReferences; 
       />
       <LinkList
         label={t('setup.prototypeLinks')}
-        placeholder="https://www.figma.com/proto/… · https://prototype.example.com"
+        placeholder="https://prototype.example.com/app"
         hint={t('inputForms.prototypeHint')}
         input={proto}
         setInput={setProto}
@@ -198,7 +268,8 @@ function LinkList({
   )
 }
 
-export function WorkTrackingSection({ value, onChange }: { value: WorkTracking; onChange: (v: WorkTracking) => void }) {
+/** Linking Jira or Azure DevOps arrives with M7b; the section stays visible so the flow is complete. */
+export function WorkTrackingSection() {
   const { t } = useTranslation()
   return (
     <div className="space-y-4 rounded-lg border border-border p-4">
@@ -207,31 +278,14 @@ export function WorkTrackingSection({ value, onChange }: { value: WorkTracking; 
         <p className="mt-0.5 text-xs text-muted">{t('setup.trackingHint')}</p>
       </div>
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label={t('setup.integration')} hint={t('setup.integrationHint')}>
-          <Select
-            value={value.integration}
-            onChange={(e) => onChange({ ...value, integration: e.target.value as WorkTracking['integration'] })}
-          >
+        <Field label={t('setup.integration')}>
+          <Select value="none" disabled>
             <option value="none">{t('setup.noIntegration')}</option>
-            <option value="jira">Jira — andesbank.atlassian.net</option>
-            <option value="azureDevOps">Azure DevOps — dev.azure.com/andesbank</option>
           </Select>
         </Field>
-        <Field label={value.integration === 'azureDevOps' ? t('setup.adoProject') : t('setup.jiraProject')}>
-          <Input
-            value={value.project}
-            onChange={(e) => onChange({ ...value, project: e.target.value })}
-            placeholder={value.integration === 'azureDevOps' ? 'Card Management' : 'CARDS'}
-            disabled={value.integration === 'none'}
-          />
-        </Field>
       </div>
-      <Toggle
-        checked={value.autoCreate}
-        disabled={value.integration === 'none'}
-        onChange={(v) => onChange({ ...value, autoCreate: v })}
-        label={t('setup.autoCreate')}
-      />
+      <Toggle checked={false} disabled onChange={() => undefined} label={t('setup.autoCreate')} />
+      <Notice tone="info">{t('setup.trackingLater')}</Notice>
     </div>
   )
 }

@@ -1,0 +1,33 @@
+# The five axes of a target pack (spec 8.4) with support level (8.6) and certification wave (8.7).
+# Architecture styles are not packs: they have no level of their own.
+
+axes:
+  architecture:
+    - {key: microservices-hexagonal, name: "Microservices (hexagonal)"}
+    - {key: modular-monolith, name: "Modular monolith (hexagonal)"}
+    - {key: mvc, name: "MVC"}
+    - {key: serverless, name: "Serverless", wave: 2}
+    - {key: event-driven, name: "Event-driven"}
+    - {key: bff-microservices, name: "BFF + microservices"}
+  backend:
+    - {key: spring-boot, name: "Java Spring Boot", level: certified, wave: 1}
+    - {key: quarkus, name: "Java Quarkus", level: assisted, wave: 2}
+    - {key: dotnet-10, name: ".NET 10", level: certified, wave: 1}
+    - {key: go, name: "Go", level: experimental, wave: 3}
+    - {key: nextjs, name: "Next.js", level: assisted, wave: 2}
+  frontend:
+    - {key: react, name: "React", level: certified, wave: 1}
+    - {key: angular, name: "Angular", level: certified, wave: 1}
+    - {key: nextjs, name: "Next.js", level: assisted, wave: 2}
+    - {key: none, name: "No frontend"}
+  database:
+    - {key: postgresql, name: "PostgreSQL", level: certified, wave: 1}
+    - {key: mysql, name: "MySQL", level: assisted, wave: 2}
+    - {key: sqlserver, name: "SQL Server", level: certified, wave: 1}
+    - {key: oracle, name: "Oracle", level: certified, wave: 1}
+    - {key: mongodb, name: "MongoDB", level: experimental, wave: 3}
+  cloud:
+    - {key: aws, name: "AWS", level: certified, wave: 1}
+    - {key: azure, name: "Azure", level: certified, wave: 1}
+    - {key: gcp, name: "GCP", level: assisted, wave: 2}
+    - {key: kubernetes, name: "Kubernetes (on-prem)"}

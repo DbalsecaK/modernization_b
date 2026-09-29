@@ -1,0 +1,13 @@
+[project]
+name = "nexti-ingest"
+version = "0.1.0"
+description = "Validation of untrusted inputs before they are stored (spec 7.1, 15.4; ADR-0008)."
+requires-python = ">=3.12"
+dependencies = ["httpx>=0.28", "pillow>=11.0"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/nexti_ingest"]

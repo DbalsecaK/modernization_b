@@ -19,7 +19,8 @@ AI_TABLES = (
     "budget",
     "budget_alert",
 )
-RLS_TABLES = ("tenant", "app_user", *TENANT_TABLES, *AI_TABLES)
+PROJECT_TABLES = ("project_config", "project_agent", "project_skill", "input_artifact", "project_repository")
+RLS_TABLES = ("tenant", "app_user", *TENANT_TABLES, *AI_TABLES, *PROJECT_TABLES)
 
 
 async def ids(engine: AsyncEngine, scope: DbScope, sql: str) -> list[object]:
@@ -120,6 +121,26 @@ async def test_catalog_is_read_only_for_the_api(app_engine: AsyncEngine, world: 
     with pytest.raises(DBAPIError, match="permission denied"):
         async with scoped_connection(app_engine, DbScope(tenant_id=world.tenant_a)) as conn:
             await conn.execute(text("INSERT INTO permission (key, description) VALUES ('x.y', 'x')"))
+
+
+@pytest.mark.parametrize(
+    "sql",
+    [
+        "UPDATE agent_definition SET mandatory = false",
+        "UPDATE skill_definition SET status = 'published'",
+        "DELETE FROM compatibility_rule",
+        "UPDATE project_config SET autonomy = 'autonomous'",
+        "DELETE FROM project_agent",
+        "UPDATE input_artifact SET sha256 = NULL",
+    ],
+)
+async def test_the_agent_catalog_and_project_configurations_are_not_editable_in_place(
+    app_engine: AsyncEngine, world: World, sql: str
+) -> None:
+    """The catalog comes from the repository (catalog-sync); a configuration change is a new version (M2)."""
+    with pytest.raises(DBAPIError, match="permission denied"):
+        async with scoped_connection(app_engine, DbScope(tenant_id=world.tenant_a)) as conn:
+            await conn.execute(text(sql))
 
 
 async def test_platform_roles_cannot_be_granted_by_the_api(app_engine: AsyncEngine, world: World) -> None:

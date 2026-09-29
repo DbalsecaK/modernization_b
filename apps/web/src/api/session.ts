@@ -60,4 +60,4 @@ export async function devSignIn(client: QueryClient, userId: string) {
   await client.invalidateQueries({ queryKey: ['me'] })
 }
 
-export { can, canOpen, initials, isPlatformOperator, type NavKey } from './access'
+export { can, canCreateProjects, canOpen, initials, isPlatformOperator, type NavKey } from './access'

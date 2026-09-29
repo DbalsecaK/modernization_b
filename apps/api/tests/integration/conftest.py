@@ -21,6 +21,7 @@ from sqlalchemy.engine import URL, make_url
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine, create_async_engine
 
 from nexti_api.authz.fga import OpenFga, ensure_store, load_model
+from nexti_api.catalog_store import sync_catalog
 from nexti_api.settings import API_DIR, Settings
 from nexti_api.tenancy import create_tenant
 from nexti_core.db.models import AppUser, AuthzOutbox, Invitation, Membership, Project, Role, RoleAssignment
@@ -82,10 +83,21 @@ def databases() -> Iterator[Databases]:
     app = make_url(SETTINGS.database_url.get_secret_value()).set(database=name)
     relay = app.set(username="authz_relay", password=_relay_password())
     migrate(owner)
+    asyncio.run(_sync_catalog(owner))
     try:
         yield Databases(name, owner, app, relay)
     finally:
         asyncio.run(drop_database(name))
+
+
+async def _sync_catalog(owner_url: URL) -> None:
+    """The agent and skill catalog, as catalog-sync loads it in every environment."""
+    engine = create_async_engine(owner_url)
+    try:
+        async with engine.begin() as conn:
+            await sync_catalog(conn)
+    finally:
+        await engine.dispose()
 
 
 def compose_env(name: str) -> str:

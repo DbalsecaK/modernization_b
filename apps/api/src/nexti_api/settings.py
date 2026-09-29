@@ -56,6 +56,18 @@ class Settings(BaseSettings):
     secrets_mount: str = "secret"
     # OpenRouter API base; empty uses the gateway default (tests point it to a simulated server).
     openrouter_url: str | None = None
+    # Inputs of the projects (M2): object storage (S3 API, MinIO locally) and malware scanning (ClamAV, ADR-0008).
+    object_store_url: str = ""
+    object_store_access_key: str = ""
+    object_store_secret_key: SecretStr = SecretStr("")
+    object_store_bucket: str = "platform"
+    malware_scanner_host: str = ""
+    malware_scanner_port: int = 3310
+    max_archive_mb: int = 200
+    max_document_mb: int = 25
+    max_screenshot_mb: int = 10
+    # Only for local tests against a Git server on the developer's machine; never outside development/test.
+    git_allow_private_hosts: bool = False
     openfga_url: str = ""
     openfga_api_key: SecretStr = SecretStr("")
     # Outside development/test the store and model are pinned; locally they are created/updated from the repo.

@@ -13,5 +13,6 @@ reemplaza y se marca el anterior como "Reemplazado por ADR-NNNN".
 | [0005](0005-openrouter-proveedor-inicial.md) | D-28 — OpenRouter como primer proveedor de modelos | Aceptada |
 | [0006](0006-identidad-global-sin-tenant-id.md) | D-29 — Identidad global sin `tenant_id`, con visibilidad por RLS | Aceptada |
 | [0007](0007-almacen-de-secretos-openbao.md) | D-30 — Almacén de secretos: API de Vault, OpenBao en desarrollo | Aceptada |
+| [0008](0008-validacion-de-insumos-clamav.md) | D-31 — Validación de insumos en la API y malware con ClamAV | Aceptada |
 
 Plantilla: contexto, decisión, alternativas consideradas, consecuencias y cómo se valida.

@@ -1,0 +1,13 @@
+[project]
+name = "nexti-skills"
+version = "0.1.0"
+description = "Global skills of the NexTI catalog (spec 9.5): SKILL.md with metadata plus resources."
+requires-python = ">=3.12"
+dependencies = ["pyyaml>=6.0"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/nexti_skills"]

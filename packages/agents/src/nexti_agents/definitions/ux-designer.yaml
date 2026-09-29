@@ -1,0 +1,20 @@
+# Agent card (spec 9.2). The system prompt arrives with the orchestration engine (M3).
+id: ux-designer
+version: 0.8.0
+order: 8
+name: "UX/UI designer"
+name_es: "Diseñador UX/UI"
+group: design
+description: "Proposes a design system and clickable prototypes when no Figma is provided."
+description_es: "Propone un design system y prototipos navegables cuando no hay Figma."
+phases: ["ui"]
+capabilities: ["vision", "toolCalling"]
+tools: ["writeWorkspace", "sandbox"]
+mandatory: false
+level: assisted
+default_profile: codegen
+relative_cost: 2
+# Deterministic recommendation (spec 9.4): the first rule that matches gives the reason.
+recommend:
+  - when: {target_not: {frontend: ["none"]}, sources_none: ["figma"]}
+    reason: noFigma

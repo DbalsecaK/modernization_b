@@ -1,0 +1,13 @@
+[project]
+name = "nexti-agents"
+version = "0.1.0"
+description = "Agent cards of the NexTI catalog (spec 9.2); system prompts and graph nodes arrive in M3."
+requires-python = ">=3.12"
+dependencies = ["pyyaml>=6.0"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/nexti_agents"]

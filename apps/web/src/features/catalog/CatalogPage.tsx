@@ -1,266 +1,267 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Plus } from 'lucide-react'
 import { useTab } from '@/lib/useTab'
-import { agents as seedAgents, skills as seedSkills } from '@/mocks/data'
-import type { AgentDefinition, AgentGroup, SkillDefinition, SkillType, SupportLevel } from '@/mocks/types'
-import {
-  Badge,
-  Button,
-  Card,
-  CardBody,
-  CardHeader,
-  PageHeader,
-  Select,
-  Table,
-  Tabs,
-  Td,
-  Th,
-} from '@/components/ui/primitives'
+import { useCatalog, useSkill, type Catalog, type CatalogSkill } from '@/api/projects'
+import { Badge, Card, CardBody, CardHeader, PageHeader, Select, Table, Tabs, Td, Th } from '@/components/ui/primitives'
+import { Drawer } from '@/components/ui/overlay'
 import { LevelBadge } from '@/components/ui/status'
+import { Notice } from '@/features/projects/NewProjectWizard'
 import { AgentCard, agentName } from './AgentCard'
-import { AgentForm, SkillForm } from './CatalogForms'
 
 const TABS = ['agents', 'skills', 'adapters', 'packs', 'compatibility', 'templates'] as const
-
-const adapters: { name: string; level: SupportLevel; version: string; validation: string }[] = [
-  {
-    name: 'COBOL batch (+ JCL, copybooks, VSAM)',
-    level: 'certified',
-    version: '1.2.0',
-    validation: 'goldenMasterLocal',
-  },
-  { name: 'COBOL CICS + BMS maps', level: 'certified', version: '1.1.0', validation: 'traces' },
-  { name: 'Sybase ASE stored procedures', level: 'certified', version: '0.9.0', validation: 'goldenMasterLocal' },
-  { name: 'ASP.NET WebForms / .NET Framework', level: 'assisted', version: '0.6.0', validation: 'windowsRunner' },
-  { name: 'PL/SQL (Oracle)', level: 'experimental', version: '0.2.0', validation: 'goldenMasterLocal' },
-]
-
-const packs: { axis: string; name: string; level: SupportLevel; wave: 1 | 2 | 3 }[] = [
-  { axis: 'backend', name: 'Java Spring Boot', level: 'certified', wave: 1 },
-  { axis: 'backend', name: '.NET 10', level: 'certified', wave: 1 },
-  { axis: 'backend', name: 'Java Quarkus', level: 'assisted', wave: 2 },
-  { axis: 'backend', name: 'Next.js', level: 'assisted', wave: 2 },
-  { axis: 'backend', name: 'Go', level: 'experimental', wave: 3 },
-  { axis: 'frontend', name: 'Angular', level: 'certified', wave: 1 },
-  { axis: 'frontend', name: 'React', level: 'certified', wave: 1 },
-  { axis: 'database', name: 'PostgreSQL', level: 'certified', wave: 1 },
-  { axis: 'database', name: 'SQL Server', level: 'certified', wave: 1 },
-  { axis: 'database', name: 'Oracle', level: 'certified', wave: 1 },
-  { axis: 'database', name: 'MySQL', level: 'assisted', wave: 2 },
-  { axis: 'database', name: 'MongoDB', level: 'experimental', wave: 3 },
-  { axis: 'cloud', name: 'AWS', level: 'certified', wave: 1 },
-  { axis: 'cloud', name: 'Azure', level: 'certified', wave: 1 },
-  { axis: 'cloud', name: 'GCP', level: 'assisted', wave: 2 },
-]
-
-const compatRules = [
-  'mongoModeling',
-  'serverlessBatch',
-  'serverlessCics',
-  'nextBff',
-  'goConventions',
-  'upliftOption',
-] as const
+const GROUPS = ['analysis', 'design', 'build', 'quality', 'control'] as const
+const SKILL_TYPES = ['source', 'target', 'conversion', 'crossCutting'] as const
 
 export function CatalogPage() {
-  const { t, i18n } = useTranslation()
+  const { t } = useTranslation()
   const [tab, setTab] = useTab(TABS, 'agents')
-  const [group, setGroup] = useState<'all' | AgentGroup>('all')
-  const [skillType, setSkillType] = useState<'all' | SkillType>('all')
-  // Local state so newly submitted agents and skills show up in the prototype.
-  const [agents, setAgents] = useState<AgentDefinition[]>(seedAgents)
-  const [skills, setSkills] = useState<SkillDefinition[]>(seedSkills)
-  const [form, setForm] = useState<'agent' | 'skill' | null>(null)
+  const catalog = useCatalog()
 
   return (
     <>
-      <PageHeader
-        title={t('catalog.title')}
-        description={t('catalog.description')}
-        actions={
-          (tab === 'agents' || tab === 'skills') && (
-            <Button variant="primary" onClick={() => setForm(tab === 'agents' ? 'agent' : 'skill')}>
-              <Plus size={16} /> {t(tab === 'agents' ? 'catalog.newAgent' : 'catalog.newSkill')}
-            </Button>
-          )
-        }
-      />
+      <PageHeader title={t('catalog.title')} description={t('catalog.description')} />
       <Tabs tabs={TABS.map((id) => ({ id, label: t(`catalog.tabs.${id}`) }))} value={tab} onChange={setTab} />
-      <AgentForm open={form === 'agent'} onClose={() => setForm(null)} onSave={(a) => setAgents([...agents, a])} />
-      <SkillForm open={form === 'skill'} onClose={() => setForm(null)} onSave={(sk) => setSkills([...skills, sk])} />
-
-      {tab === 'agents' && (
+      {catalog.data && (
         <>
+          {tab === 'agents' && <Agents catalog={catalog.data} />}
+          {tab === 'skills' && <Skills catalog={catalog.data} />}
+          {tab === 'adapters' && <Adapters catalog={catalog.data} />}
+          {tab === 'packs' && <Packs catalog={catalog.data} />}
+          {tab === 'compatibility' && <Compatibility catalog={catalog.data} />}
+          {tab === 'templates' && <Templates catalog={catalog.data} />}
+        </>
+      )}
+    </>
+  )
+}
+
+function Agents({ catalog }: { catalog: Catalog }) {
+  const { t } = useTranslation()
+  const [group, setGroup] = useState<'all' | (typeof GROUPS)[number]>('all')
+  return (
+    <div className="space-y-4">
+      <Select
+        className="max-w-xs"
+        value={group}
+        onChange={(e) => setGroup(e.target.value as typeof group)}
+        aria-label={t('catalog.group')}
+      >
+        <option value="all">{t('catalog.allGroups')}</option>
+        {GROUPS.map((g) => (
+          <option key={g} value={g}>
+            {t(`agentGroups.${g}`)}
+          </option>
+        ))}
+      </Select>
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        {catalog.agents
+          .filter((a) => group === 'all' || a.group === group)
+          .map((a) => (
+            <AgentCard key={a.key} agent={a} />
+          ))}
+      </div>
+      <Notice tone="info">{t('catalog.customLater')}</Notice>
+    </div>
+  )
+}
+
+function Skills({ catalog }: { catalog: Catalog }) {
+  const { t, i18n } = useTranslation()
+  const [skillType, setSkillType] = useState<'all' | (typeof SKILL_TYPES)[number]>('all')
+  const [open, setOpen] = useState<CatalogSkill | null>(null)
+  const agentLabel = (key: string) => {
+    const agent = catalog.agents.find((a) => a.key === key)
+    return agent ? agentName(agent, i18n.language) : key
+  }
+  const title = (key: string) => catalog.skills.find((s) => s.key === key)?.title ?? key
+  const skills = catalog.skills.filter((s) => skillType === 'all' || s.type === skillType)
+  return (
+    <Card>
+      <SkillDrawer skill={open} onClose={() => setOpen(null)} />
+      <CardHeader
+        title={t('catalog.skillsTitle', { count: skills.length })}
+        action={
           <Select
-            className="mb-4 max-w-xs"
-            value={group}
-            onChange={(e) => setGroup(e.target.value as typeof group)}
-            aria-label={t('catalog.group')}
+            className="h-9 w-48"
+            value={skillType}
+            onChange={(e) => setSkillType(e.target.value as typeof skillType)}
+            aria-label={t('catalog.skillType')}
           >
-            <option value="all">{t('catalog.allGroups')}</option>
-            {(['analysis', 'design', 'build', 'quality', 'control'] as const).map((g) => (
-              <option key={g} value={g}>
-                {t(`agentGroups.${g}`)}
+            <option value="all">{t('catalog.allTypes')}</option>
+            {SKILL_TYPES.map((s) => (
+              <option key={s} value={s}>
+                {t(`skillTypes.${s}`)}
               </option>
             ))}
           </Select>
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {agents
-              .filter((a) => group === 'all' || a.group === group)
-              .map((a) => (
-                <AgentCard key={a.id} agent={a} />
-              ))}
-          </div>
-        </>
-      )}
-
-      {tab === 'skills' && (
-        <Card>
-          <CardHeader
-            title={t('catalog.skillsTitle', { count: skills.length })}
-            action={
-              <Select
-                className="h-9 w-48"
-                value={skillType}
-                onChange={(e) => setSkillType(e.target.value as typeof skillType)}
-                aria-label={t('catalog.skillType')}
-              >
-                <option value="all">{t('catalog.allTypes')}</option>
-                {(['source', 'target', 'conversion', 'crossCutting', 'customer'] as const).map((s) => (
-                  <option key={s} value={s}>
-                    {t(`skillTypes.${s}`)}
-                  </option>
-                ))}
-              </Select>
-            }
-          />
-          <Table>
-            <thead>
-              <tr>
-                <Th>{t('catalog.skill')}</Th>
-                <Th>{t('catalog.type')}</Th>
-                <Th>{t('catalog.appliesTo')}</Th>
-                <Th>{t('catalog.eval')}</Th>
-                <Th>{t('catalog.status')}</Th>
-              </tr>
-            </thead>
-            <tbody>
-              {skills
-                .filter((s) => skillType === 'all' || s.type === skillType)
-                .map((s) => (
-                  <tr key={s.id}>
-                    <Td>
-                      <div className="font-medium text-text">{s.name}</div>
-                      <div className="text-xs text-muted">{s.description}</div>
-                      {s.conflictsWith.length > 0 && (
-                        <div className="mt-1 text-xs text-critical-ink">
-                          {t('catalog.conflictsWith', {
-                            names: s.conflictsWith.map((c) => skills.find((x) => x.id === c)?.name).join(', '),
-                          })}
-                        </div>
-                      )}
-                    </Td>
-                    <Td>
-                      <Badge>{t(`skillTypes.${s.type}`)}</Badge>
-                    </Td>
-                    <Td className="text-xs">
-                      {s.appliesTo
-                        .map((id) => agentName(agents.find((a) => a.id === id) ?? agents[0], i18n.language))
-                        .join(', ')}
-                    </Td>
-                    <Td className="tabular">{s.evalScore === null ? '—' : `${Math.round(s.evalScore * 100)}%`}</Td>
-                    <Td>
-                      <Badge tone={s.status === 'published' ? 'good' : 'info'}>{t(`skillStatus.${s.status}`)}</Badge>
-                      <div className="mt-1 text-xs text-muted">v{s.version}</div>
-                    </Td>
-                  </tr>
-                ))}
-            </tbody>
-          </Table>
-        </Card>
-      )}
-
-      {tab === 'adapters' && (
-        <Card>
-          <CardHeader title={t('catalog.adaptersTitle')} subtitle={t('catalog.adaptersHint')} />
-          <Table>
-            <thead>
-              <tr>
-                <Th>{t('catalog.adapter')}</Th>
-                <Th>{t('catalog.level')}</Th>
-                <Th>{t('catalog.validationMode')}</Th>
-                <Th>{t('catalog.version')}</Th>
-              </tr>
-            </thead>
-            <tbody>
-              {adapters.map((a) => (
-                <tr key={a.name}>
-                  <Td className="text-text">{a.name}</Td>
-                  <Td>
-                    <LevelBadge level={a.level} />
-                  </Td>
-                  <Td>{t(`catalog.validation.${a.validation}`)}</Td>
-                  <Td>{a.version}</Td>
-                </tr>
-              ))}
-            </tbody>
-          </Table>
-        </Card>
-      )}
-
-      {tab === 'packs' && (
-        <div className="grid gap-6 lg:grid-cols-2">
-          {(['backend', 'frontend', 'database', 'cloud'] as const).map((axis) => (
-            <Card key={axis}>
-              <CardHeader title={t(`target.${axis}`)} />
-              <CardBody className="space-y-2">
-                {packs
-                  .filter((p) => p.axis === axis)
-                  .map((p) => (
-                    <div key={p.name} className="flex items-center gap-3 text-sm">
-                      <span className="flex-1 text-text">{p.name}</span>
-                      <span className="text-xs text-muted">{t('catalog.wave', { wave: p.wave })}</span>
-                      <LevelBadge level={p.level} />
-                    </div>
-                  ))}
-              </CardBody>
-            </Card>
+        }
+      />
+      <Table>
+        <thead>
+          <tr>
+            <Th>{t('catalog.skill')}</Th>
+            <Th>{t('catalog.type')}</Th>
+            <Th>{t('catalog.appliesTo')}</Th>
+            <Th>{t('catalog.eval')}</Th>
+            <Th>{t('catalog.status')}</Th>
+          </tr>
+        </thead>
+        <tbody>
+          {skills.map((s) => (
+            <tr key={s.key}>
+              <Td>
+                <button
+                  type="button"
+                  className="text-left font-medium text-text hover:underline"
+                  onClick={() => setOpen(s)}
+                >
+                  {s.title}
+                </button>
+                <div className="text-xs text-muted">{s.description}</div>
+                {s.conflicts.length > 0 && (
+                  <div className="mt-1 text-xs text-critical-ink">
+                    {t('catalog.conflictsWith', { names: s.conflicts.map(title).join(', ') })}
+                  </div>
+                )}
+              </Td>
+              <Td>
+                <Badge>{t(`skillTypes.${s.type}`)}</Badge>
+              </Td>
+              <Td className="text-xs">
+                {s.agents.map(agentLabel).join(', ')}
+                {s.technologies.length > 0 && <div className="mt-1 text-muted">{s.technologies.join(', ')}</div>}
+              </Td>
+              <Td className="tabular">{s.evalScore == null ? '—' : `${Math.round(s.evalScore * 100)}%`}</Td>
+              <Td>
+                <Badge tone={s.status === 'published' ? 'good' : 'info'}>{t(`skillStatus.${s.status}`)}</Badge>
+                <div className="mt-1 text-xs text-muted">v{s.version}</div>
+              </Td>
+            </tr>
           ))}
-        </div>
-      )}
+        </tbody>
+      </Table>
+    </Card>
+  )
+}
 
-      {tab === 'compatibility' && (
-        <Card>
-          <CardHeader title={t('catalog.compatTitle')} subtitle={t('catalog.compatHint')} />
-          <CardBody className="space-y-3">
-            {compatRules.map((r) => (
-              <div key={r} className="rounded-md border border-border p-3 text-sm text-text-2">
-                <span className="mr-2 font-mono text-xs text-muted">{r}</span>
-                {t(`compat.${r}`)}
-              </div>
-            ))}
+function SkillDrawer({ skill, onClose }: { skill: CatalogSkill | null; onClose: () => void }) {
+  const { t } = useTranslation()
+  const detail = useSkill(skill?.key ?? null)
+  return (
+    <Drawer
+      open={!!skill}
+      onClose={onClose}
+      wide
+      title={skill?.title ?? ''}
+      description={skill ? t('catalog.skillFile', { key: skill.key, version: skill.version }) : undefined}
+    >
+      <pre className="rounded-md bg-surface-2 p-4 text-sm whitespace-pre-wrap text-text">
+        {detail.data?.content ?? ''}
+      </pre>
+    </Drawer>
+  )
+}
+
+function Adapters({ catalog }: { catalog: Catalog }) {
+  const { t } = useTranslation()
+  return (
+    <Card>
+      <CardHeader title={t('catalog.adaptersTitle')} subtitle={t('catalog.adaptersHint')} />
+      <Table>
+        <thead>
+          <tr>
+            <Th>{t('catalog.adapter')}</Th>
+            <Th>{t('catalog.level')}</Th>
+            <Th>{t('catalog.validationMode')}</Th>
+            <Th>{t('catalog.version')}</Th>
+          </tr>
+        </thead>
+        <tbody>
+          {catalog.adapters.map((a) => (
+            <tr key={a.key}>
+              <Td className="text-text">
+                {a.name}
+                <div className="text-xs text-muted">
+                  {catalog.sources
+                    .filter((s) => s.adapter === a.key)
+                    .map((s) => s.name)
+                    .join(', ')}
+                </div>
+              </Td>
+              <Td>
+                <LevelBadge level={a.level as 'certified' | 'assisted' | 'experimental'} />
+              </Td>
+              <Td>{t(`catalog.validation.${a.validation}`)}</Td>
+              <Td>{a.version}</Td>
+            </tr>
+          ))}
+        </tbody>
+      </Table>
+    </Card>
+  )
+}
+
+function Packs({ catalog }: { catalog: Catalog }) {
+  const { t } = useTranslation()
+  return (
+    <div className="grid gap-6 lg:grid-cols-2">
+      {(['architecture', 'backend', 'frontend', 'database', 'cloud'] as const).map((axis) => (
+        <Card key={axis}>
+          <CardHeader title={t(`target.${axis}`)} />
+          <CardBody className="space-y-2">
+            {catalog.targets
+              .filter((p) => p.axis === axis)
+              .map((p) => (
+                <div key={p.key} className="flex items-center gap-3 text-sm">
+                  <span className="flex-1 text-text">{p.name}</span>
+                  {p.wave != null && <span className="text-xs text-muted">{t('catalog.wave', { wave: p.wave })}</span>}
+                  {p.level && <LevelBadge level={p.level as 'certified' | 'assisted' | 'experimental'} />}
+                </div>
+              ))}
           </CardBody>
         </Card>
-      )}
+      ))}
+    </div>
+  )
+}
 
-      {tab === 'templates' && (
-        <div className="grid gap-6 lg:grid-cols-2">
-          {(['bankStandard', 'internalAgile'] as const).map((tpl) => (
-            <Card key={tpl}>
-              <CardHeader title={t(`templates.${tpl}.name`)} subtitle={t(`templates.${tpl}.body`)} />
-              <CardBody className="flex flex-wrap gap-2">
-                {(tpl === 'bankStandard' ? ['C1', 'C2', 'C3', 'C4'] : ['C1', 'C4']).map((g) => (
-                  <Badge key={g} tone="brand">
-                    {t('catalog.gateRequired', { gate: g })}
-                  </Badge>
-                ))}
-                <Badge>{t('catalog.maxIterations', { count: tpl === 'bankStandard' ? 3 : 5 })}</Badge>
-              </CardBody>
-            </Card>
-          ))}
-        </div>
-      )}
-    </>
+function Compatibility({ catalog }: { catalog: Catalog }) {
+  const { t } = useTranslation()
+  return (
+    <Card>
+      <CardHeader title={t('catalog.compatTitle')} subtitle={t('catalog.compatHint')} />
+      <CardBody className="space-y-3">
+        {catalog.compatibilityRules.map((r) => (
+          <div key={r.key} className="rounded-md border border-border p-3 text-sm text-text-2">
+            <span className="mr-2 font-mono text-xs text-muted">{r.key}</span>
+            {t(`compat.${r.key}`, { defaultValue: r.message })}
+          </div>
+        ))}
+      </CardBody>
+    </Card>
+  )
+}
+
+function Templates({ catalog }: { catalog: Catalog }) {
+  const { t } = useTranslation()
+  return (
+    <div className="grid gap-6 lg:grid-cols-2">
+      {catalog.pipelineTemplates.map((tpl) => (
+        <Card key={tpl.key}>
+          <CardHeader
+            title={t(`templates.${tpl.key}.name`, { defaultValue: tpl.name })}
+            subtitle={t(`templates.${tpl.key}.body`, { defaultValue: tpl.description })}
+          />
+          <CardBody className="flex flex-wrap gap-2">
+            {tpl.requiredGates.map((g) => (
+              <Badge key={g} tone="brand">
+                {t('catalog.gateRequired', { gate: g })}
+              </Badge>
+            ))}
+            <Badge>{t(`hitl.levels.${tpl.defaultAutonomy}.name`)}</Badge>
+          </CardBody>
+        </Card>
+      ))}
+    </div>
   )
 }

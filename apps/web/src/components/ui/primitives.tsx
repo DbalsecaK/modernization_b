@@ -77,7 +77,7 @@ export function Badge({
       className={cn(
         'inline-flex items-center gap-1 whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium',
         tone === 'neutral' && 'bg-surface-2 text-text-2',
-        tone === 'info' && 'bg-info/12 text-info',
+        tone === 'info' && 'bg-info/12 text-info-ink',
         tone === 'good' && 'bg-good/12 text-good-ink',
         tone === 'warning' && 'bg-warning/18 text-warning-ink',
         tone === 'critical' && 'bg-critical/12 text-critical-ink',

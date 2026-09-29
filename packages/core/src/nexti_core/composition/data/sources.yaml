@@ -1,0 +1,24 @@
+# Source adapters (spec 8.2, 8.3, 8.6) and the source options a project picks.
+# Flow 1 picks legacy technologies; flow 2 picks the kinds of documentary inputs it brings (7.1).
+# `required_skills`: a composition with this source and without these skills gets a "missing skill" warning (9.7).
+
+adapters:
+  - {key: cobol-batch, name: "COBOL batch (+ JCL, copybooks, VSAM)", level: certified, version: 1.2.0, validation: goldenMasterLocal}
+  - {key: cobol-cics-bms, name: "COBOL CICS + BMS maps", level: certified, version: 1.1.0, validation: traces}
+  - {key: sybase-sp, name: "Sybase ASE stored procedures", level: certified, version: 0.9.0, validation: goldenMasterLocal}
+  - {key: aspx-dotnet, name: "ASP.NET WebForms / .NET Framework", level: assisted, version: 0.6.0, validation: windowsRunner}
+  - {key: plsql, name: "PL/SQL (Oracle)", level: experimental, version: 0.2.0, validation: goldenMasterLocal}
+
+options:
+  - {key: cobol, name: "COBOL", flow: modernization, adapter: cobol-batch}
+  - {key: cobol-cics, name: "COBOL CICS", flow: modernization, adapter: cobol-cics-bms, required_skills: [exec-cics]}
+  - {key: bms, name: "BMS maps", flow: modernization, adapter: cobol-cics-bms, required_skills: [bms-parsing]}
+  - {key: db2, name: "DB2", flow: modernization, adapter: cobol-batch}
+  - {key: sybase-sp, name: "Sybase ASE stored procedures", flow: modernization, adapter: sybase-sp, required_skills: [sybase-tsql]}
+  - {key: aspx-webforms, name: "ASP.NET WebForms", flow: modernization, adapter: aspx-dotnet, required_skills: [webforms]}
+  - {key: dotnet-framework, name: "C# .NET Framework 4.8", flow: modernization, adapter: aspx-dotnet}
+  - {key: user-stories, name: "User stories (Jira)", flow: newFeature}
+  - {key: functional-document, name: "Functional document (Word)", flow: newFeature}
+  - {key: user-manual, name: "User manual (PDF)", flow: newFeature}
+  - {key: figma, name: "Figma", flow: newFeature}
+  - {key: screenshots, name: "Screenshots", flow: newFeature}

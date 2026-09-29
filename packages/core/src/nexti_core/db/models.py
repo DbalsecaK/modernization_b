@@ -121,13 +121,20 @@ class RolePermission(Base):
 
 class Project(Base):
     __tablename__ = "project"
-    __table_args__ = (UniqueConstraint("id", "tenant_id"),)
+    __table_args__ = (
+        UniqueConstraint("id", "tenant_id"),
+        UniqueConstraint("tenant_id", "name", name="project_tenant_name_key"),
+    )
     id: Mapped[uuid.UUID] = _uuid_pk()
     tenant_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("tenant.id"), nullable=False)
     name: Mapped[str] = mapped_column(Text, nullable=False)
     status: Mapped[str] = mapped_column(Text, nullable=False, server_default="active")
     created_at: Mapped[datetime] = _now()
     updated_at: Mapped[datetime] = _now()
+    flow: Mapped[str] = mapped_column(Text, nullable=False, server_default="modernization")
+    artifact_language: Mapped[str] = mapped_column(Text, nullable=False, server_default="en")
+    description: Mapped[str] = mapped_column(Text, nullable=False, server_default="")
+    created_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("app_user.id"))
 
 
 class RoleAssignment(Base):
@@ -442,3 +449,201 @@ class BudgetAlert(Base):
     period_key: Mapped[str] = mapped_column(Text, nullable=False)
     spent_usd: Mapped[Decimal] = mapped_column(Numeric(18, 8), nullable=False)
     triggered_at: Mapped[datetime] = _now()
+
+
+# Agent and skill catalog, source options, target options, compatibility rules and pipeline templates (migration
+# 0006). Global data written by catalog-sync; `current` marks the version the repository files define now.
+class AgentDefinition(Base):
+    __tablename__ = "agent_definition"
+    __table_args__ = (Index("agent_definition_current_key", "key", unique=True, postgresql_where=text("current")),)
+    key: Mapped[str] = mapped_column(Text, primary_key=True)
+    version: Mapped[str] = mapped_column(Text, primary_key=True)
+    current: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
+    position: Mapped[int] = mapped_column(Integer, nullable=False)
+    name: Mapped[str] = mapped_column(Text, nullable=False)
+    name_es: Mapped[str] = mapped_column(Text, nullable=False)
+    agent_group: Mapped[str] = mapped_column(Text, nullable=False)
+    description: Mapped[str] = mapped_column(Text, nullable=False)
+    description_es: Mapped[str] = mapped_column(Text, nullable=False)
+    phases: Mapped[list[str]] = mapped_column(ARRAY(Text), nullable=False)
+    capabilities: Mapped[list[str]] = mapped_column(ARRAY(Text), nullable=False, server_default=text("'{}'"))
+    tools: Mapped[list[str]] = mapped_column(ARRAY(Text), nullable=False, server_default=text("'{}'"))
+    mandatory: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
+    level: Mapped[str] = mapped_column(Text, nullable=False)
+    default_profile: Mapped[str] = mapped_column(Text, nullable=False, server_default="")
+    relative_cost: Mapped[int] = mapped_column(Integer, nullable=False)
+    recommend: Mapped[list[Any]] = mapped_column(JSONB, nullable=False, server_default=text("'[]'::jsonb"))
+    synced_at: Mapped[datetime] = _now()
+
+
+class SkillDefinition(Base):
+    __tablename__ = "skill_definition"
+    __table_args__ = (Index("skill_definition_current_key", "key", unique=True, postgresql_where=text("current")),)
+    key: Mapped[str] = mapped_column(Text, primary_key=True)
+    version: Mapped[str] = mapped_column(Text, primary_key=True)
+    current: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
+    title: Mapped[str] = mapped_column(Text, nullable=False)
+    description: Mapped[str] = mapped_column(Text, nullable=False)
+    skill_type: Mapped[str] = mapped_column(Text, nullable=False)
+    agents: Mapped[list[str]] = mapped_column(ARRAY(Text), nullable=False)
+    technologies: Mapped[list[str]] = mapped_column(ARRAY(Text), nullable=False, server_default=text("'{}'"))
+    conflicts: Mapped[list[str]] = mapped_column(ARRAY(Text), nullable=False, server_default=text("'{}'"))
+    requires: Mapped[list[str]] = mapped_column(ARRAY(Text), nullable=False, server_default=text("'{}'"))
+    status: Mapped[str] = mapped_column(Text, nullable=False)
+    eval_score: Mapped[Decimal | None] = mapped_column(Numeric(4, 3))
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    content_sha256: Mapped[str] = mapped_column(Text, nullable=False)
+    synced_at: Mapped[datetime] = _now()
+
+
+class SourceAdapterDefinition(Base):
+    __tablename__ = "source_adapter"
+    key: Mapped[str] = mapped_column(Text, primary_key=True)
+    name: Mapped[str] = mapped_column(Text, nullable=False)
+    level: Mapped[str] = mapped_column(Text, nullable=False)
+    version: Mapped[str] = mapped_column(Text, nullable=False)
+    validation: Mapped[str] = mapped_column(Text, nullable=False)
+
+
+class SourceOptionDefinition(Base):
+    __tablename__ = "source_option"
+    key: Mapped[str] = mapped_column(Text, primary_key=True)
+    position: Mapped[int] = mapped_column(Integer, nullable=False)
+    name: Mapped[str] = mapped_column(Text, nullable=False)
+    flow: Mapped[str] = mapped_column(Text, nullable=False)
+    adapter_key: Mapped[str | None] = mapped_column(ForeignKey("source_adapter.key"))
+    required_skills: Mapped[list[str]] = mapped_column(ARRAY(Text), nullable=False, server_default=text("'{}'"))
+
+
+class TargetOptionDefinition(Base):
+    __tablename__ = "target_option"
+    axis: Mapped[str] = mapped_column(Text, primary_key=True)
+    key: Mapped[str] = mapped_column(Text, primary_key=True)
+    position: Mapped[int] = mapped_column(Integer, nullable=False)
+    name: Mapped[str] = mapped_column(Text, nullable=False)
+    level: Mapped[str | None] = mapped_column(Text)
+    wave: Mapped[int | None] = mapped_column(Integer)
+
+
+class CompatibilityRuleDefinition(Base):
+    __tablename__ = "compatibility_rule"
+    key: Mapped[str] = mapped_column(Text, primary_key=True)
+    position: Mapped[int] = mapped_column(Integer, nullable=False)
+    condition: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    message: Mapped[str] = mapped_column(Text, nullable=False)
+
+
+class PipelineTemplateDefinition(Base):
+    __tablename__ = "pipeline_template"
+    key: Mapped[str] = mapped_column(Text, primary_key=True)
+    position: Mapped[int] = mapped_column(Integer, nullable=False)
+    name: Mapped[str] = mapped_column(Text, nullable=False)
+    description: Mapped[str] = mapped_column(Text, nullable=False)
+    required_gates: Mapped[list[str]] = mapped_column(ARRAY(Text), nullable=False)
+    default_autonomy: Mapped[str] = mapped_column(Text, nullable=False)
+
+
+class ProjectConfig(Base):
+    """One version of a project's configuration; never updated (a change is a new version)."""
+
+    __tablename__ = "project_config"
+    __table_args__ = (
+        UniqueConstraint("project_id", "version", "tenant_id"),
+        ForeignKeyConstraint(["project_id", "tenant_id"], ["project.id", "project.tenant_id"], ondelete="CASCADE"),
+    )
+    tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    project_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
+    version: Mapped[int] = mapped_column(Integer, primary_key=True)
+    sources: Mapped[list[str]] = mapped_column(ARRAY(Text), nullable=False)
+    target: Mapped[dict[str, str]] = mapped_column(JSONB, nullable=False)
+    pipeline_template: Mapped[str] = mapped_column(ForeignKey("pipeline_template.key"), nullable=False)
+    autonomy: Mapped[str] = mapped_column(Text, nullable=False)
+    max_iterations: Mapped[int] = mapped_column(Integer, nullable=False)
+    sampling_pct: Mapped[int] = mapped_column(Integer, nullable=False)
+    warnings: Mapped[list[str]] = mapped_column(ARRAY(Text), nullable=False, server_default=text("'{}'"))
+    change_note: Mapped[str | None] = mapped_column(Text)
+    created_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("app_user.id"))
+    created_at: Mapped[datetime] = _now()
+
+
+class ProjectAgent(Base):
+    __tablename__ = "project_agent"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["project_id", "config_version", "tenant_id"],
+            ["project_config.project_id", "project_config.version", "project_config.tenant_id"],
+            ondelete="CASCADE",
+        ),
+        ForeignKeyConstraint(["agent_key", "agent_version"], ["agent_definition.key", "agent_definition.version"]),
+    )
+    tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    project_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
+    config_version: Mapped[int] = mapped_column(Integer, primary_key=True)
+    agent_key: Mapped[str] = mapped_column(Text, primary_key=True)
+    agent_version: Mapped[str] = mapped_column(Text, nullable=False)
+    reason: Mapped[str | None] = mapped_column(Text)
+
+
+class ProjectSkill(Base):
+    __tablename__ = "project_skill"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["project_id", "config_version", "tenant_id"],
+            ["project_config.project_id", "project_config.version", "project_config.tenant_id"],
+            ondelete="CASCADE",
+        ),
+        ForeignKeyConstraint(["skill_key", "skill_version"], ["skill_definition.key", "skill_definition.version"]),
+    )
+    tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    project_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
+    config_version: Mapped[int] = mapped_column(Integer, primary_key=True)
+    skill_key: Mapped[str] = mapped_column(Text, primary_key=True)
+    skill_version: Mapped[str] = mapped_column(Text, nullable=False)
+    recommended: Mapped[bool] = mapped_column(Boolean, nullable=False)
+
+
+class InputArtifact(Base):
+    __tablename__ = "input_artifact"
+    __table_args__ = (
+        UniqueConstraint("project_id", "kind", "name", "version"),
+        ForeignKeyConstraint(["project_id", "tenant_id"], ["project.id", "project.tenant_id"], ondelete="CASCADE"),
+        Index("input_artifact_project_idx", "project_id", "kind", "name"),
+    )
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    project_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    kind: Mapped[str] = mapped_column(Text, nullable=False)
+    name: Mapped[str] = mapped_column(Text, nullable=False)
+    version: Mapped[int | None] = mapped_column(Integer)
+    status: Mapped[str] = mapped_column(Text, nullable=False)
+    object_key: Mapped[str | None] = mapped_column(Text)
+    size_bytes: Mapped[int | None] = mapped_column(BigInteger)
+    sha256: Mapped[str | None] = mapped_column(Text)
+    content_type: Mapped[str | None] = mapped_column(Text)
+    url: Mapped[str | None] = mapped_column(Text)
+    notes: Mapped[str] = mapped_column(Text, nullable=False, server_default="")
+    findings: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))
+    rejection_code: Mapped[str | None] = mapped_column(Text)
+    rejection_detail: Mapped[str | None] = mapped_column(Text)
+    uploaded_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("app_user.id"))
+    created_at: Mapped[datetime] = _now()
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class ProjectRepository(Base):
+    __tablename__ = "project_repository"
+    __table_args__ = (
+        ForeignKeyConstraint(["project_id", "tenant_id"], ["project.id", "project.tenant_id"], ondelete="CASCADE"),
+    )
+    tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    project_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
+    url: Mapped[str] = mapped_column(Text, nullable=False)
+    branch: Mapped[str] = mapped_column(Text, nullable=False, server_default="main")
+    # Where the token lives in the secrets store (ADR-0007); never the token itself.
+    vault_path: Mapped[str | None] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(Text, nullable=False, server_default="untested")
+    last_checked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    last_check_detail: Mapped[str | None] = mapped_column(Text)
+    created_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("app_user.id"))
+    created_at: Mapped[datetime] = _now()
+    updated_at: Mapped[datetime] = _now()

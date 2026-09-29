@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { CheckCircle2, Loader2, Play, Plus, RefreshCw, Trash2, XCircle } from 'lucide-react'
 import { useTab } from '@/lib/useTab'
 import { formatCompact, formatDateTime, formatNumber, formatPrice, formatUsd } from '@/lib/format'
-import { agents } from '@/mocks/data'
+import { useCatalog as useAgentCatalog } from '@/api/projects'
 import { useMe } from '@/api/session'
 import { useProjects } from '@/api/admin'
 import {
@@ -126,8 +126,9 @@ function useIsSuperAdmin() {
 
 function useRoleLabel() {
   const { i18n } = useTranslation()
+  const agents = useAgentCatalog().data?.agents ?? []
   return (role: string) => {
-    const agent = agents.find((a) => a.id === role)
+    const agent = agents.find((a) => a.key === role)
     return agent ? agentName(agent, i18n.language) : role
   }
 }

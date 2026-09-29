@@ -1,16 +1,18 @@
 import { useTranslation } from 'react-i18next'
-import { Check, Lock, Sparkles } from 'lucide-react'
+import { AlertTriangle, Check, Lock, Sparkles } from 'lucide-react'
 import { cn } from '@/lib/cn'
-import type { AgentDefinition } from '@/mocks/types'
+import type { CatalogAgent } from '@/api/projects'
 import { Badge } from '@/components/ui/primitives'
 import { LevelBadge } from '@/components/ui/status'
-import { profiles } from '@/mocks/data'
 
-export function agentName(agent: AgentDefinition, lang: string) {
+type Named = { name: string; nameEs?: string | null }
+type Described = { description: string; descriptionEs?: string | null }
+
+export function agentName(agent: Named, lang: string) {
   return lang === 'es' && agent.nameEs ? agent.nameEs : agent.name
 }
 
-export function agentDescription(agent: AgentDefinition, lang: string) {
+export function agentDescription(agent: Described, lang: string) {
   return lang === 'es' && agent.descriptionEs ? agent.descriptionEs : agent.description
 }
 
@@ -18,17 +20,19 @@ export function AgentCard({
   agent,
   selected,
   recommendedReason,
+  modelWarning,
   onToggle,
 }: {
-  agent: AgentDefinition
+  agent: CatalogAgent
   selected?: boolean
   recommendedReason?: string
+  modelWarning?: string
   onToggle?: () => void
 }) {
   const { t, i18n } = useTranslation()
-  const profile = profiles.find((p) => p.id === agent.defaultProfile)
   const interactive = !!onToggle
   const locked = agent.mandatory && interactive
+  const name = agentName(agent, i18n.language)
 
   return (
     <div
@@ -41,6 +45,7 @@ export function AgentCard({
       role={interactive ? 'checkbox' : undefined}
       aria-checked={interactive ? !!selected : undefined}
       aria-disabled={locked || undefined}
+      aria-label={interactive ? name : undefined}
       tabIndex={interactive && !locked ? 0 : undefined}
       onKeyDown={(e) => {
         if (!locked && onToggle && (e.key === ' ' || e.key === 'Enter')) {
@@ -60,7 +65,7 @@ export function AgentCard({
               .toUpperCase()}
           </span>
           <div>
-            <div className="text-sm font-semibold text-text">{agentName(agent, i18n.language)}</div>
+            <div className="text-sm font-semibold text-text">{name}</div>
             <div className="text-xs text-muted">
               {t(`agentGroups.${agent.group}`)} · v{agent.version}
             </div>
@@ -96,7 +101,12 @@ export function AgentCard({
         </span>
       </div>
       {recommendedReason && <p className="mt-2 text-xs text-muted">{t(`wizard.reasons.${recommendedReason}`)}</p>}
-      {profile && <p className="mt-1 text-xs text-muted">{t('agents.defaultModel', { profile: profile.name })}</p>}
+      <p className="mt-1 text-xs text-muted">{t('agents.defaultModel', { profile: agent.defaultProfile })}</p>
+      {modelWarning && (
+        <p className="mt-1 flex items-start gap-1 text-xs text-warning-ink">
+          <AlertTriangle size={12} className="mt-0.5 shrink-0" /> {modelWarning}
+        </p>
+      )}
     </div>
   )
 }

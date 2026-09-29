@@ -83,6 +83,13 @@ def write_api_env(env: dict[str, str], target: Path) -> None:
         "SESSION_SECRET": env["SESSION_SECRET"],
         "SECRETS_URL": f"http://127.0.0.1:{env['OPENBAO_PORT']}",
         "SECRETS_TOKEN": env["OPENBAO_DEV_ROOT_SECRET"],
+        # Inputs of the projects (M2): object storage and malware scanning (ADR-0008). Local root credentials of
+        # MinIO; a deployment gives the API a user limited to its bucket.
+        "OBJECT_STORE_URL": f"http://127.0.0.1:{env['MINIO_API_PORT']}",
+        "OBJECT_STORE_ACCESS_KEY": env["MINIO_ROOT_USER"],
+        "OBJECT_STORE_SECRET_KEY": env["MINIO_ROOT_PASSWORD"],
+        "MALWARE_SCANNER_HOST": "127.0.0.1",
+        "MALWARE_SCANNER_PORT": env.get("CLAMAV_PORT", "3310"),
         "OPENFGA_URL": f"http://127.0.0.1:{env['OPENFGA_HTTP_PORT']}",
         "OPENFGA_API_KEY": env["OPENFGA_API_KEY"],
     }
