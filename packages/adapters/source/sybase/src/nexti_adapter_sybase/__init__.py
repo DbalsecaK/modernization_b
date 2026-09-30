@@ -1,6 +1,7 @@
 """The Sybase ASE stored procedure adapter (spec 8.2, 8.3): deterministic inventory, neutral types, classification
 hints and slices. Parsing never uses a model and never executes the code."""
 
+import json
 import re
 
 from nexti_adapter_sybase.analysis import backward_slice, classify, slice_targets
@@ -146,6 +147,22 @@ class SybaseAdapter:
                 views.append(SliceView(f"{proc.name}#{target}", file.path, tuple(cut.lines), tuple(cut.parameters),
                                        tuple(cut.tables)))  # fmt: skip
         return views
+
+    def digest(self, files: list[SourceFile]) -> str:
+        inventory = self.inventory(files)
+        lines = [f"Metrics: {json.dumps(inventory.metrics)}"]
+        for node in inventory.nodes:
+            if node.label == "StoredProcedure" and not node.properties.get("external"):
+                lines.append(f"Procedure {node.name} ({node.file}:{node.line_start}-{node.line_end})")
+            elif node.label == "Field":
+                lines.append(f"  parameter {node.name}: {node.properties.get('neutral_type')}"
+                             f"{' OUTPUT' if node.properties.get('output') else ''}")  # fmt: skip
+            elif node.label == "Table":
+                lines.append(f"Table {node.name}")
+        for edge in inventory.edges:
+            if edge.type in ("READS", "WRITES", "CALLS"):
+                lines.append(f"{edge.source} {edge.type} {edge.target}")
+        return "\n".join(lines)
 
 
 __all__ = ["SybaseAdapter", "backward_slice", "classify", "parse", "slice_targets", "to_neutral"]

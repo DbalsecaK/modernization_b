@@ -351,3 +351,41 @@ async def seed_proposal(owner: AsyncEngine, tenant_id: uuid.UUID, project_id: uu
             )
         ).scalar_one()  # fmt: skip
     return message_id
+
+
+CICS_FIXTURES = Path(__file__).resolve().parents[4] / "packages/adapters/source/cobol/tests/fixtures/pagos_cics"
+
+
+async def seed_graph(owner: AsyncEngine, settings: Any, tenant_id: uuid.UUID, project_id: uuid.UUID) -> None:
+    """The code layer of the fictitious CICS application in the graph (as the worker's inventory writes it) and its
+    reference rules as the project's rules."""
+    from nexti_adapter_cobol import CobolAdapter
+    from nexti_core.adapters import SourceFile
+    from nexti_graph import GraphStore, Scope
+
+    files = [SourceFile(p.relative_to(CICS_FIXTURES).as_posix(), p.read_text(encoding="utf-8"))
+             for p in sorted(CICS_FIXTURES.rglob("*")) if p.suffix in (".cbl", ".cpy", ".csd", ".bms")]  # fmt: skip
+    from nexti_core.adapters import Edge, Node
+    from nexti_orchestration.modernization import domain_map
+
+    inventory = CobolAdapter().inventory(files)
+    domains = domain_map(inventory)
+    scope = Scope(tenant_id, project_id)
+    graph = GraphStore.connect(settings.graph_uri, settings.graph_user, settings.graph_password.get_secret_value())
+    try:
+        await graph.setup()
+        await graph.replace_code_layer(scope, inventory)
+        # the domains phase, as the worker stores it
+        await graph.upsert_nodes(scope, [Node(f"domain:{name}", "Domain", name) for name in domains])
+        await graph.upsert_edges(scope, [Edge(member, "BELONGS_TO", f"domain:{name}")
+                                         for name, members in domains.items() for member in members])  # fmt: skip
+    finally:
+        await graph.close()
+    rules = json.loads((CICS_FIXTURES / "reference_spec.json").read_text(encoding="utf-8"))["rules"]
+    async with owner.begin() as conn:
+        for rule in rules:
+            await conn.execute(
+                text("INSERT INTO spec_element (tenant_id, project_id, element_type, key, version, status, data) "
+                     "VALUES (:t, :p, 'rule', :k, 1, 'review', CAST(:d AS jsonb))"),
+                {"t": tenant_id, "p": project_id, "k": rule["id"], "d": json.dumps(rule)},
+            )  # fmt: skip

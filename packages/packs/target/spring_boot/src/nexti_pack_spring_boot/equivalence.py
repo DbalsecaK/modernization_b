@@ -284,5 +284,10 @@ async def run_equivalence(
             runs.append(CaseRun(recorded_case.case.name, expected, Observation(), failure))
             continue
         rejected = recorded_case.observation.returns not in (0, None)
-        runs.append(CaseRun(recorded_case.case.name, expected, actual_view(design, use_case, item, found, rejected)))
+        actual = actual_view(design, use_case, item, found, rejected)
+        if master.from_traces and actual.returns not in (0, None):
+            # A trace has no legacy return code (a CICS program just shows its message): it can only say that the
+            # program rejected (-1, ADR-0015). The target's rejection is compared as that, its message as usual.
+            actual = actual.model_copy(update={"returns": -1})
+        runs.append(CaseRun(recorded_case.case.name, expected, actual))
     return EquivalenceRun(build, runs, found)

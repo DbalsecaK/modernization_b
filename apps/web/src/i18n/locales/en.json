@@ -455,8 +455,8 @@
     },
     "impact": "Graph questions",
     "impactHint": "Answered directly from the knowledge graph.",
-    "impactCopybook": "What breaks if I change CVACT01Y?",
-    "impactDomain": "Which programs form the Accounts domain?",
+    "impactCopybook": "What breaks if I change {{name}}?",
+    "impactDomain": "Which programs form the {{domain}} domain?",
     "impactOrder": "What can we migrate first?",
     "impactOrphans": "Business paragraphs without a rule",
     "typesPlural": {
@@ -1958,7 +1958,22 @@
       "layers": "Layers"
     },
     "dataStores": "Data stores",
-    "system": "Card Management"
+    "system": "Card Management",
+    "loading": "Loading the graph…",
+    "loadError": "The graph could not be loaded",
+    "unavailable": "The knowledge graph is not configured in this environment",
+    "emptyTitle": "No inventory yet",
+    "entryPoint": "Entry point: {{entry}}",
+    "flowSummary": "{{steps}} steps in the order of the code; {{rules}} rules cited along the way.",
+    "external": "external (not in the inputs)",
+    "stepKinds": {
+      "start": "{{from}} starts {{to}}",
+      "screen": "{{from}} shows the screen {{to}}",
+      "read": "{{from}} reads {{to}}",
+      "write": "{{from}} writes {{to}}",
+      "call": "{{from}} calls {{to}}",
+      "transfer": "{{from}} transfers control to {{to}}"
+    }
   },
   "protoChat": {
     "title": "Ask for prototype changes",

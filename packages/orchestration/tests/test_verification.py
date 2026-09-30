@@ -130,3 +130,15 @@ async def test_without_an_engine_for_fresh_inputs_it_is_partly_proven(java_sandb
     assert result.summary == "PayOrder: PARTLY PROVEN (5 of 6 checks passed)"
     ((verdict, _),) = port.saved
     assert "Fresh inputs: there is no engine to run the legacy with fresh inputs" in verdict.not_proven
+
+
+async def test_a_golden_master_from_traces_cannot_observe_fresh_inputs() -> None:
+    """ADR-0015: with recorded CICS traces the legacy does not run, so fresh inputs stay not checked (PARTLY PROVEN
+    at most); nothing is run to find it out."""
+    from nexti_core.spec.characterization import TRACE_ENGINE, GoldenMaster, Schema
+
+    master = GoldenMaster(program="PAGOORD", source_sha256="0" * 64, engine=TRACE_ENGINE, schema_=Schema(), results=[])
+    phases = VerificationPhases(None)  # type: ignore[arg-type]
+    fresh, reason = await phases._fresh(None, [], master, None, None, {}, None, {})  # type: ignore[arg-type]
+    assert fresh is None
+    assert "recorded traces" in reason

@@ -108,3 +108,22 @@ async def test_labels_and_relationship_types_come_from_closed_lists(
         await graph.nodes(scope, "Table) DETACH DELETE (n")
     with pytest.raises(GraphError):
         await graph.upsert_edges(scope, [Edge("a", "READS]->(b) DELETE b//", "b")])  # type: ignore[arg-type]
+
+
+async def test_the_cics_family_in_the_graph(graph: GraphStore, scopes: tuple[Scope, Scope]) -> None:
+    """Transaction -> Program -> Map with copybooks and files (M6): a copybook change reaches the programs that copy
+    it and the transactions that start them; an unused copybook is an orphan; edges keep their properties."""
+    from nexti_adapter_cobol import CobolAdapter
+
+    fixtures = ROOT / "packages/adapters/source/cobol/tests/fixtures/pagos_cics"
+    files = [SourceFile(p.relative_to(fixtures).as_posix(), p.read_text(encoding="utf-8"))
+             for p in sorted(fixtures.rglob("*")) if p.suffix in (".cbl", ".cpy", ".csd", ".bms")]  # fmt: skip
+    files.append(SourceFile("cpy/SINUSO.cpy", "       01  SIN-USO  PIC X.\n"))
+    scope, _ = scopes
+    await graph.replace_code_layer(scope, CobolAdapter().inventory(files))
+    impact = await graph.impact(scope, "copybook:ORDREG", depth=2)
+    assert {"program:PAGOORD", "tx:PGOR"} <= set(impact)
+    assert "copybook:SINUSO" in await graph.orphans(scope)
+    assert "program:PAGOORD" not in await graph.orphans(scope)
+    calls = [r for r in await graph.relationships(scope) if r["type"] == "CALLS" and r["target"] == "program:PAGODEB"]
+    assert calls[0]["props"]["kind"] == "LINK"

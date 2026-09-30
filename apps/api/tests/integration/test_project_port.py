@@ -14,9 +14,9 @@ import pytest
 from sqlalchemy.ext.asyncio import AsyncEngine
 
 from nexti_adapter_bms import BmsAdapter
-from nexti_core.adapters import SourceFile
+from nexti_core.adapters import LegacyUnavailableError, SourceFile
 from nexti_core.object_store import ObjectStore, ObjectStoreConfig, input_key
-from nexti_core.spec.characterization import GoldenMaster
+from nexti_core.spec.characterization import GoldenMaster, Suite
 from nexti_core.spec.model import Rule
 from nexti_core.spec.plan import Dependency
 from nexti_graph import GraphStore, Scope
@@ -195,7 +195,11 @@ async def test_the_port_keeps_designs_drafts_and_the_golden_master_as_references
         gateway = GatewayService(app_engine, http, SecretsConfig(SETTINGS.secrets_url, "unused"))
         port = WorkerProjectPort(app_engine, loaded.context, gateway, store, None)
         assert await port.load_design() is None
-        assert port.legacy_runner() is None  # this worker has no engine for the legacy
+        runner = port.legacy_runner()  # this worker has no engine and the inputs have no traces: the phase waits
+        assert runner is not None
+        with pytest.raises(LegacyUnavailableError):
+            await runner.run(await port.source_files(), Suite.model_validate_json(
+                (fixtures / "characterization.json").read_text(encoding="utf-8")))  # fmt: skip
 
         await port.save_design(Design.model_validate_json(design))
         loaded_design = await port.load_design()

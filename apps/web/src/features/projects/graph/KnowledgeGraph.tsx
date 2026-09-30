@@ -3,26 +3,25 @@ import { hierarchy, pack } from 'd3-hierarchy'
 import { useTranslation } from 'react-i18next'
 import { ChevronLeft, ChevronRight, Maximize2, Minus, Plus, Search, X } from 'lucide-react'
 import { cn } from '@/lib/cn'
-import {
-  businessFlows,
-  edgeGroup,
-  graphEdges,
-  graphNodes,
-  rules,
-  type GraphNode,
-  type GraphNodeType,
-  type MigrationState,
-} from '@/mocks/data'
+import type { GraphData, GraphEdge, GraphFlow, GraphNode, GraphNodeType, MigrationState } from '@/api/graph'
 import { Badge, Button, Card, CardBody, CardHeader, StatTile } from '@/components/ui/primitives'
 
-// Interactive knowledge graph (spec section 5): relation filters, orphan/isolated filter, business-flow
-// walkthrough, business-rule focus, search, zoom and pan. The real view renders Neo4j results.
+// Interactive knowledge graph (spec 5.2.1): relation filters, orphan/isolated filter, business-flow walkthrough,
+// business-rule focus, search, zoom and pan, over the project's real graph (GET /graph). Same view as the prototype.
 
 type Relation = 'calls' | 'reads' | 'writes' | 'includes'
 type Visibility = 'all' | 'orphans' | 'hideOrphans'
 
-const TYPES: GraphNodeType[] = ['transaction', 'job', 'program', 'map', 'copybook', 'file']
-const COLUMNS: Record<GraphNodeType, number> = { transaction: 0, job: 0, program: 1, map: 2, copybook: 2, file: 3 }
+const TYPES: GraphNodeType[] = ['transaction', 'program', 'map', 'copybook', 'file']
+const COLUMNS: Record<GraphNodeType, number> = { transaction: 0, program: 1, map: 2, copybook: 2, file: 3 }
+const edgeGroup: Record<string, Relation> = {
+  STARTS: 'calls',
+  CALLS: 'calls',
+  READS: 'reads',
+  WRITES: 'writes',
+  COPIES: 'includes',
+  USES_MAP: 'includes',
+}
 const RELATIONS: Relation[] = ['calls', 'reads', 'writes', 'includes']
 const relationStyle: Record<Relation, { color: string; dash?: string }> = {
   calls: { color: 'var(--text-2)' },
@@ -30,11 +29,14 @@ const relationStyle: Record<Relation, { color: string; dash?: string }> = {
   writes: { color: 'var(--series-2)' },
   includes: { color: 'var(--text-muted)', dash: '4 3' },
 }
-const domainColor: Record<GraphNode['domain'], string> = {
-  Accounts: 'var(--series-1)',
-  Cards: 'var(--series-2)',
-  Authorizations: 'var(--series-3)',
-}
+const PALETTE = [
+  'var(--series-1)',
+  'var(--series-2)',
+  'var(--series-3)',
+  'var(--info)',
+  'var(--warning)',
+  'var(--good)',
+]
 const stateColor: Record<MigrationState, string> = {
   verified: 'var(--good)',
   generated: 'var(--info)',
@@ -69,14 +71,14 @@ function packLayout(nodes: GraphNode[], dataLabel: string, systemLabel: string) 
     label: d,
     children: nodes
       .filter((n) => n.domain === d && n.type !== 'file')
-      .map((n) => ({ id: n.id, label: n.id, value: size(n) })),
+      .map((n) => ({ id: n.id, label: n.name, value: size(n) })),
   }))
   const files = nodes.filter((n) => n.type === 'file')
   if (files.length)
     children.push({
       id: 'group:data',
       label: dataLabel,
-      children: files.map((n) => ({ id: n.id, label: n.id, value: size(n) })),
+      children: files.map((n) => ({ id: n.id, label: n.name, value: size(n) })),
     })
   const root = hierarchy<Datum>({ id: 'root', label: systemLabel, children })
     .sum((d) => d.value ?? 0)
@@ -93,21 +95,35 @@ function packLayout(nodes: GraphNode[], dataLabel: string, systemLabel: string) 
   return { pos, groups }
 }
 
-// Orphan: nobody uses it and it is not an entry point. Isolated: no relation at all.
-function classify(id: string, type: GraphNodeType) {
-  const incoming = graphEdges.some((e) => e.to === id)
-  const outgoing = graphEdges.some((e) => e.from === id)
-  if (!incoming && !outgoing) return 'isolated' as const
-  if (!incoming && type !== 'transaction' && type !== 'job') return 'orphan' as const
-  return null
+// Orphan: nobody uses it and it is not an entry point (decided by the server). Isolated: no relation at all.
+function classify(node: GraphNode, edges: GraphEdge[]) {
+  if (!node.orphan) return null
+  return edges.some((e) => e.from === node.id || e.to === node.id) ? ('orphan' as const) : ('isolated' as const)
 }
 
-export function KnowledgeGraph({ onCompare }: { onCompare: (ruleId: string) => void }) {
+export function KnowledgeGraph({
+  data,
+  onCompare,
+  onImpact,
+}: {
+  data: GraphData
+  onCompare: (ruleId: string) => void
+  onImpact: (nodeId: string) => Promise<string[]>
+}) {
   const { t } = useTranslation()
+  const { nodes: graphNodes, edges: graphEdges, rules, flows: businessFlows } = data
+  const domains = useMemo(() => [...new Set(graphNodes.map((n) => n.domain))].sort(), [graphNodes])
+  const domainColor: Record<string, string> = Object.fromEntries(
+    domains.map((d, i) => [d, PALETTE[i % PALETTE.length]]),
+  )
+  const nameOf = (id: string) => graphNodes.find((n) => n.id === id)?.name ?? id
+  const stepTitle = (s: GraphFlow['steps'][number]) =>
+    t(`graph.stepKinds.${s.kind}`, { from: nameOf(s.nodes[0]), to: nameOf(s.nodes[s.nodes.length - 1]) })
+  const showImpact = (id: string) => void onImpact(id).then(setImpact)
   const [relations, setRelations] = useState<Relation[]>(RELATIONS)
   const [types, setTypes] = useState<GraphNodeType[]>(TYPES)
   const [visibility, setVisibility] = useState<Visibility>('all')
-  const [domain, setDomain] = useState<'all' | GraphNode['domain']>('all')
+  const [domain, setDomain] = useState<string>('all')
   const [impact, setImpact] = useState<string[]>([])
   const [order, setOrder] = useState<string[] | null>(null)
   const [colorBy, setColorBy] = useState<'domain' | 'state'>('domain')
@@ -132,7 +148,7 @@ export function KnowledgeGraph({ onCompare }: { onCompare: (ruleId: string) => v
   const nodes = graphNodes.filter((n) => {
     if (!types.includes(n.type)) return false
     if (domain !== 'all' && n.domain !== domain) return false
-    const kind = classify(n.id, n.type)
+    const kind = classify(n, graphEdges)
     if (visibility === 'orphans') return kind !== null
     if (visibility === 'hideOrphans') return kind === null
     return true
@@ -141,8 +157,8 @@ export function KnowledgeGraph({ onCompare }: { onCompare: (ruleId: string) => v
   const edges = graphEdges.filter(
     (e) => ids.has(e.from) && ids.has(e.to) && relations.includes(edgeGroup[e.kind] ?? 'calls'),
   )
-  const packed = useMemo(() => packLayout(nodes, t('graph.dataStores'), t('graph.system')), [nodes, t])
-  const layered = useMemo(() => layout(nodes), [nodes])
+  const packed = packLayout(nodes, t('graph.dataStores'), t('graph.system'))
+  const layered = layout(nodes)
   const pos: Record<string, { x: number; y: number; r?: number }> = mode === 'circles' ? packed.pos : layered
   const height = mode === 'circles' ? PACK_SIZE : Math.max(0, ...Object.values(pos).map((p) => p.y)) + 60
   // Fit the whole graph to the available width (on load and on reset).
@@ -193,7 +209,7 @@ export function KnowledgeGraph({ onCompare }: { onCompare: (ruleId: string) => v
       : rule
         ? ruleNodes.has(id)
         : q.length > 1
-          ? id.toLowerCase().includes(q)
+          ? nameOf(id).toLowerCase().includes(q)
           : selected
             ? selNodes.has(id)
             : true
@@ -216,9 +232,9 @@ export function KnowledgeGraph({ onCompare }: { onCompare: (ruleId: string) => v
 
   // Suggested migration order: data and shared layouts first, then programs by fewest dependents, entry points last.
   function migrationOrder() {
-    const rank: Record<GraphNodeType, number> = { file: 0, copybook: 1, map: 2, program: 3, transaction: 4, job: 4 }
+    const rank: Record<GraphNodeType, number> = { file: 0, copybook: 1, map: 2, program: 3, transaction: 4 }
     return graphNodes
-      .filter((n) => classify(n.id, n.type) === null)
+      .filter((n) => classify(n, graphEdges) === null && !n.external)
       .sort((a, b) => rank[a.type] - rank[b.type] || impactOf(a.id).length - impactOf(b.id).length)
       .map((n) => n.id)
   }
@@ -262,7 +278,10 @@ export function KnowledgeGraph({ onCompare }: { onCompare: (ruleId: string) => v
 
   const node = graphNodes.find((n) => n.id === selected)
   const counts = TYPES.map((ty) => [ty, graphNodes.filter((n) => n.type === ty).length] as const)
-  const orphanCount = graphNodes.filter((n) => classify(n.id, n.type) !== null).length
+  const orphanCount = graphNodes.filter((n) => classify(n, graphEdges) !== null).length
+  const topCopybook = graphNodes
+    .filter((n) => n.type === 'copybook')
+    .sort((a, b) => impactOf(b.id).length - impactOf(a.id).length)[0]
   const color = (n: GraphNode) => (colorBy === 'domain' ? domainColor[n.domain] : stateColor[n.state])
 
   function toggle<T>(list: T[], v: T, set: (x: T[]) => void) {
@@ -305,7 +324,7 @@ export function KnowledgeGraph({ onCompare }: { onCompare: (ruleId: string) => v
                 <option value="">{t('graph.none')}</option>
                 {businessFlows.map((f) => (
                   <option key={f.id} value={f.id}>
-                    {f.name} ({f.persona})
+                    {f.name}
                   </option>
                 ))}
               </select>
@@ -370,7 +389,7 @@ export function KnowledgeGraph({ onCompare }: { onCompare: (ruleId: string) => v
                 aria-label={t('inventory.domain')}
               >
                 <option value="all">{t('inventory.allDomains')}</option>
-                {Object.keys(domainColor).map((d) => (
+                {domains.map((d) => (
                   <option key={d}>{d}</option>
                 ))}
               </select>
@@ -466,7 +485,7 @@ export function KnowledgeGraph({ onCompare }: { onCompare: (ruleId: string) => v
               width="100%"
               height={Math.max(420, height * view.k + 50)}
               className="block cursor-grab touch-none active:cursor-grabbing"
-              role="img"
+              role="group"
               aria-label={t('inventory.map')}
               onPointerDown={(e) => {
                 touched.current = true
@@ -569,14 +588,14 @@ export function KnowledgeGraph({ onCompare }: { onCompare: (ruleId: string) => v
                       markerEnd={`url(#arrow-${inFlow ? 'flow' : rel})`}
                       opacity={dim ? 0.12 : 0.9}
                     >
-                      <title>{`${e.from} ${e.kind} ${e.to}`}</title>
+                      <title>{`${nameOf(e.from)} ${e.kind} ${nameOf(e.to)}`}</title>
                     </path>
                   )
                 })}
                 {nodes.map((n) => {
                   const p = pos[n.id]
                   const dim = focusActive && !isFocused(n.id)
-                  const orphanKind = classify(n.id, n.type)
+                  const orphanKind = classify(n, graphEdges)
                   const stepNo = flowNodes.get(n.id)
                   const inStep = stepNodes.has(n.id)
                   return (
@@ -594,7 +613,7 @@ export function KnowledgeGraph({ onCompare }: { onCompare: (ruleId: string) => v
                       onPointerDown={(e) => e.stopPropagation()}
                       role="button"
                       tabIndex={0}
-                      aria-label={`${n.id} · ${t(`inventory.types.${n.type}`)}`}
+                      aria-label={`${n.name} · ${t(`inventory.types.${n.type}`)}`}
                       onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && setSelected(n.id)}
                     >
                       {mode === 'circles' ? (
@@ -613,7 +632,7 @@ export function KnowledgeGraph({ onCompare }: { onCompare: (ruleId: string) => v
                             y={p.y - NODE_H / 2}
                             width={NODE_W}
                             height={NODE_H}
-                            rx={n.type === 'transaction' || n.type === 'job' ? NODE_H / 2 : 6}
+                            rx={n.type === 'transaction' ? NODE_H / 2 : 6}
                             fill={
                               impact.includes(n.id)
                                 ? 'color-mix(in srgb, var(--critical) 12%, var(--surface))'
@@ -631,7 +650,7 @@ export function KnowledgeGraph({ onCompare }: { onCompare: (ruleId: string) => v
                             fontWeight={600}
                             fill="var(--text)"
                           >
-                            {n.id}
+                            {n.name}
                           </text>
                           <text x={p.x} y={p.y + 11} textAnchor="middle" fontSize={9} fill="var(--text-muted)">
                             {orphanKind ? t(`graph.kind.${orphanKind}`) : t(`inventory.types.${n.type}`)}
@@ -677,7 +696,7 @@ export function KnowledgeGraph({ onCompare }: { onCompare: (ruleId: string) => v
             <>
               <CardHeader
                 title={flow.name}
-                subtitle={t('graph.persona', { persona: flow.persona })}
+                subtitle={t('graph.entryPoint', { entry: nameOf(flow.entry) })}
                 action={
                   <button
                     onClick={() => setFlowId('')}
@@ -689,11 +708,13 @@ export function KnowledgeGraph({ onCompare }: { onCompare: (ruleId: string) => v
                 }
               />
               <CardBody className="space-y-4 text-sm">
-                <p className="text-text-2">{flow.summary}</p>
+                <p className="text-text-2">
+                  {t('graph.flowSummary', { steps: flow.steps.length, rules: flow.rules.length })}
+                </p>
                 <div className="text-xs font-medium tracking-wide text-muted uppercase">{t('graph.steps')}</div>
                 <ol className="space-y-1">
                   {flow.steps.map((s, i) => (
-                    <li key={s.title}>
+                    <li key={i}>
                       <button
                         onClick={() => setStep(i)}
                         className={cn(
@@ -710,8 +731,8 @@ export function KnowledgeGraph({ onCompare }: { onCompare: (ruleId: string) => v
                           {i + 1}
                         </span>
                         <span className="min-w-0">
-                          <span className="block text-text">{s.title}</span>
-                          <span className="block font-mono text-xs text-muted">{s.nodes.join(' → ')}</span>
+                          <span className="block text-text">{stepTitle(s)}</span>
+                          <span className="block font-mono text-xs text-muted">{s.nodes.map(nameOf).join(' → ')}</span>
                           {s.rule && (
                             <span
                               role="link"
@@ -740,9 +761,8 @@ export function KnowledgeGraph({ onCompare }: { onCompare: (ruleId: string) => v
             </>
           ) : rule ? (
             <>
-              <CardHeader title={`${rule.id} · ${rule.name}`} subtitle={`${rule.domain} · ${rule.priority}`} />
+              <CardHeader title={`${rule.id} · ${rule.name}`} subtitle={rule.priority} />
               <CardBody className="space-y-3 text-sm">
-                <p className="text-text-2">{rule.statement}</p>
                 <div className="text-xs text-muted">{t('graph.implementedIn')}</div>
                 <div className="flex flex-wrap gap-1.5">
                   {graphNodes
@@ -753,7 +773,7 @@ export function KnowledgeGraph({ onCompare }: { onCompare: (ruleId: string) => v
                         onClick={() => setSelected(n.id)}
                         className="rounded border border-border px-2 py-0.5 font-mono text-xs text-text hover:bg-surface-2"
                       >
-                        {n.id}
+                        {n.name}
                       </button>
                     ))}
                 </div>
@@ -780,18 +800,22 @@ export function KnowledgeGraph({ onCompare }: { onCompare: (ruleId: string) => v
           ) : node ? (
             <NodeDetail
               node={node}
+              edges={graphEdges}
+              nameOf={nameOf}
               onSelect={setSelected}
               onCompare={onCompare}
               impact={impact}
-              onImpact={() => setImpact(impactOf(node.id))}
+              onImpact={() => showImpact(node.id)}
               onClearImpact={() => setImpact([])}
             />
           ) : (
             <CardBody className="space-y-3 text-sm text-text-2">
               <p>{t('graph.emptyPanel')}</p>
-              <Button size="sm" onClick={() => setFlowId(businessFlows[0].id)}>
-                {t('graph.tryFlow')}
-              </Button>
+              {businessFlows.length > 0 && (
+                <Button size="sm" onClick={() => setFlowId(businessFlows[0].id)}>
+                  {t('graph.tryFlow')}
+                </Button>
+              )}
             </CardBody>
           )}
         </Card>
@@ -803,12 +827,17 @@ export function KnowledgeGraph({ onCompare }: { onCompare: (ruleId: string) => v
           <div className="flex flex-wrap gap-2">
             <Button
               size="sm"
-              onClick={() => (setSelected('CVACT01Y'), setImpact(impactOf('CVACT01Y')), setOrder(null))}
+              disabled={!topCopybook}
+              onClick={() => topCopybook && (setSelected(topCopybook.id), showImpact(topCopybook.id), setOrder(null))}
             >
-              {t('inventory.impactCopybook')}
+              {t('inventory.impactCopybook', { name: topCopybook?.name ?? '—' })}
             </Button>
-            <Button size="sm" onClick={() => (setDomain('Accounts'), setImpact([]), setOrder(null))}>
-              {t('inventory.impactDomain')}
+            <Button
+              size="sm"
+              disabled={domains.length === 0}
+              onClick={() => (setDomain(domains[0]), setImpact([]), setOrder(null))}
+            >
+              {t('inventory.impactDomain', { domain: domains[0] ?? '—' })}
             </Button>
             <Button size="sm" onClick={() => (setOrder(migrationOrder()), setImpact([]))}>
               {t('inventory.impactOrder')}
@@ -837,7 +866,7 @@ export function KnowledgeGraph({ onCompare }: { onCompare: (ruleId: string) => v
                       onClick={() => setSelected(id)}
                       className="rounded-md border border-border px-2 py-1 font-mono text-text hover:bg-surface-2"
                     >
-                      {i + 1}. {id}
+                      {i + 1}. {nameOf(id)}
                     </button>
                   </li>
                 ))}
@@ -853,6 +882,8 @@ export function KnowledgeGraph({ onCompare }: { onCompare: (ruleId: string) => v
 
 function NodeDetail({
   node,
+  edges,
+  nameOf,
   onSelect,
   onCompare,
   impact,
@@ -860,6 +891,8 @@ function NodeDetail({
   onClearImpact,
 }: {
   node: GraphNode
+  edges: GraphEdge[]
+  nameOf: (id: string) => string
   onSelect: (id: string) => void
   onCompare: (r: string) => void
   impact: string[]
@@ -867,9 +900,9 @@ function NodeDetail({
   onClearImpact: () => void
 }) {
   const { t } = useTranslation()
-  const outgoing = graphEdges.filter((e) => e.from === node.id)
-  const incoming = graphEdges.filter((e) => e.to === node.id)
-  const kind = classify(node.id, node.type)
+  const outgoing = edges.filter((e) => e.from === node.id)
+  const incoming = edges.filter((e) => e.to === node.id)
+  const kind = classify(node, edges)
   const connections = [
     ...outgoing.map((e) => ({ dir: 'out' as const, id: e.to, kind: e.kind })),
     ...incoming.map((e) => ({ dir: 'in' as const, id: e.from, kind: e.kind })),
@@ -877,19 +910,12 @@ function NodeDetail({
   return (
     <>
       <CardHeader
-        title={node.id}
-        subtitle={`${t(`inventory.types.${node.type}`)} · ${node.domain}`}
+        title={node.name}
+        subtitle={`${t(`inventory.types.${node.type}`)} · ${node.domain}${node.external ? ` · ${t('graph.external')}` : ''}`}
         action={kind ? <Badge tone="warning">{t(`graph.kind.${kind}`)}</Badge> : undefined}
       />
       <CardBody className="space-y-4 text-sm">
-        {node.description ? (
-          <div>
-            <p className="leading-relaxed text-text">{node.description}</p>
-            <p className="mt-1 text-xs text-muted">{t('graph.writtenBy')}</p>
-          </div>
-        ) : (
-          <p className="text-xs text-muted">{t('graph.noDescription')}</p>
-        )}
+        <p className="text-xs text-muted">{t('graph.noDescription')}</p>
         {kind && <p className="text-xs text-warning-ink">{t(`graph.kindHint.${kind}`)}</p>}
         <div className="flex flex-wrap gap-1.5">
           <Badge>{t('graph.fanIn', { count: incoming.length })}</Badge>
@@ -907,7 +933,7 @@ function NodeDetail({
         )}
         <div>
           <div className="mb-1 text-xs font-medium tracking-wide text-muted uppercase">{t('inventory.target')}</div>
-          <p className="font-mono text-xs text-text">{node.target ?? '—'}</p>
+          <p className="font-mono text-xs text-text">—</p>
         </div>
         <div>
           <div className="mb-1 text-xs font-medium tracking-wide text-muted uppercase">
@@ -926,7 +952,7 @@ function NodeDetail({
                     <span className="text-info" aria-label={t(`graph.dir.${c.dir}`)}>
                       {c.dir === 'out' ? '→' : '←'}
                     </span>
-                    <span className="font-mono text-xs text-info">{c.id}</span>
+                    <span className="font-mono text-xs text-info">{nameOf(c.id)}</span>
                     <span className="ml-auto text-[10px] text-muted">{t(`graph.edgeKinds.${c.kind}`)}</span>
                   </button>
                 </li>
@@ -937,11 +963,13 @@ function NodeDetail({
         <Relations
           title={t('inventory.uses')}
           items={outgoing.map((e) => ({ id: e.to, kind: e.kind }))}
+          nameOf={nameOf}
           onSelect={onSelect}
         />
         <Relations
           title={t('inventory.usedBy')}
           items={incoming.map((e) => ({ id: e.from, kind: e.kind }))}
+          nameOf={nameOf}
           onSelect={onSelect}
         />
         <div className="space-y-2 border-t border-border pt-3">
@@ -950,7 +978,7 @@ function NodeDetail({
           </Button>
           {impact.length > 0 && (
             <p className="text-xs text-critical-ink">
-              {t('inventory.impactResult', { count: impact.length, items: impact.join(', ') })}{' '}
+              {t('inventory.impactResult', { count: impact.length, items: impact.map(nameOf).join(', ') })}{' '}
               <button className="text-info hover:underline" onClick={onClearImpact}>
                 {t('inventory.clearImpact')}
               </button>
@@ -986,10 +1014,12 @@ function NodeDetail({
 function Relations({
   title,
   items,
+  nameOf,
   onSelect,
 }: {
   title: string
   items: { id: string; kind: string }[]
+  nameOf: (id: string) => string
   onSelect: (id: string) => void
 }) {
   const { t } = useTranslation()
@@ -1006,7 +1036,7 @@ function Relations({
                 onClick={() => onSelect(i.id)}
                 className="flex w-full items-center justify-between rounded px-1.5 py-0.5 text-left hover:bg-surface-2"
               >
-                <span className="font-mono text-xs text-text">{i.id}</span>
+                <span className="font-mono text-xs text-text">{nameOf(i.id)}</span>
                 <span className="text-[10px] text-muted">{t(`graph.edgeKinds.${i.kind}`)}</span>
               </button>
             </li>
@@ -1076,7 +1106,7 @@ function CircleNode({
 }) {
   const inside = p.r >= 26
   const maxChars = Math.max(4, Math.floor((p.r * 2) / 7))
-  const label = node.id.length > maxChars ? `${node.id.slice(0, maxChars - 1)}…` : node.id
+  const label = node.name.length > maxChars ? `${node.name.slice(0, maxChars - 1)}…` : node.name
   return (
     <>
       <circle
@@ -1097,7 +1127,7 @@ function CircleNode({
         fill="var(--text)"
         className="pointer-events-none select-none"
       >
-        {inside ? label : node.id}
+        {inside ? label : node.name}
       </text>
       {stepNo && (
         <g>

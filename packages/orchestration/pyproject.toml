@@ -8,6 +8,7 @@ dependencies = [
   "langgraph-checkpoint-postgres>=3.0",
   "psycopg[binary]>=3.2",
   "nexti-adapter-bms",
+  "nexti-adapter-cobol",
   "nexti-adapter-sybase",
   "nexti-agents",
   "nexti-core",
@@ -19,6 +20,7 @@ dependencies = [
 
 [tool.uv.sources]
 nexti-adapter-bms = { workspace = true }
+nexti-adapter-cobol = { workspace = true }
 nexti-adapter-sybase = { workspace = true }
 nexti-agents = { workspace = true }
 nexti-core = { workspace = true }

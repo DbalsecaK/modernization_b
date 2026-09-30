@@ -1,0 +1,28 @@
+{
+  "request_digest": "588326591589a66a2168a26b785b5964",
+  "model": "anthropic/claude-sonnet-5.5",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are the Rules Verifier of a legacy modernization platform, an independent reviewer. You receive one business rule\nwritten by another agent and the exact source lines it cites. You did not write the rule: check it against the code\nonly.\n\nDecide:\n- `supported`: true only if the cited lines implement the rule as written, including its concrete values\n  (codes, amounts, states, limits) and its condition.\n- `problems`: every discrepancy you find: a value that differs from the code, a condition the code does not have, a\n  missing branch the rule should mention, a citation that does not contain the behaviour.\n- `corrected_statement`: if the rule is close but a detail is wrong, the statement rewritten to match the code;\n  otherwise null.\n\nAnswer with one JSON object and nothing else:\n{\"supported\": true, \"problems\": [], \"corrected_statement\": null}\n"
+    },
+    {
+      "role": "user",
+      "content": "Rule:\n{\"name\":\"Order must exist\",\"category\":\"validation\",\"priority\":\"P0\",\"statement\":\"The order is looked up by order number and company. If it does not exist the payment is rejected with 'ORDEN NO EXISTE'.\",\"condition\":\"READ of ORDENES by (company EMPRESAI, order number ORDENI) returns NOTFND\",\"action\":\"Set the message 'ORDEN NO EXISTE' and flag the request as in error.\"}\n\nCited lines:\ncbl/PAGOORD.cbl:106-113:\n  106             MOVE ORDENI TO WS-CL-NUMERO.\n  107             MOVE EMPRESAI TO WS-CL-EMPRESA.\n  108             EXEC CICS READ FILE('ORDENES') INTO(ORD-REGISTRO)\n  109                  RIDFLD(WS-CLAVE-ORDEN) UPDATE RESP(WS-RESP)\n  110             END-EXEC.\n  111             IF WS-RESP = DFHRESP(NOTFND)\n  112                MOVE 'ORDEN NO EXISTE' TO WS-MENSAJE\n  113                SET HAY-ERROR TO TRUE"
+    }
+  ],
+  "response": {
+    "request_id": "gen-1790778024-k4MEiNDuiOytP1v7gASQ",
+    "model": "anthropic/claude-sonnet-5.5",
+    "provider_name": "Anthropic",
+    "content": "{\"supported\": true, \"problems\": [], \"corrected_statement\": null}",
+    "usage": {
+      "input_tokens": 683,
+      "output_tokens": 264,
+      "reasoning_tokens": 239,
+      "cache_read_tokens": 0,
+      "cache_write_tokens": 0,
+      "provider_cost_usd": "0.004006"
+    }
+  }
+}

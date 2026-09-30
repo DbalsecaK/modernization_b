@@ -738,6 +738,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/projects/{project_id}/graph": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Project Graph
+         * @description The code units with their relations, rules, migration state, orphans and business flows.
+         */
+        get: operations["project_graph_api_v1_projects__project_id__graph_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/projects/{project_id}/graph/impact": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Impact
+         * @description What may break if the node changes (5.2): the units that use it, up to `depth` hops.
+         */
+        get: operations["impact_api_v1_projects__project_id__graph_impact_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/projects/{project_id}/inputs": {
         parameters: {
             query?: never;
@@ -2189,6 +2229,19 @@ export interface components {
             /** Spentusd */
             spentUsd: string;
         };
+        /** BusinessFlowOut */
+        BusinessFlowOut: {
+            /** Entry */
+            entry: string;
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Rules */
+            rules: string[];
+            /** Steps */
+            steps: components["schemas"]["FlowStepOut"][];
+        };
         /** C1CheckOut */
         C1CheckOut: {
             /** Blockers */
@@ -2648,6 +2701,18 @@ export interface components {
             /** Phases */
             phases: components["schemas"]["PhaseOut"][];
         };
+        /** FlowStepOut */
+        FlowStepOut: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "start" | "screen" | "read" | "write" | "call" | "transfer";
+            /** Nodes */
+            nodes: string[];
+            /** Rule */
+            rule: string | null;
+        };
         /** GateDecisionIn */
         GateDecisionIn: {
             /** Comment */
@@ -2701,10 +2766,94 @@ export interface components {
             /** Message */
             message: string;
         };
+        /** GraphEdgeOut */
+        GraphEdgeOut: {
+            /**
+             * Detail
+             * @description The kind of call (LINK, XCTL, CALL) when there is one
+             */
+            detail?: string | null;
+            /** From */
+            from: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "STARTS" | "CALLS" | "READS" | "WRITES" | "COPIES" | "USES_MAP";
+            /** To */
+            to: string;
+        };
+        /** GraphNodeOut */
+        GraphNodeOut: {
+            /** Domain */
+            domain: string;
+            /** External */
+            external: boolean;
+            /** File */
+            file: string | null;
+            /** Id */
+            id: string;
+            /** Lineend */
+            lineEnd: number | null;
+            /** Linestart */
+            lineStart: number | null;
+            /** Loc */
+            loc: number | null;
+            /** Name */
+            name: string;
+            /** Orphan */
+            orphan: boolean;
+            /** Rules */
+            rules: string[];
+            /** Source */
+            source: string | null;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "verified" | "generated" | "inProgress" | "pending";
+            /**
+             * Type
+             * @enum {string}
+             */
+            type: "transaction" | "program" | "map" | "copybook" | "file";
+        };
+        /** GraphOut */
+        GraphOut: {
+            /** Edges */
+            edges: components["schemas"]["GraphEdgeOut"][];
+            /** Flows */
+            flows: components["schemas"]["BusinessFlowOut"][];
+            /** Nodes */
+            nodes: components["schemas"]["GraphNodeOut"][];
+            /** Rules */
+            rules: components["schemas"]["GraphRuleOut"][];
+        };
+        /** GraphRuleOut */
+        GraphRuleOut: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Priority */
+            priority: string;
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
+        };
+        /** ImpactOut */
+        ImpactOut: {
+            /** Depth */
+            depth: number;
+            /**
+             * Impacted
+             * @description The units that may break if the node changes (who uses it)
+             */
+            impacted: string[];
+            /** Node */
+            node: string;
         };
         /** InputOut */
         InputOut: {
@@ -5983,6 +6132,71 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DesignSystemOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    project_graph_api_v1_projects__project_id__graph_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GraphOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    impact_api_v1_projects__project_id__graph_impact_get: {
+        parameters: {
+            query: {
+                node: string;
+                depth?: number;
+            };
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImpactOut"];
                 };
             };
             /** @description Validation Error */

@@ -455,8 +455,8 @@
     },
     "impact": "Preguntas al grafo",
     "impactHint": "Se responden directamente desde el grafo de conocimiento.",
-    "impactCopybook": "¿Qué se rompe si cambio CVACT01Y?",
-    "impactDomain": "¿Qué programas forman el dominio Cuentas?",
+    "impactCopybook": "¿Qué se rompe si cambio {{name}}?",
+    "impactDomain": "¿Qué programas forman el dominio {{domain}}?",
     "impactOrder": "¿Qué podemos migrar primero?",
     "impactOrphans": "Párrafos de negocio sin regla",
     "typesPlural": {
@@ -1958,7 +1958,22 @@
       "layers": "Capas"
     },
     "dataStores": "Datos",
-    "system": "Card Management"
+    "system": "Card Management",
+    "loading": "Cargando el grafo…",
+    "loadError": "No se pudo cargar el grafo",
+    "unavailable": "El grafo de conocimiento no está configurado en este ambiente",
+    "emptyTitle": "Todavía no hay inventario",
+    "entryPoint": "Punto de entrada: {{entry}}",
+    "flowSummary": "{{steps}} pasos en el orden del código; {{rules}} reglas citadas en el camino.",
+    "external": "externo (no está en los insumos)",
+    "stepKinds": {
+      "start": "{{from}} inicia {{to}}",
+      "screen": "{{from}} muestra la pantalla {{to}}",
+      "read": "{{from}} lee {{to}}",
+      "write": "{{from}} escribe {{to}}",
+      "call": "{{from}} llama a {{to}}",
+      "transfer": "{{from}} transfiere el control a {{to}}"
+    }
   },
   "protoChat": {
     "title": "Pedir cambios al prototipo",

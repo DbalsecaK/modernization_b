@@ -1,0 +1,211 @@
+{
+ "application": "pagos-cics (Banco Ficticio, fictitious)",
+ "note": "Reference spec written by hand for the fictitious CICS application (spec 21.3), independent of the parser and of any model.",
+ "rules": [
+  {
+   "id": "RULE-001",
+   "name": "The order number is required and numeric",
+   "category": "validation",
+   "priority": "P0",
+   "statement": "The order number typed on the PAGOORD screen must be numeric and not zero; otherwise the payment is rejected with 'NUMERO DE ORDEN INVALIDO'.",
+   "condition": "order number not numeric or all zeros",
+   "action": "reject with 'NUMERO DE ORDEN INVALIDO'",
+   "scenarios": [
+    "Scenario: A zero order number is rejected\n  Given the order number '0000000'\n  When the payment is sent\n  Then the screen shows 'NUMERO DE ORDEN INVALIDO'"
+   ],
+   "sources": [
+    {
+     "file": "cbl/PAGOORD.cbl",
+     "line_start": 83,
+     "line_end": 85
+    }
+   ]
+  },
+  {
+   "id": "RULE-002",
+   "name": "Only current, savings and virtual accounts can be debited",
+   "category": "validation",
+   "priority": "P0",
+   "statement": "The account type must be CTE, AHO or VIR; any other type is rejected with 'TIPO DE CUENTA NO PERMITIDO'.",
+   "condition": "account type not in (CTE, AHO, VIR)",
+   "action": "reject with 'TIPO DE CUENTA NO PERMITIDO'",
+   "scenarios": [
+    "Scenario: A credit card account is rejected\n  Given the account type 'TCR'\n  When the payment is sent\n  Then the screen shows 'TIPO DE CUENTA NO PERMITIDO'"
+   ],
+   "sources": [
+    {
+     "file": "cbl/PAGOORD.cbl",
+     "line_start": 87,
+     "line_end": 90
+    }
+   ]
+  },
+  {
+   "id": "RULE-003",
+   "name": "Allowed channels and the office approval key",
+   "category": "validation",
+   "priority": "P0",
+   "statement": "The channel must be WEB or OFI ('CANAL NO PERMITIDO'); a payment at the office (OFI) needs an approval key ('CLAVE DE APROBACION REQUERIDA').",
+   "condition": "channel not in (WEB, OFI); channel OFI and blank approval key",
+   "action": "reject with 'CANAL NO PERMITIDO' / 'CLAVE DE APROBACION REQUERIDA'",
+   "scenarios": [
+    "Scenario: An office payment without key is rejected\n  Given the channel 'OFI' and no approval key\n  When the payment is sent\n  Then the screen shows 'CLAVE DE APROBACION REQUERIDA'"
+   ],
+   "sources": [
+    {
+     "file": "cbl/PAGOORD.cbl",
+     "line_start": 92,
+     "line_end": 99
+    }
+   ]
+  },
+  {
+   "id": "RULE-004",
+   "name": "The order must exist and be pending",
+   "category": "validation",
+   "priority": "P0",
+   "statement": "The order of the company is read from file ORDENES; if it does not exist the payment is rejected with 'ORDEN NO EXISTE', and if it is not pending (state P) with 'ORDEN NO ESTA PENDIENTE'.",
+   "condition": "order not found / order state <> 'P'",
+   "action": "reject with 'ORDEN NO EXISTE' / 'ORDEN NO ESTA PENDIENTE'",
+   "scenarios": [
+    "Scenario: A paid order cannot be paid again\n  Given order 1000002 in state 'G'\n  When the payment is sent\n  Then the screen shows 'ORDEN NO ESTA PENDIENTE'"
+   ],
+   "sources": [
+    {
+     "file": "cbl/PAGOORD.cbl",
+     "line_start": 108,
+     "line_end": 117
+    }
+   ]
+  },
+  {
+   "id": "RULE-005",
+   "name": "The typed value must match the order",
+   "category": "validation",
+   "priority": "P0",
+   "statement": "The value typed (with two implied decimals) must equal the value of the order; otherwise the payment is rejected with 'VALOR NO COINCIDE CON LA ORDEN'.",
+   "condition": "typed value <> order value",
+   "action": "reject with 'VALOR NO COINCIDE CON LA ORDEN'",
+   "scenarios": [
+    "Scenario: A different value is rejected\n  Given order 1000001 of 1500.00 and the typed value 1400.00\n  When the payment is sent\n  Then the screen shows 'VALOR NO COINCIDE CON LA ORDEN'"
+   ],
+   "sources": [
+    {
+     "file": "cbl/PAGOORD.cbl",
+     "line_start": 119,
+     "line_end": 124
+    }
+   ]
+  },
+  {
+   "id": "RULE-006",
+   "name": "Commission by channel, exempt for large orders",
+   "category": "calculation",
+   "priority": "P0",
+   "statement": "Orders of 50000.00 or more pay no commission; otherwise the commission is 1.00 on the web channel and 2.50 at the office. The account is debited the order value plus the commission.",
+   "condition": "order value >= 50000 / channel WEB / channel OFI",
+   "action": "commission 0.00 / 1.00 / 2.50; debit value + commission",
+   "scenarios": [
+    "Scenario: The web commission\n  Given a pending order of 1500.00 paid on the web\n  When the payment is sent\n  Then the commission is 1.00 and the account is debited 1501.00"
+   ],
+   "sources": [
+    {
+     "file": "cbl/PAGOORD.cbl",
+     "line_start": 129,
+     "line_end": 138
+    }
+   ]
+  },
+  {
+   "id": "RULE-007",
+   "name": "The account must exist, match, be active and have enough balance",
+   "category": "validation",
+   "priority": "P0",
+   "statement": "PAGODEB reads the account from file CUENTAS: a missing account or one of another type answers 'CUENTA NO VALIDA', an inactive account 'CUENTA INACTIVA', and a balance below the total 'SALDO INSUFICIENTE'; only then the balance is debited.",
+   "condition": "account not found or type differs / state <> 'A' / balance < value + commission",
+   "action": "reject with 'CUENTA NO VALIDA' / 'CUENTA INACTIVA' / 'SALDO INSUFICIENTE'",
+   "scenarios": [
+    "Scenario: An inactive account is rejected\n  Given account 3333333333 in state 'I'\n  When the payment is sent\n  Then the screen shows 'CUENTA INACTIVA'"
+   ],
+   "sources": [
+    {
+     "file": "cbl/PAGODEB.cbl",
+     "line_start": 18,
+     "line_end": 32
+    },
+    {
+     "file": "cbl/PAGOORD.cbl",
+     "line_start": 144,
+     "line_end": 159
+    }
+   ]
+  },
+  {
+   "id": "RULE-008",
+   "name": "A paid order records its movement and commission",
+   "category": "lifecycle",
+   "priority": "P0",
+   "statement": "When the account is debited, the order is marked paid (state G) with the movement number given by PAGOMOV and the commission, and the unit of work is committed (SYNCPOINT).",
+   "condition": "account debited",
+   "action": "order state 'G', movement number from PAGOMOV, commission recorded, SYNCPOINT",
+   "scenarios": [
+    "Scenario: The order is marked paid\n  Given a successful debit\n  When the payment is registered\n  Then the order is in state 'G' with the movement number of PAGOMOV"
+   ],
+   "sources": [
+    {
+     "file": "cbl/PAGOORD.cbl",
+     "line_start": 162,
+     "line_end": 172
+    },
+    {
+     "file": "cbl/PAGODEB.cbl",
+     "line_start": 36,
+     "line_end": 39
+    }
+   ]
+  },
+  {
+   "id": "RULE-009",
+   "name": "The result screen shows the payment",
+   "category": "policy",
+   "priority": "P1",
+   "statement": "After a payment the PAGORES screen shows the order, the commission, the movement number and 'PAGO REALIZADO'.",
+   "condition": "payment registered",
+   "action": "show PAGORES with order, commission, movement and 'PAGO REALIZADO'",
+   "scenarios": [
+    "Scenario: The result is shown\n  Given a registered payment\n  When the result is sent\n  Then PAGORES shows 'PAGO REALIZADO'"
+   ],
+   "sources": [
+    {
+     "file": "cbl/PAGOORD.cbl",
+     "line_start": 175,
+     "line_end": 182
+    }
+   ]
+  },
+  {
+   "id": "RULE-010",
+   "name": "Menu options and PF3",
+   "category": "policy",
+   "priority": "P2",
+   "statement": "On the menu, option 1 opens the payment of orders (PAGOORD), option 9 or PF3 ends the session with 'SESION TERMINADA', any other option shows 'OPCION NO VALIDA'; PF3 on the payment screen returns to the menu.",
+   "condition": "option 1 / option 9 or PF3 / other option",
+   "action": "XCTL PAGOORD / end with 'SESION TERMINADA' / 'OPCION NO VALIDA'",
+   "scenarios": [
+    "Scenario: An invalid option\n  Given the menu option '5'\n  When it is sent\n  Then the menu shows 'OPCION NO VALIDA'"
+   ],
+   "sources": [
+    {
+     "file": "cbl/PAGOMNU.cbl",
+     "line_start": 43,
+     "line_end": 55
+    },
+    {
+     "file": "cbl/PAGOORD.cbl",
+     "line_start": 42,
+     "line_end": 43
+    }
+   ]
+  }
+ ]
+}

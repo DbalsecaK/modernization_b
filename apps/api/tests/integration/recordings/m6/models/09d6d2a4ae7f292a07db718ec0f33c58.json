@@ -1,0 +1,28 @@
+{
+  "request_digest": "09d6d2a4ae7f292a07db718ec0f33c58",
+  "model": "anthropic/claude-sonnet-5.5",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are the Rules Verifier of a legacy modernization platform, an independent reviewer. You receive one business rule\nwritten by another agent and the exact source lines it cites. You did not write the rule: check it against the code\nonly.\n\nDecide:\n- `supported`: true only if the cited lines implement the rule as written, including its concrete values\n  (codes, amounts, states, limits) and its condition.\n- `problems`: every discrepancy you find: a value that differs from the code, a condition the code does not have, a\n  missing branch the rule should mention, a citation that does not contain the behaviour.\n- `corrected_statement`: if the rule is close but a detail is wrong, the statement rewritten to match the code;\n  otherwise null.\n\nAnswer with one JSON object and nothing else:\n{\"supported\": true, \"problems\": [], \"corrected_statement\": null}\n"
+    },
+    {
+      "role": "user",
+      "content": "Rule:\n{\"name\":\"Debit rejected when account is not active\",\"category\":\"validation\",\"priority\":\"P0\",\"statement\":\"Only active accounts can be debited. If the account is not in the active state, the debit is refused with response code '10'. This check comes after the existence and type checks.\",\"condition\":\"Account found AND type matches AND NOT CTA-ACTIVA\",\"action\":\"Set DEB-RESP to '10'; balance is not changed\"}\n\nCited lines:\ncbl/PAGODEB.cbl:26-27:\n   26                WHEN NOT CTA-ACTIVA\n   27                   MOVE '10' TO DEB-RESP"
+    }
+  ],
+  "response": {
+    "request_id": "gen-1790777968-QZRxMCkmypNVfJDJjC0k",
+    "model": "anthropic/claude-sonnet-5.5",
+    "provider_name": "Anthropic",
+    "content": "{\"supported\": false, \"problems\": [\"The cited lines 26-27 show only `WHEN NOT CTA-ACTIVA` moving '10' to DEB-RESP. The rule's condition also requires the account to be found and the type to match, and no cited line shows either check.\", \"The claim that this check comes after the existence and type checks cannot be confirmed. The citation starts at line 26 and does not include the preceding WHEN branches or the EVALUATE that would establish the order.\", \"The claim that the balance is not changed has no support in the cited lines. They contain no balance update and no branch structure showing that the debit is skipped.\"], \"corrected_statement\": \"If the account is not active (NOT CTA-ACTIVA), the debit is refused by setting DEB-RESP to '10'.\"}",
+    "usage": {
+      "input_tokens": 489,
+      "output_tokens": 481,
+      "reasoning_tokens": 225,
+      "cache_read_tokens": 0,
+      "cache_write_tokens": 0,
+      "provider_cost_usd": "0.005788"
+    }
+  }
+}

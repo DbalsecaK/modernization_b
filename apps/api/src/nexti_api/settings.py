@@ -78,6 +78,10 @@ class Settings(BaseSettings):
     authz_relay_database_url: SecretStr = SecretStr("")
     relay_poll_seconds: float = 1.0
     reconcile_interval_seconds: int = 600
+    # Knowledge graph (M6): Neo4j through packages/graph only; the API reads it.
+    graph_uri: str = ""
+    graph_user: str = "neo4j"
+    graph_password: SecretStr = SecretStr("")
 
     @property
     def is_local(self) -> bool:

@@ -71,8 +71,14 @@ def _short(name: str) -> str:
     return name.rsplit(".", 1)[-1].lower()
 
 
+_CREATE_PROC = re.compile(r"\bcreate\s+proc(edure)?\b", re.IGNORECASE)
+_EXTENSIONS = (".sp", ".sql", ".prc", ".proc", ".tsql", ".syb")
+
+
 def procedures(files: list[SourceFile]) -> list[tuple[SourceFile, Procedure]]:
-    return [(f, p) for f in files for p in parse(f.text)]
+    """The procedures of the inputs; other files (COBOL, traces, maps) are not parsed as T-SQL."""
+    return [(f, p) for f in files if f.path.lower().endswith(_EXTENSIONS) or _CREATE_PROC.search(f.text)
+            for p in parse(f.text)]  # fmt: skip
 
 
 def _groups(tokens: list[Token]) -> list[list[Token]]:

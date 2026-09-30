@@ -14,12 +14,13 @@ if TYPE_CHECKING:
 # Code and data layers (what adapters produce) and knowledge / target layers (spec 5.1).
 NodeLabel = Literal[
     "StoredProcedure", "Program", "Paragraph", "Statement", "Table", "Column", "Field", "File",
-    "Mapset", "BmsMap",
+    "Mapset", "BmsMap", "Transaction", "Copybook",
     "Rule", "Capability", "Contract", "Story", "TestCase", "Question", "Domain", "Screen",
     "Service", "Module", "Class", "Method", "Endpoint",
 ]  # fmt: skip
 EdgeType = Literal[
     "CALLS", "READS", "WRITES", "CONTAINS", "DECLARES", "EXEC_SQL",
+    "COPIES", "PERFORMS", "EXEC_CICS", "USES_MAP", "STARTS", "REDEFINES",
     "DERIVED_FROM", "BELONGS_TO", "VERIFIES", "COVERS", "DEPENDS_ON", "IMPLEMENTS", "MAPS_TO",
 ]  # fmt: skip
 
@@ -82,7 +83,8 @@ class SourceAdapter(Protocol):
     def inventory(self, files: list[SourceFile]) -> Inventory: ...
 
     def types(self, files: list[SourceFile]) -> dict[str, str]:
-        """Source type -> neutral type text; unresolved types map to an empty string."""
+        """Source type (or, for record languages like COBOL, data item) -> neutral type text; unresolved types map
+        to an empty string."""
         ...
 
     def slices(self, files: list[SourceFile]) -> list[SliceView]:
@@ -97,6 +99,11 @@ class SourceAdapter(Protocol):
         self, files: list[SourceFile], file: str, ranges: list[tuple[int, int]]
     ) -> tuple[frozenset[str], frozenset[str]]:
         """Tables (or files) read and written by the code inside the line ranges."""
+        ...
+
+    def digest(self, files: list[SourceFile]) -> str:
+        """The inventory in a few lines for the agents (entry points, their inputs, the data they use, the external
+        programs they call, and how the legacy can be observed)."""
         ...
 
 

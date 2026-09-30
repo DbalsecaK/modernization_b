@@ -17,16 +17,18 @@ from nexti_core.adapters import Edge, Inventory, Node
 
 LABELS = frozenset({
     "StoredProcedure", "Program", "Paragraph", "Statement", "Table", "Column", "Field", "File",
-    "Mapset", "BmsMap",
+    "Mapset", "BmsMap", "Transaction", "Copybook",
     "Rule", "Capability", "Contract", "Story", "TestCase", "Question", "Domain", "Screen",
     "Service", "Module", "Class", "Method", "Endpoint",
 })  # fmt: skip
 EDGE_TYPES = frozenset({
     "CALLS", "READS", "WRITES", "CONTAINS", "DECLARES", "EXEC_SQL",
+    "COPIES", "PERFORMS", "EXEC_CICS", "USES_MAP", "STARTS", "REDEFINES",
     "DERIVED_FROM", "BELONGS_TO", "VERIFIES", "COVERS", "DEPENDS_ON", "IMPLEMENTS", "MAPS_TO",
 })  # fmt: skip
 CODE_LABELS = (
     "StoredProcedure", "Program", "Paragraph", "Statement", "Table", "Column", "Field", "File", "Mapset", "BmsMap",
+    "Transaction", "Copybook",
 )  # fmt: skip
 
 
@@ -167,6 +169,15 @@ class GraphStore:
         )
         return [(r["source"], r["type"], r["target"]) for r in rows]
 
+    async def relationships(self, scope: Scope) -> list[dict[str, Any]]:
+        """The edges of the project with their properties (the line, the kind of call, the CICS command)."""
+        return await self._run(
+            "MATCH (a:Node {tenant_id: $tenant, project_id: $project})-[r]->(b:Node {tenant_id: $tenant, "
+            "project_id: $project}) RETURN a.key AS source, type(r) AS type, b.key AS target, properties(r) AS props "
+            "ORDER BY source, type, target",
+            scope,
+        )
+
     async def impact(self, scope: Scope, key: str, depth: int = 3) -> list[str]:
         """What may break if `key` changes (5.2): who reads, writes or calls it, up to `depth` hops back."""
         if not 1 <= depth <= 6:
@@ -174,17 +185,24 @@ class GraphStore:
         query = (
             "MATCH (t:Node {uid: $uid, tenant_id: $tenant, project_id: $project}) "
             "MATCH (n:Node {tenant_id: $tenant, project_id: $project})"
-            "-[:READS|WRITES|CALLS|DERIVED_FROM|IMPLEMENTS*1.." + str(int(depth)) + "]->(t) "
+            "-[:READS|WRITES|CALLS|COPIES|USES_MAP|STARTS|PERFORMS|CONTAINS|DECLARES|DERIVED_FROM|IMPLEMENTS*1.."
+            + str(int(depth))
+            + "]->(t) "
             "RETURN DISTINCT n.key AS key ORDER BY key"
         )
         return [r["key"] for r in await self._run(query, scope, uid=scope.uid(key))]
 
     async def orphans(self, scope: Scope) -> list[str]:
-        """Isolated nodes and procedures nobody calls (5.2): candidates for dead code or missing references."""
+        """Isolated nodes, and programs, copybooks or files nobody uses (5.2): candidates for dead code or missing
+        references. A program started by a transaction, or that does something itself, is an entry point."""
         rows = await self._run(
             "MATCH (n:Node {tenant_id: $tenant, project_id: $project}) "
-            "WHERE NOT (n)--() OR (n:StoredProcedure AND coalesce(n.external, false) = false AND NOT ()-[:CALLS]->(n) "
-            "AND NOT (n)-[:CALLS|READS|WRITES]->()) RETURN n.key AS key ORDER BY key",
+            "WHERE NOT (n)--() "
+            "OR ((n:StoredProcedure OR n:Program) AND coalesce(n.external, false) = false "
+            "    AND NOT ()-[:CALLS|STARTS]->(n) AND NOT (n)-[:CALLS|READS|WRITES|USES_MAP]->()) "
+            "OR (n:Copybook AND NOT ()-[:COPIES]->(n)) "
+            "OR (n:File AND NOT ()-[:READS|WRITES]->(n)) "
+            "RETURN n.key AS key ORDER BY key",
             scope,
         )
         return [r["key"] for r in rows]

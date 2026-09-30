@@ -83,11 +83,15 @@ def java_block(content: str) -> str:
 
 
 _NAME = re.compile(r"[@#]?[A-Za-z_][A-Za-z0-9_$#@]*")
+_COBOL_NAME = re.compile(r"\b[A-Za-z0-9]+(?:-[A-Za-z0-9]+)+\b")
 
 
 def legacy_names(files: Sequence[SourceFile]) -> set[str]:
-    """Every identifier of the legacy source, lowercase: what the design may name as legacy."""
-    return {m.group(0).lower() for f in files for m in _NAME.finditer(f.text)}
+    """Every identifier of the legacy source, lowercase: what the design may name as legacy. A COBOL name keeps its
+    hyphens and is also known with underscores (ORD-NUMERO is ord_numero), the form traces and targets use."""
+    names = {m.group(0).lower() for f in files for m in _NAME.finditer(f.text)}
+    names |= {m.group(0).lower().replace("-", "_") for f in files for m in _COBOL_NAME.finditer(f.text)}
+    return names
 
 
 def _invented(design: Design, names: set[str]) -> list[str]:

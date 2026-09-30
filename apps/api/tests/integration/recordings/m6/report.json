@@ -1,0 +1,102 @@
+{
+  "model": "anthropic/claude-sonnet-5.5",
+  "mode": "record",
+  "verdict": "PARTLY PROVEN",
+  "checks": {
+    "tests_ran": "passed",
+    "rules_traced": "passed",
+    "same_behaviour": "passed",
+    "fresh_inputs": "not_checked",
+    "canary": "passed",
+    "source_intact": "passed"
+  },
+  "details": {
+    "tests_ran": "48 test(s) passed in a clean build (JUnit XML)",
+    "rules_traced": "16 of 16 rule(s) verified by golden cases",
+    "same_behaviour": "14 golden case(s) reproduced",
+    "fresh_inputs": "the golden master comes from recorded traces and the legacy does not run here, so fresh inputs cannot be observed on it (ADR-0015)",
+    "canary": "line 20 changed (private static final BigDecimal COMMISSION_WEB = new BigDecimal(\"1.01\");) turned test insufficient_balance() red",
+    "source_intact": "the legacy is the code that was characterized (SHA-256)"
+  },
+  "not_proven": [
+    "RULE-006 is outside PAGOORD and its golden master: it is verified with the module that runs its code",
+    "External programs are replaced by stubs that answer as the case says; their own logic is not verified here",
+    "The legacy did not run on the platform: its behaviour comes from recorded traces, so only the traced cases are compared and fresh inputs are not (PARTLY PROVEN at most)",
+    "Fresh inputs: the golden master comes from recorded traces and the legacy does not run here, so fresh inputs cannot be observed on it (ADR-0015)"
+  ],
+  "evaluation": {
+    "reference": "pagos-cics (Banco Ficticio, fictitious)",
+    "reference_sha256": "f760f3b364dd56c8ac5db166d18b8966697bf9b5797bc1f9c3ad5d02f885f8f1",
+    "reference_rules": 10,
+    "found_rules": 17,
+    "omissions": [
+      "RULE-009"
+    ],
+    "omissions_p0": [],
+    "hallucinations": [
+      "RULE-001",
+      "RULE-002",
+      "RULE-004",
+      "RULE-005",
+      "RULE-007",
+      "RULE-010",
+      "RULE-012",
+      "RULE-016"
+    ],
+    "precision_errors": [
+      {
+        "reference": "RULE-003",
+        "found": "RULE-011",
+        "missing_values": [
+          "CANAL NO PERMITIDO"
+        ]
+      },
+      {
+        "reference": "RULE-004",
+        "found": "RULE-013",
+        "missing_values": [
+          "ORDEN NO EXISTE",
+          "P"
+        ]
+      },
+      {
+        "reference": "RULE-007",
+        "found": "RULE-003",
+        "missing_values": [
+          "A",
+          "CUENTA INACTIVA",
+          "CUENTA NO VALIDA",
+          "SALDO INSUFICIENTE"
+        ]
+      },
+      {
+        "reference": "RULE-008",
+        "found": "RULE-017",
+        "missing_values": [
+          "G"
+        ]
+      },
+      {
+        "reference": "RULE-010",
+        "found": "RULE-006",
+        "missing_values": [
+          "PF3",
+          "SESION TERMINADA"
+        ]
+      }
+    ],
+    "known_bias": null,
+    "recall": 0.9,
+    "precision": 0.529
+  },
+  "model_calls": 51,
+  "cost_usd": "1.87611200",
+  "decisions": [
+    "questions",
+    "C1",
+    "C2",
+    "C3",
+    "C4"
+  ],
+  "different_cases": {}
+}
