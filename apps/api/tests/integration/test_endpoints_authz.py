@@ -57,6 +57,7 @@ from .run_support import (
     make_config,
     make_project,
     make_run,
+    seed_graph,
     seed_proposal,
     seed_screens,
     seed_spec,
@@ -410,6 +411,13 @@ class Ctx:
         await self.sync_authz()
         return project_id, comment_id, proposal_id
 
+    async def graph_project(self) -> uuid.UUID:
+        """A fresh project of tenant A with the fictitious CICS application in the knowledge graph."""
+        project_id = await make_project(self.owner, self.world.tenant_a)
+        await seed_graph(self.owner, SETTINGS, self.world.tenant_a, project_id)
+        await self.sync_authz()
+        return project_id
+
     async def verified_project(self) -> tuple[uuid.UUID, uuid.UUID]:
         """A fresh project of tenant A with rules, generated code and a verdict with its proof pack."""
         project_id = await make_project(self.owner, self.world.tenant_a)
@@ -686,6 +694,13 @@ async def _edit_screen(ctx: Ctx) -> Request:
     return f"/api/v1/projects/{project_id}/screens/SCR-PAGORES", {**data, "name": "Resultado"}
 
 
+def _graph(suffix: str) -> Callable[[Ctx], Awaitable[Request]]:
+    async def make(ctx: Ctx) -> Request:
+        return f"/api/v1/projects/{await ctx.graph_project()}{suffix}", None
+
+    return make
+
+
 def _verified(suffix: str) -> Callable[[Ctx], Awaitable[Request]]:
     async def make(ctx: Ctx) -> Request:
         project_id, verdict_id = await ctx.verified_project()
@@ -950,6 +965,11 @@ CASES = [
     Case(
         "POST", UI_CHAT + "/{message_id}:reject", "admin", "member",
         _screens("/screens/SCR-PAGOORD/chat/{proposal}:reject"),
+    ),
+    Case("GET", "/api/v1/projects/{project_id}/graph", "admin", "outsider", _graph("/graph")),
+    Case(
+        "GET", "/api/v1/projects/{project_id}/graph/impact", "admin", "outsider",
+        _graph("/graph/impact?node=copybook:ORDREG"),
     ),
     Case("GET", "/api/v1/projects/{project_id}/verdicts", "admin", "outsider", _verified("/verdicts")),
     Case(

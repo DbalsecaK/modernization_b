@@ -897,7 +897,7 @@
           },
           "flows": {
             "items": {
-              "$ref": "#/components/schemas/FlowOut"
+              "$ref": "#/components/schemas/nexti_api__projects__catalog_api__FlowOut"
             },
             "title": "Flows",
             "type": "array"
@@ -2105,29 +2105,45 @@
         "title": "EffortMappingIn",
         "type": "object"
       },
-      "FlowOut": {
+      "FlowStepOut": {
         "properties": {
-          "key": {
+          "kind": {
             "enum": [
-              "modernization",
-              "newFeature"
+              "start",
+              "screen",
+              "read",
+              "write",
+              "call",
+              "transfer"
             ],
-            "title": "Key",
+            "title": "Kind",
             "type": "string"
           },
-          "phases": {
+          "nodes": {
             "items": {
-              "$ref": "#/components/schemas/PhaseOut"
+              "type": "string"
             },
-            "title": "Phases",
+            "title": "Nodes",
             "type": "array"
+          },
+          "rule": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rule"
           }
         },
         "required": [
-          "key",
-          "phases"
+          "kind",
+          "nodes",
+          "rule"
         ],
-        "title": "FlowOut",
+        "title": "FlowStepOut",
         "type": "object"
       },
       "GateDecisionIn": {
@@ -2298,6 +2314,236 @@
         "title": "GherkinProblemOut",
         "type": "object"
       },
+      "GraphEdgeOut": {
+        "properties": {
+          "detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The kind of call (LINK, XCTL, CALL) when there is one",
+            "title": "Detail"
+          },
+          "from": {
+            "title": "From",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "STARTS",
+              "CALLS",
+              "READS",
+              "WRITES",
+              "COPIES",
+              "USES_MAP"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "to": {
+            "title": "To",
+            "type": "string"
+          }
+        },
+        "required": [
+          "from",
+          "to",
+          "kind"
+        ],
+        "title": "GraphEdgeOut",
+        "type": "object"
+      },
+      "GraphNodeOut": {
+        "properties": {
+          "domain": {
+            "title": "Domain",
+            "type": "string"
+          },
+          "external": {
+            "title": "External",
+            "type": "boolean"
+          },
+          "file": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "File"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "lineEnd": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lineend"
+          },
+          "lineStart": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Linestart"
+          },
+          "loc": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Loc"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "orphan": {
+            "title": "Orphan",
+            "type": "boolean"
+          },
+          "rules": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Rules",
+            "type": "array"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          },
+          "state": {
+            "enum": [
+              "verified",
+              "generated",
+              "inProgress",
+              "pending"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "transaction",
+              "program",
+              "map",
+              "copybook",
+              "file"
+            ],
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "type",
+          "domain",
+          "state",
+          "loc",
+          "rules",
+          "source",
+          "file",
+          "lineStart",
+          "lineEnd",
+          "external",
+          "orphan"
+        ],
+        "title": "GraphNodeOut",
+        "type": "object"
+      },
+      "GraphOut": {
+        "properties": {
+          "edges": {
+            "items": {
+              "$ref": "#/components/schemas/GraphEdgeOut"
+            },
+            "title": "Edges",
+            "type": "array"
+          },
+          "flows": {
+            "items": {
+              "$ref": "#/components/schemas/nexti_api__graph__router__FlowOut"
+            },
+            "title": "Flows",
+            "type": "array"
+          },
+          "nodes": {
+            "items": {
+              "$ref": "#/components/schemas/GraphNodeOut"
+            },
+            "title": "Nodes",
+            "type": "array"
+          },
+          "rules": {
+            "items": {
+              "$ref": "#/components/schemas/GraphRuleOut"
+            },
+            "title": "Rules",
+            "type": "array"
+          }
+        },
+        "required": [
+          "nodes",
+          "edges",
+          "rules",
+          "flows"
+        ],
+        "title": "GraphOut",
+        "type": "object"
+      },
+      "GraphRuleOut": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "priority": {
+            "title": "Priority",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "priority"
+        ],
+        "title": "GraphRuleOut",
+        "type": "object"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -2309,6 +2555,33 @@
           }
         },
         "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "ImpactOut": {
+        "properties": {
+          "depth": {
+            "title": "Depth",
+            "type": "integer"
+          },
+          "impacted": {
+            "description": "The units that may break if the node changes (who uses it)",
+            "items": {
+              "type": "string"
+            },
+            "title": "Impacted",
+            "type": "array"
+          },
+          "node": {
+            "title": "Node",
+            "type": "string"
+          }
+        },
+        "required": [
+          "node",
+          "depth",
+          "impacted"
+        ],
+        "title": "ImpactOut",
         "type": "object"
       },
       "InputOut": {
@@ -7104,6 +7377,70 @@
         "title": "VersionOut",
         "type": "object"
       },
+      "nexti_api__graph__router__FlowOut": {
+        "properties": {
+          "entry": {
+            "title": "Entry",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "rules": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Rules",
+            "type": "array"
+          },
+          "steps": {
+            "items": {
+              "$ref": "#/components/schemas/FlowStepOut"
+            },
+            "title": "Steps",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "entry",
+          "rules",
+          "steps"
+        ],
+        "title": "FlowOut",
+        "type": "object"
+      },
+      "nexti_api__projects__catalog_api__FlowOut": {
+        "properties": {
+          "key": {
+            "enum": [
+              "modernization",
+              "newFeature"
+            ],
+            "title": "Key",
+            "type": "string"
+          },
+          "phases": {
+            "items": {
+              "$ref": "#/components/schemas/PhaseOut"
+            },
+            "title": "Phases",
+            "type": "array"
+          }
+        },
+        "required": [
+          "key",
+          "phases"
+        ],
+        "title": "FlowOut",
+        "type": "object"
+      },
       "nexti_api__projects__catalog_api__RuleOut": {
         "properties": {
           "key": {
@@ -9470,6 +9807,117 @@
         "summary": "Design System",
         "tags": [
           "screens"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/graph": {
+      "get": {
+        "description": "The code units with their relations, rules, migration state, orphans and business flows.",
+        "operationId": "project_graph_api_v1_projects__project_id__graph_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GraphOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Project Graph",
+        "tags": [
+          "graph"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/graph/impact": {
+      "get": {
+        "description": "What may break if the node changes (5.2): the units that use it, up to `depth` hops.",
+        "operationId": "impact_api_v1_projects__project_id__graph_impact_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "node",
+            "required": true,
+            "schema": {
+              "maxLength": 300,
+              "minLength": 3,
+              "title": "Node",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "depth",
+            "required": false,
+            "schema": {
+              "default": 3,
+              "maximum": 6,
+              "minimum": 1,
+              "title": "Depth",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImpactOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Impact",
+        "tags": [
+          "graph"
         ]
       }
     },
