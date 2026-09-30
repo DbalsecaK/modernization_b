@@ -3,22 +3,17 @@ fictitious BMS application compiles (tsc strict), bundles and passes the platfor
 that loses a field, skips a validation, breaks accessibility or does not type-check fails with the reason. Skipped
 without Docker or the image nexti-sandbox-frontend:1."""
 
-import asyncio
-import subprocess
 from pathlib import Path
-
-import pytest
 
 from nexti_adapter_bms import BmsAdapter
 from nexti_core.adapters import SourceFile
-from nexti_pack_frontend import IMAGE, ScreenContract, contract_of, openapi
+from nexti_pack_frontend import ScreenContract, contract_of, openapi
 from nexti_pack_frontend import react as pack
 from nexti_pack_frontend.build import FrontendRun, build_and_test
 from nexti_pack_spring_boot import Design
 from nexti_sandbox import DockerSandbox
 
 ROOT = Path(__file__).resolve().parents[5]
-FIXTURES = Path(__file__).parent / "fixtures" / "react"
 DESIGN = Design.model_validate_json(
     (ROOT / "packages/packs/target/spring_boot/tests/fixtures/pago_orden/design.json").read_text(encoding="utf-8")
 )
@@ -26,20 +21,11 @@ BMS = ROOT / "packages/adapters/source/bms/tests/fixtures/pagos/PAGOSET.bms"
 CONTRACTS = [contract_of(s) for s in BmsAdapter().screens([SourceFile("maps/PAGOSET.bms", BMS.read_text("utf-8"))])]
 
 
-def _image() -> bool:
-    try:
-        found = subprocess.run(["docker", "image", "inspect", IMAGE], capture_output=True, check=False, timeout=30)  # noqa: S603, S607
-    except (FileNotFoundError, subprocess.TimeoutExpired):
-        return False
-    return found.returncode == 0
+def order() -> ScreenContract:
+    return next(c for c in CONTRACTS if c.id == "SCR-PAGOORD")
 
 
-@pytest.fixture(scope="module")
-def sandbox() -> DockerSandbox:
-    box = DockerSandbox(image=IMAGE)
-    if not asyncio.run(box.available()) or not _image():
-        pytest.skip(f"Docker or the image {IMAGE} is not available")
-    return box
+FIXTURES = Path(__file__).parent / "fixtures" / "react"
 
 
 def project(pages: dict[str, str] | None = None) -> dict[str, str]:
@@ -48,10 +34,6 @@ def project(pages: dict[str, str] | None = None) -> dict[str, str]:
         files[pack.screen_path(contract)] = (FIXTURES / f"{contract.module}.tsx").read_text(encoding="utf-8")
     files.update(pages or {})
     return files
-
-
-def order() -> ScreenContract:
-    return next(c for c in CONTRACTS if c.id == "SCR-PAGOORD")
 
 
 async def run(sandbox: DockerSandbox, files: dict[str, str]) -> FrontendRun:

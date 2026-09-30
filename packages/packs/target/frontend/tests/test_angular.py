@@ -5,12 +5,25 @@ image nexti-sandbox-frontend:1."""
 
 from pathlib import Path
 
+from nexti_adapter_bms import BmsAdapter
+from nexti_core.adapters import SourceFile
+from nexti_pack_frontend import ScreenContract, contract_of, openapi
 from nexti_pack_frontend import angular as pack
-from nexti_pack_frontend import openapi
 from nexti_pack_frontend.build import FrontendRun, build_and_test
+from nexti_pack_spring_boot import Design
 from nexti_sandbox import DockerSandbox
 
-from .test_react import CONTRACTS, DESIGN, order, sandbox  # noqa: F401 - the sandbox fixture
+ROOT = Path(__file__).resolve().parents[5]
+DESIGN = Design.model_validate_json(
+    (ROOT / "packages/packs/target/spring_boot/tests/fixtures/pago_orden/design.json").read_text(encoding="utf-8")
+)
+BMS = ROOT / "packages/adapters/source/bms/tests/fixtures/pagos/PAGOSET.bms"
+CONTRACTS = [contract_of(s) for s in BmsAdapter().screens([SourceFile("maps/PAGOSET.bms", BMS.read_text("utf-8"))])]
+
+
+def order() -> ScreenContract:
+    return next(c for c in CONTRACTS if c.id == "SCR-PAGOORD")
+
 
 FIXTURES = Path(__file__).parent / "fixtures" / "angular"
 
@@ -27,7 +40,7 @@ async def run(box: DockerSandbox, files: dict[str, str]) -> FrontendRun:
     return await build_and_test(box, "angular", files, CONTRACTS)
 
 
-async def test_the_reference_screens_compile_and_pass_the_harness(sandbox: DockerSandbox) -> None:  # noqa: F811
+async def test_the_reference_screens_compile_and_pass_the_harness(sandbox: DockerSandbox) -> None:
     result = await run(sandbox, project())
     assert result.ok, result.diagnostic()
     screen = result.screen("SCR-PAGOORD")
@@ -39,7 +52,7 @@ async def test_the_reference_screens_compile_and_pass_the_harness(sandbox: Docke
     assert "payOrder" in next(c.detail for c in screen.checks if c.key == "submit")
 
 
-async def test_a_screen_that_breaks_the_contract_fails_with_the_reason(sandbox: DockerSandbox) -> None:  # noqa: F811
+async def test_a_screen_that_breaks_the_contract_fails_with_the_reason(sandbox: DockerSandbox) -> None:
     source = (FIXTURES / "pagoord.component.ts").read_text(encoding="utf-8")
     broken = (source.replace('data-field="ORDEN"', "")
               .replace("if (this.form.invalid) return", "")
@@ -53,7 +66,7 @@ async def test_a_screen_that_breaks_the_contract_fails_with_the_reason(sandbox: 
     assert "validation:" in problems
 
 
-async def test_a_template_that_does_not_type_check_does_not_compile(sandbox: DockerSandbox) -> None:  # noqa: F811
+async def test_a_template_that_does_not_type_check_does_not_compile(sandbox: DockerSandbox) -> None:
     source = (
         (FIXTURES / "pagoord.component.ts").read_text(encoding="utf-8").replace("missing('ORDEN')", "missing('NADA')")
     )
