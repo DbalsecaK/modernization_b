@@ -1015,6 +1015,7 @@ class UiChatMessage(Base):
     role: Mapped[str] = mapped_column(Text, nullable=False)
     body: Mapped[str] = mapped_column(Text, nullable=False)
     status: Mapped[str] = mapped_column(Text, nullable=False, server_default="done")
+    proposal: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))
     prototype_version: Mapped[int | None] = mapped_column(Integer)
     question_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
     created_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("app_user.id"))

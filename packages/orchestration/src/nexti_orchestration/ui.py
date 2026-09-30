@@ -5,8 +5,9 @@ person approves the UI at gate C2; changes asked through the chat produce new ve
 
 import re
 from collections.abc import Sequence
+from dataclasses import dataclass, field
 from functools import partial
-from typing import Any, Protocol
+from typing import Any, Literal, Protocol
 
 from nexti_adapter_bms import BmsAdapter
 from nexti_agents import prompt
@@ -135,3 +136,59 @@ class UiPhases:
 
     async def _design_system(self) -> dict[str, Any]:
         return {"version": await self.port.ensure_design_system()}
+
+
+# -- the change chat (D-24) --------------------------------------------------------------------------------------
+@dataclass
+class ChangeOutcome:
+    """What a change asked through the chat produced: a new version, a proposal to change the spec (new fields the
+    spec does not have), or nothing (the designer could not produce a valid prototype)."""
+
+    kind: Literal["version", "proposal", "failed"]
+    source: str = ""
+    built: PrototypeBuild | None = None
+    new_fields: list[str] = field(default_factory=list)
+    detail: str = ""
+
+
+def extra_fields(screen: ScreenSpec, source: str) -> list[str]:
+    """data-field names the prototype shows that the spec does not have (a change of spec, never applied silently)."""
+    shown = re.findall(r"""data-field\s*=\s*(?:\{\s*)?['"]([^'"]+)['"]""", source)
+    known = {f.name for f in screen.fields}
+    return sorted({name for name in shown if name not in known})
+
+
+async def change_prototype(
+    models: ModelCaller, sandbox: Sandbox, screen: ScreenSpec, screens: Sequence[ScreenSpec], previous: str,
+    change: str, *, max_iterations: int = 3,
+) -> ChangeOutcome:  # fmt: skip
+    """The designer applies a reviewer's change to the current prototype; code checks it like any prototype."""
+    request = (
+        f"{screen_request(screen, screens)}\n\nCurrent prototype:\n```tsx\n{previous}```\n\n"
+        f"Change asked by the reviewer: {change}\n\nIf the change needs a field the spec does not have, add it with "
+        "its own data-field name: the platform will propose it as a change of the screen spec."
+    )
+    messages = [{"role": "system", "content": prompt(DESIGNER)}, {"role": "user", "content": request}]
+    last = ""
+    for iteration in range(1, max_iterations + 1):
+        reply = await models.complete(DESIGNER, "ui", messages, iteration=iteration)
+        problem = ""
+        try:
+            code = tsx_block(reply.content)
+        except ReplyError as exc:
+            problem, code = str(exc), ""
+        if code:
+            missing = missing_fields(screen, code)
+            built = await build(sandbox, code) if not missing else None
+            if missing:
+                problem = "keep every field of the spec (data-field): missing " + ", ".join(missing)
+            elif built is not None and not built.ok:
+                problem = "\n".join(built.errors)[:4000]
+            else:
+                added = extra_fields(screen, code)
+                kind: Literal["version", "proposal"] = "proposal" if added else "version"
+                return ChangeOutcome(kind, code, built, added)
+        last = problem
+        messages += [{"role": "assistant", "content": reply.content},
+                     {"role": "user", "content": f"The prototype could not be used:\n{problem}\nFix it."}]  # fmt: skip
+    return ChangeOutcome("failed", detail=last)

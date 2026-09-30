@@ -43,6 +43,12 @@
 | 12 | Aceptación de punta a punta con la aplicación ficticia (grabada) |
 | 13 | CI, cierre y PR |
 
+**Desviación del paso 9.** La tabla `question` (10.4) exige una corrida y el chat no la tiene. Por eso un cambio
+que agrega campos que la spec de pantalla no tiene no genera una pregunta 10.4: queda como **propuesta en el chat**,
+con su prototipo ya compilado. Una persona con `prototipo.editar` la acepta (la spec de pantalla gana los campos
+como versión nueva y el prototipo propuesto pasa a ser versión nueva) o la rechaza. Un cambio que se mantiene
+dentro de la spec produce directamente una versión nueva. El chat nunca aprueba C2.
+
 ## 3. Criterios de aceptación → tests
 
 | Criterio | Test |

@@ -15,7 +15,7 @@ from nexti_api.main import create_app
 from nexti_api.settings import Settings
 
 from .conftest import World
-from .run_support import PROTOTYPE_TSX, fetch, make_project, seed_screens
+from .run_support import PROTOTYPE_TSX, fetch, make_project, seed_proposal, seed_screens
 from .test_runs_api import sign_in
 from .test_validation_api import store
 
@@ -114,3 +114,59 @@ async def test_comments_are_anchored_to_a_field_audited_and_resolved(
     audits = await fetch(owner_engine, "SELECT action FROM audit_log WHERE target = :t ORDER BY occurred_at",
                          t=f"project:{project_id}")  # fmt: skip
     assert [a["action"] for a in audits] == ["prototype.comment", "prototype.comment_resolve"]
+
+
+async def test_a_change_asked_in_the_chat_is_enqueued_for_the_worker_and_audited(
+    api: TestClient, app_engine: AsyncEngine, owner_engine: AsyncEngine, fga: OpenFga, world: World
+) -> None:
+    project_id = await seeded(owner_engine, app_engine, fga, world)
+    headers = sign_in(api, world.a_user)
+    chat = f"/api/v1/projects/{project_id}/screens/SCR-PAGOORD/chat"
+    asked = api.post(chat, json={"body": "Mostrar el valor con dos decimales"}, headers=headers)
+    assert asked.status_code == 202, asked.text
+    (message,) = asked.json()
+    assert (message["role"], message["status"]) == ("user", "pending")
+    assert message["author"]
+    jobs = await fetch(owner_engine, "SELECT task_name, lock, args FROM procrastinate_jobs "
+                       "WHERE args->>'message_id' = :m", m=message["id"])  # fmt: skip
+    assert [(j["task_name"], j["lock"]) for j in jobs] == [("nexti:apply_ui_change", f"ui:{project_id}:SCR-PAGOORD")]
+    assert jobs[0]["args"]["tenant_id"] == str(world.tenant_a)
+    assert api.get(chat, headers=headers).json() == asked.json()
+    assert api.post(chat, json={"body": "x"}, headers=headers).status_code == 422
+    missing = f"/api/v1/projects/{project_id}/screens/SCR-NOEXISTE/chat"
+    assert api.post(missing, json={"body": "Agregar un titulo"}, headers=headers).status_code == 404
+    audits = await fetch(owner_engine, "SELECT action FROM audit_log WHERE target = :t", t=f"project:{project_id}")
+    assert [a["action"] for a in audits] == ["prototype.change_request"]
+
+
+async def test_a_proposal_to_change_the_spec_is_accepted_or_rejected_by_a_person(
+    api: TestClient, app_engine: AsyncEngine, owner_engine: AsyncEngine, fga: OpenFga, world: World
+) -> None:
+    project_id = await seeded(owner_engine, app_engine, fga, world)
+    proposal_id = await seed_proposal(owner_engine, world.tenant_a, project_id)
+    headers = sign_in(api, world.a_user)
+    base = f"/api/v1/projects/{project_id}/screens/SCR-PAGOORD"
+    listed = api.get(f"{base}/chat", headers=headers).json()
+    assert [(m["role"], m["status"], m["proposalFields"]) for m in listed] == [
+        ("user", "done", []), ("agent", "proposal", ["EMAIL"])]  # fmt: skip
+
+    accepted = api.post(f"{base}/chat/{proposal_id}:accept", headers=headers)
+    assert accepted.status_code == 200, accepted.text
+    assert (accepted.json()[1]["status"], accepted.json()[1]["prototypeVersion"]) == ("done", 2)
+    screens = {s["key"]: s for s in api.get(f"/api/v1/projects/{project_id}/screens", headers=headers).json()}
+    assert screens["SCR-PAGOORD"]["version"] == 2
+    email = next(f for f in screens["SCR-PAGOORD"]["data"]["fields"] if f["name"] == "EMAIL")
+    assert (email["kind"], email["length"]) == ("input", 40)
+    versions = api.get(f"{base}/prototypes", headers=headers).json()
+    assert sorted((v["version"], v["origin"]) for v in versions) == [(1, "generated"), (2, "chat")]
+    again = api.post(f"{base}/chat/{proposal_id}:accept", headers=headers)
+    assert (again.status_code, again.json()["code"]) == (409, "not_a_proposal")
+
+    other = await seed_proposal(owner_engine, world.tenant_a, project_id)
+    rejected = api.post(f"{base}/chat/{other}:reject", headers=headers)
+    assert rejected.status_code == 200, rejected.text
+    assert rejected.json()[-1]["status"] == "rejected"
+    assert api.post(f"{base}/chat/{uuid.uuid4()}:reject", headers=headers).status_code == 404
+    audits = await fetch(owner_engine, "SELECT action FROM audit_log WHERE target = :t ORDER BY occurred_at",
+                         t=f"project:{project_id}")  # fmt: skip
+    assert [a["action"] for a in audits] == ["prototype.accept_proposal", "prototype.reject_proposal"]

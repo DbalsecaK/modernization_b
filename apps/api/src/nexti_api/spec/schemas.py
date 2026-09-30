@@ -232,3 +232,18 @@ class CommentOut(ApiModel):
 
 class ResolveIn(ApiModel):
     resolved: bool = True
+
+
+class ChatIn(ApiModel):
+    body: str = Field(min_length=3, max_length=2000, description="The change asked, in natural language")
+
+
+class ChatMessageOut(ApiModel):
+    id: uuid.UUID
+    role: Literal["user", "agent"]
+    body: str
+    status: Literal["pending", "done", "failed", "proposal", "rejected"]
+    proposal_fields: list[str]
+    prototype_version: int | None
+    author: str | None
+    created_at: datetime

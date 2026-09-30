@@ -57,6 +57,7 @@ from .run_support import (
     make_config,
     make_project,
     make_run,
+    seed_proposal,
     seed_screens,
     seed_spec,
     seed_validation,
@@ -392,8 +393,9 @@ class Ctx:
             ).scalar_one()
         return event_id
 
-    async def screens_project(self) -> tuple[uuid.UUID, uuid.UUID]:
-        """A fresh project of tenant A with screens, the design system, a prototype and a comment on it."""
+    async def screens_project(self) -> tuple[uuid.UUID, uuid.UUID, uuid.UUID]:
+        """A fresh project of tenant A with screens, the design system, a prototype, a comment on it and a chat
+        proposal to change its spec."""
         project_id = await make_project(self.owner, self.world.tenant_a)
         prototype_id = await seed_screens(self.owner, object_store(), self.world.tenant_a, project_id)
         async with self.owner.begin() as conn:
@@ -404,8 +406,9 @@ class Ctx:
                     {"t": self.world.tenant_a, "p": project_id, "id": prototype_id},
                 )
             ).scalar_one()  # fmt: skip
+        proposal_id = await seed_proposal(self.owner, self.world.tenant_a, project_id)
         await self.sync_authz()
-        return project_id, comment_id
+        return project_id, comment_id, proposal_id
 
     async def verified_project(self) -> tuple[uuid.UUID, uuid.UUID]:
         """A fresh project of tenant A with rules, generated code and a verdict with its proof pack."""
@@ -666,14 +669,14 @@ def _spec(suffix: str, body: dict[str, Any] | None = None) -> Callable[[Ctx], Aw
 
 def _screens(suffix: str, body: dict[str, Any] | None = None) -> Callable[[Ctx], Awaitable[Request]]:
     async def make(ctx: Ctx) -> Request:
-        project_id, comment_id = await ctx.screens_project()
-        return f"/api/v1/projects/{project_id}{suffix.format(comment=comment_id)}", body
+        project_id, comment_id, proposal_id = await ctx.screens_project()
+        return f"/api/v1/projects/{project_id}{suffix.format(comment=comment_id, proposal=proposal_id)}", body
 
     return make
 
 
 async def _edit_screen(ctx: Ctx) -> Request:
-    project_id, _ = await ctx.screens_project()
+    project_id, _, _ = await ctx.screens_project()
     async with ctx.owner.connect() as conn:
         data: dict[str, Any] = (
             await conn.execute(
@@ -692,6 +695,7 @@ def _verified(suffix: str) -> Callable[[Ctx], Awaitable[Request]]:
 
 
 PROTO = "/api/v1/projects/{project_id}/screens/{key}/prototypes/{version}"
+UI_CHAT = "/api/v1/projects/{project_id}/screens/{key}/chat"
 STORY = {"title": "Pay an order", "criteria": [VALID_CRITERION], "links": ["RULE-001"]}
 
 AI_POLICY = {"openrouterAllowed": True, "deniedUpstreamProviders": ["deepinfra"], "denyDataCollection": True}
@@ -937,6 +941,16 @@ CASES = [
         "POST", PROTO + "/comments/{comment_id}:resolve", "admin", "member",
         _screens("/screens/SCR-PAGOORD/prototypes/1/comments/{comment}:resolve", {"resolved": True}),
     ),
+    Case("GET", UI_CHAT, "admin", "outsider", _screens("/screens/SCR-PAGOORD/chat")),
+    Case("POST", UI_CHAT, "admin", "member", _screens("/screens/SCR-PAGOORD/chat", {"body": "Agregar un titulo"})),
+    Case(
+        "POST", UI_CHAT + "/{message_id}:accept", "admin", "member",
+        _screens("/screens/SCR-PAGOORD/chat/{proposal}:accept"),
+    ),
+    Case(
+        "POST", UI_CHAT + "/{message_id}:reject", "admin", "member",
+        _screens("/screens/SCR-PAGOORD/chat/{proposal}:reject"),
+    ),
     Case("GET", "/api/v1/projects/{project_id}/verdicts", "admin", "outsider", _verified("/verdicts")),
     Case(
         "GET", "/api/v1/projects/{project_id}/verdicts/{verdict_id}/proof-pack", "admin", "outsider",
@@ -1044,7 +1058,7 @@ async def test_allowed_and_denied(
         body = {"tenantId": str(world.tenant_a)}
     before = await audit_count(owner_engine)
     allowed = send(api, case.method, path, body, headers)
-    assert allowed.status_code in (200, 201, 204), allowed.text
+    assert allowed.status_code in (200, 201, 202, 204), allowed.text
     if case.method != "GET" and (case.method, case.path) not in NOT_AUDITED:
         assert await audit_count(owner_engine) > before, "a sensitive action left no audit entry"
 

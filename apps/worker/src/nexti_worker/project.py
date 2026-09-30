@@ -29,9 +29,10 @@ from nexti_orchestration.store import Usage
 from nexti_orchestration.stories import Stories
 from nexti_pack_spring_boot import Design
 from nexti_sandbox import Sandbox
-from nexti_ui import PrototypeBuild, base_tokens, page
+from nexti_ui import PrototypeBuild, base_tokens
 from nexti_verification import Verdict
 from nexti_verification.evaluation import Evaluation
+from nexti_worker.ui_chat import insert_prototype, store_draft
 
 
 class GatewayCaller:
@@ -466,27 +467,10 @@ class WorkerProjectPort:
 
     async def save_prototype(self, screen: str, source: str, built: PrototypeBuild, origin: str, notes: str) -> int:
         """The code and the page of a new prototype version in the object store; the row keeps their references."""
-        document = page(built, screen)
+        if self.objects is None:
+            raise RuntimeError("the object store is not configured")
+        keys = await store_draft(self.objects, self.run.tenant_id, self.run.project_id, screen,
+                                 f"run-{self.run.run_id}-{uuid.uuid4().hex[:8]}", source, built)  # fmt: skip
         async with self._db() as conn:
-            version = int(
-                (
-                    await conn.execute(
-                        text("SELECT COALESCE(max(version), 0) + 1 FROM prototype WHERE project_id = :p "
-                             "AND screen_key = :s"),
-                        {"p": self.run.project_id, "s": screen},
-                    )
-                ).scalar_one()
-            )  # fmt: skip
-        source_key = self._key("prototypes", screen, f"v{version}", "Screen.tsx")
-        page_key = self._key("prototypes", screen, f"v{version}", "index.html")
-        await self._put(source_key, source, "text/plain; charset=utf-8")
-        await self._put(page_key, document, "text/html; charset=utf-8")
-        async with self._db() as conn:
-            await conn.execute(
-                text("INSERT INTO prototype (tenant_id, project_id, screen_key, version, origin, source_key, "
-                     "bundle_key, bundle_sha256, notes, run_id) VALUES (:t, :p, :s, :v, :o, :sk, :bk, :h, :n, :r)"),
-                {"t": self.run.tenant_id, "p": self.run.project_id, "s": screen, "v": version, "o": origin,
-                 "sk": source_key, "bk": page_key, "h": hashlib.sha256(document.encode("utf-8")).hexdigest(),
-                 "n": notes, "r": self.run.run_id},
-            )  # fmt: skip
-        return version
+            return await insert_prototype(conn, self.run.tenant_id, self.run.project_id, screen, keys, origin, notes,
+                                          self.run.run_id)  # fmt: skip

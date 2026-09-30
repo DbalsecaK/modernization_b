@@ -328,3 +328,26 @@ async def seed_screens(owner: AsyncEngine, store: Any, tenant_id: uuid.UUID, pro
             )
         ).scalar_one()  # fmt: skip
     return prototype_id
+
+
+async def seed_proposal(owner: AsyncEngine, tenant_id: uuid.UUID, project_id: uuid.UUID) -> uuid.UUID:
+    """A change asked through the chat of SCR-PAGOORD and the designer's proposal to add a field (EMAIL) the screen
+    spec does not have; the proposed prototype points to the stored version 1. Returns the proposal message id."""
+    prefix = f"tenants/{tenant_id}/projects/{project_id}/prototypes/SCR-PAGOORD/v1"
+    proposal = {"fields": ["EMAIL"], "change": "Agregar el correo del cliente", "source_key": f"{prefix}/Screen.tsx",
+                "bundle_key": f"{prefix}/index.html", "bundle_sha256": "0" * 64}  # fmt: skip
+    async with owner.begin() as conn:
+        await conn.execute(
+            text("INSERT INTO ui_chat_message (tenant_id, project_id, screen_key, role, body, status) "
+                 "VALUES (:t, :p, 'SCR-PAGOORD', 'user', 'Agregar el correo del cliente', 'done')"),
+            {"t": tenant_id, "p": project_id},
+        )  # fmt: skip
+        message_id: uuid.UUID = (
+            await conn.execute(
+                text("INSERT INTO ui_chat_message (tenant_id, project_id, screen_key, role, body, status, proposal) "
+                     "VALUES (:t, :p, 'SCR-PAGOORD', 'agent', 'Adds EMAIL', 'proposal', CAST(:pr AS jsonb)) "
+                     "RETURNING id"),
+                {"t": tenant_id, "p": project_id, "pr": json.dumps(proposal)},
+            )
+        ).scalar_one()  # fmt: skip
+    return message_id

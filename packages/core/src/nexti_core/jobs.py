@@ -40,3 +40,18 @@ async def defer_run(conn: AsyncConnection, run_id: uuid.UUID, tenant_id: uuid.UU
     except IntegrityError:
         return False
     return True
+
+
+UI_CHANGE_TASK = "nexti:apply_ui_change"
+
+
+async def defer_ui_change(
+    conn: AsyncConnection, message_id: uuid.UUID, tenant_id: uuid.UUID, project_id: uuid.UUID, screen: str
+) -> None:
+    """Enqueue a change asked through the prototype chat (D-24) in the caller's transaction. The changes of one
+    screen run one after the other (each starts from the version the previous one produced)."""
+    args = json.dumps({"message_id": str(message_id), "tenant_id": str(tenant_id)})
+    lock = f"ui:{project_id}:{screen}"
+    await conn.execute(
+        _DEFER, {"queue": RUNS_QUEUE, "task": UI_CHANGE_TASK, "lock": lock, "queueing_lock": None, "args": args}
+    )

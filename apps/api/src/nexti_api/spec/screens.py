@@ -18,6 +18,8 @@ from nexti_api.authz.require import Authorized, require_project
 from nexti_api.errors import ProblemError
 from nexti_api.projects import services
 from nexti_api.spec.schemas import (
+    ChatIn,
+    ChatMessageOut,
     CommentIn,
     CommentOut,
     DesignSystemOut,
@@ -25,6 +27,7 @@ from nexti_api.spec.schemas import (
     ResolveIn,
     RuleOut,
 )
+from nexti_core.jobs import defer_ui_change
 from nexti_core.spec.screens import ScreenSpec
 
 router = APIRouter(prefix="/api/v1/projects/{project_id}", tags=["screens"])
@@ -298,3 +301,153 @@ async def resolve_comment(
             {"comment": str(comment_id), "resolved": body.resolved},
         )
     return CommentOut.model_validate({**dict(row), "author": None})
+
+
+# -- the change chat (D-24) --------------------------------------------------------------------------------------
+async def _messages(conn: AsyncConnection, project_id: uuid.UUID, key: str) -> list[ChatMessageOut]:
+    rows = await conn.execute(
+        text(
+            "SELECT m.id, m.role, m.body, m.status, m.proposal, m.prototype_version, m.created_at, "
+            "u.display_name AS author FROM ui_chat_message m LEFT JOIN app_user u ON u.id = m.created_by "
+            "WHERE m.project_id = :p AND m.screen_key = :k ORDER BY m.created_at, m.role DESC"
+        ),
+        {"p": project_id, "k": key},
+    )
+    return [
+        ChatMessageOut.model_validate({**dict(r), "proposal_fields": list((r["proposal"] or {}).get("fields", []))})
+        for r in rows.mappings()
+    ]
+
+
+@router.get("/screens/{key}/chat", response_model=list[ChatMessageOut])
+async def chat(request: Request, project_id: uuid.UUID, key: str, auth: ViewProject) -> list[ChatMessageOut]:
+    async with transaction(request, auth) as conn:
+        return await _messages(conn, project_id, key)
+
+
+@router.post("/screens/{key}/chat", response_model=list[ChatMessageOut], status_code=202)
+async def ask_change(
+    request: Request, project_id: uuid.UUID, key: str, body: ChatIn, auth: EditPrototypes
+) -> list[ChatMessageOut]:
+    """Records the change and enqueues it for the UX/UI designer (the API never runs agents)."""
+    async with transaction(request, auth) as conn:
+        if not await _screens(conn, project_id, key):
+            raise not_found("screen")
+        message = (
+            await conn.execute(
+                text(
+                    "INSERT INTO ui_chat_message (tenant_id, project_id, screen_key, role, body, status, created_by) "
+                    "VALUES (:t, :p, :k, 'user', :b, 'pending', :u) RETURNING id, tenant_id"
+                ),
+                {"t": auth.tenant_id, "p": project_id, "k": key, "b": body.body, "u": auth.user_id},
+            )
+        ).one()
+        await defer_ui_change(conn, message.id, message.tenant_id, project_id, key)
+        details = {"screen": key, "message": str(message.id)}
+        await audit(conn, auth, "prototype.change_request", f"project:{project_id}", details)
+        return await _messages(conn, project_id, key)
+
+
+async def _proposal(conn: AsyncConnection, project_id: uuid.UUID, key: str, message_id: uuid.UUID) -> dict[str, Any]:
+    row = (
+        (
+            await conn.execute(
+                text(
+                    "SELECT id, status, proposal FROM ui_chat_message WHERE id = :m AND project_id = :p "
+                    "AND screen_key = :k AND role = 'agent'"
+                ),
+                {"m": message_id, "p": project_id, "k": key},
+            )
+        )
+        .mappings()
+        .one_or_none()
+    )
+    if row is None:
+        raise not_found("proposal")
+    if row["status"] != "proposal":
+        raise ProblemError(409, "not_a_proposal", "This message is not a pending proposal.")
+    return dict(row)
+
+
+@router.post("/screens/{key}/chat/{message_id}:accept", response_model=list[ChatMessageOut])
+async def accept_proposal(
+    request: Request, project_id: uuid.UUID, key: str, message_id: uuid.UUID, auth: EditPrototypes
+) -> list[ChatMessageOut]:
+    """A person accepts a change of spec proposed by the designer: the screen spec gets the new fields (a new
+    version) and the proposed prototype becomes a new version."""
+    async with transaction(request, auth) as conn:
+        proposal = (await _proposal(conn, project_id, key, message_id))["proposal"]
+        current = await _screens(conn, project_id, key)
+        if not current:
+            raise not_found("screen")
+        data = dict(current[0]["data"])
+        known = {f["name"] for f in data["fields"]}
+        added = [
+            {"name": name, "kind": "input", "label": name.replace("_", " ").title(), "length": 40}
+            for name in proposal.get("fields", [])
+            if name not in known
+        ]
+        screen = ScreenSpec.model_validate({**data, "fields": [*data["fields"], *added]})
+        version = current[0]["version"] + 1
+        await conn.execute(
+            text(
+                "INSERT INTO spec_element (tenant_id, project_id, element_type, key, version, status, data, origin, "
+                "change_note, created_by) VALUES (:t, :p, 'screen', :k, :v, 'review', CAST(:d AS jsonb), 'person', "
+                ":n, :u)"
+            ),
+            {
+                "t": auth.tenant_id,
+                "p": project_id,
+                "k": key,
+                "v": version,
+                "d": screen.model_dump_json(),
+                "n": proposal.get("change", "")[:2000],
+                "u": auth.user_id,
+            },
+        )
+        prototype_version = int(
+            (
+                await conn.execute(
+                    text(
+                        "SELECT COALESCE(max(version), 0) + 1 FROM prototype WHERE project_id = :p AND screen_key = :k"
+                    ),
+                    {"p": project_id, "k": key},
+                )
+            ).scalar_one()
+        )
+        await conn.execute(
+            text(
+                "INSERT INTO prototype (tenant_id, project_id, screen_key, version, origin, source_key, bundle_key, "
+                "bundle_sha256, notes, created_by) VALUES (:t, :p, :k, :v, 'chat', :sk, :bk, :h, :n, :u)"
+            ),
+            {
+                "t": auth.tenant_id,
+                "p": project_id,
+                "k": key,
+                "v": prototype_version,
+                "sk": proposal["source_key"],
+                "bk": proposal["bundle_key"],
+                "h": proposal["bundle_sha256"],
+                "n": proposal.get("change", "")[:2000],
+                "u": auth.user_id,
+            },
+        )
+        await conn.execute(
+            text("UPDATE ui_chat_message SET status = 'done', prototype_version = :v WHERE id = :m"),
+            {"v": prototype_version, "m": message_id},
+        )
+        details = {"screen": key, "spec_version": version, "prototype_version": prototype_version}
+        await audit(conn, auth, "prototype.accept_proposal", f"project:{project_id}", details)
+        return await _messages(conn, project_id, key)
+
+
+@router.post("/screens/{key}/chat/{message_id}:reject", response_model=list[ChatMessageOut])
+async def reject_proposal(
+    request: Request, project_id: uuid.UUID, key: str, message_id: uuid.UUID, auth: EditPrototypes
+) -> list[ChatMessageOut]:
+    async with transaction(request, auth) as conn:
+        await _proposal(conn, project_id, key, message_id)
+        await conn.execute(text("UPDATE ui_chat_message SET status = 'rejected' WHERE id = :m"), {"m": message_id})
+        details = {"screen": key, "message": str(message_id)}
+        await audit(conn, auth, "prototype.reject_proposal", f"project:{project_id}", details)
+        return await _messages(conn, project_id, key)

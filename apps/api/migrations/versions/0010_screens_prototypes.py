@@ -96,7 +96,9 @@ def upgrade() -> None:
       screen_key text NOT NULL CHECK (screen_key ~ '^SCR-[A-Z0-9][A-Z0-9_-]{0,39}$'),
       role text NOT NULL CHECK (role IN ('user', 'agent')),
       body text NOT NULL CHECK (length(body) BETWEEN 1 AND 4000),
-      status text NOT NULL DEFAULT 'done' CHECK (status IN ('pending', 'done', 'failed')),
+      status text NOT NULL DEFAULT 'done' CHECK (status IN ('pending', 'done', 'failed', 'proposal', 'rejected')),
+      -- A change that alters the spec is only proposed: the new fields and the built prototype wait for a person.
+      proposal jsonb NOT NULL DEFAULT '{}'::jsonb CHECK (jsonb_typeof(proposal) = 'object'),
       prototype_version integer,
       question_id uuid,
       created_by uuid REFERENCES app_user (id),
