@@ -6,7 +6,7 @@ import globals from 'globals'
 export default tseslint.config(
   { ignores: ['**/dist/**', '**/node_modules/**', '**/coverage/**', '**/.vite/**', 'tools/**', '.venv/**', 'apps/web/src/api/schema.d.ts'] },
   {
-    files: ['apps/web/**/*.{ts,tsx}'],
+    files: ['apps/web/**/*.{ts,tsx}', 'packages/ds/**/*.{ts,tsx}'],
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
     languageOptions: { globals: globals.browser },
     plugins: { 'react-hooks': reactHooks },
