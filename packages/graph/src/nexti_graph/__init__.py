@@ -17,14 +17,17 @@ from nexti_core.adapters import Edge, Inventory, Node
 
 LABELS = frozenset({
     "StoredProcedure", "Program", "Paragraph", "Statement", "Table", "Column", "Field", "File",
-    "Rule", "Capability", "Contract", "Story", "TestCase", "Question", "Domain",
+    "Mapset", "BmsMap",
+    "Rule", "Capability", "Contract", "Story", "TestCase", "Question", "Domain", "Screen",
     "Service", "Module", "Class", "Method", "Endpoint",
 })  # fmt: skip
 EDGE_TYPES = frozenset({
     "CALLS", "READS", "WRITES", "CONTAINS", "DECLARES", "EXEC_SQL",
     "DERIVED_FROM", "BELONGS_TO", "VERIFIES", "COVERS", "DEPENDS_ON", "IMPLEMENTS", "MAPS_TO",
 })  # fmt: skip
-CODE_LABELS = ("StoredProcedure", "Program", "Paragraph", "Statement", "Table", "Column", "Field", "File")
+CODE_LABELS = (
+    "StoredProcedure", "Program", "Paragraph", "Statement", "Table", "Column", "Field", "File", "Mapset", "BmsMap",
+)  # fmt: skip
 
 
 class GraphError(ValueError):

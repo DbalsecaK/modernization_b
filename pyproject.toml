@@ -1,6 +1,6 @@
 # Python workspace (uv). Members: the API and the shared packages (spec 19.3).
 [tool.uv.workspace]
-members = ["apps/api", "packages/core", "packages/model_gateway", "packages/agents", "packages/skills", "packages/ingest", "packages/sandbox", "packages/orchestration", "packages/adapters/source/sybase", "packages/graph", "packages/packs/target/spring_boot", "packages/verification", "apps/worker"]
+members = ["apps/api", "packages/core", "packages/model_gateway", "packages/agents", "packages/skills", "packages/ingest", "packages/sandbox", "packages/orchestration", "packages/adapters/source/sybase", "packages/adapters/source/bms", "packages/graph", "packages/packs/target/spring_boot", "packages/verification", "apps/worker"]
 
 [dependency-groups]
 dev = [
@@ -20,7 +20,7 @@ target-version = "py312"
 select = ["E", "F", "W", "I", "B", "UP", "S", "C4", "SIM", "RUF", "ASYNC", "PT"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["nexti_api", "nexti_core", "nexti_model_gateway", "nexti_agents", "nexti_skills", "nexti_ingest", "nexti_sandbox", "nexti_orchestration", "nexti_worker", "nexti_adapter_sybase", "nexti_graph", "nexti_pack_spring_boot", "nexti_verification"]
+known-first-party = ["nexti_api", "nexti_core", "nexti_model_gateway", "nexti_agents", "nexti_skills", "nexti_ingest", "nexti_sandbox", "nexti_orchestration", "nexti_worker", "nexti_adapter_sybase", "nexti_adapter_bms", "nexti_graph", "nexti_pack_spring_boot", "nexti_verification"]
 
 [tool.ruff.lint.per-file-ignores]
 "**/tests/**" = ["S101"]
@@ -28,12 +28,12 @@ known-first-party = ["nexti_api", "nexti_core", "nexti_model_gateway", "nexti_ag
 [tool.mypy]
 python_version = "3.12"
 strict = true
-mypy_path = ["apps/api/src", "packages/core/src", "packages/model_gateway/src", "packages/agents/src", "packages/skills/src", "packages/ingest/src", "packages/sandbox/src", "packages/orchestration/src", "packages/adapters/source/sybase/src", "packages/graph/src", "packages/packs/target/spring_boot/src", "packages/verification/src", "apps/worker/src"]
+mypy_path = ["apps/api/src", "packages/core/src", "packages/model_gateway/src", "packages/agents/src", "packages/skills/src", "packages/ingest/src", "packages/sandbox/src", "packages/orchestration/src", "packages/adapters/source/sybase/src", "packages/adapters/source/bms/src", "packages/graph/src", "packages/packs/target/spring_boot/src", "packages/verification/src", "apps/worker/src"]
 explicit_package_bases = true
 plugins = ["pydantic.mypy"]
 
 [tool.pytest.ini_options]
-testpaths = ["apps/api/tests", "packages/core/tests", "packages/model_gateway/tests", "packages/ingest/tests", "packages/sandbox/tests", "packages/orchestration/tests", "packages/adapters/source/sybase/tests", "packages/graph/tests", "packages/packs/target/spring_boot/tests", "packages/verification/tests", "apps/worker/tests"]
+testpaths = ["apps/api/tests", "packages/core/tests", "packages/model_gateway/tests", "packages/ingest/tests", "packages/sandbox/tests", "packages/orchestration/tests", "packages/adapters/source/sybase/tests", "packages/adapters/source/bms/tests", "packages/graph/tests", "packages/packs/target/spring_boot/tests", "packages/verification/tests", "apps/worker/tests"]
 addopts = ["--import-mode=importlib", "-ra"]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "session"
