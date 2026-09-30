@@ -121,6 +121,11 @@ class VerificationPhases:
         not_proven = [f"Declared mask {m}" for m in masks] + optional
         not_proven.append("External programs are replaced by stubs that answer as the case says; their own logic "
                           "is not verified here")  # fmt: skip
+        if master.from_traces:
+            not_proven.append(
+                "The legacy did not run on the platform: its behaviour comes from recorded traces, so "
+                "only the traced cases are compared and fresh inputs are not (PARTLY PROVEN at most)"
+            )
         verdict = checks.compute(use_case.name, found, not_proven)
         pack = build_proof_pack(verdict, golden, fresh, traces, golden_run.build.junit_xml,
                                 {"MASKS.json": masks, "SOURCE.json": {"sha256": source_digest(source),
@@ -134,6 +139,9 @@ class VerificationPhases:
         self, ctx: PhaseContext, source: list[SourceFile], master: GoldenMaster, design: Design, use_case: UseCase,
         files: dict[str, str], sandbox: Sandbox, defaults: dict[str, Any],
     ) -> tuple[list[CaseOutcome] | None, str]:  # fmt: skip
+        if master.from_traces:
+            return None, ("the golden master comes from recorded traces and the legacy does not run here, so fresh "
+                          "inputs cannot be observed on it (ADR-0015)")  # fmt: skip
         runner = self.port.legacy_runner()
         if runner is None:
             return None, "there is no engine to run the legacy with fresh inputs"

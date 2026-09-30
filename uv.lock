@@ -1381,6 +1381,7 @@ dependencies = [
     { name = "langgraph" },
     { name = "langgraph-checkpoint-postgres" },
     { name = "nexti-adapter-bms" },
+    { name = "nexti-adapter-cobol" },
     { name = "nexti-adapter-sybase" },
     { name = "nexti-agents" },
     { name = "nexti-core" },
@@ -1396,6 +1397,7 @@ requires-dist = [
     { name = "langgraph", specifier = ">=1.0" },
     { name = "langgraph-checkpoint-postgres", specifier = ">=3.0" },
     { name = "nexti-adapter-bms", editable = "packages/adapters/source/bms" },
+    { name = "nexti-adapter-cobol", editable = "packages/adapters/source/cobol" },
     { name = "nexti-adapter-sybase", editable = "packages/adapters/source/sybase" },
     { name = "nexti-agents", editable = "packages/agents" },
     { name = "nexti-core", editable = "packages/core" },
@@ -1468,6 +1470,7 @@ source = { editable = "apps/worker" }
 dependencies = [
     { name = "httpx" },
     { name = "nexti-adapter-bms" },
+    { name = "nexti-adapter-cobol" },
     { name = "nexti-adapter-sybase" },
     { name = "nexti-core" },
     { name = "nexti-graph" },
@@ -1488,6 +1491,7 @@ dependencies = [
 requires-dist = [
     { name = "httpx", specifier = ">=0.28" },
     { name = "nexti-adapter-bms", editable = "packages/adapters/source/bms" },
+    { name = "nexti-adapter-cobol", editable = "packages/adapters/source/cobol" },
     { name = "nexti-adapter-sybase", editable = "packages/adapters/source/sybase" },
     { name = "nexti-core", editable = "packages/core" },
     { name = "nexti-graph", editable = "packages/graph" },

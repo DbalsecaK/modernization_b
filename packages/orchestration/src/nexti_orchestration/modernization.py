@@ -10,8 +10,9 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Any, Protocol
 
+from nexti_adapter_cobol import CobolAdapter
 from nexti_adapter_sybase import SybaseAdapter
-from nexti_core.adapters import Inventory, SourceFile
+from nexti_core.adapters import Inventory, SourceAdapter, SourceFile
 from nexti_core.spec.model import Rule
 from nexti_orchestration.context import Attempt, NeedsAnswer, PhaseContext
 from nexti_orchestration.extraction import EXTRACTOR, VERIFIER, ModelCaller, ReplyError, consolidate, extract, review
@@ -19,7 +20,7 @@ from nexti_orchestration.model import Option, PhaseFailedError, PhaseResult, Que
 from nexti_orchestration.stories import FALLBACK_WRITER, STORY_WRITER, RuleData, Stories, derive
 from nexti_orchestration.usage import total
 
-ADAPTERS = (SybaseAdapter(),)
+ADAPTERS: tuple[SourceAdapter, ...] = (SybaseAdapter(), CobolAdapter())
 DETECT_THRESHOLD = 0.5
 
 
@@ -39,10 +40,13 @@ class ProjectPort(Protocol):
     async def save_stories(self, stories: Stories) -> None: ...
 
 
-def pick_adapter(files: list[SourceFile]) -> SybaseAdapter:
+def pick_adapter(files: list[SourceFile]) -> SourceAdapter:
     scored = sorted(((a.detect(files), a.name, a) for a in ADAPTERS), key=lambda t: (-t[0], t[1]))
     if not scored or scored[0][0] < DETECT_THRESHOLD:
-        raise PhaseFailedError("No source adapter recognises these inputs (supported in this version: Sybase ASE)")
+        raise PhaseFailedError(
+            "No source adapter recognises these inputs (supported in this version: Sybase ASE "
+            "stored procedures, COBOL/CICS with BMS maps)"
+        )
     return scored[0][2]
 
 
@@ -88,8 +92,7 @@ class ModernizationPhases:
             for problem in inventory.problems[:50]:
                 await ctx.store.event("info", "waiting", f"Inventory: {problem}"[:2000], phase=ctx.phase.key)
             metrics = inventory.metrics
-            summary = (f"{metrics.get('procedures', 0)} procedure(s), {metrics.get('statements', 0)} statements, "
-                       f"{metrics.get('tables', 0)} tables, {len(inventory.problems)} problem(s)")  # fmt: skip
+            summary = f"{inventory_summary(metrics)}, {len(inventory.problems)} problem(s)"
             return Attempt({"adapter": adapter.name, **metrics, "problems": len(inventory.problems)}, summary)
 
         attempt = await ctx.invoke(_agent(ctx, "legacy-analyst"), work, what="Inventory of the legacy")
@@ -233,10 +236,22 @@ class ModernizationPhases:
         return PhaseResult(summary="The sources have no screens: nothing to design (stored procedures only)")
 
 
+# The units of the code layer that can form a domain, whatever the language.
+UNIT_LABELS = ("StoredProcedure", "Program")
+_SUMMARY = (("procedures", "procedure(s)"), ("transactions", "transaction(s)"), ("programs", "program(s)"),
+            ("paragraphs", "paragraph(s)"), ("statements", "statements"), ("tables", "tables"), ("files", "file(s)"),
+            ("maps", "map(s)"), ("copybooks", "copybook(s)"))  # fmt: skip
+
+
+def inventory_summary(metrics: dict[str, int]) -> str:
+    """The inventory in words, with the metrics the adapter has (a procedure, a program, a transaction...)."""
+    return ", ".join(f"{metrics[key]} {label}" for key, label in _SUMMARY if key in metrics) or "nothing inventoried"
+
+
 def domain_map(inventory: Inventory) -> dict[str, list[str]]:
-    """Procedures that write the same tables form a domain (communities by shared tables, 6.1 phase 3), named after
-    the table most of them write. External procedures (called, not in the inputs) are left out."""
-    procs = [n.key for n in inventory.nodes if n.label == "StoredProcedure" and not n.properties.get("external")]
+    """Units that write the same tables or files form a domain (communities by shared data, 6.1 phase 3), named
+    after the data most of them write. External units (called, not in the inputs) are left out."""
+    procs = [n.key for n in inventory.nodes if n.label in UNIT_LABELS and not n.properties.get("external")]
     parent = {p: p for p in procs}
 
     def find(x: str) -> str:
@@ -258,6 +273,6 @@ def domain_map(inventory: Inventory) -> dict[str, list[str]]:
     named: dict[str, list[str]] = {}
     for members in domains.values():
         tables = sorted(t for t, ws in writers.items() if set(ws) & set(members))
-        name = tables[0].split(".")[-1] if tables else members[0].split(":")[-1]
+        name = tables[0].split(":")[-1].split(".")[-1] if tables else members[0].split(":")[-1]
         named[name] = sorted(members)
     return dict(sorted(named.items()))

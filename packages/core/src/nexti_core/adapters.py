@@ -83,7 +83,8 @@ class SourceAdapter(Protocol):
     def inventory(self, files: list[SourceFile]) -> Inventory: ...
 
     def types(self, files: list[SourceFile]) -> dict[str, str]:
-        """Source type -> neutral type text; unresolved types map to an empty string."""
+        """Source type (or, for record languages like COBOL, data item) -> neutral type text; unresolved types map
+        to an empty string."""
         ...
 
     def slices(self, files: list[SourceFile]) -> list[SliceView]:
@@ -98,6 +99,11 @@ class SourceAdapter(Protocol):
         self, files: list[SourceFile], file: str, ranges: list[tuple[int, int]]
     ) -> tuple[frozenset[str], frozenset[str]]:
         """Tables (or files) read and written by the code inside the line ranges."""
+        ...
+
+    def digest(self, files: list[SourceFile]) -> str:
+        """The inventory in a few lines for the agents (entry points, their inputs, the data they use, the external
+        programs they call, and how the legacy can be observed)."""
         ...
 
 

@@ -4,6 +4,7 @@ Transaction -> Program -> Map (with the BMS adapter for the maps), with copybook
 also gives the neutral types, the classification of the statements, the slices the extractor reads and the data a
 range of lines reads and writes. It never uses a model and never executes anything."""
 
+import json
 import re
 from pathlib import PurePosixPath
 
@@ -23,6 +24,7 @@ from nexti_adapter_cobol.parser import (
     parse_csd,
     parse_program,
 )
+from nexti_adapter_cobol.traces import TraceRunner, TraceSet, is_trace, load_traces
 from nexti_adapter_cobol.types import TypeMapping, to_neutral
 from nexti_core.adapters import Edge, EdgeType, Inventory, Node, SliceView, SourceFile
 from nexti_core.spec.screens import ScreenSpec
@@ -285,6 +287,46 @@ class CobolAdapter:
     def transactions(self, files: list[SourceFile]) -> list[TransactionDef]:
         return self._transactions(files)
 
+    def digest(self, files: list[SourceFile]) -> str:
+        """Transactions, programs with what they use, file records and, when the legacy cannot run, the traces the
+        golden master comes from."""
+        inventory = self.inventory(files)
+        copybooks = self._copybooks(files)
+        lines = [f"Metrics: {json.dumps(inventory.metrics)}"]
+        for node in inventory.nodes:
+            if node.label == "Transaction":
+                lines.append(f"Transaction {node.name} ({node.properties.get('description', '')})")
+            elif node.label == "Program":
+                where = f"{node.file}:{node.line_start}-{node.line_end}" if node.file else "not in the inputs: stub it"
+                lines.append(f"Program {node.name} ({where})")
+        uses = {"STARTS", "CALLS", "USES_MAP", "READS", "WRITES", "COPIES", "EXEC_CICS"}
+        for edge in inventory.edges:
+            if edge.type in uses:
+                kind = f" ({edge.properties['kind']})" if "kind" in edge.properties else ""
+                lines.append(f"{edge.source} {edge.type} {edge.target}{kind}")
+        for name in sorted({e.target.split(":", 1)[1] for e in inventory.edges if e.type == "COPIES"}):
+            book = copybooks.get(name)
+            if book is None:
+                continue
+            fields = [f"{i.name} {to_neutral(i.picture, i.usage).source}" for i in book.data
+                      if i.picture and i.name != "FILLER" and not i.name.endswith(("L", "F"))]  # fmt: skip
+            lines.append(f"Copybook {name}: " + ", ".join(fields[:40]))
+        sets, problems = load_traces(files)
+        for trace in sets:
+            lines.append(f"The legacy does not run here: the golden master of {trace.program} comes from its recorded "
+                         f"traces ({trace.file}). Use \"program\": \"{trace.program}\", the tables of the traces "
+                         "(below) and the trace names as case names; say which rules each one exercises. Inputs are "
+                         "the map fields without their I/O suffix, as the traces name them.")  # fmt: skip
+            for table in trace.schema.tables:
+                columns = ", ".join(f"{c.name} {c.type}" for c in table.columns)
+                lines.append(f"  table {table.name} (key {', '.join(table.key)}): {columns}")
+            for recorded in trace.results:
+                case, seen = recorded.case, recorded.observation
+                lines.append(f"  trace {case.name}: {case.description}; inputs {json.dumps(case.inputs)}; "
+                             f"sends {json.dumps(seen.outputs)}")  # fmt: skip
+        lines.extend(f"Trace problem: {p}" for p in problems)
+        return "\n".join(lines)
+
 
 def _kind(statement: Statement) -> str:
     if statement.cics is not None:
@@ -310,5 +352,6 @@ def _unique(edges: list[Edge]) -> list[Edge]:
 
 __all__ = [
     "CicsCommand", "CobolAdapter", "CobolError", "Copybook", "DataItem", "Paragraph", "Program", "Statement",
-    "TransactionDef", "TypeMapping", "parse_copybook", "parse_csd", "parse_program", "to_neutral",
+    "TraceRunner", "TraceSet", "TransactionDef", "TypeMapping", "is_trace", "load_traces", "parse_copybook",
+    "parse_csd", "parse_program", "to_neutral",
 ]  # fmt: skip

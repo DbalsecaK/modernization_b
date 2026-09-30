@@ -13,10 +13,11 @@ from typing import Any
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine
 
-from nexti_core.adapters import Edge, Inventory, LegacyRunner, Node, SourceFile
+from nexti_adapter_cobol import TraceRunner, is_trace
+from nexti_core.adapters import Edge, Inventory, LegacyRunner, LegacyUnavailableError, Node, SourceFile
 from nexti_core.db.session import DbScope, scoped_connection
 from nexti_core.object_store import ObjectStore
-from nexti_core.spec.characterization import GoldenMaster
+from nexti_core.spec.characterization import GoldenMaster, Suite
 from nexti_core.spec.model import Rule
 from nexti_core.spec.screens import ScreenSpec
 from nexti_graph import GraphStore, Scope
@@ -25,6 +26,7 @@ from nexti_model_gateway.gateway import CallContext, NoProfileError
 from nexti_model_gateway.service import GatewayService
 from nexti_orchestration import RunContext
 from nexti_orchestration.extraction import ModelCaller, ModelReply
+from nexti_orchestration.modernization import pick_adapter
 from nexti_orchestration.store import Usage
 from nexti_orchestration.stories import Stories
 from nexti_pack_spring_boot import Design
@@ -63,6 +65,26 @@ class GatewayCaller:
 def read_zip(data: bytes, prefix: str = "") -> list[SourceFile]:
     """The text files of an accepted archive (validated at upload by packages/ingest), with size limits."""
     return [SourceFile(path, text) for path, text in read_text_files(data, prefix)]
+
+
+class SourceRunner:
+    """The legacy runner chosen by the inputs: recorded CICS traces when the archive has them (the legacy cannot run
+    here, ADR-0015), otherwise the engine the worker was given (Sybase ASE, live or recorded)."""
+
+    def __init__(self, engine: Callable[[], LegacyRunner] | None) -> None:
+        self._engine = engine
+        self.engine = "none"
+
+    async def run(self, files: list[SourceFile], suite: Suite) -> GoldenMaster:
+        runner: LegacyRunner
+        if any(is_trace(f) for f in files):
+            runner = TraceRunner()
+        elif self._engine is not None:
+            runner = self._engine()
+        else:
+            raise LegacyUnavailableError("there is no engine to run this legacy and no recorded traces")
+        self.engine = runner.engine
+        return await runner.run(files, suite)
 
 
 class WorkerProjectPort:
@@ -286,24 +308,8 @@ class WorkerProjectPort:
         return b"".join(await self.objects.read(key)).decode("utf-8")
 
     async def inventory_digest(self) -> str:
-        from nexti_adapter_sybase import SybaseAdapter
-
         files = await self.source_files()
-        adapter = SybaseAdapter()
-        inventory = adapter.inventory(files)
-        lines = [f"Metrics: {json.dumps(inventory.metrics)}"]
-        for node in inventory.nodes:
-            if node.label == "StoredProcedure" and not node.properties.get("external"):
-                lines.append(f"Procedure {node.name} ({node.file}:{node.line_start}-{node.line_end})")
-            elif node.label == "Field":
-                lines.append(f"  parameter {node.name}: {node.properties.get('neutral_type')}"
-                             f"{' OUTPUT' if node.properties.get('output') else ''}")  # fmt: skip
-            elif node.label == "Table":
-                lines.append(f"Table {node.name}")
-        for edge in inventory.edges:
-            if edge.type in ("READS", "WRITES", "CALLS"):
-                lines.append(f"{edge.source} {edge.type} {edge.target}")
-        return "\n".join(lines)
+        return pick_adapter(files).digest(files)
 
     async def save_design(self, design: Design) -> None:
         path = "design/design.json"
@@ -361,8 +367,8 @@ class WorkerProjectPort:
 
     # -- characterization (M4) -----------------------------------------------------------------------------------
     def legacy_runner(self) -> LegacyRunner | None:
-        """The engine of the only source adapter of this version (Sybase ASE), when the worker has one."""
-        return self._legacy() if self._legacy is not None else None
+        """How this legacy is observed, chosen by its inputs (see SourceRunner)."""
+        return SourceRunner(self._legacy)
 
     async def save_golden_master(self, master: GoldenMaster) -> None:
         path = "characterization/golden_master.json"

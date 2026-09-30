@@ -20,7 +20,7 @@ from nexti_orchestration import AgentSpec, Check, PhaseSpec, RunContext, compile
 from nexti_orchestration.extraction import ModelReply
 from nexti_orchestration.graph import pending_interrupts
 from nexti_orchestration.memory import MemoryStore
-from nexti_orchestration.modernization import domain_map
+from nexti_orchestration.modernization import domain_map, inventory_summary, pick_adapter
 from nexti_orchestration.store import Usage
 from nexti_orchestration.stories import Stories
 
@@ -176,3 +176,17 @@ def test_procedures_writing_the_same_table_form_one_domain() -> None:
         Edge("proc:reporte", "WRITES", "table:db..reporte"),
     ])  # fmt: skip
     assert domain_map(inventory) == {"orden": ["proc:alta", "proc:pago"], "reporte": ["proc:reporte"]}
+
+
+def test_cobol_inputs_pick_the_cobol_adapter_and_form_domains_by_file() -> None:
+    fixtures = ROOT / "packages/adapters/source/cobol/tests/fixtures/pagos_cics"
+    files = [SourceFile(p.relative_to(fixtures).as_posix(), p.read_text(encoding="utf-8"))
+             for p in sorted(fixtures.rglob("*")) if p.suffix in (".cbl", ".cpy", ".csd", ".bms")]  # fmt: skip
+    adapter = pick_adapter(files)
+    assert adapter.name == "cobol-cics"
+    assert pick_adapter([SourceFile("sp/sp_pago_orden.sp", SOURCE)]).name == "sybase-ase"
+    inventory = adapter.inventory(files)
+    assert inventory_summary(inventory.metrics).startswith("2 transaction(s), 3 program(s), 17 paragraph(s)")
+    assert domain_map(inventory) == {
+        "CUENTAS": ["program:PAGODEB"], "ORDENES": ["program:PAGOORD"], "PAGOMNU": ["program:PAGOMNU"],
+    }  # fmt: skip
