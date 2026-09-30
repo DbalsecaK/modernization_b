@@ -13,6 +13,12 @@ export default defineConfig({
     },
   },
   resolve: {
-    alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
+    alias: {
+      '@': fileURLToPath(new URL('./src', import.meta.url)),
+      // The NexTI design system (spec 7.4), shared with the generated prototypes (ADR-0013).
+      '@nexti/ds': fileURLToPath(new URL('../../packages/ds/src', import.meta.url)),
+    },
+    // Code outside apps/web (the design system) uses the web's React.
+    dedupe: ['react', 'react-dom'],
   },
 })

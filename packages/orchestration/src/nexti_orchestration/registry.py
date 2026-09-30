@@ -13,6 +13,7 @@ from nexti_orchestration.graph import Executor
 from nexti_orchestration.model import RunContext
 from nexti_orchestration.modernization import ModernizationPhases, ProjectPort
 from nexti_orchestration.preflight import Preflight, PreflightProbe
+from nexti_orchestration.ui import UiPhases, UiPort
 from nexti_orchestration.verification import VerificationPhases, VerificationPort
 
 
@@ -36,6 +37,8 @@ def executors_for(
             "ruleReview": phases.rule_review,
             "ui": phases.ui,
         })  # fmt: skip
+        if hasattr(port, "save_prototype"):  # a port that can also keep screens and prototypes (M5)
+            executors["ui"] = UiPhases(cast(UiPort, port)).ui
         if hasattr(port, "legacy_runner"):  # a port that can also run the legacy for the golden master
             characterization = CharacterizationPhases(cast(CharacterizationPort, port))
             executors["characterization"] = characterization.characterization

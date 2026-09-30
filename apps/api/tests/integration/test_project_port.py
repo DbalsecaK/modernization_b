@@ -13,6 +13,8 @@ import httpx
 import pytest
 from sqlalchemy.ext.asyncio import AsyncEngine
 
+from nexti_adapter_bms import BmsAdapter
+from nexti_core.adapters import SourceFile
 from nexti_core.object_store import ObjectStore, ObjectStoreConfig, input_key
 from nexti_core.spec.characterization import GoldenMaster
 from nexti_core.spec.model import Rule
@@ -21,6 +23,7 @@ from nexti_graph import GraphStore, Scope
 from nexti_model_gateway.service import GatewayService, SecretsConfig
 from nexti_orchestration.stories import Stories, StoryDraft
 from nexti_pack_spring_boot import Design
+from nexti_ui import PrototypeBuild
 from nexti_verification import compute
 from nexti_verification import verdict as checks
 from nexti_verification.evaluation import evaluate, load_reference
@@ -32,6 +35,7 @@ from .run_support import execute, fetch, make_config, make_project, make_run
 
 ROOT = Path(__file__).resolve().parents[4]
 SOURCE = (ROOT / "packages/adapters/source/sybase/tests/fixtures/pago_orden/sp_pago_orden.sp").read_bytes()
+BMS = ROOT / "packages/adapters/source/bms/tests/fixtures/pagos/PAGOSET.bms"
 
 
 def graph_settings() -> dict[str, str]:
@@ -66,8 +70,9 @@ def story(title: str, links: list[str]) -> StoryDraft:
 
 
 def test_the_zip_is_read_as_text_with_limits() -> None:
-    files = read_zip(zipped({"sp/sp_pago_orden.sp": SOURCE, "img/logo.png": b"\x89PNG\x00\x00", "notes.txt": b"hola"}))
-    assert [f.path for f in files] == ["sp/sp_pago_orden.sp", "notes.txt"]
+    files = read_zip(zipped({"sp/sp_pago_orden.sp": SOURCE, "img/logo.png": b"\x89PNG\x00\x00", "notes.txt": b"hola",
+                             "maps/PAGOSET.bms": BMS.read_bytes()}))  # fmt: skip
+    assert [f.path for f in files] == ["sp/sp_pago_orden.sp", "notes.txt", "maps/PAGOSET.bms"]
     assert files[0].text.startswith("/*")
 
 
@@ -224,6 +229,29 @@ async def test_the_port_keeps_designs_drafts_and_the_golden_master_as_references
         assert stored["reference_sha256"] == hashlib.sha256(spec_file.read_bytes()).hexdigest()
         assert stored["metrics"]["omissions_p0"] == ["RULE-001", "RULE-002", "RULE-004", "RULE-006", "RULE-007"]
         assert "statement" not in json.dumps(stored["metrics"])  # the metrics, never the content of the reference
+
+        # Screens, the design system and prototype versions (M5).
+        screens = BmsAdapter().screens([SourceFile("maps/PAGOSET.bms", BMS.read_text(encoding="utf-8"))])
+        await port.save_screens(screens)
+        await port.save_screens(screens)  # unchanged: no new version
+        assert await port.ensure_design_system() == 1
+        assert await port.ensure_design_system() == 1
+        built = PrototypeBuild(True, js="console.log(1)", css=".nx-root{}")
+        assert await port.save_prototype("SCR-PAGOORD", "export default () => null", built, "generated", "") == 1
+        assert await port.save_prototype("SCR-PAGOORD", "export default () => null", built, "chat", "agrupa") == 2
+    elements = await fetch(owner_engine, "SELECT key, version FROM spec_element WHERE project_id = :p AND "
+                           "element_type = 'screen' ORDER BY key", p=project_id)  # fmt: skip
+    assert [(e["key"], e["version"]) for e in elements] == [("SCR-PAGOMEN", 1), ("SCR-PAGOORD", 1), ("SCR-PAGORES", 1)]
+    (system,) = await fetch(owner_engine, "SELECT source, tokens FROM design_system WHERE project_id = :p",
+                            p=project_id)  # fmt: skip
+    assert system["source"] == "nexti-base"
+    assert system["tokens"]["color"]["primary"] == "#052158"
+    versions = await fetch(owner_engine, "SELECT version, origin, bundle_key FROM prototype WHERE project_id = :p "
+                           "ORDER BY version", p=project_id)  # fmt: skip
+    assert [(v["version"], v["origin"]) for v in versions] == [(1, "generated"), (2, "chat")]
+    served = b"".join(await store.read(versions[1]["bundle_key"])).decode("utf-8")
+    assert served.startswith("<!doctype html>")
+    assert "console.log(1)" in served
 
     rows = await fetch(owner_engine, "SELECT path, layer, rules, object_key FROM generated_artifact "
                                      "WHERE project_id = :p ORDER BY path", p=project_id)  # fmt: skip

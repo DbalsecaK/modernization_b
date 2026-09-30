@@ -7,8 +7,9 @@ import uuid
 import structlog
 from procrastinate import App, Blueprint, JobContext, PsycopgConnector, RetryStrategy
 
-from nexti_core.jobs import EXECUTE_RUN_TASK, RUNS_QUEUE
+from nexti_core.jobs import EXECUTE_RUN_TASK, RUNS_QUEUE, UI_CHANGE_TASK
 from nexti_worker.runner import Runtime, execute_run, fail_run
+from nexti_worker.ui_chat import apply_ui_change
 
 MAINTENANCE_QUEUE = "maintenance"
 NAMESPACE, _, TASK_NAME = EXECUTE_RUN_TASK.partition(":")
@@ -46,6 +47,17 @@ async def execute_run_task(context: JobContext, run_id: str, tenant_id: str) -> 
         raise
     finally:
         structlog.contextvars.unbind_contextvars("run_id", "job_id")
+
+
+@tasks.task(name=UI_CHANGE_TASK.partition(":")[2], queue=RUNS_QUEUE, pass_context=True)
+async def apply_ui_change_task(context: JobContext, message_id: str, tenant_id: str) -> None:
+    """A change asked through the prototype chat (D-24)."""
+    runtime = _runtime(context)
+    if runtime.gateway is None or runtime.objects is None or runtime.sandboxes is None:
+        raise RuntimeError("the prototype chat needs the model gateway, the object store and the sandbox")
+    outcome = await apply_ui_change(runtime.engine, runtime.gateway, runtime.objects, runtime.sandboxes,
+                                    uuid.UUID(message_id), uuid.UUID(tenant_id))  # fmt: skip
+    log.info("ui_change.job_done", outcome=outcome)
 
 
 @tasks.periodic(cron="* * * * * */5")

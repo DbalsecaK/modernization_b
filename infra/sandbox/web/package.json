@@ -1,0 +1,11 @@
+{
+  "name": "nexti-sandbox-web",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Build tools of the prototype sandbox (ADR-0013): exact versions, installed at image build time.",
+  "dependencies": {
+    "esbuild": "0.28.2",
+    "react": "19.3.0",
+    "react-dom": "19.3.0"
+  }
+}

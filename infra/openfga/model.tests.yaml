@@ -41,6 +41,8 @@ tuples:
   - { user: role_binding:p1_architect#assignee, relation: code_view, object: project:p1 }
   - { user: role_binding:p1_architect#assignee, relation: question_answer, object: project:p1 }
   - { user: role_binding:p1_architect#assignee, relation: plan_edit, object: project:p1 }
+  - { user: role_binding:p1_architect#assignee, relation: prototype_comment, object: project:p1 }
+  - { user: role_binding:p1_architect#assignee, relation: prototype_edit, object: project:p1 }
   - { user: role_binding:p2_architect#assignee, relation: member, object: project:p2 }
   - { user: role_binding:p2_architect#assignee, relation: gate_c3_approve, object: project:p2 }
   - { user: role_binding:p2_architect#assignee, relation: signoff_sign, object: project:p2 }
@@ -51,6 +53,7 @@ tuples:
   - { user: role_binding:p1_developer#assignee, relation: code_view, object: project:p1 }
   - { user: role_binding:p1_developer#assignee, relation: code_download, object: project:p1 }
   - { user: role_binding:p1_developer#assignee, relation: code_push, object: project:p1 }
+  - { user: role_binding:p1_developer#assignee, relation: prototype_comment, object: project:p1 }
 
   # Project owner bundle in p4.
   - { user: user:ana, relation: assignee, object: role_binding:p4_owner }
@@ -59,6 +62,8 @@ tuples:
   - { user: role_binding:p4_owner#assignee, relation: signoff_sign, object: project:p4 }
   - { user: role_binding:p4_owner#assignee, relation: story_edit, object: project:p4 }
   - { user: role_binding:p4_owner#assignee, relation: plan_edit, object: project:p4 }
+  - { user: role_binding:p4_owner#assignee, relation: prototype_comment, object: project:p4 }
+  - { user: role_binding:p4_owner#assignee, relation: prototype_edit, object: project:p4 }
 
 tests:
   - name: a project role applies only to the project where it was assigned
@@ -168,3 +173,21 @@ tests:
       - user: user:ana
         object: project:p1
         assertions: { story_edit: false, plan_edit: false }
+
+  - name: prototypes are commented by every project role and changed by the design roles (M5)
+    check:
+      - user: user:luis
+        object: project:p1
+        assertions: { prototype_comment: true, prototype_edit: true }
+      - user: user:carlos
+        object: project:p1
+        assertions: { prototype_comment: true, prototype_edit: false }
+      - user: user:ana
+        object: project:p4
+        assertions: { prototype_comment: true, prototype_edit: true }
+      - user: user:maria
+        object: project:p2
+        assertions: { prototype_comment: true, prototype_edit: true }
+      - user: user:ana
+        object: project:p1
+        assertions: { prototype_comment: false, prototype_edit: false }

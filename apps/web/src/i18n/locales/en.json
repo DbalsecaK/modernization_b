@@ -602,7 +602,7 @@
     "none": "No test yet"
   },
   "uiDesign": {
-    "fromBms": "The screen specification was read from the BMS map. The prototype below was proposed by the UX/UI designer agent with the NexTI base design system.",
+    "fromBms": "The screen specs were read from the BMS maps with position, length and attributes. The UX/UI designer agent proposed a prototype per screen with the project's design system; code checked it compiles and shows every field.",
     "fromFigma": "Screens come from the Figma file and screenshots. Gaps (missing states, validations) were turned into questions.",
     "legacyScreen": "Legacy screen (3270)",
     "inputScreen": "Input screen",
@@ -645,7 +645,56 @@
         "figma": "Figma",
         "prototype": "Prototype"
       }
-    }
+    },
+    "loading": "Loading screens…",
+    "loadError": "The screens could not be loaded",
+    "emptyTitle": "No screens yet",
+    "notYet": "They appear when a run executes the UI phase on sources with BMS maps.",
+    "catalog": "Screen catalog",
+    "catalogHint": "{{count}} screens read from the mapsets {{mapsets}}",
+    "fieldCount_one": "{{count}} field",
+    "fieldCount_other": "{{count}} fields",
+    "version": "Version",
+    "source": "View code",
+    "origins": {
+      "generated": "generated",
+      "chat": "chat"
+    },
+    "frameTitle": "Prototype of {{screen}}, version {{version}}",
+    "frameError": "The prototype failed: {{message}}",
+    "noPrototype": "This screen has no prototype yet.",
+    "versionMeta": "Created {{date}}",
+    "linkHint": "Click a field here or in the prototype to link it with the spec and the comments.",
+    "fields": "Spec fields",
+    "fieldsHint": "What the prototype must show, read from the map",
+    "field": "Field",
+    "kind": "Kind",
+    "position": "Position",
+    "length": "Length",
+    "attributes": "Attributes",
+    "kinds": {
+      "input": "Input",
+      "output": "Output",
+      "literal": "Literal"
+    },
+    "designSystemMeta": "Version {{version}} · {{source}}",
+    "dsSources": {
+      "nexti-base": "NexTI base",
+      "client-brand": "client brand"
+    },
+    "commentsHint": "On version v{{version}}",
+    "noComments": "No comments on this version.",
+    "someone": "Someone",
+    "resolve": "Resolve",
+    "reopen": "Reopen",
+    "anchor": "Comment field",
+    "wholeScreen": "Whole screen",
+    "commentPlaceholder": "Write a comment",
+    "addComment": "Comment",
+    "commentFailed": "The comment could not be saved.",
+    "c2Title": "UI approval (C2)",
+    "c2Hint": "A person approves the UI; the chat never does",
+    "c2InRuns": "Gate C2 is approved in the run, in the Runs tab."
   },
   "architecture": {
     "contexts": "Bounded contexts",
@@ -1926,7 +1975,13 @@
       "mobile": "Make it work on mobile",
       "errors": "Add the error states",
       "brand": "Apply the customer's brand colors"
-    }
+    },
+    "empty": "Ask for a change and the UX/UI designer will produce a new version.",
+    "failed": "The change could not be sent.",
+    "readOnly": "Your role can see the chat but not ask for changes.",
+    "accept": "Accept",
+    "reject": "Reject",
+    "rejected": "Proposal rejected."
   },
   "setup": {
     "documents": "Documents and user stories",

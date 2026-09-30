@@ -1,0 +1,19 @@
+{
+  "model": "anthropic/claude-sonnet-5.5",
+  "mode": "record",
+  "screens": [
+    "SCR-PAGOMEN",
+    "SCR-PAGOORD",
+    "SCR-PAGORES"
+  ],
+  "fields": 16,
+  "data_fields_shown": {
+    "SCR-PAGOMEN": 3,
+    "SCR-PAGOORD": 9,
+    "SCR-PAGORES": 4
+  },
+  "self_corrected": 0,
+  "chat_outcome": "version",
+  "model_calls": 4,
+  "cost_usd": "0.18742800"
+}

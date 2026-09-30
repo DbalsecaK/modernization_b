@@ -24,7 +24,7 @@ PROJECT_TABLES = ("project_config", "project_agent", "project_skill", "input_art
 RUN_TABLES = ("run", "phase_run", "agent_invocation", "gate", "question", "activity_event")
 SPEC_TABLES = (
     "spec_element", "user_story", "user_story_version", "story_dependency", "migration_plan", "generated_artifact",
-    "verdict", "evaluation",
+    "verdict", "evaluation", "design_system", "prototype", "prototype_comment", "ui_chat_message",
 )  # fmt: skip
 RLS_TABLES = ("tenant", "app_user", *TENANT_TABLES, *AI_TABLES, *PROJECT_TABLES, *RUN_TABLES, *SPEC_TABLES)
 

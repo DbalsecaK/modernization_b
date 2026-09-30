@@ -284,3 +284,70 @@ async def seed_validation(owner: AsyncEngine, store: Any, tenant_id: uuid.UUID, 
             )
         ).scalar_one()  # fmt: skip
     return verdict_id
+
+
+BMS_SOURCE = Path(__file__).resolve().parents[4] / "packages/adapters/source/bms/tests/fixtures/pagos/PAGOSET.bms"
+PROTOTYPE_TSX = "export default function Prototype() { return null }\n"
+
+
+async def seed_screens(owner: AsyncEngine, store: Any, tenant_id: uuid.UUID, project_id: uuid.UUID) -> uuid.UUID:
+    """The screens of the fictitious BMS application, the NexTI base design system and version 1 of the prototype
+    of SCR-PAGOORD with its page in the object store. Returns the prototype id."""
+    import io
+
+    from nexti_adapter_bms import BmsAdapter
+    from nexti_core.adapters import SourceFile
+    from nexti_ui import PrototypeBuild, base_tokens, page
+
+    screens = BmsAdapter().screens([SourceFile("maps/PAGOSET.bms", BMS_SOURCE.read_text(encoding="utf-8"))])
+    document = page(PrototypeBuild(True, js="document.body.dataset.ready = '1'", css=".nx-root{}"), "PAGOORD")
+    source_key = f"tenants/{tenant_id}/projects/{project_id}/prototypes/SCR-PAGOORD/v1/Screen.tsx"
+    page_key = f"tenants/{tenant_id}/projects/{project_id}/prototypes/SCR-PAGOORD/v1/index.html"
+    for key, content, media in ((source_key, PROTOTYPE_TSX, "text/plain"), (page_key, document, "text/html")):
+        data = content.encode("utf-8")
+        await store.put(key, io.BytesIO(data), len(data), media)
+    async with owner.begin() as conn:
+        for screen in screens:
+            await conn.execute(
+                text("INSERT INTO spec_element (tenant_id, project_id, element_type, key, version, status, data) "
+                     "VALUES (:t, :p, 'screen', :k, 1, 'review', CAST(:d AS jsonb))"),
+                {"t": tenant_id, "p": project_id, "k": screen.id, "d": screen.model_dump_json()},
+            )  # fmt: skip
+        await conn.execute(
+            text("INSERT INTO design_system (tenant_id, project_id, version, source, tokens) "
+                 "VALUES (:t, :p, 1, 'nexti-base', CAST(:k AS jsonb))"),
+            {"t": tenant_id, "p": project_id, "k": json.dumps(base_tokens())},
+        )  # fmt: skip
+        prototype_id: uuid.UUID = (
+            await conn.execute(
+                text("INSERT INTO prototype (tenant_id, project_id, screen_key, version, origin, source_key, "
+                     "bundle_key, bundle_sha256) VALUES (:t, :p, 'SCR-PAGOORD', 1, 'generated', :sk, :bk, :h) "
+                     "RETURNING id"),
+                {"t": tenant_id, "p": project_id, "sk": source_key, "bk": page_key,
+                 "h": __import__("hashlib").sha256(document.encode("utf-8")).hexdigest()},
+            )
+        ).scalar_one()  # fmt: skip
+    return prototype_id
+
+
+async def seed_proposal(owner: AsyncEngine, tenant_id: uuid.UUID, project_id: uuid.UUID) -> uuid.UUID:
+    """A change asked through the chat of SCR-PAGOORD and the designer's proposal to add a field (EMAIL) the screen
+    spec does not have; the proposed prototype points to the stored version 1. Returns the proposal message id."""
+    prefix = f"tenants/{tenant_id}/projects/{project_id}/prototypes/SCR-PAGOORD/v1"
+    proposal = {"fields": ["EMAIL"], "change": "Agregar el correo del cliente", "source_key": f"{prefix}/Screen.tsx",
+                "bundle_key": f"{prefix}/index.html", "bundle_sha256": "0" * 64}  # fmt: skip
+    async with owner.begin() as conn:
+        await conn.execute(
+            text("INSERT INTO ui_chat_message (tenant_id, project_id, screen_key, role, body, status) "
+                 "VALUES (:t, :p, 'SCR-PAGOORD', 'user', 'Agregar el correo del cliente', 'done')"),
+            {"t": tenant_id, "p": project_id},
+        )  # fmt: skip
+        message_id: uuid.UUID = (
+            await conn.execute(
+                text("INSERT INTO ui_chat_message (tenant_id, project_id, screen_key, role, body, status, proposal) "
+                     "VALUES (:t, :p, 'SCR-PAGOORD', 'agent', 'Adds EMAIL', 'proposal', CAST(:pr AS jsonb)) "
+                     "RETURNING id"),
+                {"t": tenant_id, "p": project_id, "pr": json.dumps(proposal)},
+            )
+        ).scalar_one()  # fmt: skip
+    return message_id

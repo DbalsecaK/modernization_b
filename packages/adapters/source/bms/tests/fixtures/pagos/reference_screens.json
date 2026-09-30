@@ -1,0 +1,731 @@
+{
+ "application": "pagos (Banco Ficticio, fictitious)",
+ "note": "Reference written from the design table of the fictitious mapset (spec 21.3), independent of the parser.",
+ "maps": [
+  {
+   "map": "PAGOMEN",
+   "title": "Menu de pagos",
+   "rows": 24,
+   "columns": 80,
+   "fields": [
+    {
+     "name": "L01C02",
+     "kind": "literal",
+     "row": 1,
+     "column": 2,
+     "length": 8,
+     "attributes": [
+      "autoskip"
+     ],
+     "initial": "PAGOMEN",
+     "type": null,
+     "required": false,
+     "format": ""
+    },
+    {
+     "name": "L01C25",
+     "kind": "literal",
+     "row": 1,
+     "column": 25,
+     "length": 30,
+     "attributes": [
+      "autoskip",
+      "bright"
+     ],
+     "initial": "BANCO FICTICIO - PAGOS",
+     "type": null,
+     "required": false,
+     "format": ""
+    },
+    {
+     "name": "FECHA",
+     "kind": "output",
+     "row": 1,
+     "column": 71,
+     "length": 8,
+     "attributes": [
+      "autoskip"
+     ],
+     "initial": "",
+     "type": "text(fixed,8,ebcdic)",
+     "required": false,
+     "format": "99/99/99"
+    },
+    {
+     "name": "L04C10",
+     "kind": "literal",
+     "row": 4,
+     "column": 10,
+     "length": 30,
+     "attributes": [
+      "autoskip"
+     ],
+     "initial": "1. PAGAR UNA ORDEN",
+     "type": null,
+     "required": false,
+     "format": ""
+    },
+    {
+     "name": "L05C10",
+     "kind": "literal",
+     "row": 5,
+     "column": 10,
+     "length": 30,
+     "attributes": [
+      "autoskip"
+     ],
+     "initial": "2. CONSULTAR UNA ORDEN",
+     "type": null,
+     "required": false,
+     "format": ""
+    },
+    {
+     "name": "L08C10",
+     "kind": "literal",
+     "row": 8,
+     "column": 10,
+     "length": 16,
+     "attributes": [
+      "autoskip"
+     ],
+     "initial": "OPCION ........:",
+     "type": null,
+     "required": false,
+     "format": ""
+    },
+    {
+     "name": "OPCION",
+     "kind": "input",
+     "row": 8,
+     "column": 27,
+     "length": 1,
+     "attributes": [
+      "unprotected",
+      "numeric",
+      "cursor"
+     ],
+     "initial": "",
+     "type": "integer(16,unsigned)",
+     "required": true,
+     "format": "9"
+    },
+    {
+     "name": "L08C29",
+     "kind": "literal",
+     "row": 8,
+     "column": 29,
+     "length": 1,
+     "attributes": [
+      "autoskip"
+     ],
+     "initial": "",
+     "type": null,
+     "required": false,
+     "format": ""
+    },
+    {
+     "name": "MENSAJE",
+     "kind": "output",
+     "row": 22,
+     "column": 2,
+     "length": 78,
+     "attributes": [
+      "autoskip",
+      "bright"
+     ],
+     "initial": "",
+     "type": "text(fixed,78,ebcdic)",
+     "required": false,
+     "format": ""
+    },
+    {
+     "name": "L24C02",
+     "kind": "literal",
+     "row": 24,
+     "column": 2,
+     "length": 40,
+     "attributes": [
+      "autoskip"
+     ],
+     "initial": "ENTER=CONTINUAR  PF3=SALIR",
+     "type": null,
+     "required": false,
+     "format": ""
+    }
+   ]
+  },
+  {
+   "map": "PAGOORD",
+   "title": "Pago de una orden",
+   "rows": 24,
+   "columns": 80,
+   "fields": [
+    {
+     "name": "L01C02",
+     "kind": "literal",
+     "row": 1,
+     "column": 2,
+     "length": 8,
+     "attributes": [
+      "autoskip"
+     ],
+     "initial": "PAGOORD",
+     "type": null,
+     "required": false,
+     "format": ""
+    },
+    {
+     "name": "L01C25",
+     "kind": "literal",
+     "row": 1,
+     "column": 25,
+     "length": 30,
+     "attributes": [
+      "autoskip",
+      "bright"
+     ],
+     "initial": "PAGO DE ORDENES",
+     "type": null,
+     "required": false,
+     "format": ""
+    },
+    {
+     "name": "L04C05",
+     "kind": "literal",
+     "row": 4,
+     "column": 5,
+     "length": 20,
+     "attributes": [
+      "autoskip"
+     ],
+     "initial": "NUMERO DE ORDEN ...:",
+     "type": null,
+     "required": false,
+     "format": ""
+    },
+    {
+     "name": "ORDEN",
+     "kind": "input",
+     "row": 4,
+     "column": 26,
+     "length": 7,
+     "attributes": [
+      "unprotected",
+      "numeric",
+      "cursor",
+      "modified"
+     ],
+     "initial": "",
+     "type": "integer(32,unsigned)",
+     "required": true,
+     "format": "9(7)"
+    },
+    {
+     "name": "L04C34",
+     "kind": "literal",
+     "row": 4,
+     "column": 34,
+     "length": 1,
+     "attributes": [
+      "autoskip"
+     ],
+     "initial": "",
+     "type": null,
+     "required": false,
+     "format": ""
+    },
+    {
+     "name": "L05C05",
+     "kind": "literal",
+     "row": 5,
+     "column": 5,
+     "length": 20,
+     "attributes": [
+      "autoskip"
+     ],
+     "initial": "EMPRESA ...........:",
+     "type": null,
+     "required": false,
+     "format": ""
+    },
+    {
+     "name": "EMPRESA",
+     "kind": "input",
+     "row": 5,
+     "column": 26,
+     "length": 5,
+     "attributes": [
+      "unprotected",
+      "numeric"
+     ],
+     "initial": "",
+     "type": "integer(32,unsigned)",
+     "required": true,
+     "format": "9(5)"
+    },
+    {
+     "name": "L05C32",
+     "kind": "literal",
+     "row": 5,
+     "column": 32,
+     "length": 1,
+     "attributes": [
+      "autoskip"
+     ],
+     "initial": "",
+     "type": null,
+     "required": false,
+     "format": ""
+    },
+    {
+     "name": "L06C05",
+     "kind": "literal",
+     "row": 6,
+     "column": 5,
+     "length": 20,
+     "attributes": [
+      "autoskip"
+     ],
+     "initial": "SERVICIO ..........:",
+     "type": null,
+     "required": false,
+     "format": ""
+    },
+    {
+     "name": "SERVIC",
+     "kind": "input",
+     "row": 6,
+     "column": 26,
+     "length": 10,
+     "attributes": [
+      "unprotected"
+     ],
+     "initial": "",
+     "type": "text(fixed,10,ebcdic)",
+     "required": false,
+     "format": ""
+    },
+    {
+     "name": "L06C37",
+     "kind": "literal",
+     "row": 6,
+     "column": 37,
+     "length": 1,
+     "attributes": [
+      "autoskip"
+     ],
+     "initial": "",
+     "type": null,
+     "required": false,
+     "format": ""
+    },
+    {
+     "name": "L07C05",
+     "kind": "literal",
+     "row": 7,
+     "column": 5,
+     "length": 20,
+     "attributes": [
+      "autoskip"
+     ],
+     "initial": "TIPO DE CUENTA ....:",
+     "type": null,
+     "required": false,
+     "format": ""
+    },
+    {
+     "name": "TIPCTA",
+     "kind": "input",
+     "row": 7,
+     "column": 26,
+     "length": 3,
+     "attributes": [
+      "unprotected"
+     ],
+     "initial": "",
+     "type": "text(fixed,3,ebcdic)",
+     "required": false,
+     "format": ""
+    },
+    {
+     "name": "L07C30",
+     "kind": "literal",
+     "row": 7,
+     "column": 30,
+     "length": 1,
+     "attributes": [
+      "autoskip"
+     ],
+     "initial": "",
+     "type": null,
+     "required": false,
+     "format": ""
+    },
+    {
+     "name": "L08C05",
+     "kind": "literal",
+     "row": 8,
+     "column": 5,
+     "length": 20,
+     "attributes": [
+      "autoskip"
+     ],
+     "initial": "CUENTA ............:",
+     "type": null,
+     "required": false,
+     "format": ""
+    },
+    {
+     "name": "CUENTA",
+     "kind": "input",
+     "row": 8,
+     "column": 26,
+     "length": 10,
+     "attributes": [
+      "unprotected",
+      "numeric"
+     ],
+     "initial": "",
+     "type": "integer(64,unsigned)",
+     "required": false,
+     "format": "9(10)"
+    },
+    {
+     "name": "L08C37",
+     "kind": "literal",
+     "row": 8,
+     "column": 37,
+     "length": 1,
+     "attributes": [
+      "autoskip"
+     ],
+     "initial": "",
+     "type": null,
+     "required": false,
+     "format": ""
+    },
+    {
+     "name": "L09C05",
+     "kind": "literal",
+     "row": 9,
+     "column": 5,
+     "length": 20,
+     "attributes": [
+      "autoskip"
+     ],
+     "initial": "VALOR .............:",
+     "type": null,
+     "required": false,
+     "format": ""
+    },
+    {
+     "name": "VALOR",
+     "kind": "input",
+     "row": 9,
+     "column": 26,
+     "length": 11,
+     "attributes": [
+      "unprotected",
+      "numeric"
+     ],
+     "initial": "",
+     "type": "decimal(11,2,unsigned)",
+     "required": false,
+     "format": "9(9)V99"
+    },
+    {
+     "name": "L09C38",
+     "kind": "literal",
+     "row": 9,
+     "column": 38,
+     "length": 1,
+     "attributes": [
+      "autoskip"
+     ],
+     "initial": "",
+     "type": null,
+     "required": false,
+     "format": ""
+    },
+    {
+     "name": "L10C05",
+     "kind": "literal",
+     "row": 10,
+     "column": 5,
+     "length": 20,
+     "attributes": [
+      "autoskip"
+     ],
+     "initial": "CANAL (WEB/OFI) ...:",
+     "type": null,
+     "required": false,
+     "format": ""
+    },
+    {
+     "name": "CANAL",
+     "kind": "input",
+     "row": 10,
+     "column": 26,
+     "length": 3,
+     "attributes": [
+      "unprotected"
+     ],
+     "initial": "WEB",
+     "type": "text(fixed,3,ebcdic)",
+     "required": false,
+     "format": ""
+    },
+    {
+     "name": "L10C30",
+     "kind": "literal",
+     "row": 10,
+     "column": 30,
+     "length": 1,
+     "attributes": [
+      "autoskip"
+     ],
+     "initial": "",
+     "type": null,
+     "required": false,
+     "format": ""
+    },
+    {
+     "name": "L11C05",
+     "kind": "literal",
+     "row": 11,
+     "column": 5,
+     "length": 20,
+     "attributes": [
+      "autoskip"
+     ],
+     "initial": "CLAVE DE APROBACION:",
+     "type": null,
+     "required": false,
+     "format": ""
+    },
+    {
+     "name": "CLAVE",
+     "kind": "input",
+     "row": 11,
+     "column": 26,
+     "length": 6,
+     "attributes": [
+      "unprotected",
+      "dark"
+     ],
+     "initial": "",
+     "type": "text(fixed,6,ebcdic)",
+     "required": false,
+     "format": ""
+    },
+    {
+     "name": "L11C33",
+     "kind": "literal",
+     "row": 11,
+     "column": 33,
+     "length": 1,
+     "attributes": [
+      "autoskip"
+     ],
+     "initial": "",
+     "type": null,
+     "required": false,
+     "format": ""
+    },
+    {
+     "name": "MENSAJE",
+     "kind": "output",
+     "row": 22,
+     "column": 2,
+     "length": 78,
+     "attributes": [
+      "autoskip",
+      "bright"
+     ],
+     "initial": "",
+     "type": "text(fixed,78,ebcdic)",
+     "required": false,
+     "format": ""
+    },
+    {
+     "name": "L24C02",
+     "kind": "literal",
+     "row": 24,
+     "column": 2,
+     "length": 75,
+     "attributes": [
+      "autoskip"
+     ],
+     "initial": "ENTER=PAGAR  PF3=VOLVER  PF12=CANCELAR - LOS CAMPOS CON * SON OBLIGATORIOS",
+     "type": null,
+     "required": false,
+     "format": ""
+    }
+   ]
+  },
+  {
+   "map": "PAGORES",
+   "title": "Resultado del pago",
+   "rows": 24,
+   "columns": 80,
+   "fields": [
+    {
+     "name": "L01C02",
+     "kind": "literal",
+     "row": 1,
+     "column": 2,
+     "length": 8,
+     "attributes": [
+      "autoskip"
+     ],
+     "initial": "PAGORES",
+     "type": null,
+     "required": false,
+     "format": ""
+    },
+    {
+     "name": "L01C25",
+     "kind": "literal",
+     "row": 1,
+     "column": 25,
+     "length": 30,
+     "attributes": [
+      "autoskip",
+      "bright"
+     ],
+     "initial": "RESULTADO DEL PAGO",
+     "type": null,
+     "required": false,
+     "format": ""
+    },
+    {
+     "name": "L04C05",
+     "kind": "literal",
+     "row": 4,
+     "column": 5,
+     "length": 20,
+     "attributes": [
+      "autoskip"
+     ],
+     "initial": "ORDEN .............:",
+     "type": null,
+     "required": false,
+     "format": ""
+    },
+    {
+     "name": "RORDEN",
+     "kind": "output",
+     "row": 4,
+     "column": 26,
+     "length": 7,
+     "attributes": [
+      "autoskip"
+     ],
+     "initial": "",
+     "type": "integer(32,unsigned)",
+     "required": false,
+     "format": "9(7)"
+    },
+    {
+     "name": "L05C05",
+     "kind": "literal",
+     "row": 5,
+     "column": 5,
+     "length": 20,
+     "attributes": [
+      "autoskip"
+     ],
+     "initial": "COMISION ..........:",
+     "type": null,
+     "required": false,
+     "format": ""
+    },
+    {
+     "name": "RCOMIS",
+     "kind": "output",
+     "row": 5,
+     "column": 26,
+     "length": 10,
+     "attributes": [
+      "autoskip"
+     ],
+     "initial": "",
+     "type": "decimal(8,2,unsigned)",
+     "required": false,
+     "format": "ZZZ,ZZ9.99"
+    },
+    {
+     "name": "L06C05",
+     "kind": "literal",
+     "row": 6,
+     "column": 5,
+     "length": 20,
+     "attributes": [
+      "autoskip"
+     ],
+     "initial": "MOVIMIENTO ........:",
+     "type": null,
+     "required": false,
+     "format": ""
+    },
+    {
+     "name": "RMOVIM",
+     "kind": "output",
+     "row": 6,
+     "column": 26,
+     "length": 10,
+     "attributes": [
+      "autoskip"
+     ],
+     "initial": "",
+     "type": "integer(64,unsigned)",
+     "required": false,
+     "format": "Z(9)9"
+    },
+    {
+     "name": "L07C05",
+     "kind": "literal",
+     "row": 7,
+     "column": 5,
+     "length": 20,
+     "attributes": [
+      "autoskip"
+     ],
+     "initial": "RESULTADO .........:",
+     "type": null,
+     "required": false,
+     "format": ""
+    },
+    {
+     "name": "RMENS",
+     "kind": "output",
+     "row": 7,
+     "column": 26,
+     "length": 40,
+     "attributes": [
+      "autoskip",
+      "bright"
+     ],
+     "initial": "",
+     "type": "text(fixed,40,ebcdic)",
+     "required": false,
+     "format": ""
+    },
+    {
+     "name": "L24C02",
+     "kind": "literal",
+     "row": 24,
+     "column": 2,
+     "length": 40,
+     "attributes": [
+      "autoskip"
+     ],
+     "initial": "ENTER=NUEVO PAGO  PF3=MENU",
+     "type": null,
+     "required": false,
+     "format": ""
+    }
+   ]
+  }
+ ]
+}
