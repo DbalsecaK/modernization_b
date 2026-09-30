@@ -1,29 +1,41 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Bot, Image, Loader2, Paperclip, Send, UserRound } from 'lucide-react'
+import { AlertTriangle, Bot, Check, Loader2, Send, UserRound, X } from 'lucide-react'
 import { cn } from '@/lib/cn'
+import { ApiError } from '@/api/client'
+import { useAskChange, useChat, useDecideProposal, type ChatMessage } from '@/api/screens'
 import { Badge, Button, Card, CardHeader } from '@/components/ui/primitives'
 
-// Chat with the UX/UI designer agent to request prototype changes (spec 7.4). Each accepted request produces
-// a new prototype version; the history stays linked to the screen specification.
+// Chat with the UX/UI designer agent to request prototype changes (spec 7.4, D-24), connected to the API: each
+// request is enqueued for the worker; a change within the screen spec comes back as a new prototype version, one
+// that adds fields the spec does not have comes back as a proposal a person accepts or rejects here. The chat never
+// approves C2.
 
-type Message = { id: number; from: 'user' | 'agent'; text: string; version?: number; attachment?: string }
-
-export function PrototypeChat({ screen }: { screen: string }) {
+export function PrototypeChat({
+  projectId,
+  screen,
+  title,
+  version,
+  canEdit,
+}: {
+  projectId: string
+  screen: string
+  title: string
+  version: number | null
+  canEdit: boolean
+}) {
   const { t } = useTranslation()
-  const [version, setVersion] = useState(2)
   const [text, setText] = useState('')
-  const [busy, setBusy] = useState(false)
-  const [attachment, setAttachment] = useState<string | null>(null)
-  const [messages, setMessages] = useState<Message[]>([
-    { id: 1, from: 'user', text: 'Move the credit limit next to the current balance.' },
-    { id: 2, from: 'agent', text: 'Done. Limits and balances are now grouped in one "Balances" section.', version: 2 },
-  ])
+  const chat = useChat(projectId, screen)
+  const ask = useAskChange(projectId, screen)
+  const decide = useDecideProposal(projectId, screen)
+  const messages = chat.data ?? []
+  const busy = messages.some((m) => m.status === 'pending') || ask.isPending
   const list = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     list.current?.scrollTo({ top: list.current.scrollHeight })
-  }, [messages, busy])
+  }, [messages.length, busy])
 
   const suggestions = [
     t('protoChat.suggest.fields'),
@@ -34,112 +46,148 @@ export function PrototypeChat({ screen }: { screen: string }) {
 
   function send(value: string) {
     const request = value.trim()
-    if (!request || busy) return
-    const next = version + 1
-    setMessages((m) => [...m, { id: Date.now(), from: 'user', text: request, attachment: attachment ?? undefined }])
-    setText('')
-    setAttachment(null)
-    setBusy(true)
-    window.setTimeout(() => {
-      setMessages((m) => [
-        ...m,
-        { id: Date.now() + 1, from: 'agent', text: t('protoChat.reply', { request, version: next }), version: next },
-      ])
-      setVersion(next)
-      setBusy(false)
-    }, 1400)
+    if (request.length < 3 || busy || !canEdit) return
+    ask.mutate(request, { onSuccess: () => setText('') })
   }
+
+  const error = ask.error ?? decide.error
 
   return (
     <Card className="flex h-[480px] flex-col">
       <CardHeader
         title={t('protoChat.title')}
-        subtitle={t('protoChat.subtitle', { screen })}
-        action={<Badge tone="info">v{version}</Badge>}
+        subtitle={t('protoChat.subtitle', { screen: title })}
+        action={version ? <Badge tone="info">v{version}</Badge> : undefined}
       />
-      <div ref={list} className="flex-1 space-y-3 overflow-y-auto px-5 py-4">
+      <div ref={list} className="flex-1 space-y-3 overflow-y-auto px-5 py-4" aria-live="polite">
+        {messages.length === 0 && !chat.isLoading && <p className="text-sm text-muted">{t('protoChat.empty')}</p>}
         {messages.map((m) => (
-          <div key={m.id} className={cn('flex gap-2', m.from === 'user' && 'flex-row-reverse')}>
-            <span
-              className={cn(
-                'flex h-7 w-7 shrink-0 items-center justify-center rounded-full',
-                m.from === 'agent'
-                  ? 'bg-brand/10 text-brand dark:bg-accent/15 dark:text-accent'
-                  : 'bg-surface-2 text-muted',
-              )}
-            >
-              {m.from === 'agent' ? <Bot size={14} /> : <UserRound size={14} />}
-            </span>
-            <div
-              className={cn(
-                'max-w-[80%] rounded-lg px-3 py-2 text-sm',
-                m.from === 'agent' ? 'bg-surface-2 text-text' : 'bg-series-1/10 text-text',
-              )}
-            >
-              {m.text}
-              {m.attachment && (
-                <div className="mt-1 flex items-center gap-1 text-xs text-muted">
-                  <Image size={12} /> {m.attachment}
-                </div>
-              )}
-              {m.version && (
-                <div className="mt-1 text-xs text-muted">{t('protoChat.newVersion', { version: m.version })}</div>
-              )}
-            </div>
-          </div>
+          <Message
+            key={m.id}
+            message={m}
+            canEdit={canEdit}
+            deciding={decide.isPending}
+            onDecide={(accept) => decide.mutate({ id: m.id, accept })}
+          />
         ))}
         {busy && (
-          <div className="flex items-center gap-2 text-xs text-muted">
+          <div className="flex items-center gap-2 text-xs text-muted" role="status">
             <Loader2 size={14} className="animate-spin" /> {t('protoChat.working')}
           </div>
         )}
       </div>
       <div className="space-y-2 border-t border-border px-4 py-3">
-        <div className="flex flex-wrap gap-1.5">
-          {suggestions.map((s) => (
-            <button
-              key={s}
-              onClick={() => send(s)}
-              disabled={busy}
-              className="rounded-full border border-border px-2.5 py-1 text-xs text-text-2 hover:bg-surface-2 disabled:opacity-50"
+        {error && (
+          <p className="text-xs text-critical" role="alert">
+            {error instanceof ApiError ? error.message : t('protoChat.failed')}
+          </p>
+        )}
+        {canEdit ? (
+          <>
+            <div className="flex flex-wrap gap-1.5">
+              {suggestions.map((s) => (
+                <button
+                  key={s}
+                  onClick={() => send(s)}
+                  disabled={busy}
+                  className="rounded-full border border-border px-2.5 py-1 text-xs text-text-2 hover:bg-surface-2 disabled:opacity-50"
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+            <form
+              className="flex gap-2"
+              onSubmit={(e) => {
+                e.preventDefault()
+                send(text)
+              }}
             >
-              {s}
-            </button>
-          ))}
-        </div>
-        {attachment && <div className="text-xs text-muted">{t('protoChat.attached', { name: attachment })}</div>}
-        <form
-          className="flex gap-2"
-          onSubmit={(e) => {
-            e.preventDefault()
-            send(text)
-          }}
-        >
-          <label
-            className="flex cursor-pointer items-center rounded-md border border-border px-2.5 text-muted hover:bg-surface-2"
-            title={t('protoChat.attach')}
-          >
-            <Paperclip size={16} />
-            <input
-              type="file"
-              accept="image/*"
-              className="sr-only"
-              onChange={(e) => setAttachment(e.target.files?.[0]?.name ?? null)}
-              aria-label={t('protoChat.attach')}
-            />
-          </label>
-          <input
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            placeholder={t('protoChat.placeholder')}
-            aria-label={t('protoChat.placeholder')}
-            className="h-10 flex-1 rounded-md border border-border bg-surface px-3 text-sm text-text placeholder:text-muted focus:outline-none"
-          />
-          <Button type="submit" variant="primary" disabled={!text.trim() || busy} aria-label={t('protoChat.send')}>
-            <Send size={16} />
-          </Button>
-        </form>
+              <input
+                value={text}
+                maxLength={2000}
+                onChange={(e) => setText(e.target.value)}
+                placeholder={t('protoChat.placeholder')}
+                aria-label={t('protoChat.placeholder')}
+                className="h-10 flex-1 rounded-md border border-border bg-surface px-3 text-sm text-text placeholder:text-muted focus:outline-none"
+              />
+              <Button
+                type="submit"
+                variant="primary"
+                disabled={text.trim().length < 3 || busy}
+                aria-label={t('protoChat.send')}
+              >
+                <Send size={16} />
+              </Button>
+            </form>
+          </>
+        ) : (
+          <p className="text-xs text-muted">{t('protoChat.readOnly')}</p>
+        )}
       </div>
     </Card>
+  )
+}
+
+function Message({
+  message: m,
+  canEdit,
+  deciding,
+  onDecide,
+}: {
+  message: ChatMessage
+  canEdit: boolean
+  deciding: boolean
+  onDecide: (accept: boolean) => void
+}) {
+  const { t } = useTranslation()
+  const agent = m.role === 'agent'
+  return (
+    <div className={cn('flex gap-2', !agent && 'flex-row-reverse')}>
+      <span
+        className={cn(
+          'flex h-7 w-7 shrink-0 items-center justify-center rounded-full',
+          agent ? 'bg-brand/10 text-brand dark:bg-accent/15 dark:text-accent' : 'bg-surface-2 text-muted',
+        )}
+      >
+        {agent ? <Bot size={14} /> : <UserRound size={14} />}
+      </span>
+      <div
+        className={cn(
+          'max-w-[80%] rounded-lg px-3 py-2 text-sm',
+          agent ? 'bg-surface-2 text-text' : 'bg-series-1/10 text-text',
+          m.status === 'failed' && agent && 'border border-critical/40',
+        )}
+      >
+        {!agent && m.author && <div className="mb-0.5 text-xs font-medium text-text-2">{m.author}</div>}
+        {m.status === 'failed' && agent && <AlertTriangle size={12} className="mr-1 inline text-critical" />}
+        {m.body}
+        {m.prototypeVersion && (
+          <div className="mt-1 text-xs text-muted">{t('protoChat.newVersion', { version: m.prototypeVersion })}</div>
+        )}
+        {m.status === 'proposal' && (
+          <div className="mt-2 space-y-2">
+            <div className="flex flex-wrap gap-1">
+              {m.proposalFields.map((f) => (
+                <Badge key={f} tone="warning">
+                  {f}
+                </Badge>
+              ))}
+            </div>
+            {canEdit && (
+              <div className="flex gap-2">
+                <Button size="sm" variant="primary" disabled={deciding} onClick={() => onDecide(true)}>
+                  <Check size={14} /> {t('protoChat.accept')}
+                </Button>
+                <Button size="sm" disabled={deciding} onClick={() => onDecide(false)}>
+                  <X size={14} /> {t('protoChat.reject')}
+                </Button>
+              </div>
+            )}
+          </div>
+        )}
+        {m.status === 'rejected' && <div className="mt-1 text-xs text-muted">{t('protoChat.rejected')}</div>}
+      </div>
+    </div>
   )
 }

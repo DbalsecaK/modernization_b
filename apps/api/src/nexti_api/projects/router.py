@@ -56,6 +56,8 @@ PROJECT_PERMISSIONS = (
     "pipeline.run", "question.answer", "gate.c1.approve", "gate.c2.approve", "gate.c3.approve", "signoff.sign",
     # Spec (M4): edit stories and the plan; see the code (traceability, proof packs).
     "story.edit", "plan.edit", "code.view",
+    # UI design (M5): comment on prototypes, ask for changes and edit screen specs.
+    "prototype.comment", "prototype.edit",
 )  # fmt: skip
 
 

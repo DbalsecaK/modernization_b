@@ -602,7 +602,7 @@
     "none": "Sin test todavía"
   },
   "uiDesign": {
-    "fromBms": "La especificación de pantalla se leyó del mapa BMS. El prototipo lo propuso el agente Diseñador UX/UI con el design system base de NexTI.",
+    "fromBms": "Las especificaciones de pantalla se leyeron de los mapas BMS con posición, longitud y atributos. El agente Diseñador UX/UI propuso un prototipo por pantalla con el design system del proyecto; el código verificó que compila y muestra cada campo.",
     "fromFigma": "Las pantallas vienen del archivo Figma y de las capturas. Los huecos (estados, validaciones faltantes) se convirtieron en preguntas.",
     "legacyScreen": "Pantalla legacy (3270)",
     "inputScreen": "Pantalla de insumo",
@@ -645,7 +645,56 @@
         "figma": "Figma",
         "prototype": "Prototipo"
       }
-    }
+    },
+    "loading": "Cargando pantallas…",
+    "loadError": "No se pudieron cargar las pantallas",
+    "emptyTitle": "Todavía no hay pantallas",
+    "notYet": "Aparecen cuando una corrida ejecuta la fase UI sobre fuentes con mapas BMS.",
+    "catalog": "Catálogo de pantallas",
+    "catalogHint": "{{count}} pantallas leídas de los mapsets {{mapsets}}",
+    "fieldCount_one": "{{count}} campo",
+    "fieldCount_other": "{{count}} campos",
+    "version": "Versión",
+    "source": "Ver código",
+    "origins": {
+      "generated": "generado",
+      "chat": "chat"
+    },
+    "frameTitle": "Prototipo de {{screen}}, versión {{version}}",
+    "frameError": "El prototipo falló: {{message}}",
+    "noPrototype": "Esta pantalla todavía no tiene prototipo.",
+    "versionMeta": "Creada {{date}}",
+    "linkHint": "Haz clic en un campo aquí o en el prototipo para enlazarlo con la spec y los comentarios.",
+    "fields": "Campos de la spec",
+    "fieldsHint": "Lo que el prototipo debe mostrar, leído del mapa",
+    "field": "Campo",
+    "kind": "Tipo",
+    "position": "Posición",
+    "length": "Longitud",
+    "attributes": "Atributos",
+    "kinds": {
+      "input": "Entrada",
+      "output": "Salida",
+      "literal": "Literal"
+    },
+    "designSystemMeta": "Versión {{version}} · {{source}}",
+    "dsSources": {
+      "nexti-base": "base NexTI",
+      "client-brand": "marca del cliente"
+    },
+    "commentsHint": "Sobre la versión v{{version}}",
+    "noComments": "Sin comentarios en esta versión.",
+    "someone": "Alguien",
+    "resolve": "Resolver",
+    "reopen": "Reabrir",
+    "anchor": "Campo del comentario",
+    "wholeScreen": "Toda la pantalla",
+    "commentPlaceholder": "Escribe un comentario",
+    "addComment": "Comentar",
+    "commentFailed": "No se pudo guardar el comentario.",
+    "c2Title": "Aprobación de la UI (C2)",
+    "c2Hint": "Una persona aprueba la UI; el chat nunca la aprueba",
+    "c2InRuns": "La compuerta C2 se aprueba en la corrida, en la pestaña Corridas."
   },
   "architecture": {
     "contexts": "Bounded contexts",
@@ -1926,7 +1975,13 @@
       "mobile": "Hacerlo usable en móvil",
       "errors": "Agregar los estados de error",
       "brand": "Aplicar los colores de marca del cliente"
-    }
+    },
+    "empty": "Pide un cambio y el diseñador UX/UI generará una versión nueva.",
+    "failed": "No se pudo enviar el cambio.",
+    "readOnly": "Tu rol puede ver el chat pero no pedir cambios.",
+    "accept": "Aceptar",
+    "reject": "Rechazar",
+    "rejected": "Propuesta rechazada."
   },
   "setup": {
     "documents": "Documentos e historias de usuario",

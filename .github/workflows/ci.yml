@@ -119,6 +119,8 @@ jobs:
           uv run alembic -c apps/api/alembic.ini upgrade head
           uv run python -m nexti_api.cli seed-dev
           docker pull "$SANDBOX_IMAGE"
+          # The UI design test compiles a real prototype in the web sandbox (M5, ADR-0013).
+          docker build -q -f infra/sandbox/web/Dockerfile -t nexti-sandbox-web:1 .
       - run: pnpm --filter @nexti/web exec playwright install --with-deps chromium
       - run: pnpm web:e2e
         env:
