@@ -315,8 +315,9 @@ class CobolAdapter:
         for trace in sets:
             lines.append(f"The legacy does not run here: the golden master of {trace.program} comes from its recorded "
                          f"traces ({trace.file}). Use \"program\": \"{trace.program}\", the tables of the traces "
-                         "(below) and the trace names as case names; say which rules each one exercises. Inputs are "
-                         "the map fields without their I/O suffix, as the traces name them.")  # fmt: skip
+                         "(below) and the trace names as case names; say which rules each one exercises. A case "
+                         "needs only its name and rules: do not copy inputs, setup or stubs, the runner takes them "
+                         "from the trace. Rules of programs without traces need no case.")  # fmt: skip
             for table in trace.schema.tables:
                 columns = ", ".join(f"{c.name} {c.type}" for c in table.columns)
                 lines.append(f"  table {table.name} (key {', '.join(table.key)}): {columns}")

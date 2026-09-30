@@ -16,6 +16,7 @@ from nexti_core.spec.model import Rule
 from nexti_orchestration.context import Attempt, PhaseContext, Verification
 from nexti_orchestration.extraction import ModelCaller, ReplyError, parse_json
 from nexti_orchestration.model import PhaseFailedError, PhaseResult, PhaseUnavailableError
+from nexti_orchestration.scope import scope_files, split_rules
 
 TESTER = "test-engineer"
 
@@ -47,11 +48,12 @@ def parse_suite(content: str) -> Suite:
         raise ReplyError(f"the suite does not follow the format: {exc.errors()[:5]}") from exc
 
 
-def coverage_problems(suite: Suite, rules: Sequence[Rule]) -> list[str]:
+def coverage_problems(suite: Suite, rules: Sequence[Rule], required: Sequence[Rule] | None = None) -> list[str]:
+    """Every required rule needs a case (all of them unless a scope says otherwise); cases cite known rules only."""
     covered = {r for case in suite.cases for r in case.rules}
     known = {r.id for r in rules}
     problems = []
-    missing = sorted(known - covered)
+    missing = sorted({r.id for r in (rules if required is None else required)} - covered)
     if missing:
         problems.append(f"rules without a case: {', '.join(missing)}")
     unknown = sorted(covered - known)
@@ -101,7 +103,10 @@ class CharacterizationPhases:
             if "error" in artifact:
                 return Verification(False, artifact["error"])
             suite = Suite.model_validate_json(await self.port.load_file(artifact["suite"]))
-            problems = coverage_problems(suite, rules)
+            # Only the rules this program exercises (its code and what it calls) need a case; the others belong to
+            # the golden master of another program.
+            required, _ = split_rules(rules, scope_files(files, suite.program))
+            problems = coverage_problems(suite, rules, required)
             if problems:
                 return Verification(False, "; ".join(problems))
             try:

@@ -13,6 +13,7 @@ from nexti_core.spec.characterization import GoldenMaster, Suite, source_digest
 from nexti_core.spec.model import Rule
 from nexti_orchestration.context import Attempt, PhaseContext
 from nexti_orchestration.model import PhaseFailedError, PhaseResult
+from nexti_orchestration.scope import scope_files, split_rules
 from nexti_pack_spring_boot import IMAGE, Design, UseCase, service_path
 from nexti_pack_spring_boot.canary import mutations
 from nexti_pack_spring_boot.equivalence import EquivalenceRun, run_equivalence
@@ -98,7 +99,9 @@ class VerificationPhases:
         for path, implemented in traced.items():
             for rule in implemented:
                 target_files.setdefault(rule, []).append(path)
-        traces = checks.trace_rules(rules, golden, target_files)
+        # The module answers for the rules its program exercises; the others are said, not counted.
+        inside, outside = split_rules(rules, scope_files(source, master.program))
+        traces = checks.trace_rules(inside, golden, target_files)
         traced_check, optional = checks.rules_traced(traces)
         found.append(traced_check)
         masks = [f"{m.path} ({m.when}): {m.reason}" for m in golden_run.masks]
@@ -119,6 +122,8 @@ class VerificationPhases:
         found.append(checks.source_intact(master.source_sha256, source_digest(source)))
 
         not_proven = [f"Declared mask {m}" for m in masks] + optional
+        not_proven += [f"{r.id} is outside {master.program} and its golden master: it is verified with the module "
+                       "that runs its code" for r in outside]  # fmt: skip
         not_proven.append("External programs are replaced by stubs that answer as the case says; their own logic "
                           "is not verified here")  # fmt: skip
         if master.from_traces:
