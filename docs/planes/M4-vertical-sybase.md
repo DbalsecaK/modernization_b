@@ -139,3 +139,43 @@
     antes de que se registrara alguna. Ahora cada llamada reserva su costo máximo mientras está en vuelo
     (`budget_reservation`, migración 0009) y el gateway decide bajo un bloqueo por tenant contando gasto más
     reservas. En secuencia se comporta igual que antes (al 100% se pausa, 13.5).
+
+## 6. Cierre de M4 (2026-09-30)
+
+Los criterios de la sección 4 se cumplen con tests automatizados que corren en CI contra los servicios reales, el
+sandbox Java (con PostgreSQL adentro) y las grabaciones de la corrida real (modelos y Sybase).
+
+| Criterio | Evidencia (tests) | Estado |
+|---|---|---|
+| Con la aplicación de referencia se obtiene un veredicto calculado por código | `test_acceptance_m4.py`: el pipeline completo (SP subido → reglas → HU → C1 por la API → diseño C3 → caracterización en Sybase → generación → verificación → C4) grabado con `anthropic/claude-sonnet-5.5` y ASE 16 en vivo; queda **PROVEN 6/6** (28 casos del golden master y 12 inputs frescos reproducidos, 11/11 reglas, canario detectado, fuente intacta) y el CI reproduce la corrida. Además `test_verification.py` (orquestación) y `packages/verification` | ✅ |
+| Se miden omisiones, alucinaciones y errores de precisión contra la spec de referencia | `nexti_verification.evaluation` y `test_evaluation.py`; en la aceptación, contra la referencia ficticia: recall 0,889, precisión 0,727, sin omisiones P0, 3 errores de precisión (códigos de error). `test_reference_kit.py` corre a demanda contra un kit fuera del repo | ✅ ficticia; kit real pendiente (ver limitaciones) |
+| Mover una HU antes de una dependencia dura se rechaza (también por API); una blanda se permite con aviso | `test_spec_plan.py`, `test_spec_api.py`, `e2e/specification.spec.ts` | ✅ |
+| Descartar una HU que deja reglas sin cubrir lo muestra en la cobertura | `test_spec_api.py`, `test_spec_model.py` (cobertura) | ✅ |
+| C1 no se aprueba con HU con preguntas abiertas, sin criterios, con Gherkin inválido o con dependencias duras rotas | `test_spec_api.py` (409 `c1_blocked`), aceptación (C1 por la API tras `c1-check`) | ✅ |
+| Un escenario sin `When`, con pasos fuera de orden o con un `<placeholder>` fuera de `Examples` se rechaza (en/es, web y API) | `test_spec_gherkin.py`, `test_spec_api.py`, `e2e/specification.spec.ts` (problema del servidor en vivo) | ✅ |
+| Todo cambio de HU o del plan queda versionado y auditado; sin permiso no se editan (permitido y denegado) | `test_endpoints_authz.py` (rutas de spec, plan, veredictos y trazabilidad: permitido, denegado, aislamiento), `test_spec_api.py` (versiones) | ✅ |
+
+**Capturas** en `docs/m4/` (generadas por los e2e con `CAPTURE_DIR`): reglas, historias, Gherkin validado en vivo,
+plan por olas, validación con el veredicto y trazabilidad origen ↔ destino.
+
+**Cambios respecto del plan**
+
+- PostgreSQL corre dentro del mismo contenedor del sandbox Java (solo loopback) en lugar de un sidecar en red interna.
+- El diseño lleva la correspondencia con el legacy y las máscaras declaradas; el harness de equivalencia lo escribe
+  la plataforma, no un modelo.
+- El arquitecto recibe el fuente legacy y su diseño se valida contra los identificadores del código.
+- Tope de presupuesto con reservas en vuelo (migración 0009), encontrado por la corrida real.
+- La referencia de un kit puede ser JSON o tarjetas de reglas en Markdown.
+
+**Limitaciones conocidas**
+
+- La corrida contra el kit de Bolivariano quedó pendiente: se detuvo por presupuesto en la extracción (la corrida
+  destapó el defecto del tope en paralelo, ya corregido) y no produjo métricas. Se puede repetir a demanda con
+  `test_reference_kit.py` y un presupuesto explícito.
+- Los detalles de chequeos, "lo que no prueba" y los bloqueos de C1 llegan en inglés desde la API (sin códigos para
+  traducir).
+- La trazabilidad abre el proof pack en cada consulta; con proyectos grandes conviene guardarla aparte.
+- Los programas externos se simulan con stubs que responden lo que dice el caso; su lógica no se verifica.
+- La imagen de Sybase ASE pesa 9 GB: la corrida en vivo es opcional (`NEXTI_LIVE_ASE=1`); el CI usa grabaciones.
+- No hay API para escribir reglas: los e2e las siembran directo en la base.
+- Gasto real en modelos durante M4: unos 7,8 USD (≈2,8 la aplicación ficticia, ≈5 la corrida del kit).

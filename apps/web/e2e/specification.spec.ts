@@ -1,6 +1,6 @@
 import { spawnSync } from 'node:child_process'
 import { expect, test, type Page } from '@playwright/test'
-import { devSignIn, expectAccessible } from './support'
+import { capture, devSignIn, expectAccessible } from './support'
 
 // The Specification tab against the real API (M4): the rules the agents extracted, the user stories, and the live
 // Gherkin validation of the server while a person edits a story. Rules only come from the pipeline (there is no API
@@ -122,6 +122,7 @@ test('the specification tab shows the rules and stories and validates Gherkin li
   await expect(page.getByText('sp_pago_orden.sp:40-42')).toBeVisible()
   await expect(page.getByText('Can a cancelled order be paid again?')).toBeVisible()
   await expectAccessible(page, 'main')
+  await capture(page, 'spec-rules')
   await page.getByRole('button', { name: /Payment amount must match the order/ }).click()
   await expect(page.getByText('Rounding is done with FLOAT')).toBeVisible()
 
@@ -130,6 +131,7 @@ test('the specification tab shows the rules and stories and validates Gherkin li
   await expect(page.getByRole('heading', { name: /US-001.*Pay a pending order/ })).toBeVisible()
   await expect(page.getByRole('button', { name: /Check the amount paid/ })).toBeVisible()
   await expectAccessible(page, 'main')
+  await capture(page, 'spec-stories')
 
   await page.getByRole('button', { name: 'Edit', exact: true }).click()
   const drawer = page.getByRole('dialog', { name: 'Edit US-001' })
@@ -144,6 +146,7 @@ test('the specification tab shows the rules and stories and validates Gherkin li
   await expect(drawer.getByText('Missing a Given step (the starting situation).')).toBeVisible()
   await expect(drawer.getByRole('button', { name: 'Save' })).toBeDisabled()
   await expectAccessible(page, '[role="dialog"]')
+  await capture(page, 'spec-gherkin-live')
 
   await criteria.fill(VALID)
   await expect(drawer.getByText('1 scenario, valid Gherkin')).toBeVisible()
@@ -161,6 +164,7 @@ test('the specification tab shows the rules and stories and validates Gherkin li
   await page.getByRole('tab', { name: /Migration plan/ }).click()
   await expect(page.getByRole('region', { name: 'Wave 1' }).getByText('US-001')).toBeVisible()
   await expectAccessible(page, 'main')
+  await capture(page, 'spec-plan')
   await page.getByRole('button', { name: 'Move US-001 to the next wave' }).click()
   await expect(page.getByText('Move of US-001 rejected: it would come before a hard dependency')).toBeVisible()
   await expect(page.getByText('US-002 cannot come before US-001.').first()).toBeVisible()

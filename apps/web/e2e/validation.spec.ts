@@ -1,6 +1,6 @@
 import { spawnSync } from 'node:child_process'
 import { expect, test, type Page } from '@playwright/test'
-import { devSignIn, expectAccessible } from './support'
+import { capture, devSignIn, expectAccessible } from './support'
 
 // The Validation and Source ↔ target tabs against the real API (M4): the verdict the worker computed with its checks
 // and proof pack, and rule by rule the legacy lines next to the generated file and the golden cases. Verdicts, rules
@@ -108,6 +108,7 @@ test('the validation and traceability tabs show the verdict, its proof pack and 
   await expect(checks.nth(2)).toContainText('1 golden case(s) reproduced')
   await expect(payOrder.getByText('a note', { exact: true })).toBeVisible()
   await expectAccessible(page, 'main')
+  await capture(page, 'validation')
 
   const download = page.waitForEvent('download')
   await payOrder.getByRole('link', { name: 'Download proof pack' }).click()
@@ -134,6 +135,7 @@ test('the validation and traceability tabs show the verdict, its proof pack and 
   await expect(behaviour.getByRole('row', { name: /case_one/ })).toContainText('Same')
   await expect(page.getByText('All cases match')).toBeVisible()
   await expectAccessible(page, 'main')
+  await capture(page, 'traceability')
 
   // A rule no verification has looked at yet, and the filter.
   await rules.getByRole('button', { name: /RULE-002/ }).click()

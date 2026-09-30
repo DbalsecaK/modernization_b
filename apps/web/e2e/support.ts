@@ -38,6 +38,12 @@ export async function expectAccessible(page: Page, selector?: string) {
   expect(serious.map((v) => `${v.id}: ${v.help} (${v.nodes.map((n) => n.target.join(' ')).join(', ')})`)).toEqual([])
 }
 
+/** A screenshot for the milestone's closing documents, only when CAPTURE_DIR is set (e.g. docs/m4). */
+export async function capture(page: Page, name: string) {
+  const dir = process.env.CAPTURE_DIR
+  if (dir) await page.screenshot({ path: `${dir}/${name}.png`, fullPage: true })
+}
+
 /** A zip with stored (uncompressed) entries, built in memory: enough to exercise the server's archive checks. */
 export function zipOf(entries: Record<string, string>): Buffer {
   const locals: Buffer[] = []
