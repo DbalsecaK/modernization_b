@@ -189,3 +189,46 @@ class TraceDetailOut(ApiModel):
     cases: list[CaseOut]
     verified: bool | None
     verdict: Literal["PROVEN", "PARTLY PROVEN", "NOT PROVEN"] | None
+
+
+class DesignSystemOut(ApiModel):
+    version: int
+    source: Literal["nexti-base", "client-brand"]
+    tokens: dict[str, Any]
+    status: str
+    created_at: datetime
+
+
+class PrototypeOut(ApiModel):
+    id: uuid.UUID
+    screen_key: str
+    version: int
+    origin: Literal["generated", "chat"]
+    status: str
+    notes: str
+    open_comments: int
+    created_at: datetime
+
+
+class AnchorIn(ApiModel):
+    field: str | None = Field(default=None, max_length=64, description="The data-field the comment is about")
+    x: float | None = Field(default=None, ge=0, le=1, description="Horizontal position, 0-1 of the frame")
+    y: float | None = Field(default=None, ge=0, le=1)
+
+
+class CommentIn(ApiModel):
+    body: str = Field(min_length=1, max_length=2000)
+    anchor: AnchorIn = Field(default_factory=AnchorIn)
+
+
+class CommentOut(ApiModel):
+    id: uuid.UUID
+    body: str
+    anchor: dict[str, Any]
+    resolved: bool
+    author: str | None
+    created_at: datetime
+
+
+class ResolveIn(ApiModel):
+    resolved: bool = True

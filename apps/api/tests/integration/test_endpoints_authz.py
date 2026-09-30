@@ -51,7 +51,16 @@ from nexti_core.object_store import ObjectStore, ObjectStoreConfig, input_key
 from nexti_model_gateway.secrets import SecretsConfig, SecretStore, connection_path
 
 from .conftest import SETTINGS, World
-from .run_support import VALID_CRITERION, execute, make_config, make_project, make_run, seed_spec, seed_validation
+from .run_support import (
+    VALID_CRITERION,
+    execute,
+    make_config,
+    make_project,
+    make_run,
+    seed_screens,
+    seed_spec,
+    seed_validation,
+)
 
 # Routes that are public by design (no session): health, the sign-in flow and dev-auth (development only).
 PUBLIC = {
@@ -383,6 +392,21 @@ class Ctx:
             ).scalar_one()
         return event_id
 
+    async def screens_project(self) -> tuple[uuid.UUID, uuid.UUID]:
+        """A fresh project of tenant A with screens, the design system, a prototype and a comment on it."""
+        project_id = await make_project(self.owner, self.world.tenant_a)
+        prototype_id = await seed_screens(self.owner, object_store(), self.world.tenant_a, project_id)
+        async with self.owner.begin() as conn:
+            comment_id: uuid.UUID = (
+                await conn.execute(
+                    text("INSERT INTO prototype_comment (tenant_id, project_id, prototype_id, body) "
+                         "VALUES (:t, :p, :id, 'A comment') RETURNING id"),
+                    {"t": self.world.tenant_a, "p": project_id, "id": prototype_id},
+                )
+            ).scalar_one()  # fmt: skip
+        await self.sync_authz()
+        return project_id, comment_id
+
     async def verified_project(self) -> tuple[uuid.UUID, uuid.UUID]:
         """A fresh project of tenant A with rules, generated code and a verdict with its proof pack."""
         project_id = await make_project(self.owner, self.world.tenant_a)
@@ -640,6 +664,25 @@ def _spec(suffix: str, body: dict[str, Any] | None = None) -> Callable[[Ctx], Aw
     return make
 
 
+def _screens(suffix: str, body: dict[str, Any] | None = None) -> Callable[[Ctx], Awaitable[Request]]:
+    async def make(ctx: Ctx) -> Request:
+        project_id, comment_id = await ctx.screens_project()
+        return f"/api/v1/projects/{project_id}{suffix.format(comment=comment_id)}", body
+
+    return make
+
+
+async def _edit_screen(ctx: Ctx) -> Request:
+    project_id, _ = await ctx.screens_project()
+    async with ctx.owner.connect() as conn:
+        data: dict[str, Any] = (
+            await conn.execute(
+                text("SELECT data FROM spec_element WHERE project_id = :p AND key = 'SCR-PAGORES'"), {"p": project_id}
+            )
+        ).scalar_one()
+    return f"/api/v1/projects/{project_id}/screens/SCR-PAGORES", {**data, "name": "Resultado"}
+
+
 def _verified(suffix: str) -> Callable[[Ctx], Awaitable[Request]]:
     async def make(ctx: Ctx) -> Request:
         project_id, verdict_id = await ctx.verified_project()
@@ -648,6 +691,7 @@ def _verified(suffix: str) -> Callable[[Ctx], Awaitable[Request]]:
     return make
 
 
+PROTO = "/api/v1/projects/{project_id}/screens/{key}/prototypes/{version}"
 STORY = {"title": "Pay an order", "criteria": [VALID_CRITERION], "links": ["RULE-001"]}
 
 AI_POLICY = {"openrouterAllowed": True, "deniedUpstreamProviders": ["deepinfra"], "denyDataCollection": True}
@@ -871,6 +915,28 @@ CASES = [
         _spec("/plan", {"waves": [["US-001", "US-002"]]}),
     ),
     Case("POST", "/api/v1/projects/{project_id}/plan:reset", "admin", "member", _spec("/plan:reset")),
+    Case("GET", "/api/v1/projects/{project_id}/screens", "admin", "outsider", _screens("/screens")),
+    Case(
+        "GET", "/api/v1/projects/{project_id}/screens/{key}/versions", "admin", "outsider",
+        _screens("/screens/SCR-PAGOORD/versions"),
+    ),
+    Case("PUT", "/api/v1/projects/{project_id}/screens/{key}", "admin", "member", _edit_screen),
+    Case("GET", "/api/v1/projects/{project_id}/design-system", "admin", "outsider", _screens("/design-system")),
+    Case(
+        "GET", "/api/v1/projects/{project_id}/screens/{key}/prototypes", "admin", "outsider",
+        _screens("/screens/SCR-PAGOORD/prototypes"),
+    ),
+    Case("GET", PROTO + "/page", "admin", "outsider", _screens("/screens/SCR-PAGOORD/prototypes/1/page")),
+    Case("GET", PROTO + "/source", "admin", "outsider", _screens("/screens/SCR-PAGOORD/prototypes/1/source")),
+    Case("GET", PROTO + "/comments", "admin", "outsider", _screens("/screens/SCR-PAGOORD/prototypes/1/comments")),
+    Case(
+        "POST", PROTO + "/comments", "admin", "member",
+        _screens("/screens/SCR-PAGOORD/prototypes/1/comments", {"body": "Looks good"}),
+    ),
+    Case(
+        "POST", PROTO + "/comments/{comment_id}:resolve", "admin", "member",
+        _screens("/screens/SCR-PAGOORD/prototypes/1/comments/{comment}:resolve", {"resolved": True}),
+    ),
     Case("GET", "/api/v1/projects/{project_id}/verdicts", "admin", "outsider", _verified("/verdicts")),
     Case(
         "GET", "/api/v1/projects/{project_id}/verdicts/{verdict_id}/proof-pack", "admin", "outsider",
