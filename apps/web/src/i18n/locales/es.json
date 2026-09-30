@@ -24,7 +24,8 @@
     "yes": "Sí",
     "cancel": "Cancelar",
     "discard": "Descartar cambios",
-    "error": "Algo salió mal."
+    "error": "Algo salió mal.",
+    "loading": "Cargando…"
   },
   "nav": {
     "main": "Navegación principal",
@@ -533,7 +534,50 @@
     "contractsHint": "Operaciones que serán el OpenAPI, cada una ligada a las reglas que atiende.",
     "operation": "Operación",
     "gateApproved": "Compuerta C1 aprobada. Puede empezar el diseño.",
-    "ruleApproved": "{{id}} aprobada."
+    "ruleApproved": "{{id}} aprobada.",
+    "loading": "Cargando la especificación…",
+    "loadError": "No se pudo cargar la especificación.",
+    "retry": "Reintentar",
+    "emptyTitle": "Aún no hay reglas de negocio",
+    "emptyHint": "Ejecuta el pipeline para extraer las reglas de negocio del legado y derivar las historias de usuario y el plan de migración.",
+    "goToRuns": "Ir a ejecuciones",
+    "search": "Buscar reglas",
+    "filterPriority": "Filtrar por prioridad",
+    "allPriorities": "Todas las prioridades",
+    "rulesTotal_one": "{{count}} regla",
+    "rulesTotal_other": "{{count}} reglas",
+    "noRuleMatch": "Ninguna regla coincide con los filtros.",
+    "ruleStatus": {
+      "draft": "Borrador",
+      "review": "En revisión",
+      "approved": "Aprobada",
+      "reopened": "Reabierta",
+      "obsolete": "Obsoleta"
+    },
+    "condition": "Condición",
+    "action": "Acción",
+    "scenarios": "Escenarios (Gherkin)",
+    "noScenarios": "Sin escenarios.",
+    "inputs": "Entradas",
+    "outputs": "Salidas",
+    "citations": "Citas en el legado",
+    "hardcoded": "Valores fijos en el código",
+    "suspectedDefect": "Posible defecto",
+    "openQuestions_one": "{{count}} pregunta abierta sobre esta regla",
+    "openQuestions_other": "{{count}} preguntas abiertas sobre esta regla",
+    "coveredBy": "Cubierta por",
+    "notCovered": "Ninguna historia de usuario activa cubre esta regla.",
+    "ruleOutOfScope": "Fuera de alcance: se migra tal cual, sin historia.",
+    "versions": "Versiones",
+    "origin": {
+      "extracted": "Extraída por los agentes",
+      "person": "Cambiada por una persona",
+      "imported": "Importada"
+    },
+    "c1": {
+      "ready": "Las historias y el plan pueden aprobarse en la compuerta C1 (en la pestaña Ejecuciones).",
+      "blocked": "La compuerta C1 aún no puede aprobarse:"
+    }
   },
   "ruleStatus": {
     "approved": "Aprobada",
@@ -652,7 +696,51 @@
     "allSame": "Todos los casos coinciden",
     "differs_one": "{{count}} caso difiere",
     "differs_other": "{{count}} casos difieren",
-    "differenceNote": "Una diferencia es un hallazgo: se corrige el código o una persona la registra como diferencia aprobada. Nunca se oculta."
+    "differenceNote": "Una diferencia es un hallazgo: se corrige el código o una persona la registra como diferencia aprobada. Nunca se oculta.",
+    "highlightedLines_one": "{{count}} línea de la regla resaltada",
+    "highlightedLines_other": "{{count}} líneas de la regla resaltadas",
+    "codeOf": "Código {{title}}, {{range}}",
+    "highlighted": "Línea de la regla:",
+    "truncated": "Extracto recortado: el archivo es más largo.",
+    "state": {
+      "verified": "Verificada",
+      "notVerified": "No verificada",
+      "pending": "Pendiente"
+    },
+    "stateHint": {
+      "verified": "Todos los casos golden o frescos que ejercitan esta regla coincidieron en ambos lados en la última verificación.",
+      "notVerified": "La última verificación no encontró un caso que coincida para esta regla, o encontró uno que difiere.",
+      "pending": "Ninguna verificación revisó esta regla todavía."
+    },
+    "noCodeView": "Necesitas el permiso code.view para ver código",
+    "noCodeViewHint": "La comparación muestra código legacy y generado. Pide acceso a un responsable del proyecto.",
+    "loading": "Cargando la trazabilidad…",
+    "loadingRule": "Cargando la regla…",
+    "loadError": "No se pudo cargar la trazabilidad",
+    "emptyTitle": "Todavía no hay nada que trazar",
+    "emptyHint": "La comparación aparece cuando el pipeline extrajo reglas y generó el código que las implementa.",
+    "intro": "Regla por regla: las líneas legacy de las que se extrajo, junto a los archivos generados que la implementan, y el comportamiento de ambos lados en cada caso que la ejercita.",
+    "search": "Buscar regla o archivo",
+    "filterState": "Filtrar por verificación",
+    "allStates": "Todas",
+    "summary_one": "{{count}} regla · {{verified}} verificadas",
+    "summary_other": "{{count}} reglas · {{verified}} verificadas",
+    "noMatch": "Ninguna regla coincide con el filtro.",
+    "rules": "Reglas",
+    "casesMatched_one": "{{matched}} de {{count}} caso coincide",
+    "casesMatched_other": "{{matched}} de {{count}} casos coinciden",
+    "targetFiles_one": "{{count}} archivo destino",
+    "targetFiles_other": "{{count}} archivos destino",
+    "ruleHint": "Calculado a partir de la última verificación y su paquete de evidencia.",
+    "noLegacy": "El archivo legacy citado no está entre los archivos fuente aceptados.",
+    "noTarget": "Ningún archivo generado implementa esta regla todavía.",
+    "behaviourHint": "Golden master e inputs frescos que ejercitan esta regla, comparados campo por campo.",
+    "noCases": "Ningún caso golden o fresco ejercita esta regla todavía.",
+    "result": "Resultado",
+    "field": "Campo",
+    "legacyValue": "Valor legacy",
+    "targetValue": "Valor destino",
+    "noDifferences": "Sin diferencias."
   },
   "validation": {
     "notYet": "La verificación corre después de la generación. En este proyecto todavía no se verificó nada.",
@@ -687,7 +775,46 @@
     "commentPlaceholder": "Opcional",
     "sign": "Firmar verificación",
     "signDisabled": "El sign-off se habilita cuando el veredicto es PROVEN.",
-    "signed": "Verificación firmada."
+    "signed": "Verificación firmada.",
+    "loading": "Cargando los veredictos…",
+    "loadError": "No se pudieron cargar los veredictos",
+    "emptyTitle": "Todavía no hay verificación",
+    "signoffInRuns": "El veredicto no aprueba nada por sí solo. Una persona con nombre revisa la evidencia y firma en la compuerta C4 de la ejecución, en la pestaña Ejecuciones.",
+    "history": "Veredictos anteriores",
+    "historyHint": "Cada verificación se conserva con su evidencia.",
+    "when": "Cuándo",
+    "module": "Módulo",
+    "checksPassed": "Chequeos que pasan",
+    "run": "Ejecución",
+    "proofPack": "Paquete de evidencia",
+    "passedOf": "{{passed}} de {{total}}",
+    "downloadShort": "Descargar",
+    "proofPackOf": "paquete de evidencia de {{module}}, {{date}}",
+    "moduleVerdict": "Veredicto de {{module}}",
+    "computedOn": "{{date}} · ejecución {{run}}",
+    "checksOf": "Chequeos de {{module}}",
+    "checkTitles": {
+      "testsRan": "Tests ejecutados",
+      "rulesTraced": "Reglas trazadas",
+      "sameBehaviour": "Mismo comportamiento",
+      "freshInputs": "Inputs frescos",
+      "canary": "Canario",
+      "sourceIntact": "Fuente intacta"
+    },
+    "status": {
+      "passed": "Pasa",
+      "failed": "Falla",
+      "notChecked": "Sin comprobar"
+    },
+    "checkNotRun": "No se ejecutó en esta verificación: cuenta como sin comprobar.",
+    "downloadProofPack": "Descargar paquete de evidencia",
+    "noProofPack": "Este veredicto no tiene paquete de evidencia.",
+    "proofPackHint": "Un zip con el veredicto, cada caso y sus diferencias, la trazabilidad de reglas y el reporte de tests, para conservar y recalcular.",
+    "proofPackNeedsCode": "Necesitas el permiso code.view para descargar el paquete de evidencia.",
+    "doesNotProveHint": "Léelo antes de firmar.",
+    "thisVerdict": "Este veredicto",
+    "nothingListed": "Nada listado.",
+    "anyVerdict": "Cualquier veredicto"
   },
   "runs": {
     "currentRun": "Ejecución actual",
@@ -1932,7 +2059,8 @@
       "question": "Pregunta abierta",
       "approved": "Aprobada",
       "discarded": "Descartada",
-      "merged": "Fusionada"
+      "merged": "Fusionada",
+      "review": "En revisión"
     },
     "new": "Nueva historia",
     "approveC1": "Aprobar historias y plan (C1)",
@@ -1956,7 +2084,8 @@
       "extracted": "Extraída del legacy",
       "document": "Desde un documento",
       "jira": "Desde Jira / Azure DevOps",
-      "user": "Creada por una persona"
+      "user": "Creada por una persona",
+      "person": "Creada por una persona"
     },
     "meta": "{{feature}} · versión {{version}} · {{wave}}",
     "asA": "Como",
@@ -2035,7 +2164,34 @@
       "productOwner": "Product owner",
       "techLead": "Líder técnico",
       "executive": "Ejecutivo"
-    }
+    },
+    "narrative": "Narrativa",
+    "narrativePlaceholder": "Como …, quiero …, para …",
+    "noFeature": "Sin funcionalidad",
+    "createTitle": "Nueva historia de usuario",
+    "titleHint": "Al menos 3 caracteres.",
+    "noStories": "Aún no hay historias de usuario",
+    "noStoriesHint": "El pipeline las deriva de las reglas; también puedes crear una.",
+    "noMatch": "Ninguna historia coincide con los filtros.",
+    "coverageSummary": "{{covered}} de {{elements}} reglas cubiertas",
+    "byPlatform": "La plataforma",
+    "action": {
+      "create": "Creada",
+      "edit": "Editada",
+      "split": "Dividida",
+      "merge": "Fusionada",
+      "discard": "Descartada",
+      "restore": "Restaurada",
+      "suggestion": "Sugerencia aceptada",
+      "status": "Cambio de estado"
+    },
+    "depStory": "Historia",
+    "depReason": "Motivo",
+    "addDependency": "Agregar dependencia",
+    "removeDependency": "Quitar la dependencia de {{id}}",
+    "depAdded": "Dependencia agregada",
+    "depRemoved": "Dependencia quitada",
+    "nothingToMerge": "No hay otra historia activa para fusionar."
   },
   "storyPlan": {
     "kind": {
@@ -2072,7 +2228,21 @@
     "noIssues": "Cada historia va después de lo que necesita.",
     "diffTitle": "Sugerido vs el tuyo",
     "diffHint": "Historias que moviste de la ola sugerida.",
-    "sameAsSuggested": "El plan es el sugerido."
+    "sameAsSuggested": "El plan es el sugerido.",
+    "saved": "Plan guardado (versión {{version}})",
+    "noPlan": "Aún no hay plan de migración",
+    "noPlanHint": "El pipeline lo sugiere cuando deriva las historias de usuario.",
+    "version": "Versión {{version}} · {{by}} · {{date}}",
+    "suggested": "Sugerido por la plataforma",
+    "prevWaveOf": "Mover {{id}} a la ola anterior",
+    "nextWaveOf": "Mover {{id}} a la ola siguiente",
+    "upOf": "Subir {{id}}",
+    "downOf": "Bajar {{id}}",
+    "problem": {
+      "cycle": "Hay un ciclo de dependencias duras que empieza en {{story}}.",
+      "unknownStory": "{{story}} no es una historia del proyecto.",
+      "unplanned": "{{story}} no está en ninguna ola."
+    }
   },
   "gherkin": {
     "valid": "Gherkin válido",
@@ -2100,6 +2270,26 @@
       "examplesWithoutOutline": "Línea {{line}}: los ejemplos solo van con un esquema del escenario.",
       "unknownPlaceholder": "Línea {{line}}: <{{detail}}> no es una columna de la tabla de ejemplos.",
       "emptyExamples": "Línea {{line}}: la tabla de ejemplos no tiene filas."
+    },
+    "checking": "Validando el Gherkin…",
+    "unavailable": "La validación de Gherkin no está disponible ahora; el servidor la vuelve a validar al guardar.",
+    "line": "Línea {{line}}:",
+    "api": {
+      "missingHeader": "El escenario debe empezar con \"Escenario:\" o \"Esquema del escenario:\" (o \"Scenario:\").",
+      "missingName": "El escenario necesita un nombre después de la palabra clave.",
+      "missingGiven": "Falta un paso Dado (la situación inicial).",
+      "missingWhen": "Falta un paso Cuando (la acción).",
+      "missingThen": "Falta un paso Entonces (el resultado esperado).",
+      "continuationFirst": "Y/Pero solo pueden continuar un paso anterior.",
+      "outOfOrder": "Los pasos deben ir Dado, luego Cuando y luego Entonces.",
+      "twoBehaviours": "Un Dado o Cuando después de un Entonces describe un segundo comportamiento: divide el escenario.",
+      "emptyStep": "El paso tiene la palabra clave y no tiene texto.",
+      "freeText": "Cada línea debe ser un paso, una fila de tabla, un texto de documento, un comentario o una etiqueta.",
+      "missingExamples": "Un esquema del escenario necesita una tabla de Ejemplos.",
+      "emptyExamples": "La tabla de Ejemplos necesita un encabezado y al menos una fila.",
+      "unknownPlaceholder": "Un <marcador> no es una columna de la tabla de Ejemplos.",
+      "duplicateName": "Dos escenarios de la historia tienen el mismo nombre.",
+      "empty": "El criterio está vacío."
     }
   },
   "sourceOptions": {

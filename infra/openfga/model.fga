@@ -51,6 +51,8 @@ type project
     define input_upload: [role_binding#assignee] or admin from tenant
     define pipeline_run: [role_binding#assignee] or admin from tenant
     define question_answer: [role_binding#assignee] or admin from tenant
+    define story_edit: [role_binding#assignee] or admin from tenant
+    define plan_edit: [role_binding#assignee] or admin from tenant
     define gate_c1_approve: [role_binding#assignee] or admin from tenant
     define gate_c2_approve: [role_binding#assignee] or admin from tenant
     define gate_c3_approve: [role_binding#assignee] or admin from tenant

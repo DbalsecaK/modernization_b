@@ -9,14 +9,18 @@ resolution-markers = [
 
 [manifest]
 members = [
+    "nexti-adapter-sybase",
     "nexti-agents",
     "nexti-api",
     "nexti-core",
+    "nexti-graph",
     "nexti-ingest",
     "nexti-model-gateway",
     "nexti-orchestration",
+    "nexti-pack-spring-boot",
     "nexti-sandbox",
     "nexti-skills",
+    "nexti-verification",
     "nexti-worker",
 ]
 
@@ -1188,6 +1192,29 @@ wheels = [
 ]
 
 [[package]]
+name = "neo4j"
+version = "6.3.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "pytz" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/59/46/7a562799679d0c9bd3f12d28b43591eb953efc975e1241536733c5d8bcd3/neo4j-6.3.1.tar.gz", hash = "sha256:e75530ca0691d69916c56acdb7401df4ee9e1d5084cfcfb3ede796db38667dcd", size = 242885, upload-time = "2026-09-15T08:08:32.67Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/08/a5/e33f76f4eb7e72c350e65802151884048325f889ab5d156ce4b6d9bde959/neo4j-6.3.1-py3-none-any.whl", hash = "sha256:a1b702d356f88885c27bdcf7dcd56af76423dbff4e26064e5bf5dbf47af53044", size = 331462, upload-time = "2026-09-15T08:08:31.252Z" },
+]
+
+[[package]]
+name = "nexti-adapter-sybase"
+version = "0.1.0"
+source = { editable = "packages/adapters/source/sybase" }
+dependencies = [
+    { name = "nexti-core" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "nexti-core", editable = "packages/core" }]
+
+[[package]]
 name = "nexti-agents"
 version = "0.1.0"
 source = { editable = "packages/agents" }
@@ -1254,6 +1281,7 @@ source = { editable = "packages/core" }
 dependencies = [
     { name = "httpx" },
     { name = "minio" },
+    { name = "pydantic" },
     { name = "pyyaml" },
     { name = "sqlalchemy", extra = ["asyncio"] },
     { name = "structlog" },
@@ -1264,10 +1292,26 @@ dependencies = [
 requires-dist = [
     { name = "httpx", specifier = ">=0.28" },
     { name = "minio", specifier = ">=7.2" },
+    { name = "pydantic", specifier = ">=2.11" },
     { name = "pyyaml", specifier = ">=6.0" },
     { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2.1" },
     { name = "structlog", specifier = ">=26.1" },
     { name = "urllib3", specifier = ">=2.2" },
+]
+
+[[package]]
+name = "nexti-graph"
+version = "0.1.0"
+source = { editable = "packages/graph" }
+dependencies = [
+    { name = "neo4j" },
+    { name = "nexti-core" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "neo4j", specifier = ">=5.28" },
+    { name = "nexti-core", editable = "packages/core" },
 ]
 
 [[package]]
@@ -1307,8 +1351,12 @@ source = { editable = "packages/orchestration" }
 dependencies = [
     { name = "langgraph" },
     { name = "langgraph-checkpoint-postgres" },
+    { name = "nexti-adapter-sybase" },
+    { name = "nexti-agents" },
     { name = "nexti-core" },
+    { name = "nexti-pack-spring-boot" },
     { name = "nexti-sandbox" },
+    { name = "nexti-verification" },
     { name = "psycopg", extra = ["binary"] },
 ]
 
@@ -1316,9 +1364,30 @@ dependencies = [
 requires-dist = [
     { name = "langgraph", specifier = ">=1.0" },
     { name = "langgraph-checkpoint-postgres", specifier = ">=3.0" },
+    { name = "nexti-adapter-sybase", editable = "packages/adapters/source/sybase" },
+    { name = "nexti-agents", editable = "packages/agents" },
+    { name = "nexti-core", editable = "packages/core" },
+    { name = "nexti-pack-spring-boot", editable = "packages/packs/target/spring_boot" },
+    { name = "nexti-sandbox", editable = "packages/sandbox" },
+    { name = "nexti-verification", editable = "packages/verification" },
+    { name = "psycopg", extras = ["binary"], specifier = ">=3.2" },
+]
+
+[[package]]
+name = "nexti-pack-spring-boot"
+version = "0.1.0"
+source = { editable = "packages/packs/target/spring_boot" }
+dependencies = [
+    { name = "nexti-core" },
+    { name = "nexti-sandbox" },
+    { name = "pydantic" },
+]
+
+[package.metadata]
+requires-dist = [
     { name = "nexti-core", editable = "packages/core" },
     { name = "nexti-sandbox", editable = "packages/sandbox" },
-    { name = "psycopg", extras = ["binary"], specifier = ">=3.2" },
+    { name = "pydantic", specifier = ">=2.11" },
 ]
 
 [[package]]
@@ -1338,16 +1407,31 @@ dependencies = [
 requires-dist = [{ name = "pyyaml", specifier = ">=6.0" }]
 
 [[package]]
+name = "nexti-verification"
+version = "0.1.0"
+source = { editable = "packages/verification" }
+dependencies = [
+    { name = "nexti-core" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "nexti-core", editable = "packages/core" }]
+
+[[package]]
 name = "nexti-worker"
 version = "0.1.0"
 source = { editable = "apps/worker" }
 dependencies = [
     { name = "httpx" },
+    { name = "nexti-adapter-sybase" },
     { name = "nexti-core" },
+    { name = "nexti-graph" },
     { name = "nexti-ingest" },
     { name = "nexti-model-gateway" },
     { name = "nexti-orchestration" },
+    { name = "nexti-pack-spring-boot" },
     { name = "nexti-sandbox" },
+    { name = "nexti-verification" },
     { name = "procrastinate" },
     { name = "psycopg", extra = ["binary"] },
     { name = "pydantic-settings" },
@@ -1357,11 +1441,15 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "httpx", specifier = ">=0.28" },
+    { name = "nexti-adapter-sybase", editable = "packages/adapters/source/sybase" },
     { name = "nexti-core", editable = "packages/core" },
+    { name = "nexti-graph", editable = "packages/graph" },
     { name = "nexti-ingest", editable = "packages/ingest" },
     { name = "nexti-model-gateway", editable = "packages/model_gateway" },
     { name = "nexti-orchestration", editable = "packages/orchestration" },
+    { name = "nexti-pack-spring-boot", editable = "packages/packs/target/spring_boot" },
     { name = "nexti-sandbox", editable = "packages/sandbox" },
+    { name = "nexti-verification", editable = "packages/verification" },
     { name = "procrastinate", specifier = ">=3.0" },
     { name = "psycopg", extras = ["binary"], specifier = ">=3.2" },
     { name = "pydantic-settings", specifier = ">=2.10" },
@@ -1882,6 +1970,15 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/5b/42/55c32bb9b12693c092ad250a0e82edb5b31ddeda6eb772de5f308b3804ad/python_multipart-0.0.32.tar.gz", hash = "sha256:be54b7f3fa167bb83e4fcd936b887b708f4e57fe75911c02aebf53efaf8d938e", size = 46881, upload-time = "2026-06-04T16:18:58.647Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/e1/04/e8135ebd1ad02c56ec633277529b2602ff99ff634be76cdba5744cf554fd/python_multipart-0.0.32-py3-none-any.whl", hash = "sha256:ff6d3f776f16878c894e52e107296ffc890e913c611b1a4ec6c44e2821fe2e23", size = 30042, upload-time = "2026-06-04T16:18:57.319Z" },
+]
+
+[[package]]
+name = "pytz"
+version = "2026.4"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/b0/ed/fa23d28713004418bbf2407127f80f385bfb0bf4e677bef02c25c27b00ee/pytz-2026.4.tar.gz", hash = "sha256:464303645bafafd72418898368b2429458f709cf1eb6a15372fbcc396b64da63", size = 318444, upload-time = "2026-09-24T03:58:40.443Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/d5/11/e3df59614bebe0ca50c905442603eda64ae7ac19811d4e4f74aa2d51ca85/pytz-2026.4-py2.py3-none-any.whl", hash = "sha256:9d514388fbc89ca0833203464272ac485b8828568ab73532f5020f17e892a0ff", size = 506747, upload-time = "2026-09-24T03:58:38.629Z" },
 ]
 
 [[package]]

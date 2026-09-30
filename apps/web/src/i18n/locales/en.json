@@ -24,7 +24,8 @@
     "yes": "Yes",
     "cancel": "Cancel",
     "discard": "Discard changes",
-    "error": "Something went wrong."
+    "error": "Something went wrong.",
+    "loading": "Loading…"
   },
   "nav": {
     "main": "Main navigation",
@@ -533,7 +534,50 @@
     "contractsHint": "Operations that will become the OpenAPI, each linked to the rules it serves.",
     "operation": "Operation",
     "gateApproved": "Gate C1 approved. Design can start.",
-    "ruleApproved": "{{id}} approved."
+    "ruleApproved": "{{id}} approved.",
+    "loading": "Loading the specification…",
+    "loadError": "The specification could not be loaded.",
+    "retry": "Try again",
+    "emptyTitle": "No business rules yet",
+    "emptyHint": "Run the pipeline to extract the business rules from the legacy and derive the user stories and the migration plan.",
+    "goToRuns": "Go to runs",
+    "search": "Search rules",
+    "filterPriority": "Filter by priority",
+    "allPriorities": "All priorities",
+    "rulesTotal_one": "{{count}} rule",
+    "rulesTotal_other": "{{count}} rules",
+    "noRuleMatch": "No rule matches the filters.",
+    "ruleStatus": {
+      "draft": "Draft",
+      "review": "In review",
+      "approved": "Approved",
+      "reopened": "Reopened",
+      "obsolete": "Obsolete"
+    },
+    "condition": "Condition",
+    "action": "Action",
+    "scenarios": "Scenarios (Gherkin)",
+    "noScenarios": "No scenarios.",
+    "inputs": "Inputs",
+    "outputs": "Outputs",
+    "citations": "Citations in the legacy",
+    "hardcoded": "Hard-coded values",
+    "suspectedDefect": "Suspected defect",
+    "openQuestions_one": "{{count}} open question about this rule",
+    "openQuestions_other": "{{count}} open questions about this rule",
+    "coveredBy": "Covered by",
+    "notCovered": "No active user story covers this rule.",
+    "ruleOutOfScope": "Out of scope: migrated as-is without a story.",
+    "versions": "Versions",
+    "origin": {
+      "extracted": "Extracted by the agents",
+      "person": "Changed by a person",
+      "imported": "Imported"
+    },
+    "c1": {
+      "ready": "The stories and the plan can be approved at gate C1 (in the Runs tab).",
+      "blocked": "Gate C1 cannot be approved yet:"
+    }
   },
   "ruleStatus": {
     "approved": "Approved",
@@ -652,7 +696,51 @@
     "allSame": "All cases match",
     "differs_one": "{{count}} case differs",
     "differs_other": "{{count}} cases differ",
-    "differenceNote": "A difference is a finding: fix the code, or a person records it as an approved difference. It is never hidden."
+    "differenceNote": "A difference is a finding: fix the code, or a person records it as an approved difference. It is never hidden.",
+    "highlightedLines_one": "{{count}} line of the rule highlighted",
+    "highlightedLines_other": "{{count}} lines of the rule highlighted",
+    "codeOf": "{{title}} code, {{range}}",
+    "highlighted": "Rule line:",
+    "truncated": "Excerpt cut: the file is longer.",
+    "state": {
+      "verified": "Verified",
+      "notVerified": "Not verified",
+      "pending": "Pending"
+    },
+    "stateHint": {
+      "verified": "Every golden or fresh case that exercises this rule matched on both sides in the latest verification.",
+      "notVerified": "The latest verification found no matching case for this rule, or a case that differs.",
+      "pending": "No verification has looked at this rule yet."
+    },
+    "noCodeView": "You need the code.view permission to see code",
+    "noCodeViewHint": "The comparison shows legacy and generated code. Ask a project owner for access.",
+    "loading": "Loading the traceability…",
+    "loadingRule": "Loading the rule…",
+    "loadError": "The traceability could not be loaded",
+    "emptyTitle": "Nothing to trace yet",
+    "emptyHint": "The comparison appears when the pipeline has extracted rules and generated the code that implements them.",
+    "intro": "Rule by rule: the legacy lines it was extracted from, next to the generated files that implement it, and the behavior of both sides in each case that exercises it.",
+    "search": "Search rule or file",
+    "filterState": "Filter by verification",
+    "allStates": "All",
+    "summary_one": "{{count}} rule · {{verified}} verified",
+    "summary_other": "{{count}} rules · {{verified}} verified",
+    "noMatch": "No rule matches the filter.",
+    "rules": "Rules",
+    "casesMatched_one": "{{matched}} of {{count}} case matched",
+    "casesMatched_other": "{{matched}} of {{count}} cases matched",
+    "targetFiles_one": "{{count}} target file",
+    "targetFiles_other": "{{count}} target files",
+    "ruleHint": "Computed from the latest verification and its proof pack.",
+    "noLegacy": "The cited legacy file is not among the accepted source archives.",
+    "noTarget": "No generated file implements this rule yet.",
+    "behaviourHint": "Golden master and fresh inputs that exercise this rule, compared field by field.",
+    "noCases": "No golden or fresh case exercises this rule yet.",
+    "result": "Result",
+    "field": "Field",
+    "legacyValue": "Legacy value",
+    "targetValue": "Target value",
+    "noDifferences": "No differences."
   },
   "validation": {
     "notYet": "Verification runs after generation. Nothing has been verified in this project yet.",
@@ -687,7 +775,46 @@
     "commentPlaceholder": "Optional",
     "sign": "Sign verification",
     "signDisabled": "Sign-off is available when the verdict is PROVEN.",
-    "signed": "Verification signed."
+    "signed": "Verification signed.",
+    "loading": "Loading the verdicts…",
+    "loadError": "The verdicts could not be loaded",
+    "emptyTitle": "No verification yet",
+    "signoffInRuns": "The verdict does not approve anything by itself. A named person reviews the evidence and signs off at gate C4 of the run, in the Runs tab.",
+    "history": "Earlier verdicts",
+    "historyHint": "Every verification is kept with its evidence.",
+    "when": "When",
+    "module": "Module",
+    "checksPassed": "Checks passed",
+    "run": "Run",
+    "proofPack": "Proof pack",
+    "passedOf": "{{passed}} of {{total}}",
+    "downloadShort": "Download",
+    "proofPackOf": "proof pack of {{module}}, {{date}}",
+    "moduleVerdict": "Verdict of {{module}}",
+    "computedOn": "{{date}} · run {{run}}",
+    "checksOf": "Checks of {{module}}",
+    "checkTitles": {
+      "testsRan": "Tests ran",
+      "rulesTraced": "Rules traced",
+      "sameBehaviour": "Same behavior",
+      "freshInputs": "Fresh inputs",
+      "canary": "Canary",
+      "sourceIntact": "Source intact"
+    },
+    "status": {
+      "passed": "Passed",
+      "failed": "Failed",
+      "notChecked": "Not checked"
+    },
+    "checkNotRun": "Not run in this verification: it counts as not checked.",
+    "downloadProofPack": "Download proof pack",
+    "noProofPack": "This verdict has no proof pack.",
+    "proofPackHint": "A zip with the verdict, every case and its differences, the rule trace and the test report, to keep and recompute.",
+    "proofPackNeedsCode": "You need the code.view permission to download the proof pack.",
+    "doesNotProveHint": "Read it before signing off.",
+    "thisVerdict": "This verdict",
+    "nothingListed": "Nothing listed.",
+    "anyVerdict": "Any verdict"
   },
   "runs": {
     "currentRun": "Current run",
@@ -1932,7 +2059,8 @@
       "question": "Open question",
       "approved": "Approved",
       "discarded": "Discarded",
-      "merged": "Merged"
+      "merged": "Merged",
+      "review": "In review"
     },
     "new": "New story",
     "approveC1": "Approve stories and plan (C1)",
@@ -1956,7 +2084,8 @@
       "extracted": "Extracted from the legacy",
       "document": "From a document",
       "jira": "From Jira / Azure DevOps",
-      "user": "Created by a person"
+      "user": "Created by a person",
+      "person": "Created by a person"
     },
     "meta": "{{feature}} · version {{version}} · {{wave}}",
     "asA": "As a",
@@ -2035,7 +2164,34 @@
       "productOwner": "Product owner",
       "techLead": "Tech lead",
       "executive": "Executive"
-    }
+    },
+    "narrative": "Narrative",
+    "narrativePlaceholder": "As a …, I want …, so that …",
+    "noFeature": "No feature",
+    "createTitle": "New user story",
+    "titleHint": "At least 3 characters.",
+    "noStories": "No user stories yet",
+    "noStoriesHint": "The pipeline derives them from the rules; you can also create one.",
+    "noMatch": "No story matches the filters.",
+    "coverageSummary": "{{covered}} of {{elements}} rules covered",
+    "byPlatform": "The platform",
+    "action": {
+      "create": "Created",
+      "edit": "Edited",
+      "split": "Split",
+      "merge": "Merged",
+      "discard": "Discarded",
+      "restore": "Restored",
+      "suggestion": "Accepted a suggestion",
+      "status": "Status changed"
+    },
+    "depStory": "Story",
+    "depReason": "Reason",
+    "addDependency": "Add dependency",
+    "removeDependency": "Remove the dependency on {{id}}",
+    "depAdded": "Dependency added",
+    "depRemoved": "Dependency removed",
+    "nothingToMerge": "There is no other active story to merge."
   },
   "storyPlan": {
     "kind": {
@@ -2072,7 +2228,21 @@
     "noIssues": "Every story comes after what it depends on.",
     "diffTitle": "Suggested vs yours",
     "diffHint": "Stories you moved from the suggested wave.",
-    "sameAsSuggested": "The plan is the suggested one."
+    "sameAsSuggested": "The plan is the suggested one.",
+    "saved": "Plan saved (version {{version}})",
+    "noPlan": "No migration plan yet",
+    "noPlanHint": "The pipeline suggests it when it derives the user stories.",
+    "version": "Version {{version}} · {{by}} · {{date}}",
+    "suggested": "Suggested by the platform",
+    "prevWaveOf": "Move {{id}} to the previous wave",
+    "nextWaveOf": "Move {{id}} to the next wave",
+    "upOf": "Move {{id}} up",
+    "downOf": "Move {{id}} down",
+    "problem": {
+      "cycle": "There is a cycle of hard dependencies starting at {{story}}.",
+      "unknownStory": "{{story}} is not a story of the project.",
+      "unplanned": "{{story}} is not in any wave."
+    }
   },
   "gherkin": {
     "valid": "Valid Gherkin",
@@ -2100,6 +2270,26 @@
       "examplesWithoutOutline": "Line {{line}}: Examples only go with a Scenario Outline.",
       "unknownPlaceholder": "Line {{line}}: <{{detail}}> is not a column of the Examples table.",
       "emptyExamples": "Line {{line}}: the Examples table has no rows."
+    },
+    "checking": "Checking the Gherkin…",
+    "unavailable": "The Gherkin check is not available right now; the server validates it again when saving.",
+    "line": "Line {{line}}:",
+    "api": {
+      "missingHeader": "The scenario must start with \"Scenario:\" or \"Scenario Outline:\" (or \"Escenario:\").",
+      "missingName": "The scenario needs a name after the keyword.",
+      "missingGiven": "Missing a Given step (the starting situation).",
+      "missingWhen": "Missing a When step (the action).",
+      "missingThen": "Missing a Then step (the expected result).",
+      "continuationFirst": "And/But can only continue a previous step.",
+      "outOfOrder": "Steps must go Given, then When, then Then.",
+      "twoBehaviours": "A Given or When after a Then describes a second behavior: split the scenario.",
+      "emptyStep": "The step has a keyword and no text.",
+      "freeText": "Every line must be a step, a table row, a doc string, a comment or a tag.",
+      "missingExamples": "A Scenario Outline needs an Examples table.",
+      "emptyExamples": "The Examples table needs a header and at least one row.",
+      "unknownPlaceholder": "A <placeholder> is not a column of the Examples table.",
+      "duplicateName": "Two scenarios of the story have the same name.",
+      "empty": "The criterion is empty."
     }
   },
   "sourceOptions": {

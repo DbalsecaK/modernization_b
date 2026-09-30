@@ -102,3 +102,57 @@ def test_the_api_never_runs_agents() -> None:
         if m.split(".")[0] in ENGINE_MODULES
     )
     assert offenders == []
+
+
+# Objects of the customer's reference application (ADR-0011): they may only exist in the local reference kit.
+REFERENCE_KIT_MARKERS = ("db_biz_pagos", "db_sat_his", "db_biz_admempresa", "bp_total_orden", "sp_debcred")
+CODE_SUFFIXES = {".py", ".ts", ".tsx", ".js", ".sp", ".sql", ".json", ".yaml", ".yml", ".feature", ".csv", ".txt"}
+
+
+def test_no_customer_reference_code_is_in_the_repository() -> None:
+    import shutil
+    import subprocess
+
+    git = shutil.which("git")
+    assert git is not None
+    tracked = subprocess.run(  # noqa: S603 - git with fixed arguments
+        [git, "ls-files", "-co", "--exclude-standard"], cwd=ROOT, capture_output=True, text=True, check=True
+    ).stdout.splitlines()
+    this = Path(__file__).resolve()
+    offenders = sorted(
+        f"{name}: {marker}"
+        for name in tracked
+        if Path(name).suffix in CODE_SUFFIXES and (ROOT / name).resolve() != this and (ROOT / name).is_file()
+        for marker in REFERENCE_KIT_MARKERS
+        if marker in (ROOT / name).read_text(encoding="utf-8", errors="ignore").lower()
+    )
+    assert offenders == []
+
+
+def test_only_the_graph_package_talks_to_neo4j() -> None:
+    """One access layer applies the tenant and project filters to every query (spec 5.3)."""
+    graph = ROOT / "packages" / "graph"
+    offenders = sorted(
+        str(p.relative_to(ROOT))
+        for r in (ROOT / "apps", ROOT / "packages")
+        for p in r.rglob("*.py")
+        if graph not in p.parents
+        and not {".venv", "node_modules", "__pycache__"} & set(p.relative_to(ROOT).parts)
+        and any(m.split(".")[0] == "neo4j" for m in imports(p))
+    )
+    assert offenders == []
+
+
+def test_only_the_isolated_containers_start_processes() -> None:
+    """Customer and generated code run only in a container without network (CLAUDE.md): the code sandbox and the
+    legacy engine of the golden master are the only production modules that start processes."""
+    allowed = {
+        ROOT / "packages" / "sandbox" / "src" / "nexti_sandbox" / "__init__.py",
+        ROOT / "packages" / "adapters" / "source" / "sybase" / "src" / "nexti_adapter_sybase" / "ase.py",
+    }
+    offenders = sorted(
+        str(p.relative_to(ROOT))
+        for p in production_python()
+        if p not in allowed and ("subprocess" in imports(p) or "create_subprocess" in p.read_text(encoding="utf-8"))
+    )
+    assert offenders == []

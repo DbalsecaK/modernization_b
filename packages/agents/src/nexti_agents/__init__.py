@@ -17,3 +17,11 @@ def definitions() -> list[dict[str, Any]]:
                 raise ValueError(f"{entry.name}: the id must match the file name")
             cards.append(card)
     return sorted(cards, key=lambda c: int(c.get("order", 0)))
+
+
+def prompt(agent_id: str) -> str:
+    """The system prompt of an agent (English, D-18), versioned with its card."""
+    path = files("nexti_agents") / "prompts" / f"{agent_id}.md"
+    if not path.is_file():
+        raise KeyError(f"agent {agent_id} has no prompt")
+    return path.read_text(encoding="utf-8")

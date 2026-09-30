@@ -15,5 +15,8 @@ reemplaza y se marca el anterior como "Reemplazado por ADR-NNNN".
 | [0007](0007-almacen-de-secretos-openbao.md) | D-30 — Almacén de secretos: API de Vault, OpenBao en desarrollo | Aceptada |
 | [0008](0008-validacion-de-insumos-clamav.md) | D-31 — Validación de insumos en la API y malware con ClamAV | Aceptada |
 | [0009](0009-cola-procrastinate-postgresql.md) | D-13 — Cola de trabajos con Procrastinate sobre PostgreSQL | Aceptada |
+| [0010](0010-primer-pack-java-spring-boot.md) | D-06 — Primer vertical Sybase hacia Java Spring Boot; el destino lo elige cada proyecto | Aceptada |
+| [0011](0011-kit-de-referencia-fuera-del-repo.md) | Aplicaciones de referencia de clientes en un kit local, fuera del repositorio | Aceptada |
+| [0012](0012-respuestas-grabadas-y-evaluacion-a-demanda.md) | Respuestas de modelos grabadas en el CI; evaluación con modelos reales a demanda | Aceptada |
 
 Plantilla: contexto, decisión, alternativas consideradas, consecuencias y cómo se valida.

@@ -132,7 +132,7 @@ async def test_creating_a_project_sets_up_everything_in_one_step(
         ("cruiz@nexti.example", "architect"),
     }
     assert project["budgetUsd"] == "1500.00"
-    assert "project.configure" in project["permissions"]
+    assert {"project.configure", "story.edit", "plan.edit", "code.view"} <= set(project["permissions"])
     project_id = uuid.UUID(project["id"])
 
     # The creator and the team reach the project right away (the OpenFGA tuples were published before answering).

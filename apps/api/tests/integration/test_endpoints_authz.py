@@ -51,7 +51,7 @@ from nexti_core.object_store import ObjectStore, ObjectStoreConfig, input_key
 from nexti_model_gateway.secrets import SecretsConfig, SecretStore, connection_path
 
 from .conftest import SETTINGS, World
-from .run_support import make_config, make_project, make_run
+from .run_support import VALID_CRITERION, execute, make_config, make_project, make_run, seed_spec, seed_validation
 
 # Routes that are public by design (no session): health, the sign-in flow and dev-auth (development only).
 PUBLIC = {
@@ -63,7 +63,7 @@ PUBLIC = {
     ("POST", "/auth/dev/login"),
 }
 # Mutations that are not sensitive actions and therefore not audited; projects:compose is a POST that saves nothing.
-NOT_AUDITED = {("PATCH", "/api/v1/me"), ("POST", "/api/v1/projects:compose")}
+NOT_AUDITED = {("PATCH", "/api/v1/me"), ("POST", "/api/v1/projects:compose"), ("POST", "/api/v1/gherkin:validate")}
 
 # OpenRouter is simulated in these tests (shapes recorded from the real API, packages/model_gateway/tests).
 OPENROUTER = "https://openrouter.test/api/v1"
@@ -383,6 +383,29 @@ class Ctx:
             ).scalar_one()
         return event_id
 
+    async def verified_project(self) -> tuple[uuid.UUID, uuid.UUID]:
+        """A fresh project of tenant A with rules, generated code and a verdict with its proof pack."""
+        project_id = await make_project(self.owner, self.world.tenant_a)
+        await seed_spec(self.owner, self.world.tenant_a, project_id)
+        verdict_id = await seed_validation(self.owner, object_store(), self.world.tenant_a, project_id)
+        await self.sync_authz()
+        return project_id, verdict_id
+
+    async def spec_project(self) -> uuid.UUID:
+        """A fresh project of tenant A with rules, stories (US-003 discarded), dependencies and a plan."""
+        project_id = await make_project(self.owner, self.world.tenant_a)
+        await seed_spec(self.owner, self.world.tenant_a, project_id)
+        await execute(
+            self.owner,
+            "INSERT INTO user_story_version (tenant_id, story_id, version, title, criteria, links, status, reason, "
+            "action) SELECT tenant_id, story_id, 2, title, criteria, links, 'discarded', 'Not needed', 'discard' "
+            "FROM user_story_version WHERE title = 'Story 3' AND version = 1 AND story_id IN "
+            "(SELECT id FROM user_story WHERE project_id = :p)",
+            p=project_id,
+        )
+        await self.sync_authz()
+        return project_id
+
 
 @dataclass(frozen=True)
 class Upload:
@@ -610,6 +633,23 @@ async def _export(ctx: Ctx) -> Request:
     return f"/api/v1/activity/events/{await ctx.event()}/export", None
 
 
+def _spec(suffix: str, body: dict[str, Any] | None = None) -> Callable[[Ctx], Awaitable[Request]]:
+    async def make(ctx: Ctx) -> Request:
+        return f"/api/v1/projects/{await ctx.spec_project()}{suffix}", body
+
+    return make
+
+
+def _verified(suffix: str) -> Callable[[Ctx], Awaitable[Request]]:
+    async def make(ctx: Ctx) -> Request:
+        project_id, verdict_id = await ctx.verified_project()
+        return f"/api/v1/projects/{project_id}{suffix.format(verdict=verdict_id)}", None
+
+    return make
+
+
+STORY = {"title": "Pay an order", "criteria": [VALID_CRITERION], "links": ["RULE-001"]}
+
 AI_POLICY = {"openrouterAllowed": True, "deniedUpstreamProviders": ["deepinfra"], "denyDataCollection": True}
 
 
@@ -782,6 +822,65 @@ CASES = [
     Case("GET", "/api/v1/tasks", "member", "anonymous", fixed("/api/v1/tasks")),
     Case("GET", "/api/v1/activity/events", "member", "anonymous", fixed("/api/v1/activity/events?follow=false")),
     Case("GET", "/api/v1/activity/events/{event_id}/export", "admin", "member", _export),
+    # Spec, user stories and the plan (M4).
+    Case("GET", "/api/v1/projects/{project_id}/spec/rules", "admin", "outsider", _spec("/spec/rules")),
+    Case(
+        "GET", "/api/v1/projects/{project_id}/spec/rules/{key}/versions", "admin", "outsider",
+        _spec("/spec/rules/RULE-001/versions"),
+    ),
+    Case("GET", "/api/v1/projects/{project_id}/stories", "admin", "outsider", _spec("/stories")),
+    Case(
+        "GET", "/api/v1/projects/{project_id}/stories/{key}/versions", "admin", "outsider",
+        _spec("/stories/US-001/versions"),
+    ),
+    Case("POST", "/api/v1/projects/{project_id}/stories", "admin", "member", _spec("/stories", STORY)),
+    Case("PUT", "/api/v1/projects/{project_id}/stories/{key}", "admin", "member", _spec("/stories/US-001", STORY)),
+    Case(
+        "POST", "/api/v1/projects/{project_id}/stories/{key}:split", "admin", "member",
+        _spec("/stories/US-001:split", {"title": "Other part", "criteria": [], "links": ["RULE-001"]}),
+    ),
+    Case(
+        "POST", "/api/v1/projects/{project_id}/stories/{key}:merge", "admin", "member",
+        _spec("/stories/US-002:merge", {"into": "US-001"}),
+    ),
+    Case(
+        "POST", "/api/v1/projects/{project_id}/stories/{key}:discard", "admin", "member",
+        _spec("/stories/US-001:discard", {"reason": "Not needed"}),
+    ),
+    Case(
+        "POST", "/api/v1/projects/{project_id}/stories/{key}:restore", "admin", "member",
+        _spec("/stories/US-003:restore"),
+    ),
+    Case(
+        "POST", "/api/v1/projects/{project_id}/stories/{key}/dependencies", "admin", "member",
+        _spec("/stories/US-001/dependencies", {"on": "US-002", "strength": "soft"}),
+    ),
+    Case(
+        "DELETE", "/api/v1/projects/{project_id}/stories/{key}/dependencies/{on}", "admin", "member",
+        _spec("/stories/US-002/dependencies/US-001"),
+    ),
+    Case("GET", "/api/v1/projects/{project_id}/coverage", "admin", "outsider", _spec("/coverage")),
+    Case("GET", "/api/v1/projects/{project_id}/c1-check", "admin", "outsider", _spec("/c1-check")),
+    Case(
+        "POST", "/api/v1/gherkin:validate", "member", "anonymous",
+        fixed("/api/v1/gherkin:validate", {"criteria": [VALID_CRITERION]}),
+    ),
+    Case("GET", "/api/v1/projects/{project_id}/plan", "admin", "outsider", _spec("/plan")),
+    Case(
+        "PUT", "/api/v1/projects/{project_id}/plan", "admin", "member",
+        _spec("/plan", {"waves": [["US-001", "US-002"]]}),
+    ),
+    Case("POST", "/api/v1/projects/{project_id}/plan:reset", "admin", "member", _spec("/plan:reset")),
+    Case("GET", "/api/v1/projects/{project_id}/verdicts", "admin", "outsider", _verified("/verdicts")),
+    Case(
+        "GET", "/api/v1/projects/{project_id}/verdicts/{verdict_id}/proof-pack", "admin", "outsider",
+        _verified("/verdicts/{verdict}/proof-pack"),
+    ),
+    Case("GET", "/api/v1/projects/{project_id}/traceability", "admin", "outsider", _verified("/traceability")),
+    Case(
+        "GET", "/api/v1/projects/{project_id}/traceability/{rule_key}", "admin", "outsider",
+        _verified("/traceability/RULE-001"),
+    ),
 ]  # fmt: skip
 
 

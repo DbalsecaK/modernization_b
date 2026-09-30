@@ -31,7 +31,7 @@ async def load_run(engine: AsyncEngine, run_id: uuid.UUID, tenant_id: uuid.UUID)
             (
                 await conn.execute(
                     text(
-                        "SELECT r.*, p.flow, c.pipeline_template, t.required_gates FROM run r "
+                        "SELECT r.*, p.flow, c.pipeline_template, c.target, t.required_gates FROM run r "
                         "JOIN project p ON p.id = r.project_id "
                         "JOIN project_config c ON c.project_id = r.project_id AND c.version = r.config_version "
                         "JOIN pipeline_template t ON t.key = c.pipeline_template WHERE r.id = :run"
@@ -73,6 +73,7 @@ async def load_run(engine: AsyncEngine, run_id: uuid.UUID, tenant_id: uuid.UUID)
         max_iterations=run["max_iterations"],
         agents=tuple(AgentSpec(a["key"], a["name"], tuple(a["phases"]), a["mandatory"]) for a in agents),
         options=dict(run["options"] or {}),
+        target={str(k): str(v) for k, v in (run["target"] or {}).items() if v},
     )
     return LoadedRun(
         context=context,

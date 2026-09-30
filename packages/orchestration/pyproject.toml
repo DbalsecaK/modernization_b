@@ -7,13 +7,21 @@ dependencies = [
   "langgraph>=1.0",
   "langgraph-checkpoint-postgres>=3.0",
   "psycopg[binary]>=3.2",
+  "nexti-adapter-sybase",
+  "nexti-agents",
   "nexti-core",
+  "nexti-pack-spring-boot",
   "nexti-sandbox",
+  "nexti-verification",
 ]
 
 [tool.uv.sources]
+nexti-adapter-sybase = { workspace = true }
+nexti-agents = { workspace = true }
 nexti-core = { workspace = true }
+nexti-pack-spring-boot = { workspace = true }
 nexti-sandbox = { workspace = true }
+nexti-verification = { workspace = true }
 
 [build-system]
 requires = ["hatchling"]

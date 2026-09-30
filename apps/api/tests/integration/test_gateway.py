@@ -1,6 +1,7 @@
 """Model gateway against the real database and OpenBao, with OpenRouter simulated from recorded responses
 (M1 acceptance: ledger with tokens and cost, policy respected, budget stops the calls)."""
 
+import asyncio
 import json
 import uuid
 from collections.abc import AsyncIterator
@@ -19,6 +20,7 @@ from nexti_api.tenancy import create_tenant
 from nexti_core.db.models import (
     Budget,
     BudgetAlert,
+    BudgetReservation,
     EffortMapping,
     ModelAssignment,
     ModelFamily,
@@ -325,6 +327,41 @@ async def test_the_budget_alerts_at_80_and_100_percent_and_then_stops_the_calls(
     rows = await ledger(owner_engine, tenant.id)
     assert rows[-1].outcome == "blocked"
     assert rows[-1].error_code == "budget_exceeded"
+
+
+async def test_calls_in_flight_count_against_the_budget_until_they_end(
+    app_engine: AsyncEngine, owner_engine: AsyncEngine, http: httpx.AsyncClient, tenant: Tenant
+) -> None:
+    """Parallel calls (a fan-out of rule extraction) cannot all pass the budget before any is recorded: each call
+    reserves what it may cost while it is in flight, and budgets count spend plus reservations (spec 13.5)."""
+    async with owner_engine.begin() as conn:
+        await conn.execute(insert(Budget).values(tenant_id=tenant.id, period="monthly", amount_usd=Decimal("0.01")))
+        # Another call in flight may still spend the whole budget.
+        await conn.execute(insert(BudgetReservation).values(tenant_id=tenant.id, amount_usd=Decimal("0.01")))
+    gw = gateway(app_engine, http)
+    with mock_openrouter() as router:
+        route = router.post(f"{BASE_URL}/chat/completions").respond(json=CHAT)
+        with pytest.raises(BudgetExceededError):
+            await gw.complete(CallContext(tenant.id), MESSAGES)
+        assert route.call_count == 0  # stopped before calling the provider
+        async with owner_engine.begin() as conn:
+            # A reservation left by a crashed process stops counting after 15 minutes.
+            await conn.execute(
+                text("UPDATE budget_reservation SET created_at = now() - interval '20 minutes' WHERE tenant_id = :t"),
+                {"t": tenant.id},
+            )
+        await gw.complete(CallContext(tenant.id), MESSAGES)
+        await asyncio.gather(*(gw.complete(CallContext(tenant.id), MESSAGES) for _ in range(3)))
+    assert route.call_count == 4
+    async with owner_engine.connect() as conn:
+        fresh: int = (
+            await conn.execute(
+                text("SELECT count(*) FROM budget_reservation WHERE tenant_id = :t AND created_at > now() - "
+                     "interval '15 minutes'"),
+                {"t": tenant.id},
+            )
+        ).scalar_one()  # fmt: skip
+    assert fresh == 0  # every call released its reservation when it ended
 
 
 async def test_assignments_follow_the_cascade_and_tenants_stay_apart(

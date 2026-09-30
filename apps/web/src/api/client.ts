@@ -31,12 +31,19 @@ export class ApiError extends Error {
     readonly status: number,
     readonly code: string,
     detail: string,
+    // Structured details some problems carry (e.g. the Gherkin or plan problems of a rejected save).
+    readonly problems: unknown[] = [],
   ) {
     super(detail)
   }
 }
 
 export function toApiError(response: Response, error: unknown): ApiError {
-  const problem = (error ?? {}) as { code?: string; detail?: string }
-  return new ApiError(response.status, problem.code ?? 'unknown_error', problem.detail ?? response.statusText)
+  const problem = (error ?? {}) as { code?: string; detail?: string; problems?: unknown }
+  return new ApiError(
+    response.status,
+    problem.code ?? 'unknown_error',
+    problem.detail ?? response.statusText,
+    Array.isArray(problem.problems) ? problem.problems : [],
+  )
 }

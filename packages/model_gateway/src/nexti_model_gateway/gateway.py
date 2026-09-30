@@ -12,11 +12,11 @@ import time
 import uuid
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from typing import Any
 
-from sqlalchemy import func, insert, select
+from sqlalchemy import delete, func, insert, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine
 
@@ -24,6 +24,7 @@ from nexti_core.audit import AuditEvent, record
 from nexti_core.db.models import (
     Budget,
     BudgetAlert,
+    BudgetReservation,
     EffortMapping,
     ModelAssignment,
     ModelOffering,
@@ -103,6 +104,7 @@ class Completion:
     offering_id: uuid.UUID
     was_fallback: bool
     request_id: str | None
+    model: str = ""  # the model slug that answered
 
 
 @dataclass(frozen=True)
@@ -124,6 +126,21 @@ class _Plan:
     max_retries: int
 
 
+RESERVATION_TTL = timedelta(minutes=15)  # a reservation left by a crashed process stops counting after this
+
+
+def max_cost(chain: "list[_Plan]", messages: list[dict[str, Any]]) -> Decimal:
+    """The most a call may cost with the profiles of its chain: its input (about three characters per token) and
+    the whole output allowance, at the tariff in force."""
+    input_tokens = Decimal(sum(len(str(m.get("content", ""))) for m in messages)) / 3
+    costs = [
+        (input_tokens * p.price.input_per_mtok + Decimal(p.max_output_tokens) * p.price.output_per_mtok) / 1_000_000
+        for p in chain
+        if p.price is not None
+    ]
+    return max(costs, default=Decimal(0)).quantize(Decimal("0.00000001"))
+
+
 @dataclass(frozen=True)
 class _BudgetState:
     budget_id: uuid.UUID
@@ -132,6 +149,7 @@ class _BudgetState:
     hard_stop: bool
     period: str
     spent: Decimal
+    reserved: Decimal = Decimal(0)  # what calls in flight may still spend
 
 
 @dataclass
@@ -260,7 +278,13 @@ class ModelGateway:
             if start is not None:
                 spent_query = spent_query.where(UsageLedger.occurred_at >= start)
             spent = Decimal((await conn.execute(spent_query)).scalar_one())
-            states.append(_BudgetState(b.id, b.amount_usd, b.alert_pct, b.hard_stop, b.period, spent))
+            reserved_query = select(func.coalesce(func.sum(BudgetReservation.amount_usd), 0)).where(
+                BudgetReservation.created_at >= now - RESERVATION_TTL
+            )
+            if b.project_id is not None:
+                reserved_query = reserved_query.where(BudgetReservation.project_id == b.project_id)
+            reserved = Decimal((await conn.execute(reserved_query)).scalar_one())
+            states.append(_BudgetState(b.id, b.amount_usd, b.alert_pct, b.hard_stop, b.period, spent, reserved))
         return states
 
     # --- ledger ---------------------------------------------------------------------------------------------
@@ -439,12 +463,37 @@ class ModelGateway:
                 plan, next_id = await self._plan(conn, next_id)
                 chain.append(plan)
             policy = await self._policy(conn)
+            # Budgets are decided one call at a time per tenant (also across worker processes), counting what the
+            # calls in flight may still spend: parallel calls cannot all pass before any of them is recorded.
+            await conn.execute(select(func.pg_advisory_xact_lock(func.hashtextextended(str(ctx.tenant_id), 0))))
             budgets = await self._budgets(conn, ctx, now)
+            exhausted = next((b for b in budgets if b.hard_stop and b.spent + b.reserved >= b.amount), None)
+            reservation: uuid.UUID | None = None
+            if exhausted is None and budgets:
+                reservation = (
+                    await conn.execute(
+                        insert(BudgetReservation)
+                        .values(
+                            tenant_id=ctx.tenant_id, project_id=ctx.project_id, amount_usd=max_cost(chain, messages)
+                        )
+                        .returning(BudgetReservation.id)
+                    )
+                ).scalar_one()
 
-        exhausted = next((b for b in budgets if b.hard_stop and b.spent >= b.amount), None)
         if exhausted is not None:
             await self._record(ctx, [_Attempt(chain[0], "blocked", "budget_exceeded")], blocked_budget=True)
-            raise BudgetExceededError(exhausted.budget_id, exhausted.spent, exhausted.amount)
+            raise BudgetExceededError(exhausted.budget_id, exhausted.spent + exhausted.reserved, exhausted.amount)
+        try:
+            return await self._attempts(ctx, chain, policy, messages, extra)
+        finally:
+            if reservation is not None:
+                async with scoped_connection(self.engine, DbScope(tenant_id=ctx.tenant_id)) as conn:
+                    await conn.execute(delete(BudgetReservation).where(BudgetReservation.id == reservation))
+
+    async def _attempts(
+        self, ctx: CallContext, chain: list[_Plan], policy: Policy, messages: list[dict[str, Any]],
+        extra: dict[str, Any],
+    ) -> Completion:  # fmt: skip
 
         attempts: list[_Attempt] = []
         for plan in chain:
@@ -466,6 +515,7 @@ class ModelGateway:
                     offering_id=plan.offering_id,
                     was_fallback=len(attempts) > 1,
                     request_id=attempt.result.request_id,
+                    model=plan.model,
                 )
         await self._record(ctx, attempts)
         if all(a.outcome == "blocked" for a in attempts):

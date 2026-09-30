@@ -54,6 +54,8 @@ PROJECT_PERMISSIONS = (
     "project.configure", "input.upload", "agents.select", "skills.select", "code.download",
     # Runs (M3): launch, answer questions, decide gates.
     "pipeline.run", "question.answer", "gate.c1.approve", "gate.c2.approve", "gate.c3.approve", "signoff.sign",
+    # Spec (M4): edit stories and the plan; see the code (traceability, proof packs).
+    "story.edit", "plan.edit", "code.view",
 )  # fmt: skip
 
 

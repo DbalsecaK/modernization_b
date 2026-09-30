@@ -3,17 +3,19 @@ never touch the provider client or the secrets store directly (test in apps/api/
 
 import uuid
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 import httpx
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine
 
 from nexti_model_gateway import catalog
+from nexti_model_gateway.cassettes import MissingRecordingError, Mode, RecordingClient
 from nexti_model_gateway.gateway import CallContext, Completion, ModelGateway
 from nexti_model_gateway.openrouter import BASE_URL, OpenRouterClient, Pricing, ProviderError
 from nexti_model_gateway.secrets import SecretsConfig, SecretStore, connection_path
 
-__all__ = ["ConnectionCheck", "GatewayService", "Pricing", "SecretsConfig"]
+__all__ = ["ConnectionCheck", "GatewayService", "MissingRecordingError", "Pricing", "SecretsConfig"]
 
 
 @dataclass(frozen=True)
@@ -24,10 +26,18 @@ class ConnectionCheck:
 
 class GatewayService:
     def __init__(
-        self, engine: AsyncEngine, http: httpx.AsyncClient, secrets: SecretsConfig, openrouter_url: str | None = None
+        self,
+        engine: AsyncEngine,
+        http: httpx.AsyncClient,
+        secrets: SecretsConfig,
+        openrouter_url: str | None = None,
+        *,
+        cassettes: tuple[Path, Mode] | None = None,
     ) -> None:
+        """`cassettes` (development and test only, ADR-0012): a folder of recorded responses and the mode."""
         self._secrets = SecretStore(secrets, http)
-        self._client = OpenRouterClient(http, openrouter_url or BASE_URL)
+        client = OpenRouterClient(http, openrouter_url or BASE_URL)
+        self._client = RecordingClient(client, *cassettes) if cassettes else client
         self.gateway = ModelGateway(engine, self._secrets, self._client)
 
     async def complete(self, ctx: CallContext, messages: list[dict[str, Any]], **extra: Any) -> Completion:

@@ -1,0 +1,115 @@
+"""Characterization (spec 6.1 phase 9) on the fictitious application: the test engineer's suite is checked against
+the rules and the code, the legacy runs it (here, the recording of a real Sybase ASE run) and the golden master is
+frozen; without an engine or a recording the phase waits instead of inventing expected results."""
+
+import hashlib
+import json
+import uuid
+from pathlib import Path
+
+import pytest
+
+from nexti_adapter_sybase.ase import RecordedRunner
+from nexti_core.adapters import LegacyRunner, SourceFile
+from nexti_core.spec.characterization import GoldenMaster
+from nexti_core.spec.model import Rule
+from nexti_orchestration import PhaseSpec, RunContext
+from nexti_orchestration.characterization import CharacterizationPhases, coverage_problems, parse_suite
+from nexti_orchestration.context import PhaseContext
+from nexti_orchestration.extraction import ModelCaller, ModelReply
+from nexti_orchestration.memory import MemoryStore
+from nexti_orchestration.model import PhaseUnavailableError
+from nexti_orchestration.store import Usage
+
+FIXTURES = Path(__file__).resolve().parents[2] / "adapters/source/sybase/tests/fixtures/pago_orden"
+FILES = [SourceFile("sp/sp_pago_orden.sp", (FIXTURES / "sp_pago_orden.sp").read_text(encoding="utf-8"))]
+RULES = [Rule.model_validate(r) for r in json.loads((FIXTURES / "reference_spec.json").read_text("utf-8"))["rules"]]
+SUITE = (FIXTURES / "characterization.json").read_text(encoding="utf-8")
+
+
+def _without(case: str) -> str:
+    data = json.loads(SUITE)
+    data["cases"] = [c for c in data["cases"] if c["name"] != case]
+    return json.dumps(data)
+
+
+class StandInTester:
+    """First a suite that forgets the only case of RULE-001, then the complete one."""
+
+    def __init__(self, replies: list[str]) -> None:
+        self.replies = replies
+        self.requests: list[list[dict[str, str]]] = []
+
+    async def complete(
+        self, agent: str, phase: str, messages: list[dict[str, str]], *, iteration: int = 1, judge: int = 0
+    ) -> ModelReply:
+        self.requests.append(messages)
+        return ModelReply(self.replies[min(iteration, len(self.replies)) - 1], Usage(model="t", input_tokens=5))
+
+
+class MemoryPort:
+    def __init__(self, runner: LegacyRunner | None, replies: list[str]) -> None:
+        self.tester = StandInTester(replies)
+        self.models: ModelCaller = self.tester
+        self.runner = runner
+        self.drafts: dict[str, str] = {}
+        self.master: GoldenMaster | None = None
+
+    async def load_rules(self) -> list[Rule]:
+        return RULES
+
+    async def source_files(self) -> list[SourceFile]:
+        return FILES
+
+    async def inventory_digest(self) -> str:
+        return "Procedure dbo.sp_pago_orden"
+
+    def legacy_runner(self) -> LegacyRunner | None:
+        return self.runner
+
+    async def save_file(self, path: str, content: str) -> str:
+        key = hashlib.sha256(content.encode()).hexdigest()
+        self.drafts[key] = content
+        return key
+
+    async def load_file(self, reference: str) -> str:
+        return self.drafts[reference]
+
+    async def save_golden_master(self, master: GoldenMaster) -> None:
+        self.master = master
+
+
+def _context() -> tuple[PhaseContext, MemoryStore]:
+    phase = PhaseSpec("characterization", None, True)
+    run = RunContext(uuid.uuid4(), uuid.uuid4(), uuid.uuid4(), "pipeline", "modernization", (phase,), ("C1",),
+                     "balanced", 3, (), target={"backend": "spring-boot"})  # fmt: skip
+    store = MemoryStore()
+    return PhaseContext(run, store, phase, None), store
+
+
+def test_every_rule_needs_a_case() -> None:
+    suite = parse_suite(_without("account_type_not_allowed"))
+    assert coverage_problems(suite, RULES) == ["rules without a case: RULE-001"]
+
+
+async def test_the_golden_master_is_what_the_legacy_did_with_the_corrected_suite() -> None:
+    port = MemoryPort(RecordedRunner(FIXTURES / "golden", "replay"), [_without("account_type_not_allowed"), SUITE])
+    ctx, store = _context()
+    result = await CharacterizationPhases(port).characterization(ctx)
+    assert result.summary == "Golden master: 12 case(s) frozen, 7 of them rejected by the legacy (sybase-ase-16.0)"
+    assert port.master is not None
+    assert len(port.master.results) == 12
+    assert "rules without a case: RULE-001" in port.tester.requests[1][-1]["content"]
+    assert store.kinds().count("selfCorrected") == 1
+
+
+async def test_without_an_engine_or_a_recording_the_phase_waits() -> None:
+    ctx, _ = _context()
+    with pytest.raises(PhaseUnavailableError, match="no engine"):
+        await CharacterizationPhases(MemoryPort(None, [SUITE])).characterization(ctx)
+    ctx, _ = _context()
+    changed = json.loads(SUITE)
+    changed["cases"][0]["description"] = "never recorded"
+    port = MemoryPort(RecordedRunner(FIXTURES / "golden", "replay"), [json.dumps(changed)])
+    with pytest.raises(PhaseUnavailableError, match="no golden master recorded"):
+        await CharacterizationPhases(port).characterization(ctx)

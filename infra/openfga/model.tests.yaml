@@ -40,6 +40,7 @@ tuples:
   - { user: role_binding:p1_architect#assignee, relation: signoff_sign, object: project:p1 }
   - { user: role_binding:p1_architect#assignee, relation: code_view, object: project:p1 }
   - { user: role_binding:p1_architect#assignee, relation: question_answer, object: project:p1 }
+  - { user: role_binding:p1_architect#assignee, relation: plan_edit, object: project:p1 }
   - { user: role_binding:p2_architect#assignee, relation: member, object: project:p2 }
   - { user: role_binding:p2_architect#assignee, relation: gate_c3_approve, object: project:p2 }
   - { user: role_binding:p2_architect#assignee, relation: signoff_sign, object: project:p2 }
@@ -56,6 +57,8 @@ tuples:
   - { user: role_binding:p4_owner#assignee, relation: member, object: project:p4 }
   - { user: role_binding:p4_owner#assignee, relation: project_configure, object: project:p4 }
   - { user: role_binding:p4_owner#assignee, relation: signoff_sign, object: project:p4 }
+  - { user: role_binding:p4_owner#assignee, relation: story_edit, object: project:p4 }
+  - { user: role_binding:p4_owner#assignee, relation: plan_edit, object: project:p4 }
 
 tests:
   - name: a project role applies only to the project where it was assigned
@@ -147,3 +150,21 @@ tests:
       - user: user:ana
         object: project:p1
         assertions: { question_answer: false }
+
+  - name: user stories and the plan by waves follow the project roles and the tenant administrator (M4)
+    check:
+      - user: user:luis
+        object: project:p1
+        assertions: { plan_edit: true, story_edit: false }
+      - user: user:ana
+        object: project:p4
+        assertions: { story_edit: true, plan_edit: true }
+      - user: user:maria
+        object: project:p2
+        assertions: { story_edit: true, plan_edit: true }
+      - user: user:carlos
+        object: project:p1
+        assertions: { story_edit: false, plan_edit: false }
+      - user: user:ana
+        object: project:p1
+        assertions: { story_edit: false, plan_edit: false }

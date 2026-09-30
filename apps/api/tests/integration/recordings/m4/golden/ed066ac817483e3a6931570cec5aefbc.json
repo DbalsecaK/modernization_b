@@ -1,0 +1,1234 @@
+{
+  "program": "dbo.sp_pago_orden",
+  "source_sha256": "07998b222357bba56acc622ec842a24786f06e24c2277d865c1fc6773affe001",
+  "engine": "sybase-ase-16.0",
+  "schema": {
+    "tables": [
+      {
+        "name": "db_pagos..pg_orden",
+        "columns": [
+          {
+            "name": "ord_numero",
+            "type": "int",
+            "nullable": false
+          },
+          {
+            "name": "ord_empresa",
+            "type": "int",
+            "nullable": false
+          },
+          {
+            "name": "ord_estado",
+            "type": "char(1)",
+            "nullable": true
+          },
+          {
+            "name": "ord_fecha_pago",
+            "type": "datetime",
+            "nullable": true
+          },
+          {
+            "name": "ord_comision",
+            "type": "money",
+            "nullable": true
+          }
+        ],
+        "key": [
+          "ord_numero",
+          "ord_empresa"
+        ]
+      },
+      {
+        "name": "db_admin..ad_tarifa_empresa",
+        "columns": [
+          {
+            "name": "tar_empresa",
+            "type": "int",
+            "nullable": false
+          },
+          {
+            "name": "tar_servicio",
+            "type": "varchar(10)",
+            "nullable": false
+          },
+          {
+            "name": "tar_valor",
+            "type": "money",
+            "nullable": true
+          },
+          {
+            "name": "tar_separada",
+            "type": "char(1)",
+            "nullable": true
+          }
+        ],
+        "key": [
+          "tar_empresa",
+          "tar_servicio"
+        ]
+      },
+      {
+        "name": "db_admin..ad_servicio",
+        "columns": [
+          {
+            "name": "srv_codigo",
+            "type": "varchar(10)",
+            "nullable": false
+          },
+          {
+            "name": "srv_tarifa",
+            "type": "money",
+            "nullable": true
+          }
+        ],
+        "key": [
+          "srv_codigo"
+        ]
+      },
+      {
+        "name": "db_cuentas..ct_cuenta",
+        "columns": [
+          {
+            "name": "cta_numero",
+            "type": "char(10)",
+            "nullable": false
+          },
+          {
+            "name": "cta_tipo",
+            "type": "char(3)",
+            "nullable": false
+          },
+          {
+            "name": "cta_saldo",
+            "type": "money",
+            "nullable": true
+          }
+        ],
+        "key": [
+          "cta_numero",
+          "cta_tipo"
+        ]
+      }
+    ]
+  },
+  "results": [
+    {
+      "case": {
+        "name": "fresh_01_tipo_cuenta_no_permitido",
+        "description": "tipo_cuenta_no_permitido with its amounts scaled by 0.5",
+        "rules": [
+          "RULE-001"
+        ],
+        "inputs": {
+          "@i_orden": 1001,
+          "@i_empresa": 10,
+          "@i_servicio": "LUZ",
+          "@i_tipo_cuenta": "PRE",
+          "@i_cuenta": "0012345678",
+          "@i_valor": 50.0,
+          "@i_canal": "WEB",
+          "@i_fecha_proceso": "2026-03-02T09:30:00"
+        },
+        "setup": {
+          "db_pagos..pg_orden": [
+            {
+              "ord_numero": 1001,
+              "ord_empresa": 10,
+              "ord_estado": "P"
+            }
+          ],
+          "db_cuentas..ct_cuenta": [
+            {
+              "cta_numero": "0012345678",
+              "cta_tipo": "PRE",
+              "cta_saldo": 250.0
+            }
+          ]
+        },
+        "stubs": {
+          "cobis..sp_cerror": [
+            {
+              "returns": 0,
+              "outputs": {}
+            }
+          ]
+        }
+      },
+      "observation": {
+        "returns": 50001,
+        "outputs": {
+          "@o_movimiento": null,
+          "@o_mensaje": "TIPO DE CUENTA NO PERMITIDO"
+        },
+        "tables": {
+          "db_pagos..pg_orden": [
+            {
+              "ord_numero": "1001",
+              "ord_empresa": "10",
+              "ord_estado": "P",
+              "ord_fecha_pago": null,
+              "ord_comision": null
+            }
+          ],
+          "db_admin..ad_tarifa_empresa": [],
+          "db_admin..ad_servicio": [],
+          "db_cuentas..ct_cuenta": [
+            {
+              "cta_numero": "0012345678",
+              "cta_tipo": "PRE",
+              "cta_saldo": "250.0000"
+            }
+          ]
+        },
+        "calls": [
+          {
+            "program": "cobis..sp_cerror",
+            "arguments": {
+              "@t_from": "sp_pago_orden",
+              "@i_num": "50001",
+              "@i_msg": "TIPO DE CUENTA NO PERMITIDO"
+            }
+          }
+        ],
+        "messages": [],
+        "error": null
+      }
+    },
+    {
+      "case": {
+        "name": "fresh_02_pago_cuenta_cte_permitida",
+        "description": "pago_cuenta_cte_permitida with its amounts scaled by 1.5",
+        "rules": [
+          "RULE-001",
+          "RULE-004",
+          "RULE-006",
+          "RULE-007",
+          "RULE-009",
+          "RULE-011"
+        ],
+        "inputs": {
+          "@i_orden": 1001,
+          "@i_empresa": 10,
+          "@i_servicio": "LUZ",
+          "@i_tipo_cuenta": "CTE",
+          "@i_cuenta": "0012345678",
+          "@i_valor": 150.0,
+          "@i_canal": "VEN",
+          "@i_fecha_proceso": "2026-03-02T09:30:00"
+        },
+        "setup": {
+          "db_pagos..pg_orden": [
+            {
+              "ord_numero": 1001,
+              "ord_empresa": 10,
+              "ord_estado": "P"
+            }
+          ],
+          "db_admin..ad_tarifa_empresa": [
+            {
+              "tar_empresa": 10,
+              "tar_servicio": "LUZ",
+              "tar_valor": 3.0,
+              "tar_separada": "N"
+            }
+          ],
+          "db_cuentas..ct_cuenta": [
+            {
+              "cta_numero": "0012345678",
+              "cta_tipo": "CTE",
+              "cta_saldo": 750.0
+            }
+          ]
+        },
+        "stubs": {
+          "db_cuentas..sp_debito": [
+            {
+              "returns": 0,
+              "outputs": {
+                "@o_secuencial": 7001
+              }
+            }
+          ]
+        }
+      },
+      "observation": {
+        "returns": 0,
+        "outputs": {
+          "@o_movimiento": "7001",
+          "@o_mensaje": "PAGO REALIZADO"
+        },
+        "tables": {
+          "db_pagos..pg_orden": [
+            {
+              "ord_numero": "1001",
+              "ord_empresa": "10",
+              "ord_estado": "A",
+              "ord_fecha_pago": "2026-03-02T09:30:00.000",
+              "ord_comision": "3.0000"
+            }
+          ],
+          "db_admin..ad_tarifa_empresa": [
+            {
+              "tar_empresa": "10",
+              "tar_servicio": "LUZ",
+              "tar_valor": "3.0000",
+              "tar_separada": "N"
+            }
+          ],
+          "db_admin..ad_servicio": [],
+          "db_cuentas..ct_cuenta": [
+            {
+              "cta_numero": "0012345678",
+              "cta_tipo": "CTE",
+              "cta_saldo": "750.0000"
+            }
+          ]
+        },
+        "calls": [
+          {
+            "program": "db_cuentas..sp_debito",
+            "arguments": {
+              "@i_cuenta": "0012345678",
+              "@i_tipo": "CTE",
+              "@i_valor": "153.0000",
+              "@i_referencia": "PAGO ORDEN"
+            }
+          }
+        ],
+        "messages": [],
+        "error": null
+      }
+    },
+    {
+      "case": {
+        "name": "fresh_03_pago_cuenta_aho_web_tarifa_empresa",
+        "description": "pago_cuenta_aho_web_tarifa_empresa with its amounts scaled by 0.99",
+        "rules": [
+          "RULE-001",
+          "RULE-004",
+          "RULE-006",
+          "RULE-007",
+          "RULE-009",
+          "RULE-011"
+        ],
+        "inputs": {
+          "@i_orden": 1001,
+          "@i_empresa": 10,
+          "@i_servicio": "LUZ",
+          "@i_tipo_cuenta": "AHO",
+          "@i_cuenta": "0012345678",
+          "@i_valor": 99.0,
+          "@i_canal": "WEB",
+          "@i_fecha_proceso": "2026-03-02T09:30:00"
+        },
+        "setup": {
+          "db_pagos..pg_orden": [
+            {
+              "ord_numero": 1001,
+              "ord_empresa": 10,
+              "ord_estado": "P"
+            }
+          ],
+          "db_admin..ad_tarifa_empresa": [
+            {
+              "tar_empresa": 10,
+              "tar_servicio": "LUZ",
+              "tar_valor": 1.98,
+              "tar_separada": "N"
+            }
+          ],
+          "db_cuentas..ct_cuenta": [
+            {
+              "cta_numero": "0012345678",
+              "cta_tipo": "AHO",
+              "cta_saldo": 495.0
+            }
+          ]
+        },
+        "stubs": {
+          "db_cuentas..sp_debito": [
+            {
+              "returns": 0,
+              "outputs": {
+                "@o_secuencial": 7002
+              }
+            }
+          ]
+        }
+      },
+      "observation": {
+        "returns": 0,
+        "outputs": {
+          "@o_movimiento": "7002",
+          "@o_mensaje": "PAGO REALIZADO"
+        },
+        "tables": {
+          "db_pagos..pg_orden": [
+            {
+              "ord_numero": "1001",
+              "ord_empresa": "10",
+              "ord_estado": "A",
+              "ord_fecha_pago": "2026-03-02T09:30:00.000",
+              "ord_comision": "0.9900"
+            }
+          ],
+          "db_admin..ad_tarifa_empresa": [
+            {
+              "tar_empresa": "10",
+              "tar_servicio": "LUZ",
+              "tar_valor": "1.9800",
+              "tar_separada": "N"
+            }
+          ],
+          "db_admin..ad_servicio": [],
+          "db_cuentas..ct_cuenta": [
+            {
+              "cta_numero": "0012345678",
+              "cta_tipo": "AHO",
+              "cta_saldo": "495.0000"
+            }
+          ]
+        },
+        "calls": [
+          {
+            "program": "db_cuentas..sp_debito",
+            "arguments": {
+              "@i_cuenta": "0012345678",
+              "@i_tipo": "AHO",
+              "@i_valor": "99.9900",
+              "@i_referencia": "PAGO ORDEN"
+            }
+          }
+        ],
+        "messages": [],
+        "error": null
+      }
+    },
+    {
+      "case": {
+        "name": "fresh_04_orden_no_existe",
+        "description": "orden_no_existe with its amounts scaled by 1.01",
+        "rules": [
+          "RULE-003"
+        ],
+        "inputs": {
+          "@i_orden": 9999,
+          "@i_empresa": 10,
+          "@i_servicio": "LUZ",
+          "@i_tipo_cuenta": "AHO",
+          "@i_cuenta": "0012345678",
+          "@i_valor": 101.0,
+          "@i_canal": "WEB",
+          "@i_fecha_proceso": "2026-03-02T09:30:00"
+        },
+        "setup": {
+          "db_pagos..pg_orden": [
+            {
+              "ord_numero": 1001,
+              "ord_empresa": 10,
+              "ord_estado": "P"
+            }
+          ],
+          "db_cuentas..ct_cuenta": [
+            {
+              "cta_numero": "0012345678",
+              "cta_tipo": "AHO",
+              "cta_saldo": 505.0
+            }
+          ]
+        },
+        "stubs": {
+          "cobis..sp_cerror": [
+            {
+              "returns": 0,
+              "outputs": {}
+            }
+          ]
+        }
+      },
+      "observation": {
+        "returns": 50002,
+        "outputs": {
+          "@o_movimiento": null,
+          "@o_mensaje": "ORDEN NO EXISTE"
+        },
+        "tables": {
+          "db_pagos..pg_orden": [
+            {
+              "ord_numero": "1001",
+              "ord_empresa": "10",
+              "ord_estado": "P",
+              "ord_fecha_pago": null,
+              "ord_comision": null
+            }
+          ],
+          "db_admin..ad_tarifa_empresa": [],
+          "db_admin..ad_servicio": [],
+          "db_cuentas..ct_cuenta": [
+            {
+              "cta_numero": "0012345678",
+              "cta_tipo": "AHO",
+              "cta_saldo": "505.0000"
+            }
+          ]
+        },
+        "calls": [
+          {
+            "program": "cobis..sp_cerror",
+            "arguments": {
+              "@t_from": "sp_pago_orden",
+              "@i_num": "50002",
+              "@i_msg": "ORDEN NO EXISTE"
+            }
+          }
+        ],
+        "messages": [],
+        "error": null
+      }
+    },
+    {
+      "case": {
+        "name": "fresh_05_orden_de_otra_empresa_no_existe",
+        "description": "orden_de_otra_empresa_no_existe with its amounts scaled by 2",
+        "rules": [
+          "RULE-003"
+        ],
+        "inputs": {
+          "@i_orden": 1001,
+          "@i_empresa": 20,
+          "@i_servicio": "LUZ",
+          "@i_tipo_cuenta": "AHO",
+          "@i_cuenta": "0012345678",
+          "@i_valor": 200.0,
+          "@i_canal": "WEB",
+          "@i_fecha_proceso": "2026-03-02T09:30:00"
+        },
+        "setup": {
+          "db_pagos..pg_orden": [
+            {
+              "ord_numero": 1001,
+              "ord_empresa": 10,
+              "ord_estado": "P"
+            }
+          ],
+          "db_cuentas..ct_cuenta": [
+            {
+              "cta_numero": "0012345678",
+              "cta_tipo": "AHO",
+              "cta_saldo": 1000.0
+            }
+          ]
+        },
+        "stubs": {
+          "cobis..sp_cerror": [
+            {
+              "returns": 0,
+              "outputs": {}
+            }
+          ]
+        }
+      },
+      "observation": {
+        "returns": 50002,
+        "outputs": {
+          "@o_movimiento": null,
+          "@o_mensaje": "ORDEN NO EXISTE"
+        },
+        "tables": {
+          "db_pagos..pg_orden": [
+            {
+              "ord_numero": "1001",
+              "ord_empresa": "10",
+              "ord_estado": "P",
+              "ord_fecha_pago": null,
+              "ord_comision": null
+            }
+          ],
+          "db_admin..ad_tarifa_empresa": [],
+          "db_admin..ad_servicio": [],
+          "db_cuentas..ct_cuenta": [
+            {
+              "cta_numero": "0012345678",
+              "cta_tipo": "AHO",
+              "cta_saldo": "1000.0000"
+            }
+          ]
+        },
+        "calls": [
+          {
+            "program": "cobis..sp_cerror",
+            "arguments": {
+              "@t_from": "sp_pago_orden",
+              "@i_num": "50002",
+              "@i_msg": "ORDEN NO EXISTE"
+            }
+          }
+        ],
+        "messages": [],
+        "error": null
+      }
+    },
+    {
+      "case": {
+        "name": "fresh_06_orden_no_pendiente_anulada",
+        "description": "orden_no_pendiente_anulada with its amounts scaled by 0.1",
+        "rules": [
+          "RULE-002"
+        ],
+        "inputs": {
+          "@i_orden": 1001,
+          "@i_empresa": 10,
+          "@i_servicio": "LUZ",
+          "@i_tipo_cuenta": "AHO",
+          "@i_cuenta": "0012345678",
+          "@i_valor": 10.0,
+          "@i_canal": "WEB",
+          "@i_fecha_proceso": "2026-03-02T09:30:00"
+        },
+        "setup": {
+          "db_pagos..pg_orden": [
+            {
+              "ord_numero": 1001,
+              "ord_empresa": 10,
+              "ord_estado": "C"
+            }
+          ],
+          "db_cuentas..ct_cuenta": [
+            {
+              "cta_numero": "0012345678",
+              "cta_tipo": "AHO",
+              "cta_saldo": 50.0
+            }
+          ]
+        },
+        "stubs": {
+          "cobis..sp_cerror": [
+            {
+              "returns": 0,
+              "outputs": {}
+            }
+          ]
+        }
+      },
+      "observation": {
+        "returns": 50003,
+        "outputs": {
+          "@o_movimiento": null,
+          "@o_mensaje": "ORDEN NO ESTA PENDIENTE"
+        },
+        "tables": {
+          "db_pagos..pg_orden": [
+            {
+              "ord_numero": "1001",
+              "ord_empresa": "10",
+              "ord_estado": "C",
+              "ord_fecha_pago": null,
+              "ord_comision": null
+            }
+          ],
+          "db_admin..ad_tarifa_empresa": [],
+          "db_admin..ad_servicio": [],
+          "db_cuentas..ct_cuenta": [
+            {
+              "cta_numero": "0012345678",
+              "cta_tipo": "AHO",
+              "cta_saldo": "50.0000"
+            }
+          ]
+        },
+        "calls": [
+          {
+            "program": "cobis..sp_cerror",
+            "arguments": {
+              "@t_from": "sp_pago_orden",
+              "@i_num": "50003",
+              "@i_msg": "ORDEN NO ESTA PENDIENTE"
+            }
+          }
+        ],
+        "messages": [],
+        "error": null
+      }
+    },
+    {
+      "case": {
+        "name": "fresh_07_orden_no_pendiente_ya_pagada",
+        "description": "orden_no_pendiente_ya_pagada with its amounts scaled by 3.3",
+        "rules": [
+          "RULE-002"
+        ],
+        "inputs": {
+          "@i_orden": 1001,
+          "@i_empresa": 10,
+          "@i_servicio": "LUZ",
+          "@i_tipo_cuenta": "AHO",
+          "@i_cuenta": "0012345678",
+          "@i_valor": 330.0,
+          "@i_canal": "WEB",
+          "@i_fecha_proceso": "2026-03-02T09:30:00"
+        },
+        "setup": {
+          "db_pagos..pg_orden": [
+            {
+              "ord_numero": 1001,
+              "ord_empresa": 10,
+              "ord_estado": "A",
+              "ord_fecha_pago": "2026-03-01T10:00:00",
+              "ord_comision": 3.3
+            }
+          ],
+          "db_cuentas..ct_cuenta": [
+            {
+              "cta_numero": "0012345678",
+              "cta_tipo": "AHO",
+              "cta_saldo": 1650.0
+            }
+          ]
+        },
+        "stubs": {
+          "cobis..sp_cerror": [
+            {
+              "returns": 0,
+              "outputs": {}
+            }
+          ]
+        }
+      },
+      "observation": {
+        "returns": 50003,
+        "outputs": {
+          "@o_movimiento": null,
+          "@o_mensaje": "ORDEN NO ESTA PENDIENTE"
+        },
+        "tables": {
+          "db_pagos..pg_orden": [
+            {
+              "ord_numero": "1001",
+              "ord_empresa": "10",
+              "ord_estado": "A",
+              "ord_fecha_pago": "2026-03-01T10:00:00.000",
+              "ord_comision": "3.3000"
+            }
+          ],
+          "db_admin..ad_tarifa_empresa": [],
+          "db_admin..ad_servicio": [],
+          "db_cuentas..ct_cuenta": [
+            {
+              "cta_numero": "0012345678",
+              "cta_tipo": "AHO",
+              "cta_saldo": "1650.0000"
+            }
+          ]
+        },
+        "calls": [
+          {
+            "program": "cobis..sp_cerror",
+            "arguments": {
+              "@t_from": "sp_pago_orden",
+              "@i_num": "50003",
+              "@i_msg": "ORDEN NO ESTA PENDIENTE"
+            }
+          }
+        ],
+        "messages": [],
+        "error": null
+      }
+    },
+    {
+      "case": {
+        "name": "fresh_08_tarifa_empresa_prevalece_sobre_servicio",
+        "description": "tarifa_empresa_prevalece_sobre_servicio with its amounts scaled by 0.75",
+        "rules": [
+          "RULE-004",
+          "RULE-006",
+          "RULE-007"
+        ],
+        "inputs": {
+          "@i_orden": 1001,
+          "@i_empresa": 10,
+          "@i_servicio": "LUZ",
+          "@i_tipo_cuenta": "AHO",
+          "@i_cuenta": "0012345678",
+          "@i_valor": 75.0,
+          "@i_canal": "VEN",
+          "@i_fecha_proceso": "2026-03-02T09:30:00"
+        },
+        "setup": {
+          "db_pagos..pg_orden": [
+            {
+              "ord_numero": 1001,
+              "ord_empresa": 10,
+              "ord_estado": "P"
+            }
+          ],
+          "db_admin..ad_tarifa_empresa": [
+            {
+              "tar_empresa": 10,
+              "tar_servicio": "LUZ",
+              "tar_valor": 1.5,
+              "tar_separada": "N"
+            }
+          ],
+          "db_admin..ad_servicio": [
+            {
+              "srv_codigo": "LUZ",
+              "srv_tarifa": 3.75
+            }
+          ],
+          "db_cuentas..ct_cuenta": [
+            {
+              "cta_numero": "0012345678",
+              "cta_tipo": "AHO",
+              "cta_saldo": 375.0
+            }
+          ]
+        },
+        "stubs": {
+          "db_cuentas..sp_debito": [
+            {
+              "returns": 0,
+              "outputs": {
+                "@o_secuencial": 7003
+              }
+            }
+          ]
+        }
+      },
+      "observation": {
+        "returns": 0,
+        "outputs": {
+          "@o_movimiento": "7003",
+          "@o_mensaje": "PAGO REALIZADO"
+        },
+        "tables": {
+          "db_pagos..pg_orden": [
+            {
+              "ord_numero": "1001",
+              "ord_empresa": "10",
+              "ord_estado": "A",
+              "ord_fecha_pago": "2026-03-02T09:30:00.000",
+              "ord_comision": "1.5000"
+            }
+          ],
+          "db_admin..ad_tarifa_empresa": [
+            {
+              "tar_empresa": "10",
+              "tar_servicio": "LUZ",
+              "tar_valor": "1.5000",
+              "tar_separada": "N"
+            }
+          ],
+          "db_admin..ad_servicio": [
+            {
+              "srv_codigo": "LUZ",
+              "srv_tarifa": "3.7500"
+            }
+          ],
+          "db_cuentas..ct_cuenta": [
+            {
+              "cta_numero": "0012345678",
+              "cta_tipo": "AHO",
+              "cta_saldo": "375.0000"
+            }
+          ]
+        },
+        "calls": [
+          {
+            "program": "db_cuentas..sp_debito",
+            "arguments": {
+              "@i_cuenta": "0012345678",
+              "@i_tipo": "AHO",
+              "@i_valor": "76.5000",
+              "@i_referencia": "PAGO ORDEN"
+            }
+          }
+        ],
+        "messages": [],
+        "error": null
+      }
+    },
+    {
+      "case": {
+        "name": "fresh_09_tarifa_servicio_por_defecto",
+        "description": "tarifa_servicio_por_defecto with its amounts scaled by 1.25",
+        "rules": [
+          "RULE-004",
+          "RULE-006",
+          "RULE-007"
+        ],
+        "inputs": {
+          "@i_orden": 1001,
+          "@i_empresa": 10,
+          "@i_servicio": "AGUA",
+          "@i_tipo_cuenta": "AHO",
+          "@i_cuenta": "0012345678",
+          "@i_valor": 125.0,
+          "@i_canal": "VEN",
+          "@i_fecha_proceso": "2026-03-02T09:30:00"
+        },
+        "setup": {
+          "db_pagos..pg_orden": [
+            {
+              "ord_numero": 1001,
+              "ord_empresa": 10,
+              "ord_estado": "P"
+            }
+          ],
+          "db_admin..ad_servicio": [
+            {
+              "srv_codigo": "AGUA",
+              "srv_tarifa": 1.88
+            }
+          ],
+          "db_cuentas..ct_cuenta": [
+            {
+              "cta_numero": "0012345678",
+              "cta_tipo": "AHO",
+              "cta_saldo": 625.0
+            }
+          ]
+        },
+        "stubs": {
+          "db_cuentas..sp_debito": [
+            {
+              "returns": 0,
+              "outputs": {
+                "@o_secuencial": 7004
+              }
+            }
+          ]
+        }
+      },
+      "observation": {
+        "returns": 0,
+        "outputs": {
+          "@o_movimiento": "7004",
+          "@o_mensaje": "PAGO REALIZADO"
+        },
+        "tables": {
+          "db_pagos..pg_orden": [
+            {
+              "ord_numero": "1001",
+              "ord_empresa": "10",
+              "ord_estado": "A",
+              "ord_fecha_pago": "2026-03-02T09:30:00.000",
+              "ord_comision": "1.8800"
+            }
+          ],
+          "db_admin..ad_tarifa_empresa": [],
+          "db_admin..ad_servicio": [
+            {
+              "srv_codigo": "AGUA",
+              "srv_tarifa": "1.8800"
+            }
+          ],
+          "db_cuentas..ct_cuenta": [
+            {
+              "cta_numero": "0012345678",
+              "cta_tipo": "AHO",
+              "cta_saldo": "625.0000"
+            }
+          ]
+        },
+        "calls": [
+          {
+            "program": "db_cuentas..sp_debito",
+            "arguments": {
+              "@i_cuenta": "0012345678",
+              "@i_tipo": "AHO",
+              "@i_valor": "126.8800",
+              "@i_referencia": "PAGO ORDEN"
+            }
+          }
+        ],
+        "messages": [],
+        "error": null
+      }
+    },
+    {
+      "case": {
+        "name": "fresh_10_tarifa_servicio_nula_es_cero",
+        "description": "tarifa_servicio_nula_es_cero with its amounts scaled by 10",
+        "rules": [
+          "RULE-004",
+          "RULE-005"
+        ],
+        "inputs": {
+          "@i_orden": 1001,
+          "@i_empresa": 10,
+          "@i_servicio": "AGUA",
+          "@i_tipo_cuenta": "AHO",
+          "@i_cuenta": "0012345678",
+          "@i_valor": 1000.0,
+          "@i_canal": "VEN",
+          "@i_fecha_proceso": "2026-03-02T09:30:00"
+        },
+        "setup": {
+          "db_pagos..pg_orden": [
+            {
+              "ord_numero": 1001,
+              "ord_empresa": 10,
+              "ord_estado": "P"
+            }
+          ],
+          "db_admin..ad_servicio": [
+            {
+              "srv_codigo": "AGUA",
+              "srv_tarifa": null
+            }
+          ],
+          "db_cuentas..ct_cuenta": [
+            {
+              "cta_numero": "0012345678",
+              "cta_tipo": "AHO",
+              "cta_saldo": 5000.0
+            }
+          ]
+        },
+        "stubs": {
+          "db_cuentas..sp_debito": [
+            {
+              "returns": 0,
+              "outputs": {
+                "@o_secuencial": 7005
+              }
+            }
+          ]
+        }
+      },
+      "observation": {
+        "returns": 0,
+        "outputs": {
+          "@o_movimiento": "7005",
+          "@o_mensaje": "PAGO REALIZADO"
+        },
+        "tables": {
+          "db_pagos..pg_orden": [
+            {
+              "ord_numero": "1001",
+              "ord_empresa": "10",
+              "ord_estado": "A",
+              "ord_fecha_pago": "2026-03-02T09:30:00.000",
+              "ord_comision": "0.0000"
+            }
+          ],
+          "db_admin..ad_tarifa_empresa": [],
+          "db_admin..ad_servicio": [
+            {
+              "srv_codigo": "AGUA",
+              "srv_tarifa": null
+            }
+          ],
+          "db_cuentas..ct_cuenta": [
+            {
+              "cta_numero": "0012345678",
+              "cta_tipo": "AHO",
+              "cta_saldo": "5000.0000"
+            }
+          ]
+        },
+        "calls": [
+          {
+            "program": "db_cuentas..sp_debito",
+            "arguments": {
+              "@i_cuenta": "0012345678",
+              "@i_tipo": "AHO",
+              "@i_valor": "1000.0000",
+              "@i_referencia": "PAGO ORDEN"
+            }
+          }
+        ],
+        "messages": [],
+        "error": null
+      }
+    },
+    {
+      "case": {
+        "name": "fresh_11_tarifa_empresa_nula_es_cero",
+        "description": "tarifa_empresa_nula_es_cero with its amounts scaled by 0.01",
+        "rules": [
+          "RULE-004",
+          "RULE-005"
+        ],
+        "inputs": {
+          "@i_orden": 1001,
+          "@i_empresa": 10,
+          "@i_servicio": "LUZ",
+          "@i_tipo_cuenta": "AHO",
+          "@i_cuenta": "0012345678",
+          "@i_valor": 1.0,
+          "@i_canal": "VEN",
+          "@i_fecha_proceso": "2026-03-02T09:30:00"
+        },
+        "setup": {
+          "db_pagos..pg_orden": [
+            {
+              "ord_numero": 1001,
+              "ord_empresa": 10,
+              "ord_estado": "P"
+            }
+          ],
+          "db_admin..ad_tarifa_empresa": [
+            {
+              "tar_empresa": 10,
+              "tar_servicio": "LUZ",
+              "tar_valor": null,
+              "tar_separada": "N"
+            }
+          ],
+          "db_cuentas..ct_cuenta": [
+            {
+              "cta_numero": "0012345678",
+              "cta_tipo": "AHO",
+              "cta_saldo": 5.0
+            }
+          ]
+        },
+        "stubs": {
+          "db_cuentas..sp_debito": [
+            {
+              "returns": 0,
+              "outputs": {
+                "@o_secuencial": 7006
+              }
+            }
+          ]
+        }
+      },
+      "observation": {
+        "returns": 0,
+        "outputs": {
+          "@o_movimiento": "7006",
+          "@o_mensaje": "PAGO REALIZADO"
+        },
+        "tables": {
+          "db_pagos..pg_orden": [
+            {
+              "ord_numero": "1001",
+              "ord_empresa": "10",
+              "ord_estado": "A",
+              "ord_fecha_pago": "2026-03-02T09:30:00.000",
+              "ord_comision": "0.0000"
+            }
+          ],
+          "db_admin..ad_tarifa_empresa": [
+            {
+              "tar_empresa": "10",
+              "tar_servicio": "LUZ",
+              "tar_valor": null,
+              "tar_separada": "N"
+            }
+          ],
+          "db_admin..ad_servicio": [],
+          "db_cuentas..ct_cuenta": [
+            {
+              "cta_numero": "0012345678",
+              "cta_tipo": "AHO",
+              "cta_saldo": "5.0000"
+            }
+          ]
+        },
+        "calls": [
+          {
+            "program": "db_cuentas..sp_debito",
+            "arguments": {
+              "@i_cuenta": "0012345678",
+              "@i_tipo": "AHO",
+              "@i_valor": "1.0000",
+              "@i_referencia": "PAGO ORDEN"
+            }
+          }
+        ],
+        "messages": [],
+        "error": null
+      }
+    },
+    {
+      "case": {
+        "name": "fresh_12_sin_tarifa_ni_servicio",
+        "description": "sin_tarifa_ni_servicio with its amounts scaled by 1.7",
+        "rules": [
+          "RULE-004",
+          "RULE-005",
+          "RULE-007"
+        ],
+        "inputs": {
+          "@i_orden": 1001,
+          "@i_empresa": 10,
+          "@i_servicio": "XXX",
+          "@i_tipo_cuenta": "AHO",
+          "@i_cuenta": "0012345678",
+          "@i_valor": 170.0,
+          "@i_canal": "VEN",
+          "@i_fecha_proceso": "2026-03-02T09:30:00"
+        },
+        "setup": {
+          "db_pagos..pg_orden": [
+            {
+              "ord_numero": 1001,
+              "ord_empresa": 10,
+              "ord_estado": "P"
+            }
+          ],
+          "db_cuentas..ct_cuenta": [
+            {
+              "cta_numero": "0012345678",
+              "cta_tipo": "AHO",
+              "cta_saldo": 850.0
+            }
+          ]
+        },
+        "stubs": {
+          "db_cuentas..sp_debito": [
+            {
+              "returns": 0,
+              "outputs": {
+                "@o_secuencial": 7007
+              }
+            }
+          ]
+        }
+      },
+      "observation": {
+        "returns": 0,
+        "outputs": {
+          "@o_movimiento": "7007",
+          "@o_mensaje": "PAGO REALIZADO"
+        },
+        "tables": {
+          "db_pagos..pg_orden": [
+            {
+              "ord_numero": "1001",
+              "ord_empresa": "10",
+              "ord_estado": "A",
+              "ord_fecha_pago": "2026-03-02T09:30:00.000",
+              "ord_comision": "0.0000"
+            }
+          ],
+          "db_admin..ad_tarifa_empresa": [],
+          "db_admin..ad_servicio": [],
+          "db_cuentas..ct_cuenta": [
+            {
+              "cta_numero": "0012345678",
+              "cta_tipo": "AHO",
+              "cta_saldo": "850.0000"
+            }
+          ]
+        },
+        "calls": [
+          {
+            "program": "db_cuentas..sp_debito",
+            "arguments": {
+              "@i_cuenta": "0012345678",
+              "@i_tipo": "AHO",
+              "@i_valor": "170.0000",
+              "@i_referencia": "PAGO ORDEN"
+            }
+          }
+        ],
+        "messages": [],
+        "error": null
+      }
+    }
+  ]
+}
