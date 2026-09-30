@@ -1,0 +1,246 @@
+{
+ "application": "pagos-cics (Banco Ficticio, fictitious)",
+ "note": "Expected inventory written by hand from the sources, independent of the parser.",
+ "transactions": {
+  "PGMN": "PAGOMNU",
+  "PGOR": "PAGOORD"
+ },
+ "programs": {
+  "PAGOMNU": {
+   "file": "cbl/PAGOMNU.cbl",
+   "lines": [
+    1,
+    60
+   ],
+   "paragraphs": {
+    "0000-PRINCIPAL": 19,
+    "1000-MOSTRAR-MENU": 33,
+    "2000-ELEGIR-OPCION": 39,
+    "9000-TERMINAR": 57
+   }
+  },
+  "PAGOORD": {
+   "file": "cbl/PAGOORD.cbl",
+   "lines": [
+    1,
+    192
+   ],
+   "paragraphs": {
+    "0000-PRINCIPAL": 36,
+    "1000-PRIMERA-VEZ": 55,
+    "2000-PROCESAR": 62,
+    "2100-VALIDAR-ENTRADA": 82,
+    "2200-LEER-ORDEN": 105,
+    "2300-CALCULAR-COMISION": 128,
+    "2400-DEBITAR-CUENTA": 140,
+    "2500-REGISTRAR-PAGO": 161,
+    "2600-ENVIAR-RESULTADO": 174,
+    "8000-ENVIAR-ERROR": 184,
+    "9000-VOLVER-MENU": 190
+   }
+  },
+  "PAGODEB": {
+   "file": "cbl/PAGODEB.cbl",
+   "lines": [
+    1,
+    39
+   ],
+   "paragraphs": {
+    "0000-PRINCIPAL": 17,
+    "1000-DEBITAR": 35
+   }
+  }
+ },
+ "external_programs": [
+  "PAGOMOV"
+ ],
+ "copies": {
+  "PAGOMNU": [
+   "PAGOCOM",
+   "PAGOSET"
+  ],
+  "PAGOORD": [
+   "ORDREG",
+   "PAGDCOM",
+   "PAGOCOM",
+   "PAGOSET"
+  ],
+  "PAGODEB": [
+   "CTAREG",
+   "PAGDCOM"
+  ]
+ },
+ "system_copybooks": [
+  "DFHAID"
+ ],
+ "calls": [
+  [
+   "PAGOMNU",
+   "PAGOORD",
+   "XCTL"
+  ],
+  [
+   "PAGOORD",
+   "PAGODEB",
+   "LINK"
+  ],
+  [
+   "PAGOORD",
+   "PAGOMOV",
+   "LINK"
+  ],
+  [
+   "PAGOORD",
+   "PAGOMNU",
+   "XCTL"
+  ]
+ ],
+ "maps": {
+  "PAGOMNU": [
+   "PAGOMEN"
+  ],
+  "PAGOORD": [
+   "PAGOORD",
+   "PAGORES"
+  ]
+ },
+ "reads": {
+  "PAGOORD": [
+   "ORDENES"
+  ],
+  "PAGODEB": [
+   "CUENTAS"
+  ]
+ },
+ "writes": {
+  "PAGOORD": [
+   "ORDENES"
+  ],
+  "PAGODEB": [
+   "CUENTAS"
+  ]
+ },
+ "performs": {
+  "PAGOMNU": [
+   [
+    "0000-PRINCIPAL",
+    "1000-MOSTRAR-MENU"
+   ],
+   [
+    "0000-PRINCIPAL",
+    "2000-ELEGIR-OPCION"
+   ],
+   [
+    "0000-PRINCIPAL",
+    "9000-TERMINAR"
+   ],
+   [
+    "2000-ELEGIR-OPCION",
+    "9000-TERMINAR"
+   ]
+  ],
+  "PAGOORD": [
+   [
+    "0000-PRINCIPAL",
+    "1000-PRIMERA-VEZ"
+   ],
+   [
+    "0000-PRINCIPAL",
+    "2000-PROCESAR"
+   ],
+   [
+    "0000-PRINCIPAL",
+    "8000-ENVIAR-ERROR"
+   ],
+   [
+    "0000-PRINCIPAL",
+    "9000-VOLVER-MENU"
+   ],
+   [
+    "2000-PROCESAR",
+    "2100-VALIDAR-ENTRADA"
+   ],
+   [
+    "2000-PROCESAR",
+    "2200-LEER-ORDEN"
+   ],
+   [
+    "2000-PROCESAR",
+    "2300-CALCULAR-COMISION"
+   ],
+   [
+    "2000-PROCESAR",
+    "2400-DEBITAR-CUENTA"
+   ],
+   [
+    "2000-PROCESAR",
+    "2500-REGISTRAR-PAGO"
+   ],
+   [
+    "2000-PROCESAR",
+    "2600-ENVIAR-RESULTADO"
+   ],
+   [
+    "2000-PROCESAR",
+    "8000-ENVIAR-ERROR"
+   ]
+  ],
+  "PAGODEB": [
+   [
+    "0000-PRINCIPAL",
+    "1000-DEBITAR"
+   ]
+  ]
+ },
+ "cics_commands": {
+  "PAGOMNU": {
+   "SEND MAP": 2,
+   "RECEIVE MAP": 1,
+   "XCTL": 1,
+   "SEND TEXT": 1,
+   "RETURN": 2
+  },
+  "PAGOORD": {
+   "SEND MAP": 3,
+   "RECEIVE MAP": 1,
+   "READ": 1,
+   "LINK": 2,
+   "REWRITE": 1,
+   "SYNCPOINT": 1,
+   "XCTL": 1,
+   "RETURN": 1
+  },
+  "PAGODEB": {
+   "READ": 1,
+   "REWRITE": 1,
+   "RETURN": 1
+  }
+ },
+ "data_items": {
+  "ORD-VALOR": {
+   "picture": "S9(9)V99",
+   "usage": "COMP-3",
+   "neutral": "decimal(11,2,signed)"
+  },
+  "CTA-SALDO": {
+   "picture": "S9(11)V99",
+   "usage": "COMP-3",
+   "neutral": "decimal(13,2,signed)"
+  },
+  "ORD-NUMERO": {
+   "picture": "9(7)",
+   "usage": "DISPLAY",
+   "neutral": "decimal(7,0,unsigned)"
+  },
+  "CTA-TIPO": {
+   "picture": "X(3)",
+   "usage": "DISPLAY",
+   "neutral": "text(fixed,3,ebcdic)"
+  },
+  "WS-RESP": {
+   "picture": "S9(8)",
+   "usage": "COMP",
+   "neutral": "integer(32,signed)"
+  }
+ }
+}

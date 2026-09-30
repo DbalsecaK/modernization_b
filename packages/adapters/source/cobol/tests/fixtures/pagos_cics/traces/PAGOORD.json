@@ -1,0 +1,2540 @@
+{
+ "program": "PAGOORD",
+ "transaction": "PGOR",
+ "engine": "cics-trace",
+ "note": "Traces of the fictitious application, exported from its test region (spec 8.3, ADR-0015).",
+ "schema": {
+  "tables": [
+   {
+    "name": "ORDENES",
+    "key": [
+     "ORD_NUMERO",
+     "ORD_EMPRESA"
+    ],
+    "columns": [
+     {
+      "name": "ORD_NUMERO",
+      "type": "PIC 9(7)",
+      "nullable": false
+     },
+     {
+      "name": "ORD_EMPRESA",
+      "type": "PIC 9(5)",
+      "nullable": false
+     },
+     {
+      "name": "ORD_ESTADO",
+      "type": "PIC X",
+      "nullable": false
+     },
+     {
+      "name": "ORD_VALOR",
+      "type": "PIC S9(9)V99 COMP-3",
+      "nullable": false
+     },
+     {
+      "name": "ORD_MOVIM",
+      "type": "PIC 9(10)",
+      "nullable": false
+     },
+     {
+      "name": "ORD_COMIS",
+      "type": "PIC S9(3)V99 COMP-3",
+      "nullable": false
+     }
+    ]
+   },
+   {
+    "name": "CUENTAS",
+    "key": [
+     "CTA_NUMERO"
+    ],
+    "columns": [
+     {
+      "name": "CTA_NUMERO",
+      "type": "PIC 9(10)",
+      "nullable": false
+     },
+     {
+      "name": "CTA_TIPO",
+      "type": "PIC X(3)",
+      "nullable": false
+     },
+     {
+      "name": "CTA_SALDO",
+      "type": "PIC S9(11)V99 COMP-3",
+      "nullable": false
+     },
+     {
+      "name": "CTA_ESTADO",
+      "type": "PIC X",
+      "nullable": false
+     }
+    ]
+   }
+  ]
+ },
+ "results": [
+  {
+   "case": {
+    "name": "pago_web_exitoso",
+    "description": "A pending order paid on the web channel",
+    "rules": [
+     "RULE-005",
+     "RULE-006",
+     "RULE-008",
+     "RULE-009"
+    ],
+    "inputs": {
+     "ORDEN": "1000001",
+     "EMPRESA": "10001",
+     "TIPCTA": "CTE",
+     "CUENTA": "1234567890",
+     "VALOR": "1500.00",
+     "CANAL": "WEB",
+     "CLAVE": ""
+    },
+    "setup": {
+     "ORDENES": [
+      {
+       "ORD_NUMERO": 1000001,
+       "ORD_EMPRESA": 10001,
+       "ORD_ESTADO": "P",
+       "ORD_VALOR": "1500.00",
+       "ORD_MOVIM": 0,
+       "ORD_COMIS": "0.00"
+      },
+      {
+       "ORD_NUMERO": 1000002,
+       "ORD_EMPRESA": 10001,
+       "ORD_ESTADO": "G",
+       "ORD_VALOR": "800.00",
+       "ORD_MOVIM": 5555500001,
+       "ORD_COMIS": "1.00"
+      },
+      {
+       "ORD_NUMERO": 1000003,
+       "ORD_EMPRESA": 10002,
+       "ORD_ESTADO": "P",
+       "ORD_VALOR": "60000.00",
+       "ORD_MOVIM": 0,
+       "ORD_COMIS": "0.00"
+      },
+      {
+       "ORD_NUMERO": 1000004,
+       "ORD_EMPRESA": 10001,
+       "ORD_ESTADO": "P",
+       "ORD_VALOR": "300.00",
+       "ORD_MOVIM": 0,
+       "ORD_COMIS": "0.00"
+      }
+     ],
+     "CUENTAS": [
+      {
+       "CTA_NUMERO": 1234567890,
+       "CTA_TIPO": "CTE",
+       "CTA_SALDO": "5000.00",
+       "CTA_ESTADO": "A"
+      },
+      {
+       "CTA_NUMERO": 2222222222,
+       "CTA_TIPO": "AHO",
+       "CTA_SALDO": "100.00",
+       "CTA_ESTADO": "A"
+      },
+      {
+       "CTA_NUMERO": 3333333333,
+       "CTA_TIPO": "CTE",
+       "CTA_SALDO": "90000.00",
+       "CTA_ESTADO": "I"
+      },
+      {
+       "CTA_NUMERO": 4444444444,
+       "CTA_TIPO": "VIR",
+       "CTA_SALDO": "70000.00",
+       "CTA_ESTADO": "A"
+      },
+      {
+       "CTA_NUMERO": 5555555555,
+       "CTA_TIPO": "AHO",
+       "CTA_SALDO": "1000.00",
+       "CTA_ESTADO": "A"
+      }
+     ]
+    },
+    "stubs": {
+     "PAGOMOV": [
+      {
+       "returns": 0,
+       "outputs": {
+        "MOV_NUMERO": 5555500010
+       }
+      }
+     ]
+    }
+   },
+   "observation": {
+    "returns": 0,
+    "outputs": {
+     "RORDEN": "1000001",
+     "RCOMIS": "1.00",
+     "RMOVIM": "5555500010",
+     "RMENS": "PAGO REALIZADO"
+    },
+    "tables": {
+     "ORDENES": [
+      {
+       "ORD_NUMERO": "1000001",
+       "ORD_EMPRESA": "10001",
+       "ORD_ESTADO": "G",
+       "ORD_VALOR": "1500.00",
+       "ORD_MOVIM": "5555500010",
+       "ORD_COMIS": "1.00"
+      },
+      {
+       "ORD_NUMERO": "1000002",
+       "ORD_EMPRESA": "10001",
+       "ORD_ESTADO": "G",
+       "ORD_VALOR": "800.00",
+       "ORD_MOVIM": "5555500001",
+       "ORD_COMIS": "1.00"
+      },
+      {
+       "ORD_NUMERO": "1000003",
+       "ORD_EMPRESA": "10002",
+       "ORD_ESTADO": "P",
+       "ORD_VALOR": "60000.00",
+       "ORD_MOVIM": "0",
+       "ORD_COMIS": "0.00"
+      },
+      {
+       "ORD_NUMERO": "1000004",
+       "ORD_EMPRESA": "10001",
+       "ORD_ESTADO": "P",
+       "ORD_VALOR": "300.00",
+       "ORD_MOVIM": "0",
+       "ORD_COMIS": "0.00"
+      }
+     ],
+     "CUENTAS": [
+      {
+       "CTA_NUMERO": "1234567890",
+       "CTA_TIPO": "CTE",
+       "CTA_SALDO": "3499.00",
+       "CTA_ESTADO": "A"
+      },
+      {
+       "CTA_NUMERO": "2222222222",
+       "CTA_TIPO": "AHO",
+       "CTA_SALDO": "100.00",
+       "CTA_ESTADO": "A"
+      },
+      {
+       "CTA_NUMERO": "3333333333",
+       "CTA_TIPO": "CTE",
+       "CTA_SALDO": "90000.00",
+       "CTA_ESTADO": "I"
+      },
+      {
+       "CTA_NUMERO": "4444444444",
+       "CTA_TIPO": "VIR",
+       "CTA_SALDO": "70000.00",
+       "CTA_ESTADO": "A"
+      },
+      {
+       "CTA_NUMERO": "5555555555",
+       "CTA_TIPO": "AHO",
+       "CTA_SALDO": "1000.00",
+       "CTA_ESTADO": "A"
+      }
+     ]
+    },
+    "calls": [
+     {
+      "program": "PAGOMOV",
+      "arguments": {
+       "MOV_ORDEN": "1000001"
+      }
+     }
+    ],
+    "messages": [],
+    "error": null
+   }
+  },
+  {
+   "case": {
+    "name": "pago_oficina_exento",
+    "description": "A large order paid at the office: no commission",
+    "rules": [
+     "RULE-003",
+     "RULE-006",
+     "RULE-008",
+     "RULE-009"
+    ],
+    "inputs": {
+     "ORDEN": "1000003",
+     "EMPRESA": "10002",
+     "TIPCTA": "VIR",
+     "CUENTA": "4444444444",
+     "VALOR": "60000.00",
+     "CANAL": "OFI",
+     "CLAVE": "A1B2C3"
+    },
+    "setup": {
+     "ORDENES": [
+      {
+       "ORD_NUMERO": 1000001,
+       "ORD_EMPRESA": 10001,
+       "ORD_ESTADO": "P",
+       "ORD_VALOR": "1500.00",
+       "ORD_MOVIM": 0,
+       "ORD_COMIS": "0.00"
+      },
+      {
+       "ORD_NUMERO": 1000002,
+       "ORD_EMPRESA": 10001,
+       "ORD_ESTADO": "G",
+       "ORD_VALOR": "800.00",
+       "ORD_MOVIM": 5555500001,
+       "ORD_COMIS": "1.00"
+      },
+      {
+       "ORD_NUMERO": 1000003,
+       "ORD_EMPRESA": 10002,
+       "ORD_ESTADO": "P",
+       "ORD_VALOR": "60000.00",
+       "ORD_MOVIM": 0,
+       "ORD_COMIS": "0.00"
+      },
+      {
+       "ORD_NUMERO": 1000004,
+       "ORD_EMPRESA": 10001,
+       "ORD_ESTADO": "P",
+       "ORD_VALOR": "300.00",
+       "ORD_MOVIM": 0,
+       "ORD_COMIS": "0.00"
+      }
+     ],
+     "CUENTAS": [
+      {
+       "CTA_NUMERO": 1234567890,
+       "CTA_TIPO": "CTE",
+       "CTA_SALDO": "5000.00",
+       "CTA_ESTADO": "A"
+      },
+      {
+       "CTA_NUMERO": 2222222222,
+       "CTA_TIPO": "AHO",
+       "CTA_SALDO": "100.00",
+       "CTA_ESTADO": "A"
+      },
+      {
+       "CTA_NUMERO": 3333333333,
+       "CTA_TIPO": "CTE",
+       "CTA_SALDO": "90000.00",
+       "CTA_ESTADO": "I"
+      },
+      {
+       "CTA_NUMERO": 4444444444,
+       "CTA_TIPO": "VIR",
+       "CTA_SALDO": "70000.00",
+       "CTA_ESTADO": "A"
+      },
+      {
+       "CTA_NUMERO": 5555555555,
+       "CTA_TIPO": "AHO",
+       "CTA_SALDO": "1000.00",
+       "CTA_ESTADO": "A"
+      }
+     ]
+    },
+    "stubs": {
+     "PAGOMOV": [
+      {
+       "returns": 0,
+       "outputs": {
+        "MOV_NUMERO": 5555500011
+       }
+      }
+     ]
+    }
+   },
+   "observation": {
+    "returns": 0,
+    "outputs": {
+     "RORDEN": "1000003",
+     "RCOMIS": "0.00",
+     "RMOVIM": "5555500011",
+     "RMENS": "PAGO REALIZADO"
+    },
+    "tables": {
+     "ORDENES": [
+      {
+       "ORD_NUMERO": "1000001",
+       "ORD_EMPRESA": "10001",
+       "ORD_ESTADO": "P",
+       "ORD_VALOR": "1500.00",
+       "ORD_MOVIM": "0",
+       "ORD_COMIS": "0.00"
+      },
+      {
+       "ORD_NUMERO": "1000002",
+       "ORD_EMPRESA": "10001",
+       "ORD_ESTADO": "G",
+       "ORD_VALOR": "800.00",
+       "ORD_MOVIM": "5555500001",
+       "ORD_COMIS": "1.00"
+      },
+      {
+       "ORD_NUMERO": "1000003",
+       "ORD_EMPRESA": "10002",
+       "ORD_ESTADO": "G",
+       "ORD_VALOR": "60000.00",
+       "ORD_MOVIM": "5555500011",
+       "ORD_COMIS": "0.00"
+      },
+      {
+       "ORD_NUMERO": "1000004",
+       "ORD_EMPRESA": "10001",
+       "ORD_ESTADO": "P",
+       "ORD_VALOR": "300.00",
+       "ORD_MOVIM": "0",
+       "ORD_COMIS": "0.00"
+      }
+     ],
+     "CUENTAS": [
+      {
+       "CTA_NUMERO": "1234567890",
+       "CTA_TIPO": "CTE",
+       "CTA_SALDO": "5000.00",
+       "CTA_ESTADO": "A"
+      },
+      {
+       "CTA_NUMERO": "2222222222",
+       "CTA_TIPO": "AHO",
+       "CTA_SALDO": "100.00",
+       "CTA_ESTADO": "A"
+      },
+      {
+       "CTA_NUMERO": "3333333333",
+       "CTA_TIPO": "CTE",
+       "CTA_SALDO": "90000.00",
+       "CTA_ESTADO": "I"
+      },
+      {
+       "CTA_NUMERO": "4444444444",
+       "CTA_TIPO": "VIR",
+       "CTA_SALDO": "10000.00",
+       "CTA_ESTADO": "A"
+      },
+      {
+       "CTA_NUMERO": "5555555555",
+       "CTA_TIPO": "AHO",
+       "CTA_SALDO": "1000.00",
+       "CTA_ESTADO": "A"
+      }
+     ]
+    },
+    "calls": [
+     {
+      "program": "PAGOMOV",
+      "arguments": {
+       "MOV_ORDEN": "1000003"
+      }
+     }
+    ],
+    "messages": [],
+    "error": null
+   }
+  },
+  {
+   "case": {
+    "name": "orden_invalida",
+    "description": "The order number is zero",
+    "rules": [
+     "RULE-001"
+    ],
+    "inputs": {
+     "ORDEN": "0000000",
+     "EMPRESA": "10001",
+     "TIPCTA": "CTE",
+     "CUENTA": "1234567890",
+     "VALOR": "1500.00",
+     "CANAL": "WEB",
+     "CLAVE": ""
+    },
+    "setup": {
+     "ORDENES": [
+      {
+       "ORD_NUMERO": 1000001,
+       "ORD_EMPRESA": 10001,
+       "ORD_ESTADO": "P",
+       "ORD_VALOR": "1500.00",
+       "ORD_MOVIM": 0,
+       "ORD_COMIS": "0.00"
+      },
+      {
+       "ORD_NUMERO": 1000002,
+       "ORD_EMPRESA": 10001,
+       "ORD_ESTADO": "G",
+       "ORD_VALOR": "800.00",
+       "ORD_MOVIM": 5555500001,
+       "ORD_COMIS": "1.00"
+      },
+      {
+       "ORD_NUMERO": 1000003,
+       "ORD_EMPRESA": 10002,
+       "ORD_ESTADO": "P",
+       "ORD_VALOR": "60000.00",
+       "ORD_MOVIM": 0,
+       "ORD_COMIS": "0.00"
+      },
+      {
+       "ORD_NUMERO": 1000004,
+       "ORD_EMPRESA": 10001,
+       "ORD_ESTADO": "P",
+       "ORD_VALOR": "300.00",
+       "ORD_MOVIM": 0,
+       "ORD_COMIS": "0.00"
+      }
+     ],
+     "CUENTAS": [
+      {
+       "CTA_NUMERO": 1234567890,
+       "CTA_TIPO": "CTE",
+       "CTA_SALDO": "5000.00",
+       "CTA_ESTADO": "A"
+      },
+      {
+       "CTA_NUMERO": 2222222222,
+       "CTA_TIPO": "AHO",
+       "CTA_SALDO": "100.00",
+       "CTA_ESTADO": "A"
+      },
+      {
+       "CTA_NUMERO": 3333333333,
+       "CTA_TIPO": "CTE",
+       "CTA_SALDO": "90000.00",
+       "CTA_ESTADO": "I"
+      },
+      {
+       "CTA_NUMERO": 4444444444,
+       "CTA_TIPO": "VIR",
+       "CTA_SALDO": "70000.00",
+       "CTA_ESTADO": "A"
+      },
+      {
+       "CTA_NUMERO": 5555555555,
+       "CTA_TIPO": "AHO",
+       "CTA_SALDO": "1000.00",
+       "CTA_ESTADO": "A"
+      }
+     ]
+    },
+    "stubs": {
+     "PAGOMOV": [
+      {
+       "returns": 0,
+       "outputs": {
+        "MOV_NUMERO": 5555500012
+       }
+      }
+     ]
+    }
+   },
+   "observation": {
+    "returns": 0,
+    "outputs": {
+     "MENSAJE": "NUMERO DE ORDEN INVALIDO"
+    },
+    "tables": {
+     "ORDENES": [
+      {
+       "ORD_NUMERO": "1000001",
+       "ORD_EMPRESA": "10001",
+       "ORD_ESTADO": "P",
+       "ORD_VALOR": "1500.00",
+       "ORD_MOVIM": "0",
+       "ORD_COMIS": "0.00"
+      },
+      {
+       "ORD_NUMERO": "1000002",
+       "ORD_EMPRESA": "10001",
+       "ORD_ESTADO": "G",
+       "ORD_VALOR": "800.00",
+       "ORD_MOVIM": "5555500001",
+       "ORD_COMIS": "1.00"
+      },
+      {
+       "ORD_NUMERO": "1000003",
+       "ORD_EMPRESA": "10002",
+       "ORD_ESTADO": "P",
+       "ORD_VALOR": "60000.00",
+       "ORD_MOVIM": "0",
+       "ORD_COMIS": "0.00"
+      },
+      {
+       "ORD_NUMERO": "1000004",
+       "ORD_EMPRESA": "10001",
+       "ORD_ESTADO": "P",
+       "ORD_VALOR": "300.00",
+       "ORD_MOVIM": "0",
+       "ORD_COMIS": "0.00"
+      }
+     ],
+     "CUENTAS": [
+      {
+       "CTA_NUMERO": "1234567890",
+       "CTA_TIPO": "CTE",
+       "CTA_SALDO": "5000.00",
+       "CTA_ESTADO": "A"
+      },
+      {
+       "CTA_NUMERO": "2222222222",
+       "CTA_TIPO": "AHO",
+       "CTA_SALDO": "100.00",
+       "CTA_ESTADO": "A"
+      },
+      {
+       "CTA_NUMERO": "3333333333",
+       "CTA_TIPO": "CTE",
+       "CTA_SALDO": "90000.00",
+       "CTA_ESTADO": "I"
+      },
+      {
+       "CTA_NUMERO": "4444444444",
+       "CTA_TIPO": "VIR",
+       "CTA_SALDO": "70000.00",
+       "CTA_ESTADO": "A"
+      },
+      {
+       "CTA_NUMERO": "5555555555",
+       "CTA_TIPO": "AHO",
+       "CTA_SALDO": "1000.00",
+       "CTA_ESTADO": "A"
+      }
+     ]
+    },
+    "calls": [],
+    "messages": [],
+    "error": null
+   }
+  },
+  {
+   "case": {
+    "name": "tipo_cuenta_no_permitido",
+    "description": "A credit card account",
+    "rules": [
+     "RULE-002"
+    ],
+    "inputs": {
+     "ORDEN": "1000001",
+     "EMPRESA": "10001",
+     "TIPCTA": "TCR",
+     "CUENTA": "1234567890",
+     "VALOR": "1500.00",
+     "CANAL": "WEB",
+     "CLAVE": ""
+    },
+    "setup": {
+     "ORDENES": [
+      {
+       "ORD_NUMERO": 1000001,
+       "ORD_EMPRESA": 10001,
+       "ORD_ESTADO": "P",
+       "ORD_VALOR": "1500.00",
+       "ORD_MOVIM": 0,
+       "ORD_COMIS": "0.00"
+      },
+      {
+       "ORD_NUMERO": 1000002,
+       "ORD_EMPRESA": 10001,
+       "ORD_ESTADO": "G",
+       "ORD_VALOR": "800.00",
+       "ORD_MOVIM": 5555500001,
+       "ORD_COMIS": "1.00"
+      },
+      {
+       "ORD_NUMERO": 1000003,
+       "ORD_EMPRESA": 10002,
+       "ORD_ESTADO": "P",
+       "ORD_VALOR": "60000.00",
+       "ORD_MOVIM": 0,
+       "ORD_COMIS": "0.00"
+      },
+      {
+       "ORD_NUMERO": 1000004,
+       "ORD_EMPRESA": 10001,
+       "ORD_ESTADO": "P",
+       "ORD_VALOR": "300.00",
+       "ORD_MOVIM": 0,
+       "ORD_COMIS": "0.00"
+      }
+     ],
+     "CUENTAS": [
+      {
+       "CTA_NUMERO": 1234567890,
+       "CTA_TIPO": "CTE",
+       "CTA_SALDO": "5000.00",
+       "CTA_ESTADO": "A"
+      },
+      {
+       "CTA_NUMERO": 2222222222,
+       "CTA_TIPO": "AHO",
+       "CTA_SALDO": "100.00",
+       "CTA_ESTADO": "A"
+      },
+      {
+       "CTA_NUMERO": 3333333333,
+       "CTA_TIPO": "CTE",
+       "CTA_SALDO": "90000.00",
+       "CTA_ESTADO": "I"
+      },
+      {
+       "CTA_NUMERO": 4444444444,
+       "CTA_TIPO": "VIR",
+       "CTA_SALDO": "70000.00",
+       "CTA_ESTADO": "A"
+      },
+      {
+       "CTA_NUMERO": 5555555555,
+       "CTA_TIPO": "AHO",
+       "CTA_SALDO": "1000.00",
+       "CTA_ESTADO": "A"
+      }
+     ]
+    },
+    "stubs": {
+     "PAGOMOV": [
+      {
+       "returns": 0,
+       "outputs": {
+        "MOV_NUMERO": 5555500012
+       }
+      }
+     ]
+    }
+   },
+   "observation": {
+    "returns": 0,
+    "outputs": {
+     "MENSAJE": "TIPO DE CUENTA NO PERMITIDO"
+    },
+    "tables": {
+     "ORDENES": [
+      {
+       "ORD_NUMERO": "1000001",
+       "ORD_EMPRESA": "10001",
+       "ORD_ESTADO": "P",
+       "ORD_VALOR": "1500.00",
+       "ORD_MOVIM": "0",
+       "ORD_COMIS": "0.00"
+      },
+      {
+       "ORD_NUMERO": "1000002",
+       "ORD_EMPRESA": "10001",
+       "ORD_ESTADO": "G",
+       "ORD_VALOR": "800.00",
+       "ORD_MOVIM": "5555500001",
+       "ORD_COMIS": "1.00"
+      },
+      {
+       "ORD_NUMERO": "1000003",
+       "ORD_EMPRESA": "10002",
+       "ORD_ESTADO": "P",
+       "ORD_VALOR": "60000.00",
+       "ORD_MOVIM": "0",
+       "ORD_COMIS": "0.00"
+      },
+      {
+       "ORD_NUMERO": "1000004",
+       "ORD_EMPRESA": "10001",
+       "ORD_ESTADO": "P",
+       "ORD_VALOR": "300.00",
+       "ORD_MOVIM": "0",
+       "ORD_COMIS": "0.00"
+      }
+     ],
+     "CUENTAS": [
+      {
+       "CTA_NUMERO": "1234567890",
+       "CTA_TIPO": "CTE",
+       "CTA_SALDO": "5000.00",
+       "CTA_ESTADO": "A"
+      },
+      {
+       "CTA_NUMERO": "2222222222",
+       "CTA_TIPO": "AHO",
+       "CTA_SALDO": "100.00",
+       "CTA_ESTADO": "A"
+      },
+      {
+       "CTA_NUMERO": "3333333333",
+       "CTA_TIPO": "CTE",
+       "CTA_SALDO": "90000.00",
+       "CTA_ESTADO": "I"
+      },
+      {
+       "CTA_NUMERO": "4444444444",
+       "CTA_TIPO": "VIR",
+       "CTA_SALDO": "70000.00",
+       "CTA_ESTADO": "A"
+      },
+      {
+       "CTA_NUMERO": "5555555555",
+       "CTA_TIPO": "AHO",
+       "CTA_SALDO": "1000.00",
+       "CTA_ESTADO": "A"
+      }
+     ]
+    },
+    "calls": [],
+    "messages": [],
+    "error": null
+   }
+  },
+  {
+   "case": {
+    "name": "canal_no_permitido",
+    "description": "An unknown channel",
+    "rules": [
+     "RULE-003"
+    ],
+    "inputs": {
+     "ORDEN": "1000001",
+     "EMPRESA": "10001",
+     "TIPCTA": "CTE",
+     "CUENTA": "1234567890",
+     "VALOR": "1500.00",
+     "CANAL": "ATM",
+     "CLAVE": ""
+    },
+    "setup": {
+     "ORDENES": [
+      {
+       "ORD_NUMERO": 1000001,
+       "ORD_EMPRESA": 10001,
+       "ORD_ESTADO": "P",
+       "ORD_VALOR": "1500.00",
+       "ORD_MOVIM": 0,
+       "ORD_COMIS": "0.00"
+      },
+      {
+       "ORD_NUMERO": 1000002,
+       "ORD_EMPRESA": 10001,
+       "ORD_ESTADO": "G",
+       "ORD_VALOR": "800.00",
+       "ORD_MOVIM": 5555500001,
+       "ORD_COMIS": "1.00"
+      },
+      {
+       "ORD_NUMERO": 1000003,
+       "ORD_EMPRESA": 10002,
+       "ORD_ESTADO": "P",
+       "ORD_VALOR": "60000.00",
+       "ORD_MOVIM": 0,
+       "ORD_COMIS": "0.00"
+      },
+      {
+       "ORD_NUMERO": 1000004,
+       "ORD_EMPRESA": 10001,
+       "ORD_ESTADO": "P",
+       "ORD_VALOR": "300.00",
+       "ORD_MOVIM": 0,
+       "ORD_COMIS": "0.00"
+      }
+     ],
+     "CUENTAS": [
+      {
+       "CTA_NUMERO": 1234567890,
+       "CTA_TIPO": "CTE",
+       "CTA_SALDO": "5000.00",
+       "CTA_ESTADO": "A"
+      },
+      {
+       "CTA_NUMERO": 2222222222,
+       "CTA_TIPO": "AHO",
+       "CTA_SALDO": "100.00",
+       "CTA_ESTADO": "A"
+      },
+      {
+       "CTA_NUMERO": 3333333333,
+       "CTA_TIPO": "CTE",
+       "CTA_SALDO": "90000.00",
+       "CTA_ESTADO": "I"
+      },
+      {
+       "CTA_NUMERO": 4444444444,
+       "CTA_TIPO": "VIR",
+       "CTA_SALDO": "70000.00",
+       "CTA_ESTADO": "A"
+      },
+      {
+       "CTA_NUMERO": 5555555555,
+       "CTA_TIPO": "AHO",
+       "CTA_SALDO": "1000.00",
+       "CTA_ESTADO": "A"
+      }
+     ]
+    },
+    "stubs": {
+     "PAGOMOV": [
+      {
+       "returns": 0,
+       "outputs": {
+        "MOV_NUMERO": 5555500012
+       }
+      }
+     ]
+    }
+   },
+   "observation": {
+    "returns": 0,
+    "outputs": {
+     "MENSAJE": "CANAL NO PERMITIDO"
+    },
+    "tables": {
+     "ORDENES": [
+      {
+       "ORD_NUMERO": "1000001",
+       "ORD_EMPRESA": "10001",
+       "ORD_ESTADO": "P",
+       "ORD_VALOR": "1500.00",
+       "ORD_MOVIM": "0",
+       "ORD_COMIS": "0.00"
+      },
+      {
+       "ORD_NUMERO": "1000002",
+       "ORD_EMPRESA": "10001",
+       "ORD_ESTADO": "G",
+       "ORD_VALOR": "800.00",
+       "ORD_MOVIM": "5555500001",
+       "ORD_COMIS": "1.00"
+      },
+      {
+       "ORD_NUMERO": "1000003",
+       "ORD_EMPRESA": "10002",
+       "ORD_ESTADO": "P",
+       "ORD_VALOR": "60000.00",
+       "ORD_MOVIM": "0",
+       "ORD_COMIS": "0.00"
+      },
+      {
+       "ORD_NUMERO": "1000004",
+       "ORD_EMPRESA": "10001",
+       "ORD_ESTADO": "P",
+       "ORD_VALOR": "300.00",
+       "ORD_MOVIM": "0",
+       "ORD_COMIS": "0.00"
+      }
+     ],
+     "CUENTAS": [
+      {
+       "CTA_NUMERO": "1234567890",
+       "CTA_TIPO": "CTE",
+       "CTA_SALDO": "5000.00",
+       "CTA_ESTADO": "A"
+      },
+      {
+       "CTA_NUMERO": "2222222222",
+       "CTA_TIPO": "AHO",
+       "CTA_SALDO": "100.00",
+       "CTA_ESTADO": "A"
+      },
+      {
+       "CTA_NUMERO": "3333333333",
+       "CTA_TIPO": "CTE",
+       "CTA_SALDO": "90000.00",
+       "CTA_ESTADO": "I"
+      },
+      {
+       "CTA_NUMERO": "4444444444",
+       "CTA_TIPO": "VIR",
+       "CTA_SALDO": "70000.00",
+       "CTA_ESTADO": "A"
+      },
+      {
+       "CTA_NUMERO": "5555555555",
+       "CTA_TIPO": "AHO",
+       "CTA_SALDO": "1000.00",
+       "CTA_ESTADO": "A"
+      }
+     ]
+    },
+    "calls": [],
+    "messages": [],
+    "error": null
+   }
+  },
+  {
+   "case": {
+    "name": "oficina_sin_clave",
+    "description": "Office channel without approval key",
+    "rules": [
+     "RULE-003"
+    ],
+    "inputs": {
+     "ORDEN": "1000001",
+     "EMPRESA": "10001",
+     "TIPCTA": "CTE",
+     "CUENTA": "1234567890",
+     "VALOR": "1500.00",
+     "CANAL": "OFI",
+     "CLAVE": ""
+    },
+    "setup": {
+     "ORDENES": [
+      {
+       "ORD_NUMERO": 1000001,
+       "ORD_EMPRESA": 10001,
+       "ORD_ESTADO": "P",
+       "ORD_VALOR": "1500.00",
+       "ORD_MOVIM": 0,
+       "ORD_COMIS": "0.00"
+      },
+      {
+       "ORD_NUMERO": 1000002,
+       "ORD_EMPRESA": 10001,
+       "ORD_ESTADO": "G",
+       "ORD_VALOR": "800.00",
+       "ORD_MOVIM": 5555500001,
+       "ORD_COMIS": "1.00"
+      },
+      {
+       "ORD_NUMERO": 1000003,
+       "ORD_EMPRESA": 10002,
+       "ORD_ESTADO": "P",
+       "ORD_VALOR": "60000.00",
+       "ORD_MOVIM": 0,
+       "ORD_COMIS": "0.00"
+      },
+      {
+       "ORD_NUMERO": 1000004,
+       "ORD_EMPRESA": 10001,
+       "ORD_ESTADO": "P",
+       "ORD_VALOR": "300.00",
+       "ORD_MOVIM": 0,
+       "ORD_COMIS": "0.00"
+      }
+     ],
+     "CUENTAS": [
+      {
+       "CTA_NUMERO": 1234567890,
+       "CTA_TIPO": "CTE",
+       "CTA_SALDO": "5000.00",
+       "CTA_ESTADO": "A"
+      },
+      {
+       "CTA_NUMERO": 2222222222,
+       "CTA_TIPO": "AHO",
+       "CTA_SALDO": "100.00",
+       "CTA_ESTADO": "A"
+      },
+      {
+       "CTA_NUMERO": 3333333333,
+       "CTA_TIPO": "CTE",
+       "CTA_SALDO": "90000.00",
+       "CTA_ESTADO": "I"
+      },
+      {
+       "CTA_NUMERO": 4444444444,
+       "CTA_TIPO": "VIR",
+       "CTA_SALDO": "70000.00",
+       "CTA_ESTADO": "A"
+      },
+      {
+       "CTA_NUMERO": 5555555555,
+       "CTA_TIPO": "AHO",
+       "CTA_SALDO": "1000.00",
+       "CTA_ESTADO": "A"
+      }
+     ]
+    },
+    "stubs": {
+     "PAGOMOV": [
+      {
+       "returns": 0,
+       "outputs": {
+        "MOV_NUMERO": 5555500012
+       }
+      }
+     ]
+    }
+   },
+   "observation": {
+    "returns": 0,
+    "outputs": {
+     "MENSAJE": "CLAVE DE APROBACION REQUERIDA"
+    },
+    "tables": {
+     "ORDENES": [
+      {
+       "ORD_NUMERO": "1000001",
+       "ORD_EMPRESA": "10001",
+       "ORD_ESTADO": "P",
+       "ORD_VALOR": "1500.00",
+       "ORD_MOVIM": "0",
+       "ORD_COMIS": "0.00"
+      },
+      {
+       "ORD_NUMERO": "1000002",
+       "ORD_EMPRESA": "10001",
+       "ORD_ESTADO": "G",
+       "ORD_VALOR": "800.00",
+       "ORD_MOVIM": "5555500001",
+       "ORD_COMIS": "1.00"
+      },
+      {
+       "ORD_NUMERO": "1000003",
+       "ORD_EMPRESA": "10002",
+       "ORD_ESTADO": "P",
+       "ORD_VALOR": "60000.00",
+       "ORD_MOVIM": "0",
+       "ORD_COMIS": "0.00"
+      },
+      {
+       "ORD_NUMERO": "1000004",
+       "ORD_EMPRESA": "10001",
+       "ORD_ESTADO": "P",
+       "ORD_VALOR": "300.00",
+       "ORD_MOVIM": "0",
+       "ORD_COMIS": "0.00"
+      }
+     ],
+     "CUENTAS": [
+      {
+       "CTA_NUMERO": "1234567890",
+       "CTA_TIPO": "CTE",
+       "CTA_SALDO": "5000.00",
+       "CTA_ESTADO": "A"
+      },
+      {
+       "CTA_NUMERO": "2222222222",
+       "CTA_TIPO": "AHO",
+       "CTA_SALDO": "100.00",
+       "CTA_ESTADO": "A"
+      },
+      {
+       "CTA_NUMERO": "3333333333",
+       "CTA_TIPO": "CTE",
+       "CTA_SALDO": "90000.00",
+       "CTA_ESTADO": "I"
+      },
+      {
+       "CTA_NUMERO": "4444444444",
+       "CTA_TIPO": "VIR",
+       "CTA_SALDO": "70000.00",
+       "CTA_ESTADO": "A"
+      },
+      {
+       "CTA_NUMERO": "5555555555",
+       "CTA_TIPO": "AHO",
+       "CTA_SALDO": "1000.00",
+       "CTA_ESTADO": "A"
+      }
+     ]
+    },
+    "calls": [],
+    "messages": [],
+    "error": null
+   }
+  },
+  {
+   "case": {
+    "name": "orden_no_existe",
+    "description": "The order does not exist",
+    "rules": [
+     "RULE-004"
+    ],
+    "inputs": {
+     "ORDEN": "1999999",
+     "EMPRESA": "10001",
+     "TIPCTA": "CTE",
+     "CUENTA": "1234567890",
+     "VALOR": "1500.00",
+     "CANAL": "WEB",
+     "CLAVE": ""
+    },
+    "setup": {
+     "ORDENES": [
+      {
+       "ORD_NUMERO": 1000001,
+       "ORD_EMPRESA": 10001,
+       "ORD_ESTADO": "P",
+       "ORD_VALOR": "1500.00",
+       "ORD_MOVIM": 0,
+       "ORD_COMIS": "0.00"
+      },
+      {
+       "ORD_NUMERO": 1000002,
+       "ORD_EMPRESA": 10001,
+       "ORD_ESTADO": "G",
+       "ORD_VALOR": "800.00",
+       "ORD_MOVIM": 5555500001,
+       "ORD_COMIS": "1.00"
+      },
+      {
+       "ORD_NUMERO": 1000003,
+       "ORD_EMPRESA": 10002,
+       "ORD_ESTADO": "P",
+       "ORD_VALOR": "60000.00",
+       "ORD_MOVIM": 0,
+       "ORD_COMIS": "0.00"
+      },
+      {
+       "ORD_NUMERO": 1000004,
+       "ORD_EMPRESA": 10001,
+       "ORD_ESTADO": "P",
+       "ORD_VALOR": "300.00",
+       "ORD_MOVIM": 0,
+       "ORD_COMIS": "0.00"
+      }
+     ],
+     "CUENTAS": [
+      {
+       "CTA_NUMERO": 1234567890,
+       "CTA_TIPO": "CTE",
+       "CTA_SALDO": "5000.00",
+       "CTA_ESTADO": "A"
+      },
+      {
+       "CTA_NUMERO": 2222222222,
+       "CTA_TIPO": "AHO",
+       "CTA_SALDO": "100.00",
+       "CTA_ESTADO": "A"
+      },
+      {
+       "CTA_NUMERO": 3333333333,
+       "CTA_TIPO": "CTE",
+       "CTA_SALDO": "90000.00",
+       "CTA_ESTADO": "I"
+      },
+      {
+       "CTA_NUMERO": 4444444444,
+       "CTA_TIPO": "VIR",
+       "CTA_SALDO": "70000.00",
+       "CTA_ESTADO": "A"
+      },
+      {
+       "CTA_NUMERO": 5555555555,
+       "CTA_TIPO": "AHO",
+       "CTA_SALDO": "1000.00",
+       "CTA_ESTADO": "A"
+      }
+     ]
+    },
+    "stubs": {
+     "PAGOMOV": [
+      {
+       "returns": 0,
+       "outputs": {
+        "MOV_NUMERO": 5555500012
+       }
+      }
+     ]
+    }
+   },
+   "observation": {
+    "returns": 0,
+    "outputs": {
+     "MENSAJE": "ORDEN NO EXISTE"
+    },
+    "tables": {
+     "ORDENES": [
+      {
+       "ORD_NUMERO": "1000001",
+       "ORD_EMPRESA": "10001",
+       "ORD_ESTADO": "P",
+       "ORD_VALOR": "1500.00",
+       "ORD_MOVIM": "0",
+       "ORD_COMIS": "0.00"
+      },
+      {
+       "ORD_NUMERO": "1000002",
+       "ORD_EMPRESA": "10001",
+       "ORD_ESTADO": "G",
+       "ORD_VALOR": "800.00",
+       "ORD_MOVIM": "5555500001",
+       "ORD_COMIS": "1.00"
+      },
+      {
+       "ORD_NUMERO": "1000003",
+       "ORD_EMPRESA": "10002",
+       "ORD_ESTADO": "P",
+       "ORD_VALOR": "60000.00",
+       "ORD_MOVIM": "0",
+       "ORD_COMIS": "0.00"
+      },
+      {
+       "ORD_NUMERO": "1000004",
+       "ORD_EMPRESA": "10001",
+       "ORD_ESTADO": "P",
+       "ORD_VALOR": "300.00",
+       "ORD_MOVIM": "0",
+       "ORD_COMIS": "0.00"
+      }
+     ],
+     "CUENTAS": [
+      {
+       "CTA_NUMERO": "1234567890",
+       "CTA_TIPO": "CTE",
+       "CTA_SALDO": "5000.00",
+       "CTA_ESTADO": "A"
+      },
+      {
+       "CTA_NUMERO": "2222222222",
+       "CTA_TIPO": "AHO",
+       "CTA_SALDO": "100.00",
+       "CTA_ESTADO": "A"
+      },
+      {
+       "CTA_NUMERO": "3333333333",
+       "CTA_TIPO": "CTE",
+       "CTA_SALDO": "90000.00",
+       "CTA_ESTADO": "I"
+      },
+      {
+       "CTA_NUMERO": "4444444444",
+       "CTA_TIPO": "VIR",
+       "CTA_SALDO": "70000.00",
+       "CTA_ESTADO": "A"
+      },
+      {
+       "CTA_NUMERO": "5555555555",
+       "CTA_TIPO": "AHO",
+       "CTA_SALDO": "1000.00",
+       "CTA_ESTADO": "A"
+      }
+     ]
+    },
+    "calls": [],
+    "messages": [],
+    "error": null
+   }
+  },
+  {
+   "case": {
+    "name": "orden_no_pendiente",
+    "description": "The order was already paid",
+    "rules": [
+     "RULE-004"
+    ],
+    "inputs": {
+     "ORDEN": "1000002",
+     "EMPRESA": "10001",
+     "TIPCTA": "CTE",
+     "CUENTA": "1234567890",
+     "VALOR": "800.00",
+     "CANAL": "WEB",
+     "CLAVE": ""
+    },
+    "setup": {
+     "ORDENES": [
+      {
+       "ORD_NUMERO": 1000001,
+       "ORD_EMPRESA": 10001,
+       "ORD_ESTADO": "P",
+       "ORD_VALOR": "1500.00",
+       "ORD_MOVIM": 0,
+       "ORD_COMIS": "0.00"
+      },
+      {
+       "ORD_NUMERO": 1000002,
+       "ORD_EMPRESA": 10001,
+       "ORD_ESTADO": "G",
+       "ORD_VALOR": "800.00",
+       "ORD_MOVIM": 5555500001,
+       "ORD_COMIS": "1.00"
+      },
+      {
+       "ORD_NUMERO": 1000003,
+       "ORD_EMPRESA": 10002,
+       "ORD_ESTADO": "P",
+       "ORD_VALOR": "60000.00",
+       "ORD_MOVIM": 0,
+       "ORD_COMIS": "0.00"
+      },
+      {
+       "ORD_NUMERO": 1000004,
+       "ORD_EMPRESA": 10001,
+       "ORD_ESTADO": "P",
+       "ORD_VALOR": "300.00",
+       "ORD_MOVIM": 0,
+       "ORD_COMIS": "0.00"
+      }
+     ],
+     "CUENTAS": [
+      {
+       "CTA_NUMERO": 1234567890,
+       "CTA_TIPO": "CTE",
+       "CTA_SALDO": "5000.00",
+       "CTA_ESTADO": "A"
+      },
+      {
+       "CTA_NUMERO": 2222222222,
+       "CTA_TIPO": "AHO",
+       "CTA_SALDO": "100.00",
+       "CTA_ESTADO": "A"
+      },
+      {
+       "CTA_NUMERO": 3333333333,
+       "CTA_TIPO": "CTE",
+       "CTA_SALDO": "90000.00",
+       "CTA_ESTADO": "I"
+      },
+      {
+       "CTA_NUMERO": 4444444444,
+       "CTA_TIPO": "VIR",
+       "CTA_SALDO": "70000.00",
+       "CTA_ESTADO": "A"
+      },
+      {
+       "CTA_NUMERO": 5555555555,
+       "CTA_TIPO": "AHO",
+       "CTA_SALDO": "1000.00",
+       "CTA_ESTADO": "A"
+      }
+     ]
+    },
+    "stubs": {
+     "PAGOMOV": [
+      {
+       "returns": 0,
+       "outputs": {
+        "MOV_NUMERO": 5555500012
+       }
+      }
+     ]
+    }
+   },
+   "observation": {
+    "returns": 0,
+    "outputs": {
+     "MENSAJE": "ORDEN NO ESTA PENDIENTE"
+    },
+    "tables": {
+     "ORDENES": [
+      {
+       "ORD_NUMERO": "1000001",
+       "ORD_EMPRESA": "10001",
+       "ORD_ESTADO": "P",
+       "ORD_VALOR": "1500.00",
+       "ORD_MOVIM": "0",
+       "ORD_COMIS": "0.00"
+      },
+      {
+       "ORD_NUMERO": "1000002",
+       "ORD_EMPRESA": "10001",
+       "ORD_ESTADO": "G",
+       "ORD_VALOR": "800.00",
+       "ORD_MOVIM": "5555500001",
+       "ORD_COMIS": "1.00"
+      },
+      {
+       "ORD_NUMERO": "1000003",
+       "ORD_EMPRESA": "10002",
+       "ORD_ESTADO": "P",
+       "ORD_VALOR": "60000.00",
+       "ORD_MOVIM": "0",
+       "ORD_COMIS": "0.00"
+      },
+      {
+       "ORD_NUMERO": "1000004",
+       "ORD_EMPRESA": "10001",
+       "ORD_ESTADO": "P",
+       "ORD_VALOR": "300.00",
+       "ORD_MOVIM": "0",
+       "ORD_COMIS": "0.00"
+      }
+     ],
+     "CUENTAS": [
+      {
+       "CTA_NUMERO": "1234567890",
+       "CTA_TIPO": "CTE",
+       "CTA_SALDO": "5000.00",
+       "CTA_ESTADO": "A"
+      },
+      {
+       "CTA_NUMERO": "2222222222",
+       "CTA_TIPO": "AHO",
+       "CTA_SALDO": "100.00",
+       "CTA_ESTADO": "A"
+      },
+      {
+       "CTA_NUMERO": "3333333333",
+       "CTA_TIPO": "CTE",
+       "CTA_SALDO": "90000.00",
+       "CTA_ESTADO": "I"
+      },
+      {
+       "CTA_NUMERO": "4444444444",
+       "CTA_TIPO": "VIR",
+       "CTA_SALDO": "70000.00",
+       "CTA_ESTADO": "A"
+      },
+      {
+       "CTA_NUMERO": "5555555555",
+       "CTA_TIPO": "AHO",
+       "CTA_SALDO": "1000.00",
+       "CTA_ESTADO": "A"
+      }
+     ]
+    },
+    "calls": [],
+    "messages": [],
+    "error": null
+   }
+  },
+  {
+   "case": {
+    "name": "valor_no_coincide",
+    "description": "The typed value differs from the order",
+    "rules": [
+     "RULE-005"
+    ],
+    "inputs": {
+     "ORDEN": "1000001",
+     "EMPRESA": "10001",
+     "TIPCTA": "CTE",
+     "CUENTA": "1234567890",
+     "VALOR": "1400.00",
+     "CANAL": "WEB",
+     "CLAVE": ""
+    },
+    "setup": {
+     "ORDENES": [
+      {
+       "ORD_NUMERO": 1000001,
+       "ORD_EMPRESA": 10001,
+       "ORD_ESTADO": "P",
+       "ORD_VALOR": "1500.00",
+       "ORD_MOVIM": 0,
+       "ORD_COMIS": "0.00"
+      },
+      {
+       "ORD_NUMERO": 1000002,
+       "ORD_EMPRESA": 10001,
+       "ORD_ESTADO": "G",
+       "ORD_VALOR": "800.00",
+       "ORD_MOVIM": 5555500001,
+       "ORD_COMIS": "1.00"
+      },
+      {
+       "ORD_NUMERO": 1000003,
+       "ORD_EMPRESA": 10002,
+       "ORD_ESTADO": "P",
+       "ORD_VALOR": "60000.00",
+       "ORD_MOVIM": 0,
+       "ORD_COMIS": "0.00"
+      },
+      {
+       "ORD_NUMERO": 1000004,
+       "ORD_EMPRESA": 10001,
+       "ORD_ESTADO": "P",
+       "ORD_VALOR": "300.00",
+       "ORD_MOVIM": 0,
+       "ORD_COMIS": "0.00"
+      }
+     ],
+     "CUENTAS": [
+      {
+       "CTA_NUMERO": 1234567890,
+       "CTA_TIPO": "CTE",
+       "CTA_SALDO": "5000.00",
+       "CTA_ESTADO": "A"
+      },
+      {
+       "CTA_NUMERO": 2222222222,
+       "CTA_TIPO": "AHO",
+       "CTA_SALDO": "100.00",
+       "CTA_ESTADO": "A"
+      },
+      {
+       "CTA_NUMERO": 3333333333,
+       "CTA_TIPO": "CTE",
+       "CTA_SALDO": "90000.00",
+       "CTA_ESTADO": "I"
+      },
+      {
+       "CTA_NUMERO": 4444444444,
+       "CTA_TIPO": "VIR",
+       "CTA_SALDO": "70000.00",
+       "CTA_ESTADO": "A"
+      },
+      {
+       "CTA_NUMERO": 5555555555,
+       "CTA_TIPO": "AHO",
+       "CTA_SALDO": "1000.00",
+       "CTA_ESTADO": "A"
+      }
+     ]
+    },
+    "stubs": {
+     "PAGOMOV": [
+      {
+       "returns": 0,
+       "outputs": {
+        "MOV_NUMERO": 5555500012
+       }
+      }
+     ]
+    }
+   },
+   "observation": {
+    "returns": 0,
+    "outputs": {
+     "MENSAJE": "VALOR NO COINCIDE CON LA ORDEN"
+    },
+    "tables": {
+     "ORDENES": [
+      {
+       "ORD_NUMERO": "1000001",
+       "ORD_EMPRESA": "10001",
+       "ORD_ESTADO": "P",
+       "ORD_VALOR": "1500.00",
+       "ORD_MOVIM": "0",
+       "ORD_COMIS": "0.00"
+      },
+      {
+       "ORD_NUMERO": "1000002",
+       "ORD_EMPRESA": "10001",
+       "ORD_ESTADO": "G",
+       "ORD_VALOR": "800.00",
+       "ORD_MOVIM": "5555500001",
+       "ORD_COMIS": "1.00"
+      },
+      {
+       "ORD_NUMERO": "1000003",
+       "ORD_EMPRESA": "10002",
+       "ORD_ESTADO": "P",
+       "ORD_VALOR": "60000.00",
+       "ORD_MOVIM": "0",
+       "ORD_COMIS": "0.00"
+      },
+      {
+       "ORD_NUMERO": "1000004",
+       "ORD_EMPRESA": "10001",
+       "ORD_ESTADO": "P",
+       "ORD_VALOR": "300.00",
+       "ORD_MOVIM": "0",
+       "ORD_COMIS": "0.00"
+      }
+     ],
+     "CUENTAS": [
+      {
+       "CTA_NUMERO": "1234567890",
+       "CTA_TIPO": "CTE",
+       "CTA_SALDO": "5000.00",
+       "CTA_ESTADO": "A"
+      },
+      {
+       "CTA_NUMERO": "2222222222",
+       "CTA_TIPO": "AHO",
+       "CTA_SALDO": "100.00",
+       "CTA_ESTADO": "A"
+      },
+      {
+       "CTA_NUMERO": "3333333333",
+       "CTA_TIPO": "CTE",
+       "CTA_SALDO": "90000.00",
+       "CTA_ESTADO": "I"
+      },
+      {
+       "CTA_NUMERO": "4444444444",
+       "CTA_TIPO": "VIR",
+       "CTA_SALDO": "70000.00",
+       "CTA_ESTADO": "A"
+      },
+      {
+       "CTA_NUMERO": "5555555555",
+       "CTA_TIPO": "AHO",
+       "CTA_SALDO": "1000.00",
+       "CTA_ESTADO": "A"
+      }
+     ]
+    },
+    "calls": [],
+    "messages": [],
+    "error": null
+   }
+  },
+  {
+   "case": {
+    "name": "cuenta_inactiva",
+    "description": "The account is inactive",
+    "rules": [
+     "RULE-007"
+    ],
+    "inputs": {
+     "ORDEN": "1000004",
+     "EMPRESA": "10001",
+     "TIPCTA": "CTE",
+     "CUENTA": "3333333333",
+     "VALOR": "300.00",
+     "CANAL": "WEB",
+     "CLAVE": ""
+    },
+    "setup": {
+     "ORDENES": [
+      {
+       "ORD_NUMERO": 1000001,
+       "ORD_EMPRESA": 10001,
+       "ORD_ESTADO": "P",
+       "ORD_VALOR": "1500.00",
+       "ORD_MOVIM": 0,
+       "ORD_COMIS": "0.00"
+      },
+      {
+       "ORD_NUMERO": 1000002,
+       "ORD_EMPRESA": 10001,
+       "ORD_ESTADO": "G",
+       "ORD_VALOR": "800.00",
+       "ORD_MOVIM": 5555500001,
+       "ORD_COMIS": "1.00"
+      },
+      {
+       "ORD_NUMERO": 1000003,
+       "ORD_EMPRESA": 10002,
+       "ORD_ESTADO": "P",
+       "ORD_VALOR": "60000.00",
+       "ORD_MOVIM": 0,
+       "ORD_COMIS": "0.00"
+      },
+      {
+       "ORD_NUMERO": 1000004,
+       "ORD_EMPRESA": 10001,
+       "ORD_ESTADO": "P",
+       "ORD_VALOR": "300.00",
+       "ORD_MOVIM": 0,
+       "ORD_COMIS": "0.00"
+      }
+     ],
+     "CUENTAS": [
+      {
+       "CTA_NUMERO": 1234567890,
+       "CTA_TIPO": "CTE",
+       "CTA_SALDO": "5000.00",
+       "CTA_ESTADO": "A"
+      },
+      {
+       "CTA_NUMERO": 2222222222,
+       "CTA_TIPO": "AHO",
+       "CTA_SALDO": "100.00",
+       "CTA_ESTADO": "A"
+      },
+      {
+       "CTA_NUMERO": 3333333333,
+       "CTA_TIPO": "CTE",
+       "CTA_SALDO": "90000.00",
+       "CTA_ESTADO": "I"
+      },
+      {
+       "CTA_NUMERO": 4444444444,
+       "CTA_TIPO": "VIR",
+       "CTA_SALDO": "70000.00",
+       "CTA_ESTADO": "A"
+      },
+      {
+       "CTA_NUMERO": 5555555555,
+       "CTA_TIPO": "AHO",
+       "CTA_SALDO": "1000.00",
+       "CTA_ESTADO": "A"
+      }
+     ]
+    },
+    "stubs": {
+     "PAGOMOV": [
+      {
+       "returns": 0,
+       "outputs": {
+        "MOV_NUMERO": 5555500012
+       }
+      }
+     ]
+    }
+   },
+   "observation": {
+    "returns": 0,
+    "outputs": {
+     "MENSAJE": "CUENTA INACTIVA"
+    },
+    "tables": {
+     "ORDENES": [
+      {
+       "ORD_NUMERO": "1000001",
+       "ORD_EMPRESA": "10001",
+       "ORD_ESTADO": "P",
+       "ORD_VALOR": "1500.00",
+       "ORD_MOVIM": "0",
+       "ORD_COMIS": "0.00"
+      },
+      {
+       "ORD_NUMERO": "1000002",
+       "ORD_EMPRESA": "10001",
+       "ORD_ESTADO": "G",
+       "ORD_VALOR": "800.00",
+       "ORD_MOVIM": "5555500001",
+       "ORD_COMIS": "1.00"
+      },
+      {
+       "ORD_NUMERO": "1000003",
+       "ORD_EMPRESA": "10002",
+       "ORD_ESTADO": "P",
+       "ORD_VALOR": "60000.00",
+       "ORD_MOVIM": "0",
+       "ORD_COMIS": "0.00"
+      },
+      {
+       "ORD_NUMERO": "1000004",
+       "ORD_EMPRESA": "10001",
+       "ORD_ESTADO": "P",
+       "ORD_VALOR": "300.00",
+       "ORD_MOVIM": "0",
+       "ORD_COMIS": "0.00"
+      }
+     ],
+     "CUENTAS": [
+      {
+       "CTA_NUMERO": "1234567890",
+       "CTA_TIPO": "CTE",
+       "CTA_SALDO": "5000.00",
+       "CTA_ESTADO": "A"
+      },
+      {
+       "CTA_NUMERO": "2222222222",
+       "CTA_TIPO": "AHO",
+       "CTA_SALDO": "100.00",
+       "CTA_ESTADO": "A"
+      },
+      {
+       "CTA_NUMERO": "3333333333",
+       "CTA_TIPO": "CTE",
+       "CTA_SALDO": "90000.00",
+       "CTA_ESTADO": "I"
+      },
+      {
+       "CTA_NUMERO": "4444444444",
+       "CTA_TIPO": "VIR",
+       "CTA_SALDO": "70000.00",
+       "CTA_ESTADO": "A"
+      },
+      {
+       "CTA_NUMERO": "5555555555",
+       "CTA_TIPO": "AHO",
+       "CTA_SALDO": "1000.00",
+       "CTA_ESTADO": "A"
+      }
+     ]
+    },
+    "calls": [],
+    "messages": [],
+    "error": null
+   }
+  },
+  {
+   "case": {
+    "name": "saldo_insuficiente",
+    "description": "Balance below value plus commission",
+    "rules": [
+     "RULE-006",
+     "RULE-007"
+    ],
+    "inputs": {
+     "ORDEN": "1000004",
+     "EMPRESA": "10001",
+     "TIPCTA": "AHO",
+     "CUENTA": "2222222222",
+     "VALOR": "300.00",
+     "CANAL": "OFI",
+     "CLAVE": "X9"
+    },
+    "setup": {
+     "ORDENES": [
+      {
+       "ORD_NUMERO": 1000001,
+       "ORD_EMPRESA": 10001,
+       "ORD_ESTADO": "P",
+       "ORD_VALOR": "1500.00",
+       "ORD_MOVIM": 0,
+       "ORD_COMIS": "0.00"
+      },
+      {
+       "ORD_NUMERO": 1000002,
+       "ORD_EMPRESA": 10001,
+       "ORD_ESTADO": "G",
+       "ORD_VALOR": "800.00",
+       "ORD_MOVIM": 5555500001,
+       "ORD_COMIS": "1.00"
+      },
+      {
+       "ORD_NUMERO": 1000003,
+       "ORD_EMPRESA": 10002,
+       "ORD_ESTADO": "P",
+       "ORD_VALOR": "60000.00",
+       "ORD_MOVIM": 0,
+       "ORD_COMIS": "0.00"
+      },
+      {
+       "ORD_NUMERO": 1000004,
+       "ORD_EMPRESA": 10001,
+       "ORD_ESTADO": "P",
+       "ORD_VALOR": "300.00",
+       "ORD_MOVIM": 0,
+       "ORD_COMIS": "0.00"
+      }
+     ],
+     "CUENTAS": [
+      {
+       "CTA_NUMERO": 1234567890,
+       "CTA_TIPO": "CTE",
+       "CTA_SALDO": "5000.00",
+       "CTA_ESTADO": "A"
+      },
+      {
+       "CTA_NUMERO": 2222222222,
+       "CTA_TIPO": "AHO",
+       "CTA_SALDO": "100.00",
+       "CTA_ESTADO": "A"
+      },
+      {
+       "CTA_NUMERO": 3333333333,
+       "CTA_TIPO": "CTE",
+       "CTA_SALDO": "90000.00",
+       "CTA_ESTADO": "I"
+      },
+      {
+       "CTA_NUMERO": 4444444444,
+       "CTA_TIPO": "VIR",
+       "CTA_SALDO": "70000.00",
+       "CTA_ESTADO": "A"
+      },
+      {
+       "CTA_NUMERO": 5555555555,
+       "CTA_TIPO": "AHO",
+       "CTA_SALDO": "1000.00",
+       "CTA_ESTADO": "A"
+      }
+     ]
+    },
+    "stubs": {
+     "PAGOMOV": [
+      {
+       "returns": 0,
+       "outputs": {
+        "MOV_NUMERO": 5555500012
+       }
+      }
+     ]
+    }
+   },
+   "observation": {
+    "returns": 0,
+    "outputs": {
+     "MENSAJE": "SALDO INSUFICIENTE"
+    },
+    "tables": {
+     "ORDENES": [
+      {
+       "ORD_NUMERO": "1000001",
+       "ORD_EMPRESA": "10001",
+       "ORD_ESTADO": "P",
+       "ORD_VALOR": "1500.00",
+       "ORD_MOVIM": "0",
+       "ORD_COMIS": "0.00"
+      },
+      {
+       "ORD_NUMERO": "1000002",
+       "ORD_EMPRESA": "10001",
+       "ORD_ESTADO": "G",
+       "ORD_VALOR": "800.00",
+       "ORD_MOVIM": "5555500001",
+       "ORD_COMIS": "1.00"
+      },
+      {
+       "ORD_NUMERO": "1000003",
+       "ORD_EMPRESA": "10002",
+       "ORD_ESTADO": "P",
+       "ORD_VALOR": "60000.00",
+       "ORD_MOVIM": "0",
+       "ORD_COMIS": "0.00"
+      },
+      {
+       "ORD_NUMERO": "1000004",
+       "ORD_EMPRESA": "10001",
+       "ORD_ESTADO": "P",
+       "ORD_VALOR": "300.00",
+       "ORD_MOVIM": "0",
+       "ORD_COMIS": "0.00"
+      }
+     ],
+     "CUENTAS": [
+      {
+       "CTA_NUMERO": "1234567890",
+       "CTA_TIPO": "CTE",
+       "CTA_SALDO": "5000.00",
+       "CTA_ESTADO": "A"
+      },
+      {
+       "CTA_NUMERO": "2222222222",
+       "CTA_TIPO": "AHO",
+       "CTA_SALDO": "100.00",
+       "CTA_ESTADO": "A"
+      },
+      {
+       "CTA_NUMERO": "3333333333",
+       "CTA_TIPO": "CTE",
+       "CTA_SALDO": "90000.00",
+       "CTA_ESTADO": "I"
+      },
+      {
+       "CTA_NUMERO": "4444444444",
+       "CTA_TIPO": "VIR",
+       "CTA_SALDO": "70000.00",
+       "CTA_ESTADO": "A"
+      },
+      {
+       "CTA_NUMERO": "5555555555",
+       "CTA_TIPO": "AHO",
+       "CTA_SALDO": "1000.00",
+       "CTA_ESTADO": "A"
+      }
+     ]
+    },
+    "calls": [],
+    "messages": [],
+    "error": null
+   }
+  },
+  {
+   "case": {
+    "name": "cuenta_no_existe",
+    "description": "The account does not exist",
+    "rules": [
+     "RULE-007"
+    ],
+    "inputs": {
+     "ORDEN": "1000001",
+     "EMPRESA": "10001",
+     "TIPCTA": "CTE",
+     "CUENTA": "9999999999",
+     "VALOR": "1500.00",
+     "CANAL": "WEB",
+     "CLAVE": ""
+    },
+    "setup": {
+     "ORDENES": [
+      {
+       "ORD_NUMERO": 1000001,
+       "ORD_EMPRESA": 10001,
+       "ORD_ESTADO": "P",
+       "ORD_VALOR": "1500.00",
+       "ORD_MOVIM": 0,
+       "ORD_COMIS": "0.00"
+      },
+      {
+       "ORD_NUMERO": 1000002,
+       "ORD_EMPRESA": 10001,
+       "ORD_ESTADO": "G",
+       "ORD_VALOR": "800.00",
+       "ORD_MOVIM": 5555500001,
+       "ORD_COMIS": "1.00"
+      },
+      {
+       "ORD_NUMERO": 1000003,
+       "ORD_EMPRESA": 10002,
+       "ORD_ESTADO": "P",
+       "ORD_VALOR": "60000.00",
+       "ORD_MOVIM": 0,
+       "ORD_COMIS": "0.00"
+      },
+      {
+       "ORD_NUMERO": 1000004,
+       "ORD_EMPRESA": 10001,
+       "ORD_ESTADO": "P",
+       "ORD_VALOR": "300.00",
+       "ORD_MOVIM": 0,
+       "ORD_COMIS": "0.00"
+      }
+     ],
+     "CUENTAS": [
+      {
+       "CTA_NUMERO": 1234567890,
+       "CTA_TIPO": "CTE",
+       "CTA_SALDO": "5000.00",
+       "CTA_ESTADO": "A"
+      },
+      {
+       "CTA_NUMERO": 2222222222,
+       "CTA_TIPO": "AHO",
+       "CTA_SALDO": "100.00",
+       "CTA_ESTADO": "A"
+      },
+      {
+       "CTA_NUMERO": 3333333333,
+       "CTA_TIPO": "CTE",
+       "CTA_SALDO": "90000.00",
+       "CTA_ESTADO": "I"
+      },
+      {
+       "CTA_NUMERO": 4444444444,
+       "CTA_TIPO": "VIR",
+       "CTA_SALDO": "70000.00",
+       "CTA_ESTADO": "A"
+      },
+      {
+       "CTA_NUMERO": 5555555555,
+       "CTA_TIPO": "AHO",
+       "CTA_SALDO": "1000.00",
+       "CTA_ESTADO": "A"
+      }
+     ]
+    },
+    "stubs": {
+     "PAGOMOV": [
+      {
+       "returns": 0,
+       "outputs": {
+        "MOV_NUMERO": 5555500012
+       }
+      }
+     ]
+    }
+   },
+   "observation": {
+    "returns": 0,
+    "outputs": {
+     "MENSAJE": "CUENTA NO VALIDA"
+    },
+    "tables": {
+     "ORDENES": [
+      {
+       "ORD_NUMERO": "1000001",
+       "ORD_EMPRESA": "10001",
+       "ORD_ESTADO": "P",
+       "ORD_VALOR": "1500.00",
+       "ORD_MOVIM": "0",
+       "ORD_COMIS": "0.00"
+      },
+      {
+       "ORD_NUMERO": "1000002",
+       "ORD_EMPRESA": "10001",
+       "ORD_ESTADO": "G",
+       "ORD_VALOR": "800.00",
+       "ORD_MOVIM": "5555500001",
+       "ORD_COMIS": "1.00"
+      },
+      {
+       "ORD_NUMERO": "1000003",
+       "ORD_EMPRESA": "10002",
+       "ORD_ESTADO": "P",
+       "ORD_VALOR": "60000.00",
+       "ORD_MOVIM": "0",
+       "ORD_COMIS": "0.00"
+      },
+      {
+       "ORD_NUMERO": "1000004",
+       "ORD_EMPRESA": "10001",
+       "ORD_ESTADO": "P",
+       "ORD_VALOR": "300.00",
+       "ORD_MOVIM": "0",
+       "ORD_COMIS": "0.00"
+      }
+     ],
+     "CUENTAS": [
+      {
+       "CTA_NUMERO": "1234567890",
+       "CTA_TIPO": "CTE",
+       "CTA_SALDO": "5000.00",
+       "CTA_ESTADO": "A"
+      },
+      {
+       "CTA_NUMERO": "2222222222",
+       "CTA_TIPO": "AHO",
+       "CTA_SALDO": "100.00",
+       "CTA_ESTADO": "A"
+      },
+      {
+       "CTA_NUMERO": "3333333333",
+       "CTA_TIPO": "CTE",
+       "CTA_SALDO": "90000.00",
+       "CTA_ESTADO": "I"
+      },
+      {
+       "CTA_NUMERO": "4444444444",
+       "CTA_TIPO": "VIR",
+       "CTA_SALDO": "70000.00",
+       "CTA_ESTADO": "A"
+      },
+      {
+       "CTA_NUMERO": "5555555555",
+       "CTA_TIPO": "AHO",
+       "CTA_SALDO": "1000.00",
+       "CTA_ESTADO": "A"
+      }
+     ]
+    },
+    "calls": [],
+    "messages": [],
+    "error": null
+   }
+  },
+  {
+   "case": {
+    "name": "tipo_no_coincide",
+    "description": "The account type differs from the typed one",
+    "rules": [
+     "RULE-007"
+    ],
+    "inputs": {
+     "ORDEN": "1000001",
+     "EMPRESA": "10001",
+     "TIPCTA": "AHO",
+     "CUENTA": "1234567890",
+     "VALOR": "1500.00",
+     "CANAL": "WEB",
+     "CLAVE": ""
+    },
+    "setup": {
+     "ORDENES": [
+      {
+       "ORD_NUMERO": 1000001,
+       "ORD_EMPRESA": 10001,
+       "ORD_ESTADO": "P",
+       "ORD_VALOR": "1500.00",
+       "ORD_MOVIM": 0,
+       "ORD_COMIS": "0.00"
+      },
+      {
+       "ORD_NUMERO": 1000002,
+       "ORD_EMPRESA": 10001,
+       "ORD_ESTADO": "G",
+       "ORD_VALOR": "800.00",
+       "ORD_MOVIM": 5555500001,
+       "ORD_COMIS": "1.00"
+      },
+      {
+       "ORD_NUMERO": 1000003,
+       "ORD_EMPRESA": 10002,
+       "ORD_ESTADO": "P",
+       "ORD_VALOR": "60000.00",
+       "ORD_MOVIM": 0,
+       "ORD_COMIS": "0.00"
+      },
+      {
+       "ORD_NUMERO": 1000004,
+       "ORD_EMPRESA": 10001,
+       "ORD_ESTADO": "P",
+       "ORD_VALOR": "300.00",
+       "ORD_MOVIM": 0,
+       "ORD_COMIS": "0.00"
+      }
+     ],
+     "CUENTAS": [
+      {
+       "CTA_NUMERO": 1234567890,
+       "CTA_TIPO": "CTE",
+       "CTA_SALDO": "5000.00",
+       "CTA_ESTADO": "A"
+      },
+      {
+       "CTA_NUMERO": 2222222222,
+       "CTA_TIPO": "AHO",
+       "CTA_SALDO": "100.00",
+       "CTA_ESTADO": "A"
+      },
+      {
+       "CTA_NUMERO": 3333333333,
+       "CTA_TIPO": "CTE",
+       "CTA_SALDO": "90000.00",
+       "CTA_ESTADO": "I"
+      },
+      {
+       "CTA_NUMERO": 4444444444,
+       "CTA_TIPO": "VIR",
+       "CTA_SALDO": "70000.00",
+       "CTA_ESTADO": "A"
+      },
+      {
+       "CTA_NUMERO": 5555555555,
+       "CTA_TIPO": "AHO",
+       "CTA_SALDO": "1000.00",
+       "CTA_ESTADO": "A"
+      }
+     ]
+    },
+    "stubs": {
+     "PAGOMOV": [
+      {
+       "returns": 0,
+       "outputs": {
+        "MOV_NUMERO": 5555500012
+       }
+      }
+     ]
+    }
+   },
+   "observation": {
+    "returns": 0,
+    "outputs": {
+     "MENSAJE": "CUENTA NO VALIDA"
+    },
+    "tables": {
+     "ORDENES": [
+      {
+       "ORD_NUMERO": "1000001",
+       "ORD_EMPRESA": "10001",
+       "ORD_ESTADO": "P",
+       "ORD_VALOR": "1500.00",
+       "ORD_MOVIM": "0",
+       "ORD_COMIS": "0.00"
+      },
+      {
+       "ORD_NUMERO": "1000002",
+       "ORD_EMPRESA": "10001",
+       "ORD_ESTADO": "G",
+       "ORD_VALOR": "800.00",
+       "ORD_MOVIM": "5555500001",
+       "ORD_COMIS": "1.00"
+      },
+      {
+       "ORD_NUMERO": "1000003",
+       "ORD_EMPRESA": "10002",
+       "ORD_ESTADO": "P",
+       "ORD_VALOR": "60000.00",
+       "ORD_MOVIM": "0",
+       "ORD_COMIS": "0.00"
+      },
+      {
+       "ORD_NUMERO": "1000004",
+       "ORD_EMPRESA": "10001",
+       "ORD_ESTADO": "P",
+       "ORD_VALOR": "300.00",
+       "ORD_MOVIM": "0",
+       "ORD_COMIS": "0.00"
+      }
+     ],
+     "CUENTAS": [
+      {
+       "CTA_NUMERO": "1234567890",
+       "CTA_TIPO": "CTE",
+       "CTA_SALDO": "5000.00",
+       "CTA_ESTADO": "A"
+      },
+      {
+       "CTA_NUMERO": "2222222222",
+       "CTA_TIPO": "AHO",
+       "CTA_SALDO": "100.00",
+       "CTA_ESTADO": "A"
+      },
+      {
+       "CTA_NUMERO": "3333333333",
+       "CTA_TIPO": "CTE",
+       "CTA_SALDO": "90000.00",
+       "CTA_ESTADO": "I"
+      },
+      {
+       "CTA_NUMERO": "4444444444",
+       "CTA_TIPO": "VIR",
+       "CTA_SALDO": "70000.00",
+       "CTA_ESTADO": "A"
+      },
+      {
+       "CTA_NUMERO": "5555555555",
+       "CTA_TIPO": "AHO",
+       "CTA_SALDO": "1000.00",
+       "CTA_ESTADO": "A"
+      }
+     ]
+    },
+    "calls": [],
+    "messages": [],
+    "error": null
+   }
+  },
+  {
+   "case": {
+    "name": "pago_web_cuenta_ahorro",
+    "description": "A small order paid from a savings account",
+    "rules": [
+     "RULE-006",
+     "RULE-008",
+     "RULE-009"
+    ],
+    "inputs": {
+     "ORDEN": "1000004",
+     "EMPRESA": "10001",
+     "TIPCTA": "AHO",
+     "CUENTA": "5555555555",
+     "VALOR": "300.00",
+     "CANAL": "WEB",
+     "CLAVE": ""
+    },
+    "setup": {
+     "ORDENES": [
+      {
+       "ORD_NUMERO": 1000001,
+       "ORD_EMPRESA": 10001,
+       "ORD_ESTADO": "P",
+       "ORD_VALOR": "1500.00",
+       "ORD_MOVIM": 0,
+       "ORD_COMIS": "0.00"
+      },
+      {
+       "ORD_NUMERO": 1000002,
+       "ORD_EMPRESA": 10001,
+       "ORD_ESTADO": "G",
+       "ORD_VALOR": "800.00",
+       "ORD_MOVIM": 5555500001,
+       "ORD_COMIS": "1.00"
+      },
+      {
+       "ORD_NUMERO": 1000003,
+       "ORD_EMPRESA": 10002,
+       "ORD_ESTADO": "P",
+       "ORD_VALOR": "60000.00",
+       "ORD_MOVIM": 0,
+       "ORD_COMIS": "0.00"
+      },
+      {
+       "ORD_NUMERO": 1000004,
+       "ORD_EMPRESA": 10001,
+       "ORD_ESTADO": "P",
+       "ORD_VALOR": "300.00",
+       "ORD_MOVIM": 0,
+       "ORD_COMIS": "0.00"
+      }
+     ],
+     "CUENTAS": [
+      {
+       "CTA_NUMERO": 1234567890,
+       "CTA_TIPO": "CTE",
+       "CTA_SALDO": "5000.00",
+       "CTA_ESTADO": "A"
+      },
+      {
+       "CTA_NUMERO": 2222222222,
+       "CTA_TIPO": "AHO",
+       "CTA_SALDO": "100.00",
+       "CTA_ESTADO": "A"
+      },
+      {
+       "CTA_NUMERO": 3333333333,
+       "CTA_TIPO": "CTE",
+       "CTA_SALDO": "90000.00",
+       "CTA_ESTADO": "I"
+      },
+      {
+       "CTA_NUMERO": 4444444444,
+       "CTA_TIPO": "VIR",
+       "CTA_SALDO": "70000.00",
+       "CTA_ESTADO": "A"
+      },
+      {
+       "CTA_NUMERO": 5555555555,
+       "CTA_TIPO": "AHO",
+       "CTA_SALDO": "1000.00",
+       "CTA_ESTADO": "A"
+      }
+     ]
+    },
+    "stubs": {
+     "PAGOMOV": [
+      {
+       "returns": 0,
+       "outputs": {
+        "MOV_NUMERO": 5555500012
+       }
+      }
+     ]
+    }
+   },
+   "observation": {
+    "returns": 0,
+    "outputs": {
+     "RORDEN": "1000004",
+     "RCOMIS": "1.00",
+     "RMOVIM": "5555500012",
+     "RMENS": "PAGO REALIZADO"
+    },
+    "tables": {
+     "ORDENES": [
+      {
+       "ORD_NUMERO": "1000001",
+       "ORD_EMPRESA": "10001",
+       "ORD_ESTADO": "P",
+       "ORD_VALOR": "1500.00",
+       "ORD_MOVIM": "0",
+       "ORD_COMIS": "0.00"
+      },
+      {
+       "ORD_NUMERO": "1000002",
+       "ORD_EMPRESA": "10001",
+       "ORD_ESTADO": "G",
+       "ORD_VALOR": "800.00",
+       "ORD_MOVIM": "5555500001",
+       "ORD_COMIS": "1.00"
+      },
+      {
+       "ORD_NUMERO": "1000003",
+       "ORD_EMPRESA": "10002",
+       "ORD_ESTADO": "P",
+       "ORD_VALOR": "60000.00",
+       "ORD_MOVIM": "0",
+       "ORD_COMIS": "0.00"
+      },
+      {
+       "ORD_NUMERO": "1000004",
+       "ORD_EMPRESA": "10001",
+       "ORD_ESTADO": "G",
+       "ORD_VALOR": "300.00",
+       "ORD_MOVIM": "5555500012",
+       "ORD_COMIS": "1.00"
+      }
+     ],
+     "CUENTAS": [
+      {
+       "CTA_NUMERO": "1234567890",
+       "CTA_TIPO": "CTE",
+       "CTA_SALDO": "5000.00",
+       "CTA_ESTADO": "A"
+      },
+      {
+       "CTA_NUMERO": "2222222222",
+       "CTA_TIPO": "AHO",
+       "CTA_SALDO": "100.00",
+       "CTA_ESTADO": "A"
+      },
+      {
+       "CTA_NUMERO": "3333333333",
+       "CTA_TIPO": "CTE",
+       "CTA_SALDO": "90000.00",
+       "CTA_ESTADO": "I"
+      },
+      {
+       "CTA_NUMERO": "4444444444",
+       "CTA_TIPO": "VIR",
+       "CTA_SALDO": "70000.00",
+       "CTA_ESTADO": "A"
+      },
+      {
+       "CTA_NUMERO": "5555555555",
+       "CTA_TIPO": "AHO",
+       "CTA_SALDO": "699.00",
+       "CTA_ESTADO": "A"
+      }
+     ]
+    },
+    "calls": [
+     {
+      "program": "PAGOMOV",
+      "arguments": {
+       "MOV_ORDEN": "1000004"
+      }
+     }
+    ],
+    "messages": [],
+    "error": null
+   }
+  }
+ ]
+}
