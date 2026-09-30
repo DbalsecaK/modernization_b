@@ -18,5 +18,6 @@ reemplaza y se marca el anterior como "Reemplazado por ADR-NNNN".
 | [0010](0010-primer-pack-java-spring-boot.md) | D-06 — Primer vertical Sybase hacia Java Spring Boot; el destino lo elige cada proyecto | Aceptada |
 | [0011](0011-kit-de-referencia-fuera-del-repo.md) | Aplicaciones de referencia de clientes en un kit local, fuera del repositorio | Aceptada |
 | [0012](0012-respuestas-grabadas-y-evaluacion-a-demanda.md) | Respuestas de modelos grabadas en el CI; evaluación con modelos reales a demanda | Aceptada |
+| [0013](0013-prototipos-react-en-iframe-aislado.md) | Prototipos React reales, compilados en el sandbox y mostrados en un iframe aislado | Aceptada |
 
 Plantilla: contexto, decisión, alternativas consideradas, consecuencias y cómo se valida.
