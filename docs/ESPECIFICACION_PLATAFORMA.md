@@ -1519,6 +1519,28 @@ con posición, longitud y atributos correctos.
 
 **Aceptación:** medición contra la spec de referencia CICS; veredicto máximo PARTLY PROVEN si no hay ejecución.
 
+### M6b — Packs de frontend: React y Angular
+
+- Packs de destino de frontend (8.4): React y Angular, con el design system aprobado en C2 (tokens y
+  componentes) y un cliente tipado generado del OpenAPI del backend (determinista).
+- Generación de las pantallas desde las specs de pantalla y los prototipos aprobados; validación y navegación
+  según la spec; accesibilidad (WCAG AA) automática.
+- Build y tests (unitarios y e2e) en el sandbox web; se integran a la verificación independiente.
+- El proyecto elige el frontend en el asistente; sin pack, la generación del frontend espera (como en D-06).
+
+**Aceptación:** con la aplicación ficticia (SP de M4 + mapas de M5), el frontend React y el Angular compilan,
+pasan sus tests y cubren todos los campos, validaciones y acciones de las specs de pantalla; axe sin
+violaciones graves.
+
+### M6c — Pack .NET 10 + SQL Server
+
+- Pack de backend .NET 10 (ASP.NET Core, hexagonal como el de Spring Boot) y persistencia SQL Server, con el
+  mismo contrato de diseño (C3), generación por capas, sandbox propio sin red y harness de equivalencia.
+- El mismo diseño y golden master de M4 generan un destino .NET y se verifican con los seis chequeos (11.3).
+
+**Aceptación:** la aplicación ficticia de M4 migrada a .NET 10 + SQL Server obtiene un veredicto calculado por
+código con el mismo golden master que Spring Boot.
+
 ### M7 — Flujo 2 completo
 
 - Ingesta de documentos, HU, Figma (API), capturas (visión) y links de prototipos, desde el asistente y después.
@@ -1547,6 +1569,15 @@ otro tenant no ve ni usa la conexión; toda escritura externa queda auditada.
 - Adaptador ASPX (markup → pantallas, code-behind → reglas y contratos).
 - Opción *uplift* a .NET 10 vs reescritura.
 - Runner Windows en el sandbox.
+
+### M8b — Packs Oracle y nube (AWS, Azure)
+
+- Persistencia Oracle en los packs de backend existentes (Spring Boot y .NET), con su sandbox de verificación.
+- Eje de despliegue (8.4): IaC con Terraform/OpenTofu para AWS y Azure en contenedores, con mapeo de conceptos
+  legacy a servicios gestionados; validación estática del IaC en el sandbox (sin credenciales de nube).
+
+**Aceptación:** la aplicación ficticia genera y verifica su destino con Oracle, y su IaC para AWS y Azure pasa
+la validación y las fitness functions del pack.
 
 ### M0b — Identidad empresarial (SSO, MFA, Organizations)
 
@@ -1650,6 +1681,7 @@ Sybase SP (M4) → BMS (M5) → CICS (M6) → ASPX (M8).
 | D-27 | Autenticación **por etapas**: Keycloak mínimo desde M0 (cuentas locales en Keycloak, BFF, `dev-auth` solo en desarrollo) y SSO/MFA/Organizations/Keycloakify en **M0b**; la plataforma nunca guarda contraseñas ([ADR-0004](adr/0004-autenticacion-por-etapas.md)) |
 | D-18 | Producto nativamente en inglés (UI, prompts, skills, catálogo); español como traducción completa; idioma de artefactos configurable por proyecto (inglés por defecto) |
 | D-13 | Cola de trabajos con **Procrastinate sobre PostgreSQL**: ejecución y trabajo en la misma transacción, latidos para reintentar el trabajo de un worker caído y reanudación desde el checkpoint de LangGraph; cola y checkpointer sin `tenant_id` y solo con referencias ([ADR-0009](adr/0009-cola-procrastinate-postgresql.md)) |
+| D-33 | Los packs de destino de la Ola 1 tienen hitos propios: **M6b** frontend React y Angular, **M6c** .NET 10 + SQL Server, **M8b** Oracle y nube AWS/Azure (IaC); cualquier origen soportado puede ir a cualquier pack disponible ([ADR-0014](adr/0014-hitos-de-packs-de-destino.md)) |
 | D-32 | Prototipos en **React real**: el agente escribe TSX solo con React y el design system NexTI, un validador por código lo revisa, se compila en un sandbox web sin red y se muestra en un **iframe aislado** (sin mismo origen) servido con CSP estricta ([ADR-0013](adr/0013-prototipos-react-en-iframe-aislado.md)) |
 | D-31 | Insumos validados por un único módulo (`packages/ingest`) antes de guardarse: tipo por contenido, tamaños, zip seguro (path traversal, enlaces, bombs), cabecera de imágenes, secretos contados y sha256; **malware con ClamAV** en Compose, CI y despliegue, con falla cerrada si no responde; síncrono en la API hasta que existan workers ([ADR-0008](adr/0008-validacion-de-insumos-clamav.md)) |
 | D-30 | Secretos con la **API de Vault** (KV v2) a través de un único módulo del gateway; **OpenBao** en desarrollo y CI, Vault u OpenBao en producción; la base solo guarda la ruta ([ADR-0007](adr/0007-almacen-de-secretos-openbao.md)) |
