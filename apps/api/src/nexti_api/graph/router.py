@@ -56,7 +56,7 @@ class FlowStepOut(ApiModel):
     rule: str | None
 
 
-class FlowOut(ApiModel):
+class BusinessFlowOut(ApiModel):
     id: str
     name: str
     entry: str
@@ -68,7 +68,7 @@ class GraphOut(ApiModel):
     nodes: list[GraphNodeOut]
     edges: list[GraphEdgeOut]
     rules: list[GraphRuleOut]
-    flows: list[FlowOut]
+    flows: list[BusinessFlowOut]
 
 
 class ImpactOut(ApiModel):

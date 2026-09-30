@@ -2229,6 +2229,19 @@ export interface components {
             /** Spentusd */
             spentUsd: string;
         };
+        /** BusinessFlowOut */
+        BusinessFlowOut: {
+            /** Entry */
+            entry: string;
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Rules */
+            rules: string[];
+            /** Steps */
+            steps: components["schemas"]["FlowStepOut"][];
+        };
         /** C1CheckOut */
         C1CheckOut: {
             /** Blockers */
@@ -2258,7 +2271,7 @@ export interface components {
             /** Costunitusd */
             costUnitUsd: number;
             /** Flows */
-            flows: components["schemas"]["nexti_api__projects__catalog_api__FlowOut"][];
+            flows: components["schemas"]["FlowOut"][];
             /** Pipelinetemplates */
             pipelineTemplates: components["schemas"]["TemplateOut"][];
             /** Skills */
@@ -2678,6 +2691,16 @@ export interface components {
                 };
             };
         };
+        /** FlowOut */
+        FlowOut: {
+            /**
+             * Key
+             * @enum {string}
+             */
+            key: "modernization" | "newFeature";
+            /** Phases */
+            phases: components["schemas"]["PhaseOut"][];
+        };
         /** FlowStepOut */
         FlowStepOut: {
             /**
@@ -2800,7 +2823,7 @@ export interface components {
             /** Edges */
             edges: components["schemas"]["GraphEdgeOut"][];
             /** Flows */
-            flows: components["schemas"]["nexti_api__graph__router__FlowOut"][];
+            flows: components["schemas"]["BusinessFlowOut"][];
             /** Nodes */
             nodes: components["schemas"]["GraphNodeOut"][];
             /** Rules */
@@ -4527,29 +4550,6 @@ export interface components {
              * @enum {string}
              */
             status: "available" | "deprecated";
-        };
-        /** FlowOut */
-        nexti_api__graph__router__FlowOut: {
-            /** Entry */
-            entry: string;
-            /** Id */
-            id: string;
-            /** Name */
-            name: string;
-            /** Rules */
-            rules: string[];
-            /** Steps */
-            steps: components["schemas"]["FlowStepOut"][];
-        };
-        /** FlowOut */
-        nexti_api__projects__catalog_api__FlowOut: {
-            /**
-             * Key
-             * @enum {string}
-             */
-            key: "modernization" | "newFeature";
-            /** Phases */
-            phases: components["schemas"]["PhaseOut"][];
         };
         /** RuleOut */
         nexti_api__projects__catalog_api__RuleOut: {

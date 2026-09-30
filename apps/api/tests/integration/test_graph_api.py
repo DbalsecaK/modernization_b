@@ -16,7 +16,8 @@ from nexti_api.settings import Settings
 from nexti_graph import GraphStore, Scope
 
 from .conftest import SETTINGS, World
-from .run_support import make_project, seed_graph
+from .run_support import CICS_FIXTURES, make_project, seed_graph
+from .test_acceptance_m4 import object_store, upload_source
 from .test_runs_api import sign_in
 
 pytestmark = pytest.mark.skipif(not SETTINGS.graph_uri, reason="Neo4j not configured (run init_env.py)")
@@ -98,3 +99,30 @@ async def test_without_a_graph_the_api_says_so(
         headers = sign_in(client, world.a_user)
         response = client.get(f"/api/v1/projects/{project_id}/graph", headers=headers)
     assert (response.status_code, response.json()["code"]) == (503, "graph_unavailable")
+
+
+async def test_the_source_target_view_shows_cobol_lines_rule_by_rule(
+    api: TestClient, app_engine: AsyncEngine, owner_engine: AsyncEngine, fga: OpenFga, world: World
+) -> None:
+    """The traceability viewer (plan M6 step 9) on COBOL: a rule cited in two programs shows both legacy excerpts
+    from the uploaded archive, each with the cited lines highlighted."""
+    project_id = await seeded(owner_engine, app_engine, fga, world)
+    sources = {p.relative_to(CICS_FIXTURES).as_posix(): p.read_bytes() for p in sorted(CICS_FIXTURES.rglob("*"))
+               if p.suffix in (".cbl", ".cpy", ".csd", ".bms")}  # fmt: skip
+    await upload_source(owner_engine, object_store(), world.tenant_a, project_id, sources)
+    headers = sign_in(api, world.a_user)
+    try:
+        listed = api.get(f"/api/v1/projects/{project_id}/traceability", headers=headers)
+        assert listed.status_code == 200, listed.text
+        rule = next(r for r in listed.json() if r["key"] == "RULE-007")
+        assert rule["sources"] == ["cbl/PAGODEB.cbl:18-32", "cbl/PAGOORD.cbl:144-159"]
+        detail = api.get(f"/api/v1/projects/{project_id}/traceability/RULE-007", headers=headers).json()
+        excerpts = {e["path"]: e for e in detail["legacy"]}
+        assert set(excerpts) == {"cbl/PAGODEB.cbl", "cbl/PAGOORD.cbl"}
+        debit = excerpts["cbl/PAGODEB.cbl"]
+        assert debit["highlighted"] == list(range(18, 33))
+        assert any("EXEC CICS READ FILE('CUENTAS')" in line for line in debit["lines"])
+        assert detail["verdict"] is None  # nothing verified yet
+        assert detail["target"] == []
+    finally:
+        await forget(world.tenant_a, project_id)

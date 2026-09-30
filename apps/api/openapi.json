@@ -809,6 +809,45 @@
         "title": "BudgetOut",
         "type": "object"
       },
+      "BusinessFlowOut": {
+        "properties": {
+          "entry": {
+            "title": "Entry",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "rules": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Rules",
+            "type": "array"
+          },
+          "steps": {
+            "items": {
+              "$ref": "#/components/schemas/FlowStepOut"
+            },
+            "title": "Steps",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "entry",
+          "rules",
+          "steps"
+        ],
+        "title": "BusinessFlowOut",
+        "type": "object"
+      },
       "C1CheckOut": {
         "properties": {
           "blockers": {
@@ -897,7 +936,7 @@
           },
           "flows": {
             "items": {
-              "$ref": "#/components/schemas/nexti_api__projects__catalog_api__FlowOut"
+              "$ref": "#/components/schemas/FlowOut"
             },
             "title": "Flows",
             "type": "array"
@@ -2105,6 +2144,31 @@
         "title": "EffortMappingIn",
         "type": "object"
       },
+      "FlowOut": {
+        "properties": {
+          "key": {
+            "enum": [
+              "modernization",
+              "newFeature"
+            ],
+            "title": "Key",
+            "type": "string"
+          },
+          "phases": {
+            "items": {
+              "$ref": "#/components/schemas/PhaseOut"
+            },
+            "title": "Phases",
+            "type": "array"
+          }
+        },
+        "required": [
+          "key",
+          "phases"
+        ],
+        "title": "FlowOut",
+        "type": "object"
+      },
       "FlowStepOut": {
         "properties": {
           "kind": {
@@ -2492,7 +2556,7 @@
           },
           "flows": {
             "items": {
-              "$ref": "#/components/schemas/nexti_api__graph__router__FlowOut"
+              "$ref": "#/components/schemas/BusinessFlowOut"
             },
             "title": "Flows",
             "type": "array"
@@ -7375,70 +7439,6 @@
           "offerings"
         ],
         "title": "VersionOut",
-        "type": "object"
-      },
-      "nexti_api__graph__router__FlowOut": {
-        "properties": {
-          "entry": {
-            "title": "Entry",
-            "type": "string"
-          },
-          "id": {
-            "title": "Id",
-            "type": "string"
-          },
-          "name": {
-            "title": "Name",
-            "type": "string"
-          },
-          "rules": {
-            "items": {
-              "type": "string"
-            },
-            "title": "Rules",
-            "type": "array"
-          },
-          "steps": {
-            "items": {
-              "$ref": "#/components/schemas/FlowStepOut"
-            },
-            "title": "Steps",
-            "type": "array"
-          }
-        },
-        "required": [
-          "id",
-          "name",
-          "entry",
-          "rules",
-          "steps"
-        ],
-        "title": "FlowOut",
-        "type": "object"
-      },
-      "nexti_api__projects__catalog_api__FlowOut": {
-        "properties": {
-          "key": {
-            "enum": [
-              "modernization",
-              "newFeature"
-            ],
-            "title": "Key",
-            "type": "string"
-          },
-          "phases": {
-            "items": {
-              "$ref": "#/components/schemas/PhaseOut"
-            },
-            "title": "Phases",
-            "type": "array"
-          }
-        },
-        "required": [
-          "key",
-          "phases"
-        ],
-        "title": "FlowOut",
         "type": "object"
       },
       "nexti_api__projects__catalog_api__RuleOut": {
