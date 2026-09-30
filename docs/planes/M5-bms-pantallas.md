@@ -1,7 +1,6 @@
 # Plan del hito M5 — BMS → pantallas y prototipos
 
-- **Estado:** en ejecución (2026-09-30). Se avanza de corrido; solo se detiene ante una decisión importante. Al
-  terminar sigue M6 (PR apilada sobre esta rama).
+- **Estado:** cerrado (2026-09-30), ver la sección 4. Sigue M6 (PR apilada sobre esta rama).
 - **Fuente:** `docs/ESPECIFICACION_PLATAFORMA.md` secciones 4.1 (Pantalla), 7.4, 8.3 (Mapas BMS), 18 (Diseño UI),
   20 (M5).
 - **Rama:** `m5-bms-pantallas`, un commit por paso, PR a `main` al terminar.
@@ -57,3 +56,52 @@ dentro de la spec produce directamente una versión nueva. El chat nunca aprueba
 | El prototipo generado corre aislado: sin sesión, sin API, sin red | Validador, API (CSP) y e2e |
 | Cada cambio pedido por chat es una versión nueva; un cambio que toca algo aprobado genera una pregunta; el chat no aprueba C2 | Orquestación, API y e2e |
 | Permitido y denegado por endpoint, aislamiento y auditoría | Matriz de autorización y RLS |
+
+## 4. Cierre de M5 (2026-09-30)
+
+Los criterios de la sección 3 se cumplen con tests automatizados. Corren en CI contra los servicios reales, el
+sandbox web (`nexti-sandbox-web:1`) y la grabación de la corrida real.
+
+| Criterio | Evidencia (tests) | Estado |
+|---|---|---|
+| Todos los campos de los mapas de referencia aparecen en la spec de pantalla con posición, longitud y atributos | `test_bms.py`: el parser contra `reference_screens.json`, 3 mapas y 49 campos contando literales. `test_acceptance_m5.py`: los mismos campos, leídos por el worker desde el zip subido y servidos por la API. `e2e/ui-design.spec.ts`: la tabla de campos de la pestaña | ✅ |
+| El prototipo corre aislado: sin sesión, sin API, sin red | `test_ui.py`: el validador rechaza red, eval, storage, `window.parent`, navegación, URLs externas y HTML crudo. `test_screens_api.py`: CSP `default-src 'none'`, `connect-src 'none'`, `sandbox allow-scripts` sin `allow-same-origin`, sin cookies. e2e: el iframe con `sandbox="allow-scripts"` y los mensajes del protocolo cerrado (`frameEvent`) | ✅ |
+| Cada cambio pedido por chat es una versión nueva; un cambio de spec se propone y lo decide una persona; el chat no aprueba C2 | `test_ui_chat.py` (worker y sandbox real: versión, propuesta, fallo), `test_screens_api.py` (encolado, aceptar y rechazar, auditoría), aceptación grabada (el cambio vuelve como v2), e2e (propuesta aceptada) | ✅ (ver desviación del paso 9) |
+| Permitido y denegado por endpoint, aislamiento y auditoría | `test_endpoints_authz.py`: 131 casos, entre ellos las 14 rutas de pantallas, prototipos, comentarios y chat. `test_rls.py` con las tablas nuevas. Modelo OpenFGA 9/9 | ✅ |
+
+**Aceptación grabada.** `test_acceptance_m5.py` se grabó una vez con `anthropic/claude-sonnet-5.5`: 4 llamadas y
+0,19 USD, dentro del tope de 5 USD. Pasa esto:
+
+- El worker lee `PAGOSET.bms` del zip y genera 3 specs de pantalla.
+- El diseñador UX/UI escribe un prototipo por pantalla que muestra los 16 campos de datos y compila sin correcciones.
+- La API sirve cada prototipo con la CSP del iframe.
+- El cambio pedido por el chat vuelve del worker como la versión 2.
+
+CI reproduce la grabación sin red.
+
+**Capturas** en `docs/m5/`, generadas por el e2e con `CAPTURE_DIR`:
+
+- la pestaña Diseño UI con el catálogo;
+- la pantalla legacy 24×80 con un campo enlazado al prototipo aislado;
+- el chat con la propuesta aceptada.
+
+**Cambios respecto del plan**
+
+- Las propuestas de cambio de spec se deciden en el chat, no como preguntas 10.4 (ver la desviación del paso 9).
+- Los pasos 10 y 11 se hicieron juntos. La vista legacy ↔ prototipo vive en la misma pestaña: la pantalla terminal
+  se dibuja desde la spec y los campos se enlazan en ambos sentidos con los comentarios.
+- La API expone `prototype.comment` y `prototype.edit` en los permisos del proyecto para que la web muestre u oculte
+  acciones.
+- La aceptación destapó que el worker no leía los mapas `.bms` de los zip. Ya los lee.
+
+**Limitaciones conocidas**
+
+- El chat no acepta adjuntos (capturas). El mock los tenía; la API todavía no.
+- Un campo agregado al aceptar una propuesta entra como `input` de longitud 40, sin posición. Una persona lo ajusta
+  editando la spec de pantalla (versión nueva).
+- El iframe solo envía mensajes: la plataforma no puede resaltar un campo dentro del prototipo, solo en la pantalla
+  legacy y en la tabla.
+- Los mapas reales de BI-cobol no se probaron (fuera del repo por ADR-0011). Se pueden correr a demanda con
+  presupuesto explícito.
+- La compuerta C2 se aprueba en la corrida (pestaña Corridas). La pestaña Diseño UI solo lleva hasta allí.
+- Gasto real en modelos durante M5: 0,19 USD.

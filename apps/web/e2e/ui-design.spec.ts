@@ -156,6 +156,8 @@ test('the UI design tab links the legacy screen with the isolated prototype, com
   await frame.locator('[data-field="VALOR"]').first().click()
   await expect(page.getByRole('combobox', { name: 'Comment field' })).toHaveValue('VALOR')
   await expect(page.locator('[data-legacy-field="VALOR"]')).toHaveClass(/bg-\[#05e194\]/)
+  await page.locator('[data-legacy-field="VALOR"]').scrollIntoViewIfNeeded()
+  await capture(page, 'ui-design-legacy-prototype')
   await page.getByRole('textbox', { name: 'Write a comment' }).fill('El valor debe mostrar dos decimales')
   await page.getByRole('button', { name: 'Comment', exact: true }).click()
   const comment = page.getByText('El valor debe mostrar dos decimales')
@@ -181,6 +183,8 @@ test('the UI design tab links the legacy screen with the isolated prototype, com
   await expect(page.getByText('New prototype version v2')).toBeVisible()
   await expect(page.getByRole('combobox', { name: 'Version' })).toContainText('v2 · chat')
   await expect(fields.getByRole('row', { name: /EMAIL/ })).toBeVisible()
+  await page.getByText('New prototype version v2').scrollIntoViewIfNeeded()
+  await capture(page, 'ui-design-chat')
 
   // The prototype navigates: its button opens the menu screen in the catalog.
   await page.getByRole('combobox', { name: 'Version' }).selectOption('1')
