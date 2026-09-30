@@ -1,0 +1,82 @@
+{
+  "model": "anthropic/claude-sonnet-5.5",
+  "mode": "record",
+  "react": {
+    "summary": "react frontend: 3 page(s) that compile and pass the harness",
+    "verdict": "PROVEN",
+    "checks": {
+      "compiles": "passed",
+      "screens_mount": "passed",
+      "fields_covered": "passed",
+      "validations": "passed",
+      "actions": "passed",
+      "accessibility": "passed"
+    },
+    "screens": {
+      "SCR-PAGOMEN": {
+        "mounts": "passed",
+        "fields": "passed",
+        "actions": "passed",
+        "validation": "passed",
+        "accessibility": "passed",
+        "submit": "passed"
+      },
+      "SCR-PAGOORD": {
+        "mounts": "passed",
+        "fields": "passed",
+        "actions": "passed",
+        "validation": "passed",
+        "accessibility": "passed",
+        "submit": "passed"
+      },
+      "SCR-PAGORES": {
+        "mounts": "passed",
+        "fields": "passed",
+        "actions": "passed",
+        "validation": "not_checked",
+        "accessibility": "passed"
+      }
+    },
+    "self_corrected": 2
+  },
+  "angular": {
+    "summary": "angular frontend: 3 page(s) that compile and pass the harness",
+    "verdict": "PROVEN",
+    "checks": {
+      "compiles": "passed",
+      "screens_mount": "passed",
+      "fields_covered": "passed",
+      "validations": "passed",
+      "actions": "passed",
+      "accessibility": "passed"
+    },
+    "screens": {
+      "SCR-PAGOMEN": {
+        "mounts": "passed",
+        "fields": "passed",
+        "actions": "passed",
+        "validation": "passed",
+        "accessibility": "passed",
+        "submit": "passed"
+      },
+      "SCR-PAGOORD": {
+        "mounts": "passed",
+        "fields": "passed",
+        "actions": "passed",
+        "validation": "passed",
+        "accessibility": "passed",
+        "submit": "passed"
+      },
+      "SCR-PAGORES": {
+        "mounts": "passed",
+        "fields": "passed",
+        "actions": "passed",
+        "validation": "not_checked",
+        "accessibility": "passed"
+      }
+    },
+    "self_corrected": 0
+  },
+  "model_calls": 8,
+  "cost_usd": "0.29576200"
+}
