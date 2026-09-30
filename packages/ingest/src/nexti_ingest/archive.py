@@ -94,8 +94,9 @@ def inspect_zip(stream: BinaryIO, limits: Limits, findings: SecretFindings | Non
     return ArchiveReport(entries=len(infos), uncompressed_bytes=total)
 
 
-# The legacy code the pipeline reads from an accepted archive (already inspected at upload by `inspect_zip`).
-SOURCE_SUFFIXES = (".sp", ".sql", ".prc", ".proc", ".tsql", ".syb", ".txt")
+# The legacy code the pipeline reads from an accepted archive (already inspected at upload by `inspect_zip`): Sybase
+# procedures (M4) and BMS maps (M5); each source adapter adds its languages.
+SOURCE_SUFFIXES = (".sp", ".sql", ".prc", ".proc", ".tsql", ".syb", ".txt", ".bms")
 MAX_SOURCE_FILE_BYTES = 5 * 1024 * 1024
 MAX_SOURCE_TOTAL_BYTES = 50 * 1024 * 1024
 

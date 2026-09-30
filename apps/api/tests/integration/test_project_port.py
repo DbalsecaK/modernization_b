@@ -70,8 +70,9 @@ def story(title: str, links: list[str]) -> StoryDraft:
 
 
 def test_the_zip_is_read_as_text_with_limits() -> None:
-    files = read_zip(zipped({"sp/sp_pago_orden.sp": SOURCE, "img/logo.png": b"\x89PNG\x00\x00", "notes.txt": b"hola"}))
-    assert [f.path for f in files] == ["sp/sp_pago_orden.sp", "notes.txt"]
+    files = read_zip(zipped({"sp/sp_pago_orden.sp": SOURCE, "img/logo.png": b"\x89PNG\x00\x00", "notes.txt": b"hola",
+                             "maps/PAGOSET.bms": BMS.read_bytes()}))  # fmt: skip
+    assert [f.path for f in files] == ["sp/sp_pago_orden.sp", "notes.txt", "maps/PAGOSET.bms"]
     assert files[0].text.startswith("/*")
 
 
