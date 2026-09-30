@@ -19,6 +19,7 @@ members = [
     "nexti-ingest",
     "nexti-model-gateway",
     "nexti-orchestration",
+    "nexti-pack-frontend",
     "nexti-pack-spring-boot",
     "nexti-sandbox",
     "nexti-skills",
@@ -1408,6 +1409,23 @@ requires-dist = [
     { name = "nexti-ui", editable = "packages/ui" },
     { name = "nexti-verification", editable = "packages/verification" },
     { name = "psycopg", extras = ["binary"], specifier = ">=3.2" },
+]
+
+[[package]]
+name = "nexti-pack-frontend"
+version = "0.1.0"
+source = { editable = "packages/packs/target/frontend" }
+dependencies = [
+    { name = "nexti-core" },
+    { name = "nexti-pack-spring-boot" },
+    { name = "nexti-sandbox" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "nexti-core", editable = "packages/core" },
+    { name = "nexti-pack-spring-boot", editable = "packages/packs/target/spring_boot" },
+    { name = "nexti-sandbox", editable = "packages/sandbox" },
 ]
 
 [[package]]
