@@ -34,7 +34,9 @@ export function Screen({
         <h1 className="nx-screen__title">{title}</h1>
         {code && <span className="nx-screen__code">{code}</span>}
       </header>
-      <main className="nx-screen__body">{children}</main>
+      <main className="nx-screen__body" aria-label={title}>
+        {children}
+      </main>
       {keys}
     </div>
   )

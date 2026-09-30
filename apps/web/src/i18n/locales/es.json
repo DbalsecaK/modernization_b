@@ -848,7 +848,13 @@
       "sameBehaviour": "Mismo comportamiento",
       "freshInputs": "Inputs frescos",
       "canary": "Canario",
-      "sourceIntact": "Fuente intacta"
+      "sourceIntact": "Fuente intacta",
+      "compiles": "Compila",
+      "screensMount": "Las pantallas cargan",
+      "fieldsCovered": "Campos cubiertos",
+      "validations": "Validaciones",
+      "actions": "Acciones",
+      "accessibility": "Accesibilidad"
     },
     "status": {
       "passed": "Pasa",

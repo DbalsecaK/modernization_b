@@ -77,7 +77,7 @@ async def proof_pack(request: Request, project_id: uuid.UUID, verdict_id: uuid.U
 async def _evidence(request: Request, conn: AsyncConnection, project_id: uuid.UUID) -> dict[str, Any]:
     """TRACE and EQUIVALENCE of the newest verdict, or nothing when the project has not been verified yet."""
     verdicts = await _verdicts(conn, project_id)
-    latest = next((v for v in verdicts if v["proof_pack_key"]), None)
+    latest = next((v for v in verdicts if v["proof_pack_key"] and not v["module"].startswith("frontend-")), None)
     if latest is None:
         return {}
     data = b"".join(await services.store(request).read(latest["proof_pack_key"]))

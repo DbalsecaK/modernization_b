@@ -177,7 +177,7 @@ function ModuleVerdict({
         />
         <CardBody className="space-y-3">
           <ul className="space-y-3" aria-label={t('validation.checksOf', { module: group.module })}>
-            {allChecks(v.checks).map((c) => {
+            {allChecks(v.checks, v.module).map((c) => {
               const Icon = c.missing ? CircleDashed : statusIcon[c.status]
               return (
                 <li key={c.key} className="flex items-start gap-3 rounded-md border border-border p-3">

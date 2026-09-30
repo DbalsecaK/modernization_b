@@ -18,6 +18,7 @@ from nexti_adapter_sybase.ase import RecordedRunner
 from nexti_core.adapters import LegacyRunner, SourceFile
 from nexti_core.spec.characterization import GoldenMaster, Suite
 from nexti_core.spec.model import Rule
+from nexti_core.spec.screens import ScreenSpec
 from nexti_orchestration import PhaseSpec, RunContext
 from nexti_orchestration.context import PhaseContext
 from nexti_orchestration.generation import wiring
@@ -71,6 +72,12 @@ class MemoryPort:
 
     async def load_generated(self) -> tuple[dict[str, str], dict[str, list[str]]]:
         return reference_files()
+
+    async def load_frontend(self) -> dict[str, str]:
+        return {}
+
+    async def load_screens(self) -> list[ScreenSpec]:
+        return []
 
     def legacy_runner(self) -> LegacyRunner | None:
         return self.runner

@@ -41,7 +41,16 @@ from nexti_worker.project import WorkerProjectPort
 from nexti_worker.runner import Runtime, execute_run
 
 from .conftest import SETTINGS, Databases, World
-from .run_support import CICS_FIXTURES, FakeSandbox, fetch, make_config, make_project, make_run, psycopg_dsn
+from .run_support import (
+    CICS_FIXTURES,
+    NO_FRONTEND,
+    FakeSandbox,
+    fetch,
+    make_config,
+    make_project,
+    make_run,
+    psycopg_dsn,
+)
 from .test_acceptance_m4 import (
     FULL_TEAM,
     _api_key,
@@ -98,7 +107,7 @@ async def test_the_fictitious_cics_application_reaches_a_verdict_capped_at_partl
     mode: Literal["record", "replay"] = "record" if RECORD else "replay"
     store = object_store()
     project_id = await make_project(owner_engine, world.tenant_a)
-    version = await make_config(owner_engine, world.tenant_a, project_id, team=TEAM)
+    version = await make_config(owner_engine, world.tenant_a, project_id, team=TEAM, target=NO_FRONTEND)
     await upload_source(owner_engine, store, world.tenant_a, project_id, sources())
     await grant(owner_engine, world, world.a_user, "projectOwner", project_id)
     await reconcile(app_engine, fga)

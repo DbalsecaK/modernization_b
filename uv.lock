@@ -19,6 +19,7 @@ members = [
     "nexti-ingest",
     "nexti-model-gateway",
     "nexti-orchestration",
+    "nexti-pack-frontend",
     "nexti-pack-spring-boot",
     "nexti-sandbox",
     "nexti-skills",
@@ -1387,6 +1388,7 @@ dependencies = [
     { name = "nexti-adapter-sybase" },
     { name = "nexti-agents" },
     { name = "nexti-core" },
+    { name = "nexti-pack-frontend" },
     { name = "nexti-pack-spring-boot" },
     { name = "nexti-sandbox" },
     { name = "nexti-ui" },
@@ -1403,11 +1405,29 @@ requires-dist = [
     { name = "nexti-adapter-sybase", editable = "packages/adapters/source/sybase" },
     { name = "nexti-agents", editable = "packages/agents" },
     { name = "nexti-core", editable = "packages/core" },
+    { name = "nexti-pack-frontend", editable = "packages/packs/target/frontend" },
     { name = "nexti-pack-spring-boot", editable = "packages/packs/target/spring_boot" },
     { name = "nexti-sandbox", editable = "packages/sandbox" },
     { name = "nexti-ui", editable = "packages/ui" },
     { name = "nexti-verification", editable = "packages/verification" },
     { name = "psycopg", extras = ["binary"], specifier = ">=3.2" },
+]
+
+[[package]]
+name = "nexti-pack-frontend"
+version = "0.1.0"
+source = { editable = "packages/packs/target/frontend" }
+dependencies = [
+    { name = "nexti-core" },
+    { name = "nexti-pack-spring-boot" },
+    { name = "nexti-sandbox" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "nexti-core", editable = "packages/core" },
+    { name = "nexti-pack-spring-boot", editable = "packages/packs/target/spring_boot" },
+    { name = "nexti-sandbox", editable = "packages/sandbox" },
 ]
 
 [[package]]
@@ -1479,6 +1499,7 @@ dependencies = [
     { name = "nexti-ingest" },
     { name = "nexti-model-gateway" },
     { name = "nexti-orchestration" },
+    { name = "nexti-pack-frontend" },
     { name = "nexti-pack-spring-boot" },
     { name = "nexti-sandbox" },
     { name = "nexti-ui" },
@@ -1500,6 +1521,7 @@ requires-dist = [
     { name = "nexti-ingest", editable = "packages/ingest" },
     { name = "nexti-model-gateway", editable = "packages/model_gateway" },
     { name = "nexti-orchestration", editable = "packages/orchestration" },
+    { name = "nexti-pack-frontend", editable = "packages/packs/target/frontend" },
     { name = "nexti-pack-spring-boot", editable = "packages/packs/target/spring_boot" },
     { name = "nexti-sandbox", editable = "packages/sandbox" },
     { name = "nexti-ui", editable = "packages/ui" },

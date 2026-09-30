@@ -848,7 +848,13 @@
       "sameBehaviour": "Same behavior",
       "freshInputs": "Fresh inputs",
       "canary": "Canary",
-      "sourceIntact": "Source intact"
+      "sourceIntact": "Source intact",
+      "compiles": "Compiles",
+      "screensMount": "Screens mount",
+      "fieldsCovered": "Fields covered",
+      "validations": "Validations",
+      "actions": "Actions",
+      "accessibility": "Accessibility"
     },
     "status": {
       "passed": "Passed",

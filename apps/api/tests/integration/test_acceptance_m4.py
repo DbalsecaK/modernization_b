@@ -53,7 +53,7 @@ from nexti_worker.project import WorkerProjectPort
 from nexti_worker.runner import Runtime, execute_run
 
 from .conftest import SETTINGS, Databases, World, compose_env
-from .run_support import FakeSandbox, fetch, make_config, make_project, make_run, psycopg_dsn
+from .run_support import NO_FRONTEND, FakeSandbox, fetch, make_config, make_project, make_run, psycopg_dsn
 from .test_runs_api import grant, sign_in
 
 ROOT = Path(__file__).resolve().parents[4]
@@ -280,7 +280,7 @@ async def test_the_fictitious_application_reaches_a_verdict_computed_by_code(
     mode: Literal["record", "replay"] = "record" if RECORD else "replay"
     store = object_store()
     project_id = await make_project(owner_engine, world.tenant_a)
-    version = await make_config(owner_engine, world.tenant_a, project_id, team=FULL_TEAM)
+    version = await make_config(owner_engine, world.tenant_a, project_id, team=FULL_TEAM, target=NO_FRONTEND)
     await upload_source(owner_engine, store, world.tenant_a, project_id)
     await grant(owner_engine, world, world.a_user, "projectOwner", project_id)
     await reconcile(app_engine, fga)

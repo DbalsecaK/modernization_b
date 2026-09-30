@@ -4,6 +4,9 @@ master and fresh inputs on it, runs the canary and checks the legacy is intact; 
 verdict from that evidence with fixed rules. No model takes part. The proof pack is stored; a person signs off at C4.
 """
 
+import io
+import json
+import zipfile
 from collections.abc import Mapping, Sequence
 from typing import Any, Protocol
 
@@ -11,18 +14,36 @@ from nexti_adapter_sybase.golden import parameter_defaults
 from nexti_core.adapters import LegacyRunner, LegacyUnavailableError, SourceFile
 from nexti_core.spec.characterization import GoldenMaster, Suite, source_digest
 from nexti_core.spec.model import Rule
+from nexti_core.spec.screens import ScreenSpec
+from nexti_orchestration import frontend
 from nexti_orchestration.context import Attempt, PhaseContext
 from nexti_orchestration.model import PhaseFailedError, PhaseResult
 from nexti_orchestration.scope import scope_files, split_rules
+from nexti_pack_frontend import IMAGE as FRONTEND_IMAGE
+from nexti_pack_frontend import contract_of
+from nexti_pack_frontend.build import FrontendRun, build_and_test
 from nexti_pack_spring_boot import IMAGE, Design, UseCase, service_path
 from nexti_pack_spring_boot.canary import mutations
 from nexti_pack_spring_boot.equivalence import EquivalenceRun, run_equivalence
 from nexti_sandbox import Sandbox
 from nexti_verification import Verdict, build_proof_pack, differences, fresh_suite
 from nexti_verification import verdict as checks
+from nexti_verification.proof_pack import verification_document
 from nexti_verification.verdict import CaseOutcome
 
 VALIDATOR = "equivalence-validator"
+
+
+def frontend_proof_pack(verdict: Verdict, run: FrontendRun) -> bytes:
+    """The frontend verdict and, screen by screen, what the harness found."""
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as archive:
+        archive.writestr("VERIFICATION.json", json.dumps(verification_document(verdict), indent=2))
+        archive.writestr("FRONTEND.json", json.dumps({
+            "flavour": run.flavour, "compiled": run.compiled, "bundled": run.app, "errors": run.errors,
+            "screens": [{"id": s.id, "checks": [vars(c) for c in s.checks]} for s in run.screens],
+        }, indent=2))  # fmt: skip
+    return buffer.getvalue()
 
 
 class VerificationPort(Protocol):
@@ -41,6 +62,12 @@ class VerificationPort(Protocol):
     def legacy_runner(self) -> LegacyRunner | None: ...
 
     def sandbox(self, image: str) -> Sandbox: ...
+
+    async def load_frontend(self) -> dict[str, str]:
+        """The generated frontend files, paths relative to the frontend project (M6b)."""
+        ...
+
+    async def load_screens(self) -> list[ScreenSpec]: ...
 
     async def save_verdict(self, verdict: Verdict, proof_pack: bytes) -> str:
         """Stores the verdict and its proof pack; returns the key of the proof pack."""
@@ -138,7 +165,31 @@ class VerificationPhases:
         key = await self.port.save_verdict(verdict, pack)
         passed = sum(1 for c in verdict.checks if c.status == "passed")
         summary = f"{use_case.name}: {verdict.verdict} ({passed} of {len(verdict.checks)} checks passed)"
+        front = await self._frontend(ctx)
+        if front:
+            summary += f"; {front}"
         return {"summary": summary, "verdict": verdict.verdict, "proof_pack": key}
+
+    async def _frontend(self, ctx: PhaseContext) -> str:
+        """The frontend's own verdict (ADR-0016): rebuilt from the stored files and checked screen by screen."""
+        if not hasattr(self.port, "load_frontend"):
+            return ""
+        flavour = frontend.flavour_of(ctx.run.target)
+        files = await self.port.load_frontend()
+        if flavour is None or not files:
+            return ""
+        screens = [contract_of(s) for s in await self.port.load_screens()]
+        await ctx.store.event("started", "running", f"The {flavour} frontend: build and harness", phase=ctx.phase.key)
+        run = await build_and_test(self.port.sandbox(FRONTEND_IMAGE), flavour, files, screens)
+        not_proven = [
+            "Screens are tested in jsdom: colour contrast and real-browser rendering are not measured",
+            "The backend is simulated in the harness: the pages' calls are recorded, not executed",
+        ]
+        verdict = checks.compute(f"frontend-{flavour}", frontend.frontend_checks(run), not_proven,
+                                 required=checks.FRONTEND_CHECKS)  # fmt: skip
+        await self.port.save_verdict(verdict, frontend_proof_pack(verdict, run))
+        passed = sum(1 for c in verdict.checks if c.status == "passed")
+        return f"frontend-{flavour}: {verdict.verdict} ({passed} of {len(verdict.checks)} checks passed)"
 
     async def _fresh(
         self, ctx: PhaseContext, source: list[SourceFile], master: GoldenMaster, design: Design, use_case: UseCase,

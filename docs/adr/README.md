@@ -21,5 +21,6 @@ reemplaza y se marca el anterior como "Reemplazado por ADR-NNNN".
 | [0013](0013-prototipos-react-en-iframe-aislado.md) | Prototipos React reales, compilados en el sandbox y mostrados en un iframe aislado | Aceptada |
 | [0014](0014-hitos-de-packs-de-destino.md) | Hitos propios para los packs de destino de la Ola 1 (M6b, M6c, M8b) | Aceptada |
 | [0015](0015-cobol-cics-parser-y-trazas.md) | COBOL/CICS: parser determinista de un subconjunto y trazas como golden master | Aceptada |
+| [0016](0016-packs-de-frontend-react-y-angular.md) | Packs de frontend React y Angular: contrato OpenAPI, cliente tipado y arnés de pantallas | Aceptada |
 
 Plantilla: contexto, decisión, alternativas consideradas, consecuencias y cómo se valida.

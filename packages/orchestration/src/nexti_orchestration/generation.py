@@ -13,13 +13,14 @@ A project whose backend has no pack yet waits in generation (ADR-0010): it never
 import json
 import re
 from collections.abc import Sequence
-from typing import Any, Protocol
+from typing import Any, Protocol, cast
 
 from pydantic import ValidationError
 
 from nexti_agents import prompt
 from nexti_core.adapters import SourceFile
 from nexti_core.spec.model import Rule
+from nexti_orchestration import frontend
 from nexti_orchestration.context import Attempt, PhaseContext, Verification
 from nexti_orchestration.extraction import ModelCaller, ReplyError, parse_json
 from nexti_orchestration.model import PhaseFailedError, PhaseResult, PhaseUnavailableError
@@ -244,6 +245,7 @@ class GenerationPhases:
         backend = ctx.run.target.get("backend")
         if backend and backend not in PACKS:
             raise PhaseUnavailableError(f"The {backend} pack is not available yet: generation waits for it")
+        flavour = frontend.flavour_of(ctx.run.target) if hasattr(self.port, "load_screens") else None
         design = await self.port.load_design()
         if design is None:
             raise PhaseFailedError("There is no approved design to generate from")
@@ -276,8 +278,16 @@ class GenerationPhases:
         traced = {service_path(design, u): u.rules for u in design.use_cases}
         traced.update({junit_path(design, u): u.rules for u in design.use_cases})
         await self.port.save_artifacts(files, layers, traced)
-        return PhaseResult(summary=f"{len(files)} files in {len(set(layers.values()))} layers; "
-                                   f"{tests_run} tests pass in the sandbox")  # fmt: skip
+        summary = f"{len(files)} files in {len(set(layers.values()))} layers; {tests_run} tests pass in the sandbox"
+        if flavour is not None:
+            port = cast(frontend.FrontendPort, self.port)
+            pages, _, frontend_summary = await frontend.generate(ctx, port, design, flavour)
+            if pages:
+                contracts = ("openapi.json", "client.ts", "client-runtime.ts")
+                await self.port.save_artifacts(pages, {p: "contracts" if p.endswith(contracts) else "adapters"
+                                                       for p in pages}, {})  # fmt: skip
+            summary += f"; {frontend_summary}"
+        return PhaseResult(summary=summary)
 
     async def _tests(
         self, ctx: PhaseContext, design: Design, use_case: UseCase, rules: dict[str, Rule], files: dict[str, str]
