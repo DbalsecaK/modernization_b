@@ -167,3 +167,18 @@ describe('traceability', () => {
     ])
   })
 })
+
+describe('frontend verdicts', () => {
+  it('complete the frontend checks, not the backend ones', () => {
+    const checks = allChecks([{ key: 'compiles', title: 'Compiles', status: 'passed', detail: 'ok' }], 'frontend-react')
+    expect(checks.map((c) => c.key)).toEqual([
+      'compiles',
+      'screens_mount',
+      'fields_covered',
+      'validations',
+      'actions',
+      'accessibility',
+    ])
+    expect(checks.filter((c) => c.missing)).toHaveLength(5)
+  })
+})

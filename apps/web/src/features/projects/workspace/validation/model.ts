@@ -15,6 +15,18 @@ export const CHECK_KEYS = [
   'source_intact',
 ] as const
 
+/** The checks of a generated frontend's verdict (ADR-0016); its module is `frontend-<pack>`. */
+export const FRONTEND_CHECK_KEYS = [
+  'compiles',
+  'screens_mount',
+  'fields_covered',
+  'validations',
+  'actions',
+  'accessibility',
+] as const
+
+export const isFrontendModule = (module: string) => module.startsWith('frontend-')
+
 export type CheckStatus = CheckOut['status']
 
 /** A check of the verdict; `missing` when the worker did not report it (it counts as not run). */
@@ -35,14 +47,15 @@ export const checkTone = (status: CheckStatus): Tone =>
  * The checks in the canonical order, the ones the worker did not report added as not checked (the verdict already
  * counts them as not run); unknown keys go last, as reported.
  */
-export function allChecks(checks: CheckOut[]): CheckView[] {
+export function allChecks(checks: CheckOut[], module = ''): CheckView[] {
+  const keys: readonly string[] = isFrontendModule(module) ? FRONTEND_CHECK_KEYS : CHECK_KEYS
   const byKey = new Map(checks.map((c) => [c.key, c]))
-  const known = CHECK_KEYS.map((key): CheckView =>
+  const known = keys.map((key): CheckView =>
     byKey.has(key)
       ? { ...byKey.get(key)!, missing: false }
       : { key, title: key, status: 'not_checked', detail: '', missing: true },
   )
-  const extra = checks.filter((c) => !(CHECK_KEYS as readonly string[]).includes(c.key))
+  const extra = checks.filter((c) => !keys.includes(c.key))
   return [...known, ...extra.map((c) => ({ ...c, missing: false }))]
 }
 

@@ -30,6 +30,8 @@ TEAM = {
     "backend-dev": "1.5.0",
     "equivalence-validator": "1.4.0",
 }
+# The M4/M6 acceptances build no frontend: their recordings predate the frontend packs (M6b builds one).
+NO_FRONTEND = {**TARGET, "frontend": "none"}
 
 
 class FakeSandbox:
@@ -78,6 +80,7 @@ async def make_config(
     autonomy: str = "balanced",
     max_iterations: int = 3,
     team: Mapping[str, str] | None = None,
+    target: Mapping[str, str] | None = None,
 ) -> int:
     async with owner.begin() as conn:
         version: int = (
@@ -93,7 +96,7 @@ async def make_config(
                 "CAST(:target AS jsonb), :template, :autonomy, :max_iterations, 10)"
             ),
             {
-                "t": tenant_id, "p": project_id, "v": version, "target": json.dumps(TARGET),
+                "t": tenant_id, "p": project_id, "v": version, "target": json.dumps(dict(target or TARGET)),
                 "template": template, "autonomy": autonomy, "max_iterations": max_iterations,
             },
         )  # fmt: skip

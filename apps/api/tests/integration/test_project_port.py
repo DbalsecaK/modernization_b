@@ -243,6 +243,14 @@ async def test_the_port_keeps_designs_drafts_and_the_golden_master_as_references
         built = PrototypeBuild(True, js="console.log(1)", css=".nx-root{}")
         assert await port.save_prototype("SCR-PAGOORD", "export default () => null", built, "generated", "") == 1
         assert await port.save_prototype("SCR-PAGOORD", "export default () => null", built, "chat", "agrupa") == 2
+
+        # What the frontend generation reads and writes (M6b): screens, prototypes, and its files kept apart.
+        assert [s.id for s in await port.load_screens()] == ["SCR-PAGOMEN", "SCR-PAGOORD", "SCR-PAGORES"]
+        assert (await port.load_prototypes())["SCR-PAGOORD"] == "export default () => null"
+        await port.save_artifacts({"frontend/src/screens/pagoord.tsx": "export default 1\n"}, {}, {})
+        assert await port.load_frontend() == {"src/screens/pagoord.tsx": "export default 1\n"}
+        backend_files, _ = await port.load_generated()
+        assert not any(p.startswith("frontend/") for p in backend_files)
     elements = await fetch(owner_engine, "SELECT key, version FROM spec_element WHERE project_id = :p AND "
                            "element_type = 'screen' ORDER BY key", p=project_id)  # fmt: skip
     assert [(e["key"], e["version"]) for e in elements] == [("SCR-PAGOMEN", 1), ("SCR-PAGOORD", 1), ("SCR-PAGORES", 1)]
@@ -261,7 +269,7 @@ async def test_the_port_keeps_designs_drafts_and_the_golden_master_as_references
                                      "WHERE project_id = :p ORDER BY path", p=project_id)  # fmt: skip
     assert [(r["path"], r["layer"]) for r in rows] == [
         ("characterization/golden_master.json", "tests"), ("design/design.json", "docs"),
-        ("src/main/java/A.java", "domain"),
+        ("frontend/src/screens/pagoord.tsx", "docs"), ("src/main/java/A.java", "domain"),
     ]  # fmt: skip
     assert rows[0]["rules"] == [f"RULE-00{n}" for n in range(1, 10)]
     kept = b"".join(await store.read(rows[0]["object_key"])).decode("utf-8")

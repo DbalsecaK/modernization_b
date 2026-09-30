@@ -29,7 +29,16 @@ CHECKS: tuple[tuple[str, str], ...] = (
     ("canary", "Canary"),
     ("source_intact", "Source intact"),
 )
-_TITLES = dict(CHECKS)
+# The checks of a generated frontend (ADR-0016): it compiles and every screen meets its contract in the harness.
+FRONTEND_CHECKS: tuple[tuple[str, str], ...] = (
+    ("compiles", "Compiles"),
+    ("screens_mount", "Screens mount"),
+    ("fields_covered", "Fields covered"),
+    ("validations", "Validations"),
+    ("actions", "Actions"),
+    ("accessibility", "Accessibility"),
+)
+_TITLES = dict(CHECKS) | dict(FRONTEND_CHECKS)
 
 
 @dataclass(frozen=True)
@@ -189,9 +198,12 @@ def source_intact(characterized: str | None, current: str) -> Check:
     return Check("source_intact", "passed", "the legacy is the code that was characterized (SHA-256)", evidence)
 
 
-def compute(module: str, checks: Sequence[Check], not_proven: Sequence[str]) -> Verdict:
+def compute(
+    module: str, checks: Sequence[Check], not_proven: Sequence[str], required: Sequence[tuple[str, str]] = CHECKS
+) -> Verdict:
+    """`required` is the set of checks of this kind of verdict (the backend's six by default)."""
     statuses = {c.status for c in checks}
-    missing = [key for key, _ in CHECKS if key not in {c.key for c in checks}]
+    missing = [key for key, _ in required if key not in {c.key for c in checks}]
     value: VerdictValue
     if "failed" in statuses:
         value = "NOT PROVEN"
