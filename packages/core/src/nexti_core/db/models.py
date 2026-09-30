@@ -436,6 +436,18 @@ class Budget(Base):
     updated_at: Mapped[datetime] = _now()
 
 
+class BudgetReservation(Base):
+    """The cost a call in flight may reach (spec 13.5): counted with the spend when budgets are decided."""
+
+    __tablename__ = "budget_reservation"
+    __table_args__ = (Index("budget_reservation_tenant", "tenant_id", "created_at"),)
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    tenant_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("tenant.id", ondelete="CASCADE"), nullable=False)
+    project_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
+    amount_usd: Mapped[Decimal] = mapped_column(Numeric(18, 8), nullable=False)
+    created_at: Mapped[datetime] = _now()
+
+
 class BudgetAlert(Base):
     __tablename__ = "budget_alert"
     __table_args__ = (

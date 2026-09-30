@@ -18,6 +18,7 @@ AI_TABLES = (
     "usage_ledger",
     "budget",
     "budget_alert",
+    "budget_reservation",
 )
 PROJECT_TABLES = ("project_config", "project_agent", "project_skill", "input_artifact", "project_repository")
 RUN_TABLES = ("run", "phase_run", "agent_invocation", "gate", "question", "activity_event")

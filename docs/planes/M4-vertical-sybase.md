@@ -131,3 +131,11 @@
     `NEXTI_REFERENCE_DIR/<app>` (`kit.json`, `source/`, spec de referencia).
   - `python -m nexti_worker.evaluate` evalúa una corrida a demanda y guarda solo métricas, nombre y hash.
     Una referencia revisada desde una extracción previa (`written_blind: false`) declara su sesgo.
+- **Paso 15, lo que encontró la corrida real:**
+  - El arquitecto necesita el fuente legacy: sin él inventaba nombres de columnas. El diseño se valida contra los
+    identificadores del código legacy, y un campo de entidad no puede apuntar a un parámetro.
+  - El canario solo cuenta si el código sin cambios reproduce el golden master.
+  - El tope duro de presupuesto no frenaba llamadas en paralelo (fan-out de extracción): todas pasaban la revisión
+    antes de que se registrara alguna. Ahora cada llamada reserva su costo máximo mientras está en vuelo
+    (`budget_reservation`, migración 0009) y el gateway decide bajo un bloqueo por tenant contando gasto más
+    reservas. En secuencia se comporta igual que antes (al 100% se pausa, 13.5).
