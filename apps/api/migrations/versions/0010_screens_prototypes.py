@@ -35,6 +35,9 @@ def upgrade() -> None:
     ALTER TABLE spec_element DROP CONSTRAINT spec_element_element_type_check;
     ALTER TABLE spec_element ADD CONSTRAINT spec_element_element_type_check
       CHECK (element_type IN ('rule', 'capability', 'contract', 'test_case', 'screen'));
+    ALTER TABLE spec_element DROP CONSTRAINT spec_element_key_check;
+    ALTER TABLE spec_element ADD CONSTRAINT spec_element_key_check CHECK (
+      key ~ '^[A-Z]+-[0-9]{3,}$' OR (element_type = 'screen' AND key ~ '^SCR-[A-Z0-9][A-Z0-9_-]{0,39}$'));
 
     -- The design system of a project (7.4): tokens and the components the prototypes may use. One row per version.
     CREATE TABLE design_system (
@@ -139,6 +142,8 @@ def downgrade() -> None:
     op.execute("DROP TABLE ui_chat_message, prototype_comment, prototype, design_system")
     op.execute("""
     DELETE FROM spec_element WHERE element_type = 'screen';
+    ALTER TABLE spec_element DROP CONSTRAINT spec_element_key_check;
+    ALTER TABLE spec_element ADD CONSTRAINT spec_element_key_check CHECK (key ~ '^[A-Z]+-[0-9]{3,}$');
     ALTER TABLE spec_element DROP CONSTRAINT spec_element_element_type_check;
     ALTER TABLE spec_element ADD CONSTRAINT spec_element_element_type_check
       CHECK (element_type IN ('rule', 'capability', 'contract', 'test_case'));

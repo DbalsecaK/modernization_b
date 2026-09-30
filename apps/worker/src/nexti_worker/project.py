@@ -18,6 +18,7 @@ from nexti_core.db.session import DbScope, scoped_connection
 from nexti_core.object_store import ObjectStore
 from nexti_core.spec.characterization import GoldenMaster
 from nexti_core.spec.model import Rule
+from nexti_core.spec.screens import ScreenSpec
 from nexti_graph import GraphStore, Scope
 from nexti_ingest.archive import read_text_files
 from nexti_model_gateway.gateway import CallContext, NoProfileError
@@ -28,6 +29,7 @@ from nexti_orchestration.store import Usage
 from nexti_orchestration.stories import Stories
 from nexti_pack_spring_boot import Design
 from nexti_sandbox import Sandbox
+from nexti_ui import PrototypeBuild, base_tokens, page
 from nexti_verification import Verdict
 from nexti_verification.evaluation import Evaluation
 
@@ -165,14 +167,16 @@ class WorkerProjectPort:
                     edges.append(Edge(f"rule:{rule.id}", "DERIVED_FROM", owner.key, {"lines": str(ref)}))
             await self.graph.upsert_edges(self.scope, edges)
 
-    async def _insert_element(self, conn: Any, key: str, version: int, status: str, data: dict[str, Any]) -> None:
+    async def _insert_element(
+        self, conn: Any, key: str, version: int, status: str, data: dict[str, Any], element_type: str = "rule"
+    ) -> None:
         await conn.execute(
             text(
                 "INSERT INTO spec_element (tenant_id, project_id, element_type, key, version, status, data, run_id) "
-                "VALUES (:t, :p, 'rule', :k, :v, :s, CAST(:d AS jsonb), :r)"
+                "VALUES (:t, :p, :e, :k, :v, :s, CAST(:d AS jsonb), :r)"
             ),
-            {"t": self.run.tenant_id, "p": self.run.project_id, "k": key, "v": version, "s": status,
-             "d": json.dumps(data), "r": self.run.run_id},
+            {"t": self.run.tenant_id, "p": self.run.project_id, "e": element_type, "k": key, "v": version,
+             "s": status, "d": json.dumps(data), "r": self.run.run_id},
         )  # fmt: skip
 
     async def load_rules(self) -> list[Rule]:
@@ -422,3 +426,67 @@ class WorkerProjectPort:
                  "n": evaluation.reference[:200], "h": evaluation.reference_sha256,
                  "m": json.dumps(evaluation.metrics())},
             )  # fmt: skip
+
+    # -- screens and prototypes (M5) -----------------------------------------------------------------------------
+    async def save_screens(self, screens: Sequence[ScreenSpec]) -> None:
+        """A new version of each screen spec whose content changed (like rules: people may edit them later)."""
+        async with self._db() as conn:
+            current = {
+                r.key: r
+                for r in (
+                    await conn.execute(
+                        text("SELECT DISTINCT ON (key) key, version, status, data FROM spec_element "
+                             "WHERE project_id = :p AND element_type = 'screen' ORDER BY key, version DESC"),
+                        {"p": self.run.project_id},
+                    )
+                ).all()
+            }  # fmt: skip
+            for screen in screens:
+                data = screen.model_dump(mode="json")
+                previous = current.get(screen.id)
+                if previous is not None and previous.data == data:
+                    continue
+                await self._insert_element(conn, screen.id, (previous.version + 1) if previous else 1, "review", data,
+                                           "screen")  # fmt: skip
+
+    async def ensure_design_system(self) -> int:
+        async with self._db() as conn:
+            version: int | None = (
+                await conn.execute(text("SELECT max(version) FROM design_system WHERE project_id = :p"),
+                                   {"p": self.run.project_id})
+            ).scalar_one_or_none()  # fmt: skip
+            if version:
+                return version
+            await conn.execute(
+                text("INSERT INTO design_system (tenant_id, project_id, version, source, tokens) "
+                     "VALUES (:t, :p, 1, 'nexti-base', CAST(:k AS jsonb))"),
+                {"t": self.run.tenant_id, "p": self.run.project_id, "k": json.dumps(base_tokens())},
+            )  # fmt: skip
+        return 1
+
+    async def save_prototype(self, screen: str, source: str, built: PrototypeBuild, origin: str, notes: str) -> int:
+        """The code and the page of a new prototype version in the object store; the row keeps their references."""
+        document = page(built, screen)
+        async with self._db() as conn:
+            version = int(
+                (
+                    await conn.execute(
+                        text("SELECT COALESCE(max(version), 0) + 1 FROM prototype WHERE project_id = :p "
+                             "AND screen_key = :s"),
+                        {"p": self.run.project_id, "s": screen},
+                    )
+                ).scalar_one()
+            )  # fmt: skip
+        source_key = self._key("prototypes", screen, f"v{version}", "Screen.tsx")
+        page_key = self._key("prototypes", screen, f"v{version}", "index.html")
+        await self._put(source_key, source, "text/plain; charset=utf-8")
+        await self._put(page_key, document, "text/html; charset=utf-8")
+        async with self._db() as conn:
+            await conn.execute(
+                text("INSERT INTO prototype (tenant_id, project_id, screen_key, version, origin, source_key, "
+                     "bundle_key, bundle_sha256, notes, run_id) VALUES (:t, :p, :s, :v, :o, :sk, :bk, :h, :n, :r)"),
+                {"t": self.run.tenant_id, "p": self.run.project_id, "s": screen, "v": version, "o": origin,
+                 "sk": source_key, "bk": page_key, "h": hashlib.sha256(document.encode("utf-8")).hexdigest(),
+                 "n": notes, "r": self.run.run_id},
+            )  # fmt: skip
+        return version

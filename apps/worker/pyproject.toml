@@ -9,6 +9,7 @@ dependencies = [
   "psycopg[binary]>=3.2",
   "pydantic-settings>=2.10",
   "structlog>=25.4",
+  "nexti-adapter-bms",
   "nexti-adapter-sybase",
   "nexti-core",
   "nexti-pack-spring-boot",
@@ -17,10 +18,12 @@ dependencies = [
   "nexti-model-gateway",
   "nexti-orchestration",
   "nexti-sandbox",
+  "nexti-ui",
   "nexti-verification",
 ]
 
 [tool.uv.sources]
+nexti-adapter-bms = { workspace = true }
 nexti-adapter-sybase = { workspace = true }
 nexti-core = { workspace = true }
 nexti-pack-spring-boot = { workspace = true }
@@ -29,6 +32,7 @@ nexti-ingest = { workspace = true }
 nexti-model-gateway = { workspace = true }
 nexti-orchestration = { workspace = true }
 nexti-sandbox = { workspace = true }
+nexti-ui = { workspace = true }
 nexti-verification = { workspace = true }
 
 [build-system]
