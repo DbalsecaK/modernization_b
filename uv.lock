@@ -21,6 +21,7 @@ members = [
     "nexti-pack-spring-boot",
     "nexti-sandbox",
     "nexti-skills",
+    "nexti-ui",
     "nexti-verification",
     "nexti-worker",
 ]
@@ -1417,6 +1418,17 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [{ name = "pyyaml", specifier = ">=6.0" }]
+
+[[package]]
+name = "nexti-ui"
+version = "0.1.0"
+source = { editable = "packages/ui" }
+dependencies = [
+    { name = "nexti-sandbox" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "nexti-sandbox", editable = "packages/sandbox" }]
 
 [[package]]
 name = "nexti-verification"
