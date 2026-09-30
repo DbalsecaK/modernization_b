@@ -53,6 +53,8 @@ type project
     define question_answer: [role_binding#assignee] or admin from tenant
     define story_edit: [role_binding#assignee] or admin from tenant
     define plan_edit: [role_binding#assignee] or admin from tenant
+    define prototype_comment: [role_binding#assignee] or admin from tenant
+    define prototype_edit: [role_binding#assignee] or admin from tenant
     define gate_c1_approve: [role_binding#assignee] or admin from tenant
     define gate_c2_approve: [role_binding#assignee] or admin from tenant
     define gate_c3_approve: [role_binding#assignee] or admin from tenant
