@@ -70,6 +70,8 @@ M6b y M6c quedan 6,73.
 La primera grabación destapó un falso positivo del validador: un comentario `//` después de un string se leía como
 URL externa. Ya está corregido, con su test.
 
+**Suites al cierre.** Backend completo: 712 pasadas y 2 omitidas. E2E de Playwright: 23 pasadas.
+
 **Cambios respecto del plan**
 
 - Los pasos 3 a 5 se hicieron juntos: imagen, arnés y los dos packs.
