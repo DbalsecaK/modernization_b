@@ -119,6 +119,9 @@ def test_a_page_may_only_use_the_client_the_framework_and_the_design_system() ->
     raw = good + "\nconst x = <div dangerouslySetInnerHTML={{ __html: '' }} />\n"
     assert any("raw HTML" in p for p in problems(raw, "react"))
     assert any("external URLs" in p for p in problems(good + "\nconst x = 'https://evil.example'\n", "react"))
+    assert any("external URLs" in p for p in problems(good + "\nconst x = '//cdn.example.com/x.js'\n", "react"))
+    commented = "import type { ScreenProps } from './types'\n\n// A comment after a string is not a URL\n" + good
+    assert not any("external URLs" in p for p in problems(commented, "react"))
 
 
 async def test_each_page_is_written_checked_and_corrected_in_the_sandbox(sandbox: DockerSandbox) -> None:

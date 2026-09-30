@@ -24,7 +24,8 @@ _FORBIDDEN = (
         re.compile(r"window\.location|location\.href|window\.open\s*\(|document\.location"),
         "navigation between screens goes through navigate()",
     ),
-    (re.compile(r"""["'`]\s*(?:https?:)?//"""), "no external URLs"),
+    # a quoted URL (http://host, https://host or //host); a `//` comment after a string is not one
+    (re.compile(r"""["'`](?:https?:)?//[\w-]+(?:\.[\w-]+)+"""), "no external URLs"),
     (re.compile(r"<script\b|\bimport\s*\("), "no scripts or dynamic imports"),
 )
 _IMPORT = re.compile(r"""^\s*import\s+(?:[^'"]*?\s+from\s+)?['"]([^'"]+)['"]""", re.MULTILINE)
