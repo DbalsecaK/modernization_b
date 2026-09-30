@@ -830,14 +830,14 @@ export function KnowledgeGraph({
               disabled={!topCopybook}
               onClick={() => topCopybook && (setSelected(topCopybook.id), showImpact(topCopybook.id), setOrder(null))}
             >
-              {t('inventory.impactCopybook')}
+              {t('inventory.impactCopybook', { name: topCopybook?.name ?? '—' })}
             </Button>
             <Button
               size="sm"
               disabled={domains.length === 0}
               onClick={() => (setDomain(domains[0]), setImpact([]), setOrder(null))}
             >
-              {t('inventory.impactDomain')}
+              {t('inventory.impactDomain', { domain: domains[0] ?? '—' })}
             </Button>
             <Button size="sm" onClick={() => (setOrder(migrationOrder()), setImpact([]))}>
               {t('inventory.impactOrder')}

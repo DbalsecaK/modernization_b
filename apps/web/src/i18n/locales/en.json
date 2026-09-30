@@ -455,8 +455,8 @@
     },
     "impact": "Graph questions",
     "impactHint": "Answered directly from the knowledge graph.",
-    "impactCopybook": "What breaks if I change CVACT01Y?",
-    "impactDomain": "Which programs form the Accounts domain?",
+    "impactCopybook": "What breaks if I change {{name}}?",
+    "impactDomain": "Which programs form the {{domain}} domain?",
     "impactOrder": "What can we migrate first?",
     "impactOrphans": "Business paragraphs without a rule",
     "typesPlural": {
