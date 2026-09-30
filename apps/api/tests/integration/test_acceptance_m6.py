@@ -10,8 +10,10 @@ CI replays what real models answered (ADR-0012) with the real Java and web sandb
 budget: NEXTI_RECORD_M6=1 calls OpenRouter (OPENROUTER_API_KEY_FOR_TESTS) and writes the recordings next to this
 test. Skipped without Docker or the images, and in replay when nothing has been recorded yet."""
 
+import io
 import json
 import os
+import zipfile
 from collections.abc import Iterator
 from decimal import Decimal
 from pathlib import Path
@@ -182,10 +184,12 @@ async def test_the_fictitious_cics_application_reaches_a_verdict_capped_at_partl
         r=run_id,
     )
     checks = {c["key"]: c["status"] for c in verdict["checks"]}
-    assert verdict["verdict"] == "PARTLY PROVEN", (verdict["verdict"], verdict["checks"])
-    assert checks["fresh_inputs"] == "not_checked"
-    assert any("recorded traces" in note for note in verdict["not_proven"])
     assert verdict["proof_pack_key"]
+    pack = b"".join(await store.read(verdict["proof_pack_key"]))
+    with zipfile.ZipFile(io.BytesIO(pack)) as archive:
+        equivalence = json.loads(archive.read("EQUIVALENCE.json"))
+    different = {c["name"]: (c.get("failure") or c.get("differences", [])[:3])
+                 for c in equivalence.get("golden_master") or [] if not c.get("matched")}  # fmt: skip
 
     port = WorkerProjectPort(app_engine, (await _context(app_engine, run_id, world.tenant_a)), gateway, None, None)
     rules: list[Rule] = await port.load_rules()
@@ -207,6 +211,7 @@ async def test_the_fictitious_cics_application_reaches_a_verdict_capped_at_partl
         "model_calls": cost["calls"],
         "cost_usd": str(cost["usd"]),
         "decisions": decided,
+        "different_cases": different,
     }
     print(json.dumps(report, indent=2))  # the evidence of the run in the test output
     if RECORD:
@@ -219,3 +224,6 @@ async def test_the_fictitious_cics_application_reaches_a_verdict_capped_at_partl
             recorded["evaluation"],
         )
     assert evaluation.reference_rules == 10
+    assert verdict["verdict"] == "PARTLY PROVEN", (verdict["verdict"], report["details"], different)
+    assert checks["fresh_inputs"] == "not_checked"
+    assert any("recorded traces" in note for note in verdict["not_proven"])
