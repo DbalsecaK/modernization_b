@@ -543,7 +543,7 @@
     }
    },
    "observation": {
-    "returns": 0,
+    "returns": -1,
     "outputs": {
      "MENSAJE": "NUMERO DE ORDEN INVALIDO"
     },
@@ -716,7 +716,7 @@
     }
    },
    "observation": {
-    "returns": 0,
+    "returns": -1,
     "outputs": {
      "MENSAJE": "TIPO DE CUENTA NO PERMITIDO"
     },
@@ -889,7 +889,7 @@
     }
    },
    "observation": {
-    "returns": 0,
+    "returns": -1,
     "outputs": {
      "MENSAJE": "CANAL NO PERMITIDO"
     },
@@ -1062,7 +1062,7 @@
     }
    },
    "observation": {
-    "returns": 0,
+    "returns": -1,
     "outputs": {
      "MENSAJE": "CLAVE DE APROBACION REQUERIDA"
     },
@@ -1235,7 +1235,7 @@
     }
    },
    "observation": {
-    "returns": 0,
+    "returns": -1,
     "outputs": {
      "MENSAJE": "ORDEN NO EXISTE"
     },
@@ -1408,7 +1408,7 @@
     }
    },
    "observation": {
-    "returns": 0,
+    "returns": -1,
     "outputs": {
      "MENSAJE": "ORDEN NO ESTA PENDIENTE"
     },
@@ -1581,7 +1581,7 @@
     }
    },
    "observation": {
-    "returns": 0,
+    "returns": -1,
     "outputs": {
      "MENSAJE": "VALOR NO COINCIDE CON LA ORDEN"
     },
@@ -1754,7 +1754,7 @@
     }
    },
    "observation": {
-    "returns": 0,
+    "returns": -1,
     "outputs": {
      "MENSAJE": "CUENTA INACTIVA"
     },
@@ -1928,7 +1928,7 @@
     }
    },
    "observation": {
-    "returns": 0,
+    "returns": -1,
     "outputs": {
      "MENSAJE": "SALDO INSUFICIENTE"
     },
@@ -2101,7 +2101,7 @@
     }
    },
    "observation": {
-    "returns": 0,
+    "returns": -1,
     "outputs": {
      "MENSAJE": "CUENTA NO VALIDA"
     },
@@ -2274,7 +2274,7 @@
     }
    },
    "observation": {
-    "returns": 0,
+    "returns": -1,
     "outputs": {
      "MENSAJE": "CUENTA NO VALIDA"
     },

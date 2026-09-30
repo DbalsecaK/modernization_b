@@ -22,7 +22,9 @@ prueba, con el veredicto limitado a PARTLY PROVEN.
   reporta como problema del inventario, no se inventa.
 - **Trazas como golden master.** Una traza es un caso ya observado (entradas del mapa o de la COMMAREA,
   registros de los archivos antes y después, programas llamados con sus respuestas, salidas del mapa). Se
-  suben en el zip del código (`traces/*.json`). Un *runner de trazas* implementa el mismo contrato que el runner
+  suben en el zip del código (`traces/*.json`). Un programa CICS no tiene código de retorno: la traza registra
+  `returns: 0` cuando la transacción se completó y `returns: -1` cuando el programa rechazó la entrada (mensaje de
+  error en pantalla, sin commit), igual que un destino que rechaza sin código legacy. Un *runner de trazas* implementa el mismo contrato que el runner
   de Sybase: por cada caso que propone el ingeniero de pruebas busca la traza con esas entradas; si no existe,
   el error vuelve al agente con la lista de trazas disponibles.
 - **Techo del veredicto.** Con un golden master de trazas, las entradas frescas no se pueden observar en el
