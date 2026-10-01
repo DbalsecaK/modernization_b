@@ -76,6 +76,9 @@ class Settings(BaseSettings):
     openfga_store_name: str = "nexti"
     openfga_store_id: str = ""
     openfga_model_id: str = ""
+    # Outside development/test the store and model are pinned; a first installation (Compose `platform`, a Helm
+    # install) may let the API create the store and load the model of this version instead (ADR-0024).
+    openfga_bootstrap: bool = False
     # OpenFGA outbox relay (role authz_relay) and periodic reconciliation (0 disables it).
     authz_relay_database_url: SecretStr = SecretStr("")
     relay_poll_seconds: float = 1.0
