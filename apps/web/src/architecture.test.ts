@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
 
 // Plan P2: no screen whose backend exists reads sample data. Only the screens of later milestones may still import
-// '@/mocks/data': the Backlog (Jira / Azure DevOps, M7b) and Administration's identity providers (M0b).
-const ALLOWED = new Set(['./features/admin/AdminPage.tsx', './features/projects/tabs/BacklogTab.tsx'])
+// '@/mocks/data': Administration's identity providers (M0b).
+const ALLOWED = new Set(['./features/admin/AdminPage.tsx'])
 
 // Every source file of the app as text (Vite reads them at build time of the test).
 const sources = import.meta.glob<string>(['./**/*.{ts,tsx}', '!./mocks/**', '!./**/*.test.{ts,tsx}'], {
