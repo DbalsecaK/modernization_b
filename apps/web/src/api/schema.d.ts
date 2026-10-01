@@ -458,6 +458,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/dashboard": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Dashboard */
+        get: operations["dashboard_api_v1_dashboard_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/gherkin:validate": {
         parameters: {
             query?: never;
@@ -2112,6 +2129,17 @@ export interface components {
             /** Version */
             version: string;
         };
+        /** AdminSummary */
+        AdminSummary: {
+            /** Activeusers */
+            activeUsers: number;
+            /** Budgetalerts */
+            budgetAlerts: components["schemas"]["BudgetAlertOut"][];
+            /** Connections */
+            connections: components["schemas"]["ConnectionHealth"][];
+            /** Pendinginvitations */
+            pendingInvitations: number;
+        };
         /** AgentOut */
         AgentOut: {
             /** Capabilities */
@@ -2287,6 +2315,15 @@ export interface components {
              * @default
              */
             notes: string;
+        };
+        /** BudgetAlertOut */
+        BudgetAlertOut: {
+            /** Amountusd */
+            amountUsd: string;
+            /** Level */
+            level: number;
+            /** Projectname */
+            projectName: string | null;
         };
         /** BudgetIn */
         BudgetIn: {
@@ -2682,6 +2719,15 @@ export interface components {
              */
             provider: "openrouter";
         };
+        /** ConnectionHealth */
+        ConnectionHealth: {
+            /** Name */
+            name: string;
+            /** Provider */
+            provider: string;
+            /** Status */
+            status: string;
+        };
         /** ConnectionOut */
         ConnectionOut: {
             /** Hascredential */
@@ -2749,6 +2795,60 @@ export interface components {
             outOfScope: string[];
             /** Untracedstories */
             untracedStories: string[];
+        };
+        /** DashboardOut */
+        DashboardOut: {
+            admin: components["schemas"]["AdminSummary"] | null;
+            /** Costvisible */
+            costVisible: boolean;
+            delivery: components["schemas"]["Delivery"];
+            /** Monthlyspend */
+            monthlySpend: components["schemas"]["MonthSpend"][];
+            /** Projects */
+            projects: components["schemas"]["DashboardProject"][];
+        };
+        /** DashboardProject */
+        DashboardProject: {
+            /** Budgetusd */
+            budgetUsd: string | null;
+            /** Currentphase */
+            currentPhase: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
+            /** Phasesdone */
+            phasesDone: number;
+            /** Phasestotal */
+            phasesTotal: number;
+            /** Rulestotal */
+            rulesTotal: number;
+            /** Rulesverified */
+            rulesVerified: number;
+            /** Runstatus */
+            runStatus: string | null;
+            /** Spentusd */
+            spentUsd: string | null;
+            /** Verdict */
+            verdict: string | null;
+            /** Waitingreason */
+            waitingReason: string | null;
+        };
+        /** Delivery */
+        Delivery: {
+            /** Costtodayusd */
+            costTodayUsd: string | null;
+            /** Escalations */
+            escalations: number;
+            /** Gateswaiting */
+            gatesWaiting: number;
+            /** Running */
+            running: number;
+            /** Tokenstoday */
+            tokensToday: number;
         };
         /**
          * DemoOptionsIn
@@ -3478,6 +3578,13 @@ export interface components {
              * Format: uuid
              */
             profileId: string;
+        };
+        /** MonthSpend */
+        MonthSpend: {
+            /** Month */
+            month: string;
+            /** Usd */
+            usd: string;
         };
         /** OfferingOut */
         OfferingOut: {
@@ -5924,6 +6031,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    dashboard_api_v1_dashboard_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DashboardOut"];
                 };
             };
         };

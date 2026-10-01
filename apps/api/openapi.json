@@ -202,6 +202,40 @@
         "title": "AdapterOut",
         "type": "object"
       },
+      "AdminSummary": {
+        "properties": {
+          "activeUsers": {
+            "title": "Activeusers",
+            "type": "integer"
+          },
+          "budgetAlerts": {
+            "items": {
+              "$ref": "#/components/schemas/BudgetAlertOut"
+            },
+            "title": "Budgetalerts",
+            "type": "array"
+          },
+          "connections": {
+            "items": {
+              "$ref": "#/components/schemas/ConnectionHealth"
+            },
+            "title": "Connections",
+            "type": "array"
+          },
+          "pendingInvitations": {
+            "title": "Pendinginvitations",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "activeUsers",
+          "pendingInvitations",
+          "connections",
+          "budgetAlerts"
+        ],
+        "title": "AdminSummary",
+        "type": "object"
+      },
       "AgentOut": {
         "properties": {
           "capabilities": {
@@ -669,6 +703,37 @@
           "kind"
         ],
         "title": "Body_upload_input_api_v1_projects__project_id__inputs_post",
+        "type": "object"
+      },
+      "BudgetAlertOut": {
+        "properties": {
+          "amountUsd": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Amountusd",
+            "type": "string"
+          },
+          "level": {
+            "title": "Level",
+            "type": "integer"
+          },
+          "projectName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Projectname"
+          }
+        },
+        "required": [
+          "projectName",
+          "level",
+          "amountUsd"
+        ],
+        "title": "BudgetAlertOut",
         "type": "object"
       },
       "BudgetIn": {
@@ -1826,6 +1891,29 @@
         "title": "ConnectionCreate",
         "type": "object"
       },
+      "ConnectionHealth": {
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "provider": {
+            "title": "Provider",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "provider",
+          "status"
+        ],
+        "title": "ConnectionHealth",
+        "type": "object"
+      },
       "ConnectionOut": {
         "properties": {
           "hasCredential": {
@@ -2013,6 +2101,204 @@
           "complete"
         ],
         "title": "CoverageOut",
+        "type": "object"
+      },
+      "DashboardOut": {
+        "properties": {
+          "admin": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AdminSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "costVisible": {
+            "title": "Costvisible",
+            "type": "boolean"
+          },
+          "delivery": {
+            "$ref": "#/components/schemas/Delivery"
+          },
+          "monthlySpend": {
+            "items": {
+              "$ref": "#/components/schemas/MonthSpend"
+            },
+            "title": "Monthlyspend",
+            "type": "array"
+          },
+          "projects": {
+            "items": {
+              "$ref": "#/components/schemas/DashboardProject"
+            },
+            "title": "Projects",
+            "type": "array"
+          }
+        },
+        "required": [
+          "costVisible",
+          "projects",
+          "monthlySpend",
+          "delivery",
+          "admin"
+        ],
+        "title": "DashboardOut",
+        "type": "object"
+      },
+      "DashboardProject": {
+        "properties": {
+          "budgetUsd": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Budgetusd"
+          },
+          "currentPhase": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Currentphase"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "phasesDone": {
+            "title": "Phasesdone",
+            "type": "integer"
+          },
+          "phasesTotal": {
+            "title": "Phasestotal",
+            "type": "integer"
+          },
+          "rulesTotal": {
+            "title": "Rulestotal",
+            "type": "integer"
+          },
+          "rulesVerified": {
+            "title": "Rulesverified",
+            "type": "integer"
+          },
+          "runStatus": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Runstatus"
+          },
+          "spentUsd": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Spentusd"
+          },
+          "verdict": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Verdict"
+          },
+          "waitingReason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Waitingreason"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "runStatus",
+          "currentPhase",
+          "waitingReason",
+          "phasesDone",
+          "phasesTotal",
+          "rulesTotal",
+          "rulesVerified",
+          "verdict",
+          "spentUsd",
+          "budgetUsd"
+        ],
+        "title": "DashboardProject",
+        "type": "object"
+      },
+      "Delivery": {
+        "properties": {
+          "costTodayUsd": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Costtodayusd"
+          },
+          "escalations": {
+            "title": "Escalations",
+            "type": "integer"
+          },
+          "gatesWaiting": {
+            "title": "Gateswaiting",
+            "type": "integer"
+          },
+          "running": {
+            "title": "Running",
+            "type": "integer"
+          },
+          "tokensToday": {
+            "title": "Tokenstoday",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "running",
+          "gatesWaiting",
+          "escalations",
+          "tokensToday",
+          "costTodayUsd"
+        ],
+        "title": "Delivery",
         "type": "object"
       },
       "DemoOptionsIn": {
@@ -4097,6 +4383,25 @@
           "profileId"
         ],
         "title": "ModelChoiceIn",
+        "type": "object"
+      },
+      "MonthSpend": {
+        "properties": {
+          "month": {
+            "title": "Month",
+            "type": "string"
+          },
+          "usd": {
+            "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+            "title": "Usd",
+            "type": "string"
+          }
+        },
+        "required": [
+          "month",
+          "usd"
+        ],
+        "title": "MonthSpend",
         "type": "object"
       },
       "OfferingOut": {
@@ -9651,6 +9956,27 @@
         "summary": "Get Skill",
         "tags": [
           "catalog"
+        ]
+      }
+    },
+    "/api/v1/dashboard": {
+      "get": {
+        "operationId": "dashboard_api_v1_dashboard_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DashboardOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Dashboard",
+        "tags": [
+          "dashboard"
         ]
       }
     },

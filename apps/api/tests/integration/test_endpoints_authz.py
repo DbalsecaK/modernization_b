@@ -1003,6 +1003,7 @@ CASES = [
     ),
     Case("GET", "/api/v1/projects/{project_id}/code:download", "admin", "outsider", _verified("/code:download")),
     Case("GET", "/api/v1/projects/{project_id}/design", "admin", "outsider", _architecture("/design")),
+    Case("GET", "/api/v1/dashboard", "member", "root", fixed("/api/v1/dashboard")),
     Case(
         "GET", "/api/v1/projects/{project_id}/usage", "admin", "outsider",
         fixed("/api/v1/projects/{project_a}/usage"),
@@ -1322,6 +1323,9 @@ async def test_tokens_without_cost_view_come_without_money(
     assert project.json()["costVisible"] is False
     assert project.json()["budgetUsd"] is None
     assert project.json()["total"]["costUsd"] is None
+    board = api.get("/api/v1/dashboard").json()
+    assert (board["costVisible"], board["admin"], board["monthlySpend"]) == (False, None, [])
+    assert all(p["spentUsd"] is None and p["budgetUsd"] is None for p in board["projects"])
 
 
 async def test_the_catalog_shows_prices_and_the_tenant_policy(
