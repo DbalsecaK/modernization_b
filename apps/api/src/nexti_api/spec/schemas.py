@@ -167,6 +167,109 @@ class CodeExcerptOut(ApiModel):
     truncated: bool
 
 
+class CodeFileEntryOut(ApiModel):
+    path: str
+    layer: str
+    size_bytes: int
+    rules: list[str]
+
+
+class CodeTreeOut(ApiModel):
+    run_id: uuid.UUID
+    generated_at: datetime
+    files: list[CodeFileEntryOut]
+
+
+class CodeFileOut(ApiModel):
+    path: str
+    layer: str
+    size_bytes: int
+    content: str
+    truncated: bool
+
+
+# The approved design (C3) as the Architecture tab reads it: a view of the pack's design document, which the worker
+# stores as JSON. Fields the tab does not show are ignored.
+class DesignFieldOut(ApiModel):
+    name: str
+    type: str
+    column: str | None = None
+    legacy: str | None = None
+
+
+class DesignEntityOut(ApiModel):
+    name: str
+    table: str | None = None
+    legacy_table: str | None = None
+    key: list[str] = Field(default_factory=list)
+    fields: list[DesignFieldOut] = Field(default_factory=list)
+
+
+class DesignPortMethodOut(ApiModel):
+    name: str
+    description: str = ""
+
+
+class DesignPortOut(ApiModel):
+    name: str
+    entity: str | None = None
+    legacy_program: str | None = None
+    methods: list[DesignPortMethodOut] = Field(default_factory=list)
+
+
+class DesignErrorOut(ApiModel):
+    code: str
+    legacy_code: str | None = None
+    message: str = ""
+
+
+class DesignUseCaseOut(ApiModel):
+    name: str
+    description: str = ""
+    rules: list[str] = Field(default_factory=list)
+    http_method: str = "POST"
+    path: str = ""
+    ports: list[str] = Field(default_factory=list)
+    legacy_program: str | None = None
+    errors: list[DesignErrorOut] = Field(default_factory=list)
+
+
+class DesignDecisionOut(ApiModel):
+    title: str
+    context: str = ""
+    decision: str
+    consequences: str = ""
+
+
+class DesignOut(ApiModel):
+    run_id: uuid.UUID
+    created_at: datetime
+    context: str
+    base_package: str
+    entities: list[DesignEntityOut] = Field(default_factory=list)
+    ports: list[DesignPortOut] = Field(default_factory=list)
+    use_cases: list[DesignUseCaseOut] = Field(default_factory=list)
+    decisions: list[DesignDecisionOut] = Field(default_factory=list)
+    infrastructure: list[str] = Field(default_factory=list)
+
+
+class OperationOut(ApiModel):
+    method: str
+    path: str
+    name: str
+    summary: str
+    rules: list[str]
+
+
+class ContractsOut(ApiModel):
+    """The HTTP contract of the target: the OpenAPI document the frontend pack derived from the design, when there is
+    one, and its operations; without a frontend the operations come straight from the design's use cases."""
+
+    source: Literal["openapi", "design"]
+    operations: list[OperationOut]
+    openapi: dict[str, Any] | None
+
+
 class DifferenceOut(ApiModel):
     path: str
     expected: str | None

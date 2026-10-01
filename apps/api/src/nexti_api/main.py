@@ -7,7 +7,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
-from nexti_api import health, me, usage
+from nexti_api import dashboard, health, me, operations, topbar, usage
 from nexti_api.admin import assignments, audit_log, invitations, roles, tenants, users
 from nexti_api.ai import assignments as ai_assignments
 from nexti_api.ai import catalog as ai_catalog
@@ -34,6 +34,8 @@ from nexti_api.runs import questions as runs_questions
 from nexti_api.runs import router as runs_router
 from nexti_api.runs import tasks as runs_tasks
 from nexti_api.settings import Settings, get_settings
+from nexti_api.spec import architecture as spec_architecture
+from nexti_api.spec import code as spec_code
 from nexti_api.spec import plan as spec_plan
 from nexti_api.spec import screens as spec_screens
 from nexti_api.spec import stories as spec_stories
@@ -172,8 +174,13 @@ def create_app(settings: Settings | None = None, health_checks: dict[str, health
         spec_stories.tools,
         spec_plan.router,
         spec_validation.router,
+        spec_code.router,
+        spec_architecture.router,
         spec_screens.router,
         graph_router.router,
+        dashboard.router,
+        topbar.router,
+        operations.router,
     ):
         app.include_router(admin_router)
     app.include_router(audit_log.router)

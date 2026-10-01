@@ -458,6 +458,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/dashboard": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Dashboard */
+        get: operations["dashboard_api_v1_dashboard_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/gherkin:validate": {
         parameters: {
             query?: never;
@@ -591,6 +608,23 @@ export interface paths {
         patch: operations["update_me_api_v1_me_patch"];
         trace?: never;
     };
+    "/api/v1/notifications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Notifications */
+        get: operations["notifications_api_v1_notifications_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/permissions": {
         parameters: {
             query?: never;
@@ -603,6 +637,23 @@ export interface paths {
          * @description The permission catalog (the rows of the matrix).
          */
         get: operations["list_permissions_api_v1_permissions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/platform/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Status */
+        get: operations["status_api_v1_platform_status_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -667,6 +718,60 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/projects/{project_id}/code": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Code Tree */
+        get: operations["code_tree_api_v1_projects__project_id__code_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/projects/{project_id}/code/file": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Code File */
+        get: operations["code_file_api_v1_projects__project_id__code_file_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/projects/{project_id}/code:download": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Code Download
+         * @description The generated project as a zip, the same files the tree shows.
+         */
+        get: operations["code_download_api_v1_projects__project_id__code_download_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/projects/{project_id}/config": {
         parameters: {
             query?: never;
@@ -704,6 +809,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/projects/{project_id}/contracts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Contracts
+         * @description The newest OpenAPI document, else the operations of the newest design, else nothing.
+         */
+        get: operations["contracts_api_v1_projects__project_id__contracts_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/projects/{project_id}/coverage": {
         parameters: {
             query?: never;
@@ -713,6 +838,26 @@ export interface paths {
         };
         /** Get Coverage */
         get: operations["get_coverage_api_v1_projects__project_id__coverage_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/projects/{project_id}/design": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Design
+         * @description The newest design, or nothing before the design phase.
+         */
+        get: operations["design_api_v1_projects__project_id__design_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1542,6 +1687,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/projects/{project_id}/usage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Project Usage */
+        get: operations["project_usage_api_v1_projects__project_id__usage_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/projects/{project_id}/verdicts": {
         parameters: {
             query?: never;
@@ -1683,6 +1845,23 @@ export interface paths {
          * @description Replace the bundle of a role (one column of the matrix). Takes effect for all its members.
          */
         put: operations["set_role_permissions_api_v1_roles__role_id__permissions_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Search */
+        get: operations["search_api_v1_search_get"];
+        put?: never;
         post?: never;
         delete?: never;
         options?: never;
@@ -2001,6 +2180,17 @@ export interface components {
             /** Version */
             version: string;
         };
+        /** AdminSummary */
+        AdminSummary: {
+            /** Activeusers */
+            activeUsers: number;
+            /** Budgetalerts */
+            budgetAlerts: components["schemas"]["BudgetAlertOut"][];
+            /** Connections */
+            connections: components["schemas"]["ConnectionHealth"][];
+            /** Pendinginvitations */
+            pendingInvitations: number;
+        };
         /** AgentOut */
         AgentOut: {
             /** Capabilities */
@@ -2176,6 +2366,15 @@ export interface components {
              * @default
              */
             notes: string;
+        };
+        /** BudgetAlertOut */
+        BudgetAlertOut: {
+            /** Amountusd */
+            amountUsd: string;
+            /** Level */
+            level: number;
+            /** Projectname */
+            projectName: string | null;
         };
         /** BudgetIn */
         BudgetIn: {
@@ -2368,6 +2567,45 @@ export interface components {
             /** Truncated */
             truncated: boolean;
         };
+        /** CodeFileEntryOut */
+        CodeFileEntryOut: {
+            /** Layer */
+            layer: string;
+            /** Path */
+            path: string;
+            /** Rules */
+            rules: string[];
+            /** Sizebytes */
+            sizeBytes: number;
+        };
+        /** CodeFileOut */
+        CodeFileOut: {
+            /** Content */
+            content: string;
+            /** Layer */
+            layer: string;
+            /** Path */
+            path: string;
+            /** Sizebytes */
+            sizeBytes: number;
+            /** Truncated */
+            truncated: boolean;
+        };
+        /** CodeTreeOut */
+        CodeTreeOut: {
+            /** Files */
+            files: components["schemas"]["CodeFileEntryOut"][];
+            /**
+             * Generatedat
+             * Format: date-time
+             */
+            generatedAt: string;
+            /**
+             * Runid
+             * Format: uuid
+             */
+            runId: string;
+        };
         /** CommentIn */
         CommentIn: {
             anchor?: components["schemas"]["AnchorIn"];
@@ -2532,6 +2770,15 @@ export interface components {
              */
             provider: "openrouter";
         };
+        /** ConnectionHealth */
+        ConnectionHealth: {
+            /** Name */
+            name: string;
+            /** Provider */
+            provider: string;
+            /** Status */
+            status: string;
+        };
         /** ConnectionOut */
         ConnectionOut: {
             /** Hascredential */
@@ -2565,6 +2812,24 @@ export interface components {
             /** Name */
             name?: string | null;
         };
+        /**
+         * ContractsOut
+         * @description The HTTP contract of the target: the OpenAPI document the frontend pack derived from the design, when there is
+         *     one, and its operations; without a frontend the operations come straight from the design's use cases.
+         */
+        ContractsOut: {
+            /** Openapi */
+            openapi: {
+                [key: string]: unknown;
+            } | null;
+            /** Operations */
+            operations: components["schemas"]["OperationOut"][];
+            /**
+             * Source
+             * @enum {string}
+             */
+            source: "openapi" | "design";
+        };
         /** CoverageOut */
         CoverageOut: {
             /** Complete */
@@ -2581,6 +2846,60 @@ export interface components {
             outOfScope: string[];
             /** Untracedstories */
             untracedStories: string[];
+        };
+        /** DashboardOut */
+        DashboardOut: {
+            admin: components["schemas"]["AdminSummary"] | null;
+            /** Costvisible */
+            costVisible: boolean;
+            delivery: components["schemas"]["Delivery"];
+            /** Monthlyspend */
+            monthlySpend: components["schemas"]["MonthSpend"][];
+            /** Projects */
+            projects: components["schemas"]["DashboardProject"][];
+        };
+        /** DashboardProject */
+        DashboardProject: {
+            /** Budgetusd */
+            budgetUsd: string | null;
+            /** Currentphase */
+            currentPhase: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
+            /** Phasesdone */
+            phasesDone: number;
+            /** Phasestotal */
+            phasesTotal: number;
+            /** Rulestotal */
+            rulesTotal: number;
+            /** Rulesverified */
+            rulesVerified: number;
+            /** Runstatus */
+            runStatus: string | null;
+            /** Spentusd */
+            spentUsd: string | null;
+            /** Verdict */
+            verdict: string | null;
+            /** Waitingreason */
+            waitingReason: string | null;
+        };
+        /** Delivery */
+        Delivery: {
+            /** Costtodayusd */
+            costTodayUsd: string | null;
+            /** Escalations */
+            escalations: number;
+            /** Gateswaiting */
+            gatesWaiting: number;
+            /** Running */
+            running: number;
+            /** Tokenstoday */
+            tokensToday: number;
         };
         /**
          * DemoOptionsIn
@@ -2622,6 +2941,107 @@ export interface components {
              */
             strength: "hard" | "soft";
         };
+        /** DesignDecisionOut */
+        DesignDecisionOut: {
+            /**
+             * Consequences
+             * @default
+             */
+            consequences: string;
+            /**
+             * Context
+             * @default
+             */
+            context: string;
+            /** Decision */
+            decision: string;
+            /** Title */
+            title: string;
+        };
+        /** DesignEntityOut */
+        DesignEntityOut: {
+            /** Fields */
+            fields?: components["schemas"]["DesignFieldOut"][];
+            /** Key */
+            key?: string[];
+            /** Legacytable */
+            legacyTable?: string | null;
+            /** Name */
+            name: string;
+            /** Table */
+            table?: string | null;
+        };
+        /** DesignErrorOut */
+        DesignErrorOut: {
+            /** Code */
+            code: string;
+            /** Legacycode */
+            legacyCode?: string | null;
+            /**
+             * Message
+             * @default
+             */
+            message: string;
+        };
+        /** DesignFieldOut */
+        DesignFieldOut: {
+            /** Column */
+            column?: string | null;
+            /** Legacy */
+            legacy?: string | null;
+            /** Name */
+            name: string;
+            /** Type */
+            type: string;
+        };
+        /** DesignOut */
+        DesignOut: {
+            /** Basepackage */
+            basePackage: string;
+            /** Context */
+            context: string;
+            /**
+             * Createdat
+             * Format: date-time
+             */
+            createdAt: string;
+            /** Decisions */
+            decisions?: components["schemas"]["DesignDecisionOut"][];
+            /** Entities */
+            entities?: components["schemas"]["DesignEntityOut"][];
+            /** Infrastructure */
+            infrastructure?: string[];
+            /** Ports */
+            ports?: components["schemas"]["DesignPortOut"][];
+            /**
+             * Runid
+             * Format: uuid
+             */
+            runId: string;
+            /** Usecases */
+            useCases?: components["schemas"]["DesignUseCaseOut"][];
+        };
+        /** DesignPortMethodOut */
+        DesignPortMethodOut: {
+            /**
+             * Description
+             * @default
+             */
+            description: string;
+            /** Name */
+            name: string;
+        };
+        /** DesignPortOut */
+        DesignPortOut: {
+            /** Entity */
+            entity?: string | null;
+            /** Legacyprogram */
+            legacyProgram?: string | null;
+            /** Methods */
+            methods?: components["schemas"]["DesignPortMethodOut"][];
+            /** Name */
+            name: string;
+        };
         /** DesignSystemOut */
         DesignSystemOut: {
             /**
@@ -2642,6 +3062,34 @@ export interface components {
             };
             /** Version */
             version: number;
+        };
+        /** DesignUseCaseOut */
+        DesignUseCaseOut: {
+            /**
+             * Description
+             * @default
+             */
+            description: string;
+            /** Errors */
+            errors?: components["schemas"]["DesignErrorOut"][];
+            /**
+             * Httpmethod
+             * @default POST
+             */
+            httpMethod: string;
+            /** Legacyprogram */
+            legacyProgram?: string | null;
+            /** Name */
+            name: string;
+            /**
+             * Path
+             * @default
+             */
+            path: string;
+            /** Ports */
+            ports?: string[];
+            /** Rules */
+            rules?: string[];
         };
         /** DevLoginIn */
         DevLoginIn: {
@@ -2690,6 +3138,22 @@ export interface components {
                     [key: string]: unknown;
                 };
             };
+        };
+        /** FailedJobOut */
+        FailedJobOut: {
+            /** Attempts */
+            attempts: number;
+            /**
+             * Failedat
+             * Format: date-time
+             */
+            failedAt: string;
+            /** Id */
+            id: number;
+            /** Queue */
+            queue: string;
+            /** Task */
+            task: string;
         };
         /** FlowOut */
         FlowOut: {
@@ -3182,6 +3646,36 @@ export interface components {
              */
             profileId: string;
         };
+        /** MonthSpend */
+        MonthSpend: {
+            /** Month */
+            month: string;
+            /** Usd */
+            usd: string;
+        };
+        /** NotificationOut */
+        NotificationOut: {
+            /** Id */
+            id: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "question" | "gate" | "escalation" | "runFinished" | "runFailed" | "verdict" | "budget";
+            /**
+             * Occurredat
+             * Format: date-time
+             */
+            occurredAt: string;
+            /** Projectid */
+            projectId: string | null;
+            /** Projectname */
+            projectName: string | null;
+            /** Tab */
+            tab: string | null;
+            /** Title */
+            title: string;
+        };
         /** OfferingOut */
         OfferingOut: {
             /** Allowedbypolicy */
@@ -3209,6 +3703,19 @@ export interface components {
             upstreamProvider: string;
             /** Zdr */
             zdr: boolean;
+        };
+        /** OperationOut */
+        OperationOut: {
+            /** Method */
+            method: string;
+            /** Name */
+            name: string;
+            /** Path */
+            path: string;
+            /** Rules */
+            rules: string[];
+            /** Summary */
+            summary: string;
         };
         /** PermissionOut */
         PermissionOut: {
@@ -3286,6 +3793,23 @@ export interface components {
             on: string | null;
             /** Story */
             story: string;
+        };
+        /** PlatformStatus */
+        PlatformStatus: {
+            /** Activeruns */
+            activeRuns: number;
+            /** Apiversion */
+            apiVersion: string;
+            /** Failedlastday */
+            failedLastDay: number;
+            /** Queues */
+            queues: components["schemas"]["QueueOut"][];
+            /** Recentfailures */
+            recentFailures: components["schemas"]["FailedJobOut"][];
+            /** Waitingruns */
+            waitingRuns: number;
+            /** Workers */
+            workers: components["schemas"]["WorkerOut"][];
         };
         /** PolicyIn */
         PolicyIn: {
@@ -3635,6 +4159,25 @@ export interface components {
             /** Status */
             status?: ("active" | "archived") | null;
         };
+        /**
+         * ProjectUsage
+         * @description The whole life of one project (spec 13.5 "Por proyecto"): by phase, agent and model, the self-correction
+         *     calls (iterations after the first) and the project budget. Money only with cost.view on the tenant.
+         */
+        ProjectUsage: {
+            /** Budgetusd */
+            budgetUsd: string | null;
+            /** Byagent */
+            byAgent: components["schemas"]["UsageRow"][];
+            /** Bymodel */
+            byModel: components["schemas"]["UsageRow"][];
+            /** Byphase */
+            byPhase: components["schemas"]["UsageRow"][];
+            /** Costvisible */
+            costVisible: boolean;
+            selfCorrection: components["schemas"]["UsageRow"];
+            total: components["schemas"]["UsageRow"];
+        };
         /** PrototypeOut */
         PrototypeOut: {
             /**
@@ -3731,6 +4274,15 @@ export interface components {
             status: "open" | "answered" | "cancelled";
             /** Wasrecommended */
             wasRecommended: boolean | null;
+        };
+        /** QueueOut */
+        QueueOut: {
+            /** Queue */
+            queue: string;
+            /** Running */
+            running: number;
+            /** Waiting */
+            waiting: number;
         };
         /** Readiness */
         Readiness: {
@@ -3995,6 +4547,25 @@ export interface components {
             status: "queued" | "running" | "waiting" | "succeeded" | "failed" | "cancelled";
             /** Waitingreason */
             waitingReason: string | null;
+        };
+        /** SearchHit */
+        SearchHit: {
+            /** Hint */
+            hint: string;
+            /** Id */
+            id: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "project" | "rule";
+            /** Label */
+            label: string;
+            /**
+             * Projectid
+             * Format: uuid
+             */
+            projectId: string;
         };
         /** SessionTenantOut */
         SessionTenantOut: {
@@ -4550,6 +5121,20 @@ export interface components {
              * @enum {string}
              */
             status: "available" | "deprecated";
+        };
+        /** WorkerOut */
+        WorkerOut: {
+            /** Alive */
+            alive: boolean;
+            /** Id */
+            id: number;
+            /**
+             * Lastheartbeat
+             * Format: date-time
+             */
+            lastHeartbeat: string;
+            /** Runningjobs */
+            runningJobs: number;
         };
         /** RuleOut */
         nexti_api__projects__catalog_api__RuleOut: {
@@ -5599,6 +6184,26 @@ export interface operations {
             };
         };
     };
+    dashboard_api_v1_dashboard_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DashboardOut"];
+                };
+            };
+        };
+    };
     validate_gherkin_api_v1_gherkin_validate_post: {
         parameters: {
             query?: never;
@@ -5847,6 +6452,26 @@ export interface operations {
             };
         };
     };
+    notifications_api_v1_notifications_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationOut"][];
+                };
+            };
+        };
+    };
     list_permissions_api_v1_permissions_get: {
         parameters: {
             query?: never;
@@ -5863,6 +6488,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PermissionOut"][];
+                };
+            };
+        };
+    };
+    status_api_v1_platform_status_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlatformStatus"];
                 };
             };
         };
@@ -6017,6 +6662,101 @@ export interface operations {
             };
         };
     };
+    code_tree_api_v1_projects__project_id__code_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CodeTreeOut"] | null;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    code_file_api_v1_projects__project_id__code_file_get: {
+        parameters: {
+            query: {
+                path: string;
+            };
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CodeFileOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    code_download_api_v1_projects__project_id__code_download_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     change_config_api_v1_projects__project_id__config_put: {
         parameters: {
             query?: never;
@@ -6083,6 +6823,37 @@ export interface operations {
             };
         };
     };
+    contracts_api_v1_projects__project_id__contracts_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ContractsOut"] | null;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_coverage_api_v1_projects__project_id__coverage_get: {
         parameters: {
             query?: never;
@@ -6101,6 +6872,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CoverageOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    design_api_v1_projects__project_id__design_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DesignOut"] | null;
                 };
             };
             /** @description Validation Error */
@@ -7851,6 +8653,37 @@ export interface operations {
             };
         };
     };
+    project_usage_api_v1_projects__project_id__usage_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectUsage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_verdicts_api_v1_projects__project_id__verdicts_get: {
         parameters: {
             query?: never;
@@ -8180,6 +9013,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RoleOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    search_api_v1_search_get: {
+        parameters: {
+            query: {
+                q: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SearchHit"][];
                 };
             };
             /** @description Validation Error */

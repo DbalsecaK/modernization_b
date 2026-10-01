@@ -1,8 +1,7 @@
 {
   "app": {
     "productShort": "Modernization",
-    "version": "Version {{version}}",
-    "sampleData": "Prototype · sample data"
+    "version": "Version {{version}}"
   },
   "common": {
     "active": "Active",
@@ -44,7 +43,7 @@
     "tenant": "Customer",
     "allTenants": "All customers",
     "search": "Search",
-    "searchPlaceholder": "Search projects, rules, programs…",
+    "searchPlaceholder": "Search projects, rules, agents, skills…",
     "language": "Language",
     "notifications": "Notifications",
     "switchTheme": "Switch to {{theme}} theme",
@@ -195,9 +194,6 @@
     "projectProgress": "Project progress",
     "risks": "Risks and blockers",
     "riskBudget": "{{project}} has used {{pct}}% of its budget.",
-    "riskGate_one": "{{count}} rule is waiting for business approval.",
-    "riskGate_other": "{{count}} rules are waiting for business approval.",
-    "riskPartly": "{{project}} is PARTLY PROVEN: P0 rules without a passing test.",
     "monthlySpend": "Monthly AI spend",
     "monthlySpendHint": "All projects, all providers",
     "runningExecutions": "Running executions",
@@ -208,15 +204,40 @@
     "pendingApprovals": "Pending approvals",
     "tenants": "Customers",
     "activeUsers": "Active users",
-    "withoutMfa_one": "{{count}} without MFA",
-    "withoutMfa_other": "{{count}} without MFA",
     "monthSpend": "Spend this month",
     "connectionsHealthy": "Healthy AI connections",
-    "spendByTenant": "Spend by customer",
     "alerts": "Alerts",
     "alertConnection": "Connection \"{{name}}\" failed its last check.",
-    "alertMfa": "{{name}} has not set up MFA yet.",
-    "alertWorker": "Worker {{name}} is offline."
+    "noTenant": "Choose a customer to see its dashboard",
+    "noTenantHint": "The dashboard shows the projects of the active customer.",
+    "loading": "Loading the dashboard…",
+    "loadError": "The dashboard could not be loaded",
+    "needsCostView": "Money needs the cost.view permission",
+    "noProjects": "No projects yet.",
+    "notStarted": "Not started",
+    "progressOf": "Progress of {{project}}",
+    "noRisks": "Nothing needs attention.",
+    "noSpend": "No AI spend in the last six months.",
+    "riskEscalation": "{{project}} escalated to a person: the agents ran out of attempts.",
+    "riskVerdict": "{{project}} is {{verdict}}: rules without a passing test.",
+    "riskGates_one": "{{count}} gate is waiting for approval.",
+    "riskGates_other": "{{count}} gates are waiting for approval.",
+    "noActivity": "No agent activity right now.",
+    "noTasks": "Nothing is waiting for you.",
+    "taskKinds": {
+      "question": "Question",
+      "gate": "Gate"
+    },
+    "adminOnly": "The administrator view needs the users.manage permission",
+    "adminOnlyHint": "It shows users, AI connections and budget alerts of the customer.",
+    "pendingInvitations_one": "{{count}} pending invitation",
+    "pendingInvitations_other": "{{count}} pending invitations",
+    "spendByProject": "Spend by project",
+    "noAlerts": "No alerts.",
+    "alertBudget": "{{project}} crossed {{level}}% of its budget.",
+    "tenantBudget": "The customer budget",
+    "more_one": "and {{count}} more",
+    "more_other": "and {{count}} more"
   },
   "flows": {
     "modernization": "Modernization",
@@ -531,7 +552,6 @@
       "success": "Success"
     },
     "contractsTitle": "Contracts",
-    "contractsHint": "Operations that will become the OpenAPI, each linked to the rules it serves.",
     "operation": "Operation",
     "gateApproved": "Gate C1 approved. Design can start.",
     "ruleApproved": "{{id}} approved.",
@@ -577,7 +597,22 @@
     "c1": {
       "ready": "The stories and the plan can be approved at gate C1 (in the Runs tab).",
       "blocked": "Gate C1 cannot be approved yet:"
-    }
+    },
+    "noScreens": "This legacy has no screens",
+    "noScreensHint": "Screens come from BMS maps or other screen sources; a stored-procedure estate has none.",
+    "openInUiDesign": "Open in UI design",
+    "length": "Length",
+    "navigation": "Leads to",
+    "fieldTypes": {
+      "numeric": "Numeric",
+      "secret": "Secret",
+      "text": "Text"
+    },
+    "noContracts": "No contracts yet",
+    "noContractsHint": "The contracts appear with the design, in the design phase.",
+    "contractsFromOpenapi": "From the OpenAPI document derived from the approved design, each operation with the rules it serves.",
+    "contractsFromDesign": "From the use cases of the approved design, each operation with the rules it serves.",
+    "operationName": "Operation id"
   },
   "ruleStatus": {
     "approved": "Approved",
@@ -703,23 +738,56 @@
     "services": "Services",
     "endpoints": "Endpoints",
     "adrs": "Architecture decisions",
-    "adrState": {
-      "accepted": "Accepted",
-      "proposed": "Proposed"
-    },
     "contract": "Contract (OpenAPI)",
     "fitness": "Fitness functions",
-    "fitnessDomain": "The domain layer has no framework dependencies",
-    "fitnessAdapters": "Adapters only depend on ports",
-    "fitnessNaming": "Package and class names follow the customer constitution",
-    "fitnessRuleIds": "Every domain class names the rule ids it implements"
+    "loading": "Loading the architecture…",
+    "loadError": "The architecture could not be loaded",
+    "emptyHint": "Run the pipeline: the design phase writes the target's architecture here, for approval at gate C3.",
+    "useCases": "Application services",
+    "useCasesHint": "One service per use case of the design, with the rules it implements and the ports it uses.",
+    "useCase": "Service",
+    "ports": "Ports",
+    "legacy": "Replaces",
+    "entities": "Entities",
+    "entity": "Entity",
+    "table": "Table",
+    "legacyTable": "Legacy table",
+    "fieldCount_one": "{{count}} field",
+    "fieldCount_other": "{{count}} fields",
+    "portsTitle": "Ports",
+    "portsHint": "Interfaces the domain depends on; adapters implement them.",
+    "replaces": "replaces {{program}}",
+    "noPorts": "The design has no ports.",
+    "adrsHint": "Decisions recorded in the design, with their context and consequences.",
+    "adrContext": "Context",
+    "adrDecision": "Decision",
+    "adrConsequences": "Consequences",
+    "noAdrs": "The design records no decisions.",
+    "contractFromDesign": "Derived from the design's use cases",
+    "seeOperations": "See operations",
+    "contractTruncated": "Showing the beginning of the document.",
+    "noOpenapi": "The OpenAPI document is written when a frontend pack is generated. The operations are listed in Specification › Contracts.",
+    "fitnessHint": "The checks of the newest verdict of each module, computed by code.",
+    "noFitness": "No verdict yet: the checks appear after the verification phase.",
+    "fitnessOf": "Checks of {{module}}"
   },
   "code": {
     "title": "Generated code",
-    "subtitle": "Browse by module. Downloading and pushing require permissions.",
-    "download": "Download",
+    "download": "Download zip",
     "push": "Push to Git",
-    "notYet": "Code is generated after gates C1–C3. Showing the pilot module as a preview."
+    "generatedAt_one": "Newest generation, {{date}} · {{count}} file",
+    "generatedAt_other": "Newest generation, {{date}} · {{count}} files",
+    "files": "Generated files",
+    "downloadNeedsPermission": "Downloading needs the code.download permission",
+    "pushInDelivery": "Pushing to Git is done by the delivery phase of the pipeline",
+    "implements": "implements",
+    "loading": "Loading the generated code…",
+    "loadingFile": "Loading the file…",
+    "loadError": "The generated code could not be loaded",
+    "fileError": "The file could not be loaded.",
+    "emptyHint": "Run the pipeline: the generation phase writes the backend and the frontend here.",
+    "noCodeView": "Seeing code needs the code.view permission",
+    "noCodeViewHint": "Ask a project administrator for the developer or reviewer role."
   },
   "traceability": {
     "hint": "Every link is verified: the legacy line exists, the target method exists and a passing test names the rule.",
@@ -913,8 +981,6 @@
     "budget": "Budget",
     "used": "{{pct}}% used",
     "tokens": "Tokens",
-    "forecast": "Forecast to finish",
-    "forecastHint": "Based on the cost of work already done",
     "byPhase": "Cost by phase",
     "byAgent": "Cost by agent",
     "selfCorrectionShare": "Self-correction retries cost {{usd}} ({{pct}}% of the total). This is the best signal of where the pipeline struggles."
@@ -1636,30 +1702,44 @@
   },
   "platform": {
     "title": "Platform operations",
-    "description": "Health of workers, queues, sandboxes and deployments. NexTI only.",
+    "description": "Health of workers, queues and runs across customers. NexTI only.",
     "queue": "Jobs in queue",
-    "queueHint": "Across all data planes",
+    "queueHint": "Jobs waiting for a worker",
     "workers": "Workers online",
     "errors": "Errors (24 h)",
-    "errorsHint": "See traces in Langfuse",
-    "sandboxes": "Active sandboxes",
-    "sandboxesHint": "Isolated, no network egress",
+    "errorsHint": "Jobs that failed after their retries",
     "workersTitle": "Workers",
     "worker": "Worker",
-    "pool": "Pool",
     "jobs": "Jobs",
-    "cpu": "CPU",
     "status": {
       "busy": "Busy",
       "idle": "Idle",
-      "offline": "Offline",
-      "healthy": "Healthy",
-      "updating": "Updating"
+      "offline": "Offline"
     },
     "deployments": "Deployments",
-    "deploymentsHint": "Instances and the platform version each one runs.",
-    "instance": "Instance",
-    "version": "Version"
+    "deploymentsHint": "The version this API runs.",
+    "loading": "Loading the platform status…",
+    "loadError": "The platform status could not be loaded",
+    "runs": "Runs in progress",
+    "runsHint_one": "{{count}} waiting for a person · each in its own sandbox",
+    "runsHint_other": "{{count}} waiting for a person · each in its own sandbox",
+    "workersHint": "A worker is offline when its heartbeat is older than 30 seconds.",
+    "noWorkers": "No worker has registered. Start one with pnpm worker:dev.",
+    "heartbeat": "Last heartbeat",
+    "queuesTitle": "Queues",
+    "queuesEmpty": "No job is waiting or running.",
+    "queueName": "Queue",
+    "waiting": "Waiting",
+    "running": "Running",
+    "failuresTitle": "Failed jobs",
+    "failuresHint": "The last day, newest first.",
+    "noFailures": "No job failed in the last day.",
+    "job": "Job",
+    "attempts": "Attempts",
+    "failedAt": "Failed at",
+    "apiVersion": "API",
+    "instancesLater": "Versions per deployed instance come with the deployment profiles (M9).",
+    "refresh": "Refresh"
   },
   "notFound": {
     "title": "Page not found",
@@ -1673,7 +1753,8 @@
       "rule": "Rule",
       "agent": "Agent",
       "skill": "Skill"
-    }
+    },
+    "searching": "Searching…"
   },
   "notifications": {
     "markAllRead": "Mark all as read",
@@ -1682,7 +1763,19 @@
       "escalation": "Escalation",
       "budget": "Budget",
       "verdict": "Verdict",
-      "connection": "Connection"
+      "question": "Question",
+      "runFinished": "Run",
+      "runFailed": "Run"
+    },
+    "empty": "Nothing new in the last seven days.",
+    "text": {
+      "question": "{{project}} asks: {{title}}",
+      "gate": "{{project}}: {{title}} waits for your approval",
+      "escalation": "{{project}} escalated to a person in {{title}}",
+      "runFinished": "The run of {{project}} finished",
+      "runFailed": "The run of {{project}} failed in {{title}}",
+      "verdict": "New verdict in {{project}}: {{title}}",
+      "budget": "{{project}} crossed {{title}} of its budget"
     }
   },
   "tools": {
@@ -2475,5 +2568,24 @@
       "missingInformation": "Missing information",
       "retriesExhausted": "Attempts exhausted"
     }
+  },
+  "projectCosts": {
+    "loading": "Loading the usage of the project…",
+    "loadError": "The usage of the project could not be loaded",
+    "emptyHint": "Nothing consumed yet. Run the pipeline to see where the budget goes, by phase, agent and model.",
+    "noUsageView": "Seeing usage needs the usage.view permission",
+    "noUsageViewHint": "Ask a project or tenant administrator for a role that includes it.",
+    "tokensOnly": "You see tokens only: money needs the cost.view permission.",
+    "noBudget": "No budget set for this project",
+    "calls_one": "{{count}} call",
+    "calls_other": "{{count}} calls",
+    "selfCorrection": "Self-correction",
+    "tokensByPhase": "Tokens by phase",
+    "tokensByAgent": "Tokens by agent",
+    "byModel": "By model",
+    "model": "Model",
+    "inputTokens": "Input tokens",
+    "outputTokens": "Output tokens",
+    "cost": "Cost"
   }
 }

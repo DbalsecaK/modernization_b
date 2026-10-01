@@ -57,6 +57,7 @@ from .run_support import (
     make_config,
     make_project,
     make_run,
+    seed_architecture,
     seed_graph,
     seed_proposal,
     seed_screens,
@@ -426,6 +427,13 @@ class Ctx:
         await self.sync_authz()
         return project_id, verdict_id
 
+    async def architecture_project(self) -> uuid.UUID:
+        """A fresh project of tenant A with the design of the fictitious application and its OpenAPI document."""
+        project_id = await make_project(self.owner, self.world.tenant_a)
+        await seed_architecture(self.owner, object_store(), self.world.tenant_a, project_id)
+        await self.sync_authz()
+        return project_id
+
     async def spec_project(self) -> uuid.UUID:
         """A fresh project of tenant A with rules, stories (US-003 discarded), dependencies and a plan."""
         project_id = await make_project(self.owner, self.world.tenant_a)
@@ -709,6 +717,13 @@ def _verified(suffix: str) -> Callable[[Ctx], Awaitable[Request]]:
     return make
 
 
+def _architecture(suffix: str) -> Callable[[Ctx], Awaitable[Request]]:
+    async def make(ctx: Ctx) -> Request:
+        return f"/api/v1/projects/{await ctx.architecture_project()}{suffix}", None
+
+    return make
+
+
 PROTO = "/api/v1/projects/{project_id}/screens/{key}/prototypes/{version}"
 UI_CHAT = "/api/v1/projects/{project_id}/screens/{key}/chat"
 STORY = {"title": "Pay an order", "criteria": [VALID_CRITERION], "links": ["RULE-001"]}
@@ -981,6 +996,22 @@ CASES = [
         "GET", "/api/v1/projects/{project_id}/traceability/{rule_key}", "admin", "outsider",
         _verified("/traceability/RULE-001"),
     ),
+    Case("GET", "/api/v1/projects/{project_id}/code", "admin", "outsider", _verified("/code")),
+    Case(
+        "GET", "/api/v1/projects/{project_id}/code/file", "admin", "outsider",
+        _verified("/code/file?path=src/main/java/demo/PayOrderService.java"),
+    ),
+    Case("GET", "/api/v1/projects/{project_id}/code:download", "admin", "outsider", _verified("/code:download")),
+    Case("GET", "/api/v1/projects/{project_id}/design", "admin", "outsider", _architecture("/design")),
+    Case("GET", "/api/v1/dashboard", "member", "root", fixed("/api/v1/dashboard")),
+    Case("GET", "/api/v1/platform/status", "root", "admin", fixed("/api/v1/platform/status")),
+    Case("GET", "/api/v1/search", "member", "root", fixed("/api/v1/search?q=payments")),
+    Case("GET", "/api/v1/notifications", "member", "root", fixed("/api/v1/notifications")),
+    Case(
+        "GET", "/api/v1/projects/{project_id}/usage", "admin", "outsider",
+        fixed("/api/v1/projects/{project_a}/usage"),
+    ),
+    Case("GET", "/api/v1/projects/{project_id}/contracts", "admin", "outsider", _architecture("/contracts")),
 ]  # fmt: skip
 
 
@@ -1290,6 +1321,65 @@ async def test_tokens_without_cost_view_come_without_money(
     assert verification["inputTokens"] >= 100
     assert all(r["costUsd"] is None and r["providerCostUsd"] is None for r in [body["total"], *body["rows"]])
     assert api.get("/api/v1/budgets").status_code == 403
+    project = api.get(f"/api/v1/projects/{world.project_a}/usage")
+    assert project.status_code == 200
+    assert project.json()["costVisible"] is False
+    assert project.json()["budgetUsd"] is None
+    assert project.json()["total"]["costUsd"] is None
+    board = api.get("/api/v1/dashboard").json()
+    assert (board["costVisible"], board["admin"], board["monthlySpend"]) == (False, None, [])
+    assert all(p["spentUsd"] is None and p["budgetUsd"] is None for p in board["projects"])
+    assert all(n["kind"] != "budget" for n in api.get("/api/v1/notifications").json())
+
+
+async def test_platform_operations_show_workers_queues_and_failures(
+    api: TestClient, app_engine: AsyncEngine, owner_engine: AsyncEngine, fga: OpenFga, world: World, root: uuid.UUID
+) -> None:
+    """Spec 18.4: a live worker with its job, a stale one, the queue depth and a job that failed today."""
+    await reconcile(app_engine, fga)
+    queue = f"q-{uuid.uuid4().hex[:8]}"
+    async with owner_engine.begin() as conn:
+        alive: int = (
+            await conn.execute(text("INSERT INTO procrastinate_workers (last_heartbeat) VALUES (now()) RETURNING id"))
+        ).scalar_one()
+        stale: int = (
+            await conn.execute(
+                text(
+                    "INSERT INTO procrastinate_workers (last_heartbeat) VALUES (now() - interval '1 hour') RETURNING id"
+                )
+            )
+        ).scalar_one()
+        await conn.execute(
+            text(
+                "INSERT INTO procrastinate_jobs (queue_name, task_name, args, status, worker_id) VALUES "
+                "(:q, 'run_pipeline', '{}', 'doing', :w), (:q, 'run_pipeline', '{}', 'todo', NULL)"
+            ),
+            {"q": queue, "w": alive},
+        )
+        failed: int = (
+            await conn.execute(
+                text(
+                    "INSERT INTO procrastinate_jobs (queue_name, task_name, args, status, attempts) "
+                    "VALUES (:q, 'ui_change', '{}', 'failed', 3) RETURNING id"
+                ),
+                {"q": queue},
+            )
+        ).scalar_one()
+        await conn.execute(text("INSERT INTO procrastinate_events (job_id, type) VALUES (:j, 'failed')"), {"j": failed})
+    try:
+        act_as(api, "root", Ctx(world, root, owner_engine))
+        status = api.get("/api/v1/platform/status").json()
+        workers = {w["id"]: w for w in status["workers"]}
+        assert (workers[alive]["alive"], workers[alive]["runningJobs"]) == (True, 1)
+        assert workers[stale]["alive"] is False
+        assert {"queue": queue, "waiting": 1, "running": 1} in status["queues"]
+        assert any(f["id"] == failed and f["task"] == "ui_change" for f in status["recentFailures"])
+        assert status["failedLastDay"] >= 1
+        assert status["apiVersion"]
+    finally:
+        async with owner_engine.begin() as conn:
+            await conn.execute(text("DELETE FROM procrastinate_jobs WHERE queue_name = :q"), {"q": queue})
+            await conn.execute(text("DELETE FROM procrastinate_workers WHERE id IN (:a, :s)"), {"a": alive, "s": stale})
 
 
 async def test_the_catalog_shows_prices_and_the_tenant_policy(

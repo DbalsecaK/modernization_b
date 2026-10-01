@@ -73,10 +73,9 @@ pnpm web:dev      # web en http://localhost:5173 (proxy de /api y /auth hacia la
 ```
 
 El inicio de sesión va a Keycloak con los usuarios ficticios del realm (contraseña `KC_DEV_USER_PASSWORD` del
-`.env`), o en desarrollo con `dev-auth` eligiendo un usuario sembrado. Sesión, menú por permisos, selector de
-cliente e idioma, Administración, Configuración IA, Consumo y costos, Catálogo, Proyectos (asistente, resumen,
-insumos, ejecuciones, actividad y configuración), Mis tareas y el panel de actividad usan la API real; el resto de las
-pantallas sigue con datos de ejemplo hasta su hito. En desarrollo, la pestaña Ejecuciones ofrece además el pipeline
+`.env`), o en desarrollo con `dev-auth` eligiendo un usuario sembrado. Todas las pantallas usan la API real (plan
+P2), salvo las de hitos posteriores: la pestaña Backlog (M7b) y, en Administración, autenticación, seguridad e
+integraciones del cliente (M0b, M7, M7b). En desarrollo, la pestaña Ejecuciones ofrece además el pipeline
 de demostración, que ejercita el motor completo con el worker en marcha.
 
 ## Desarrollo

@@ -1,19 +1,44 @@
 import { useState, type ReactNode } from 'react'
 import { Link } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
-import { AlertTriangle, ArrowRight, PauseCircle, PlugZap, ShieldAlert } from 'lucide-react'
+import { AlertTriangle, ArrowRight, Loader2, PauseCircle, PlugZap, ShieldAlert, Siren } from 'lucide-react'
 import { cn } from '@/lib/cn'
-import { formatCompact, formatMonth, formatUsd } from '@/lib/format'
-import { connections, monthlyCost, projects, runEvents, tasks, tenants, users } from '@/mocks/data'
-import { Badge, Card, CardBody, CardHeader, PageHeader, Progress, StatTile } from '@/components/ui/primitives'
+import { formatCompact, formatCost, formatDateTime, formatMonth, formatNumber } from '@/lib/format'
+import { ApiError } from '@/api/client'
+import { useDashboard, type Dashboard } from '@/api/dashboard'
+import { useActivityStream, useTasks } from '@/api/runs'
+import { useMe } from '@/api/session'
+import {
+  Badge,
+  Button,
+  Card,
+  CardBody,
+  CardHeader,
+  EmptyState,
+  PageHeader,
+  Progress,
+  StatTile,
+} from '@/components/ui/primitives'
 import { PhaseStatusIcon, VerdictBadge } from '@/components/ui/status'
 import { BarList, LineChart } from '@/components/charts/charts'
+import { toVerdict } from '@/features/projects/workspace/validation/model'
+import { adminAlerts, progressOf, risks, runPhaseStatus, totals, type Risk } from './model'
 
 type Perspective = 'executive' | 'delivery' | 'admin'
 
+/** Rows a list shows before saying how many more there are (the full lists live in Projects and My tasks). */
+const SHOWN = 8
+
+const amount = (value: string | null | undefined) => (value == null ? 0 : Number(value))
+
+// Dashboard by profile (spec 18.2), connected to the API: the executive view of progress, verification and spend;
+// the delivery view of runs, gates, escalations and live activity; and the administrator's users, connections and
+// alerts. Same look as the prototype.
 export function DashboardPage() {
   const { t } = useTranslation()
+  const me = useMe()
   const [perspective, setPerspective] = useState<Perspective>('executive')
+  const board = useDashboard(!!me?.activeTenant)
 
   return (
     <>
@@ -42,40 +67,62 @@ export function DashboardPage() {
           </div>
         }
       />
-      {perspective === 'executive' && <ExecutiveView />}
-      {perspective === 'delivery' && <DeliveryView />}
-      {perspective === 'admin' && <AdminView />}
+      {!me?.activeTenant ? (
+        <EmptyState title={t('dashboard.noTenant')} description={t('dashboard.noTenantHint')} />
+      ) : board.isLoading ? (
+        <p className="flex items-center gap-2 py-12 text-sm text-muted" role="status">
+          <Loader2 size={16} className="animate-spin" /> {t('dashboard.loading')}
+        </p>
+      ) : board.isError || !board.data ? (
+        <EmptyState
+          title={t('dashboard.loadError')}
+          description={board.error instanceof ApiError ? board.error.message : undefined}
+          action={
+            <Button size="sm" onClick={() => void board.refetch()}>
+              {t('spec.retry')}
+            </Button>
+          }
+        />
+      ) : (
+        <>
+          {perspective === 'executive' && <ExecutiveView board={board.data} />}
+          {perspective === 'delivery' && <DeliveryView board={board.data} />}
+          {perspective === 'admin' && <AdminView board={board.data} tenants={me.tenants.length} />}
+        </>
+      )}
     </>
   )
 }
 
-function ExecutiveView() {
+function ExecutiveView({ board }: { board: Dashboard }) {
   const { t } = useTranslation()
-  const active = projects.filter((p) => p.progress < 100)
-  const totalRules = projects.reduce((s, p) => s + p.rules.total, 0)
-  const verified = projects.reduce((s, p) => s + p.rules.verified, 0)
-  const spent = projects.reduce((s, p) => s + p.costUsd, 0)
-  const budget = projects.reduce((s, p) => s + p.budgetUsd, 0)
-  const proven = projects.filter((p) => p.verdict === 'PROVEN').length
+  const sum = totals(board)
+  const found = risks(board)
 
   return (
     <div className="space-y-6">
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatTile
           label={t('dashboard.activeProjects')}
-          value={active.length}
-          hint={t('dashboard.ofTotal', { total: projects.length })}
+          value={sum.active}
+          hint={t('dashboard.ofTotal', { total: board.projects.length })}
         />
         <StatTile
           label={t('dashboard.rulesVerified')}
-          value={`${verified} / ${totalRules}`}
+          value={`${sum.rulesVerified} / ${sum.rulesTotal}`}
           hint={t('dashboard.rulesVerifiedHint')}
         />
-        <StatTile label={t('dashboard.provenModules')} value={proven} hint={t('dashboard.provenHint')} />
+        <StatTile label={t('dashboard.provenModules')} value={sum.proven} hint={t('dashboard.provenHint')} />
         <StatTile
           label={t('dashboard.spendVsBudget')}
-          value={formatUsd(spent)}
-          hint={t('dashboard.budgetOf', { budget: formatUsd(budget) })}
+          value={sum.spent != null ? formatCost(sum.spent) : '—'}
+          hint={
+            sum.spent == null
+              ? t('dashboard.needsCostView')
+              : sum.budget
+                ? t('dashboard.budgetOf', { budget: formatCost(sum.budget) })
+                : undefined
+          }
         />
       </div>
       <div className="grid gap-6 xl:grid-cols-3">
@@ -83,14 +130,15 @@ function ExecutiveView() {
           <CardHeader
             title={t('dashboard.projectProgress')}
             action={
-              <Link to="/projects" className="text-sm font-medium text-info hover:underline">
+              <Link to="/projects" className="text-sm font-medium text-brand hover:underline">
                 {t('common.viewAll')}
               </Link>
             }
           />
           <CardBody className="divide-y divide-border p-0">
-            {projects.map((p) => {
-              const current = p.phases.find((ph) => ph.status !== 'done') ?? p.phases[p.phases.length - 1]
+            {board.projects.length === 0 && <p className="px-5 py-4 text-sm text-muted">{t('dashboard.noProjects')}</p>}
+            {board.projects.slice(0, SHOWN).map((p) => {
+              const pct = progressOf(p)
               return (
                 <Link
                   key={p.id}
@@ -101,55 +149,79 @@ function ExecutiveView() {
                   <div className="min-w-0 flex-1">
                     <div className="truncate text-sm font-medium text-text">{p.name}</div>
                     <div className="mt-1 flex items-center gap-2 text-xs text-muted">
-                      <PhaseStatusIcon status={current.status} size={12} />
-                      {t(`phases.${current.key}`)}
+                      <PhaseStatusIcon status={runPhaseStatus(p.runStatus)} size={12} />
+                      {p.currentPhase
+                        ? t(`phases.${p.currentPhase}`, { defaultValue: p.currentPhase })
+                        : t('dashboard.notStarted')}
                     </div>
                   </div>
                   <div className="hidden w-40 shrink-0 sm:block">
-                    <Progress value={p.progress} />
-                    <div className="mt-1 text-right text-xs text-muted tabular">{p.progress}%</div>
+                    <Progress value={pct} label={t('dashboard.progressOf', { project: p.name })} />
+                    <div className="mt-1 text-right text-xs text-muted tabular">{pct}%</div>
                   </div>
                   <div className="flex w-32 shrink-0 justify-end">
-                    <VerdictBadge verdict={p.verdict} />
+                    <VerdictBadge verdict={toVerdict(p.verdict)} />
                   </div>
                 </Link>
               )
             })}
+            {board.projects.length > SHOWN && (
+              <p className="px-5 py-3 text-xs text-muted">
+                {t('dashboard.more', { count: board.projects.length - SHOWN })}
+              </p>
+            )}
           </CardBody>
         </Card>
         <Card>
           <CardHeader title={t('dashboard.risks')} />
           <CardBody className="space-y-3">
-            <Risk
-              icon={<AlertTriangle size={16} className="text-warning" />}
-              text={t('dashboard.riskBudget', { project: 'Card Management', pct: 80 })}
-            />
-            <Risk
-              icon={<PauseCircle size={16} className="text-warning" />}
-              text={t('dashboard.riskGate', { count: 148 })}
-            />
-            <Risk
-              icon={<ShieldAlert size={16} className="text-critical" />}
-              text={t('dashboard.riskPartly', { project: 'Interest Accrual SP' })}
-            />
+            {found.length === 0 && <p className="text-sm text-muted">{t('dashboard.noRisks')}</p>}
+            {found.slice(0, SHOWN).map((r, i) => (
+              <RiskLine key={i} risk={r} />
+            ))}
+            {found.length > SHOWN && (
+              <p className="text-xs text-muted">{t('dashboard.more', { count: found.length - SHOWN })}</p>
+            )}
           </CardBody>
         </Card>
       </div>
-      <Card>
-        <CardHeader title={t('dashboard.monthlySpend')} subtitle={t('dashboard.monthlySpendHint')} />
-        <CardBody>
-          <LineChart
-            data={monthlyCost.map((m) => ({ x: formatMonth(m.month), y: m.usd }))}
-            format={(v) => formatUsd(v)}
-            label={t('dashboard.monthlySpend')}
-          />
-        </CardBody>
-      </Card>
+      {board.costVisible && (
+        <Card>
+          <CardHeader title={t('dashboard.monthlySpend')} subtitle={t('dashboard.monthlySpendHint')} />
+          <CardBody>
+            {board.monthlySpend.length > 0 ? (
+              <LineChart
+                data={board.monthlySpend.map((m) => ({ x: formatMonth(m.month), y: amount(m.usd) }))}
+                format={(v) => formatCost(v)}
+                label={t('dashboard.monthlySpend')}
+              />
+            ) : (
+              <p className="text-sm text-muted">{t('dashboard.noSpend')}</p>
+            )}
+          </CardBody>
+        </Card>
+      )}
     </div>
   )
 }
 
-function Risk({ icon, text }: { icon: ReactNode; text: string }) {
+function RiskLine({ risk }: { risk: Risk }) {
+  const { t } = useTranslation()
+  if (risk.kind === 'escalation')
+    return <Line icon={<Siren size={16} className="text-critical" />} text={t('dashboard.riskEscalation', risk)} />
+  if (risk.kind === 'budget')
+    return <Line icon={<AlertTriangle size={16} className="text-warning" />} text={t('dashboard.riskBudget', risk)} />
+  if (risk.kind === 'partly')
+    return (
+      <Line
+        icon={<ShieldAlert size={16} className="text-critical" />}
+        text={t('dashboard.riskVerdict', { project: risk.project, verdict: t(`verdict.${risk.verdict}`) })}
+      />
+    )
+  return <Line icon={<PauseCircle size={16} className="text-warning" />} text={t('dashboard.riskGates', risk)} />
+}
+
+function Line({ icon, text }: { icon: ReactNode; text: string }) {
   return (
     <div className="flex items-start gap-2 text-sm text-text-2">
       <span className="mt-0.5 shrink-0">{icon}</span>
@@ -158,59 +230,66 @@ function Risk({ icon, text }: { icon: ReactNode; text: string }) {
   )
 }
 
-function DeliveryView() {
+function DeliveryView({ board }: { board: Dashboard }) {
   const { t } = useTranslation()
-  const running = projects.filter((p) => p.phases.some((ph) => ph.status === 'running'))
-  const waiting = projects.filter((p) => p.phases.some((ph) => ph.status === 'waiting'))
-  const escalations = runEvents.filter((e) => e.kind === 'escalated')
+  const tasks = useTasks()
+  const activity = useActivityStream()
+  const d = board.delivery
   return (
     <div className="space-y-6">
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatTile label={t('dashboard.runningExecutions')} value={running.length} />
-        <StatTile label={t('dashboard.gatesWaiting')} value={waiting.length} />
-        <StatTile label={t('dashboard.escalations')} value={escalations.length} />
-        <StatTile label={t('dashboard.tokensToday')} value={formatCompact(8_400_000)} hint={formatUsd(214)} />
+        <StatTile label={t('dashboard.runningExecutions')} value={d.running} />
+        <StatTile label={t('dashboard.gatesWaiting')} value={d.gatesWaiting} />
+        <StatTile label={t('dashboard.escalations')} value={d.escalations} />
+        <StatTile
+          label={t('dashboard.tokensToday')}
+          value={formatCompact(d.tokensToday)}
+          hint={d.costTodayUsd != null ? formatCost(amount(d.costTodayUsd)) : undefined}
+        />
       </div>
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
           <CardHeader title={t('dashboard.liveActivity')} />
           <CardBody className="space-y-3">
-            {runEvents
-              .slice()
-              .reverse()
-              .map((e) => (
-                <div key={e.id} className="flex gap-3 text-sm">
-                  <span className="w-16 shrink-0 text-xs text-muted tabular">{e.time}</span>
-                  <div className="min-w-0">
-                    <div className="text-text">
-                      <span className="font-medium">{e.agent}</span> ·{' '}
-                      <span className="text-text-2">{t(`runEvent.${e.kind}`)}</span>
-                    </div>
-                    <div className="text-xs text-muted">{e.detail}</div>
+            {activity.events.length === 0 && <p className="text-sm text-muted">{t('dashboard.noActivity')}</p>}
+            {activity.events.slice(0, 12).map((e) => (
+              <div key={e.id} className="flex gap-3 text-sm">
+                <span className="w-28 shrink-0 text-xs text-muted tabular">{formatDateTime(e.occurredAt)}</span>
+                <div className="min-w-0">
+                  <div className="text-text">
+                    <span className="font-medium">{e.agentKey ?? t('activity.panel.platform')}</span> ·{' '}
+                    <span className="text-text-2">{t(`runEvent.${e.kind}`, { defaultValue: e.kind })}</span>
                   </div>
+                  <div className="truncate text-xs text-muted">{e.message}</div>
                 </div>
-              ))}
+              </div>
+            ))}
           </CardBody>
         </Card>
         <Card>
           <CardHeader
             title={t('dashboard.pendingApprovals')}
             action={
-              <Link to="/tasks" className="text-sm font-medium text-info hover:underline">
+              <Link to="/tasks" className="text-sm font-medium text-brand hover:underline">
                 {t('common.viewAll')}
               </Link>
             }
           />
           <CardBody className="space-y-2">
-            {tasks.map((task) => (
+            {(tasks.data ?? []).length === 0 && <p className="text-sm text-muted">{t('dashboard.noTasks')}</p>}
+            {(tasks.data ?? []).slice(0, 8).map((task) => (
               <Link
-                key={task.id}
+                key={`${task.kind}-${task.runId}-${task.gate ?? task.questionId}`}
                 to="/tasks"
                 className="flex items-center gap-3 rounded-md p-2 text-sm hover:bg-surface-2"
               >
-                <Badge tone={task.priority === 'high' ? 'critical' : 'neutral'}>{t(`tasks.kinds.${task.kind}`)}</Badge>
-                <span className="flex-1 truncate text-text">{task.title}</span>
-                <ArrowRight size={14} className="text-muted" />
+                <Badge tone={task.impact === 'high' ? 'critical' : 'neutral'}>
+                  {t(`dashboard.taskKinds.${task.kind}`)}
+                </Badge>
+                <span className="flex-1 truncate text-text">
+                  {task.title} <span className="text-xs text-muted">· {task.projectName}</span>
+                </span>
+                <ArrowRight size={14} className="text-muted" aria-hidden />
               </Link>
             ))}
           </CardBody>
@@ -220,52 +299,65 @@ function DeliveryView() {
   )
 }
 
-function AdminView() {
+function AdminView({ board, tenants }: { board: Dashboard; tenants: number }) {
   const { t } = useTranslation()
-  const activeUsers = users.filter((u) => u.status === 'active').length
+  const admin = board.admin
+  if (!admin) {
+    return <EmptyState title={t('dashboard.adminOnly')} description={t('dashboard.adminOnlyHint')} />
+  }
+  const healthy = admin.connections.filter((c) => c.status === 'ok').length
+  const month = board.monthlySpend.at(-1)
+  const alerts = adminAlerts(admin)
   return (
     <div className="space-y-6">
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatTile label={t('dashboard.tenants')} value={tenants.length} />
+        <StatTile label={t('dashboard.tenants')} value={tenants} />
         <StatTile
           label={t('dashboard.activeUsers')}
-          value={activeUsers}
-          hint={t('dashboard.withoutMfa', { count: users.filter((u) => !u.mfa).length })}
+          value={formatNumber(admin.activeUsers)}
+          hint={t('dashboard.pendingInvitations', { count: admin.pendingInvitations })}
         />
-        <StatTile
-          label={t('dashboard.monthSpend')}
-          value={formatUsd(tenants.reduce((s, x) => s + x.monthCostUsd, 0))}
-        />
-        <StatTile
-          label={t('dashboard.connectionsHealthy')}
-          value={`${connections.filter((c) => c.status === 'connected').length} / ${connections.length}`}
-        />
+        <StatTile label={t('dashboard.monthSpend')} value={board.costVisible ? formatCost(amount(month?.usd)) : '—'} />
+        <StatTile label={t('dashboard.connectionsHealthy')} value={`${healthy} / ${admin.connections.length}`} />
       </div>
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
-          <CardHeader title={t('dashboard.spendByTenant')} />
+          <CardHeader title={t('dashboard.spendByProject')} />
           <CardBody>
-            <BarList
-              data={tenants.map((x) => ({ label: x.name, value: x.monthCostUsd }))}
-              format={(v) => formatUsd(v)}
-            />
+            {board.costVisible ? (
+              <BarList
+                data={board.projects
+                  .filter((p) => amount(p.spentUsd) > 0)
+                  .map((p) => ({ label: p.name, value: amount(p.spentUsd) }))}
+                format={(v) => formatCost(v)}
+              />
+            ) : (
+              <p className="text-sm text-muted">{t('dashboard.needsCostView')}</p>
+            )}
           </CardBody>
         </Card>
         <Card>
           <CardHeader title={t('dashboard.alerts')} />
           <CardBody className="space-y-3">
-            <Risk
-              icon={<PlugZap size={16} className="text-critical" />}
-              text={t('dashboard.alertConnection', { name: 'NexTI — Anthropic API' })}
-            />
-            <Risk
-              icon={<AlertTriangle size={16} className="text-warning" />}
-              text={t('dashboard.alertMfa', { name: 'Jorge Mena' })}
-            />
-            <Risk
-              icon={<AlertTriangle size={16} className="text-warning" />}
-              text={t('dashboard.alertWorker', { name: 'w-sandbox-win-1' })}
-            />
+            {alerts.length === 0 && <p className="text-sm text-muted">{t('dashboard.noAlerts')}</p>}
+            {alerts.map((a, i) =>
+              a.kind === 'connection' ? (
+                <Line
+                  key={i}
+                  icon={<PlugZap size={16} className="text-critical" />}
+                  text={t('dashboard.alertConnection', { name: a.name })}
+                />
+              ) : (
+                <Line
+                  key={i}
+                  icon={<AlertTriangle size={16} className="text-warning" />}
+                  text={t('dashboard.alertBudget', {
+                    project: a.project ?? t('dashboard.tenantBudget'),
+                    level: a.level,
+                  })}
+                />
+              ),
+            )}
           </CardBody>
         </Card>
       </div>

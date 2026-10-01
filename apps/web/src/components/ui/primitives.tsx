@@ -213,9 +213,10 @@ export function Tabs<T extends string>({
   )
 }
 
+/** A table that scrolls sideways on narrow screens; the scroll area can be reached with the keyboard (WCAG 2.1.1). */
 export function Table({ children }: { children: ReactNode }) {
   return (
-    <div className="overflow-x-auto">
+    <div className="overflow-x-auto focus:outline-2 focus:outline-brand" tabIndex={0}>
       <table className="w-full text-left text-sm">{children}</table>
     </div>
   )
@@ -344,11 +345,14 @@ export function Avatar({ initials }: { initials: string }) {
   )
 }
 
-export function Code({ children, className }: { children: ReactNode; className?: string }) {
+/** A code block. With `label`, a block that may scroll can be reached and scrolled with the keyboard (WCAG 2.1.1). */
+export function Code({ children, className, label }: { children: ReactNode; className?: string; label?: string }) {
   return (
     <pre
+      tabIndex={label ? 0 : undefined}
+      aria-label={label}
       className={cn(
-        'overflow-x-auto rounded-md bg-surface-2 p-3 font-mono text-xs leading-relaxed text-text',
+        'overflow-x-auto rounded-md bg-surface-2 p-3 font-mono text-xs leading-relaxed text-text focus:outline-2 focus:outline-brand',
         className,
       )}
     >

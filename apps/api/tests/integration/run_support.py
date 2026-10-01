@@ -289,6 +289,42 @@ async def seed_validation(owner: AsyncEngine, store: Any, tenant_id: uuid.UUID, 
     return verdict_id
 
 
+PACKS = Path(__file__).resolve().parents[4] / "packages/packs/target"
+DESIGN_JSON = PACKS / "spring_boot/tests/fixtures/pago_orden/design.json"
+
+
+async def seed_architecture(
+    owner: AsyncEngine, store: Any, tenant_id: uuid.UUID, project_id: uuid.UUID, *, openapi: bool = True
+) -> uuid.UUID:
+    """The design of the fictitious application (payments) as the worker stores it and, with `openapi`, the OpenAPI
+    document the frontend pack derives from it. Returns the run id."""
+    import hashlib
+    import io
+
+    from nexti_pack_frontend.openapi import openapi as derive
+    from nexti_pack_spring_boot import Design
+
+    version = await make_config(owner, tenant_id, project_id)
+    run_id = await make_run(owner, tenant_id, project_id, version, kind="pipeline")
+    design = DESIGN_JSON.read_text(encoding="utf-8")
+    files = {"design/design.json": (design, "docs")}
+    if openapi:
+        document = json.dumps(derive(Design.model_validate_json(design)), indent=2)
+        files["frontend/openapi.json"] = (document, "contracts")
+    for path, (content, layer) in files.items():
+        data = content.encode("utf-8")
+        key = f"tenants/{tenant_id}/projects/{project_id}/runs/{run_id}/files/{path}"
+        await store.put(key, io.BytesIO(data), len(data), "application/json")
+        await execute(
+            owner,
+            "INSERT INTO generated_artifact (tenant_id, project_id, run_id, layer, path, object_key, sha256, "
+            "size_bytes) VALUES (:t, :p, :r, :l, :path, :k, :h, :s)",
+            t=tenant_id, p=project_id, r=run_id, l=layer, path=path, k=key, h=hashlib.sha256(data).hexdigest(),
+            s=len(data),
+        )  # fmt: skip
+    return run_id
+
+
 BMS_SOURCE = Path(__file__).resolve().parents[4] / "packages/adapters/source/bms/tests/fixtures/pagos/PAGOSET.bms"
 PROTOTYPE_TSX = "export default function Prototype() { return null }\n"
 

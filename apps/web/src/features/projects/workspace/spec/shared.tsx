@@ -6,7 +6,7 @@ import { ApiError } from '@/api/client'
 import type { GherkinProblem } from '@/api/spec'
 import { camelKey } from './model'
 
-// Small pieces shared by the views of the specification tab (same look as the prototype in ../../stories/).
+// Small pieces shared by the views of the specification tab (same look as the prototype).
 
 export function errorText(e: unknown, fallback: string) {
   return e instanceof ApiError ? e.message : fallback

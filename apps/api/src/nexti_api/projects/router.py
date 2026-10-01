@@ -58,6 +58,8 @@ PROJECT_PERMISSIONS = (
     "story.edit", "plan.edit", "code.view",
     # UI design (M5): comment on prototypes, ask for changes and edit screen specs.
     "prototype.comment", "prototype.edit",
+    # Costs (P2): the project's usage in tokens (money is decided by cost.view on the tenant).
+    "usage.view",
 )  # fmt: skip
 
 

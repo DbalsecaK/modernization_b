@@ -5,21 +5,25 @@ import { CheckCircle2, Loader2, ShieldAlert } from 'lucide-react'
 import { cn } from '@/lib/cn'
 import { ApiError } from '@/api/client'
 import type { ProjectDetail } from '@/api/projects'
+import { useContracts } from '@/api/architecture'
 import { useQuestions } from '@/api/runs'
+import { useScreens } from '@/api/screens'
 import { useC1Check, useCoverage, usePlan, useRules, useStories, type C1Check } from '@/api/spec'
 import { Button, Card, CardBody, EmptyState } from '@/components/ui/primitives'
 import { QuestionList } from '@/features/decisions/QuestionCard'
 import { isActive, toRuleView } from './spec/model'
+import { ContractsView } from './spec/ContractsView'
 import { PlanView } from './spec/PlanView'
 import { RulesView } from './spec/RulesView'
+import { ScreensView } from './spec/ScreensView'
 import { StoriesView } from './spec/StoriesView'
 
-const VIEWS = ['rules', 'stories', 'plan', 'questions'] as const
+const VIEWS = ['rules', 'stories', 'plan', 'screens', 'contracts', 'questions'] as const
 type View = (typeof VIEWS)[number]
 
-// Specification tab (spec 7.7, 4.1), connected to the API: the rules the agents extracted, the user stories people
-// review, the plan by waves and the questions of the human in the loop. Screens and contracts come with the flows that
-// have them (a Sybase stored-procedure estate has no screens).
+// Specification tab (spec 7.7, 4.1, 18.3), connected to the API: the rules the agents extracted, the user stories
+// people review, the plan by waves, the screens (when the legacy has them; a Sybase stored-procedure estate has none),
+// the HTTP contracts of the target and the questions of the human in the loop.
 export function ProjectSpecification({ project, onOpenRuns }: { project: ProjectDetail; onOpenRuns: () => void }) {
   const { t } = useTranslation()
   const search = useSearch({ strict: false }) as { view?: string }
@@ -31,6 +35,8 @@ export function ProjectSpecification({ project, onOpenRuns }: { project: Project
   const c1 = useC1Check(project.id)
   const plan = usePlan(project.id)
   const questions = useQuestions(project.id)
+  const screens = useScreens(project.id)
+  const contracts = useContracts(project.id)
   const ruleViews = useMemo(() => (rules.data ?? []).map(toRuleView), [rules.data])
   const perms = project.permissions
   const noPlan = plan.error instanceof ApiError && plan.error.status === 404
@@ -82,6 +88,8 @@ export function ProjectSpecification({ project, onOpenRuns }: { project: Project
     rules: ruleViews.length,
     stories: storyList.filter(isActive).length,
     plan: plan.data?.waves.length ?? 0,
+    screens: screens.data?.length ?? 0,
+    contracts: contracts.data?.operations.length ?? 0,
     questions: openQuestions,
   }
   const openStory = (key: string) => {
@@ -143,6 +151,8 @@ export function ProjectSpecification({ project, onOpenRuns }: { project: Project
             description={noPlan ? t('storyPlan.noPlanHint') : undefined}
           />
         ))}
+      {view === 'screens' && <ScreensView projectId={project.id} screens={screens.data ?? []} />}
+      {view === 'contracts' && <ContractsView projectId={project.id} contracts={contracts.data ?? null} />}
       {view === 'questions' && (
         <QuestionList questions={questions.data ?? []} canAnswer={() => perms.includes('question.answer')} />
       )}

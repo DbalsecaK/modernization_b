@@ -131,16 +131,21 @@ def require_gate() -> Dependency:
     return _mark(dependency, "project", "gate.approve")
 
 
-def require_platform(role: str = "superAdmin") -> Dependency:
-    """A platform role (NexTI operators). Grants platform scope to the database session."""
-    rel = names.PLATFORM_RELATION[role]  # type: ignore[index]
+def require_platform(role: str = "superAdmin", *others: str) -> Dependency:
+    """A platform role (NexTI operators), or any of several. Grants platform scope to the database session."""
+    roles = (role, *others)
+    relations = [names.PLATFORM_RELATION[r] for r in roles]  # type: ignore[index]
 
     async def dependency(request: Request, current: Annotated[CurrentSession, Depends(require_session)]) -> Authorized:
-        if not await _fga(request).check(names.user(current.data.user_id), rel, names.PLATFORM):
-            await deny(request, current, None, f"platform.{role}", names.PLATFORM)
+        user = names.user(current.data.user_id)
+        for rel in relations:
+            if await _fga(request).check(user, rel, names.PLATFORM):
+                break
+        else:
+            await deny(request, current, None, f"platform.{'|'.join(roles)}", names.PLATFORM)
         return Authorized(current, current.data.user_id, current.data.active_tenant_id, platform_scope=True)
 
-    return _mark(dependency, "platform", role)
+    return _mark(dependency, "platform", "|".join(roles))
 
 
 def authenticated() -> Dependency:

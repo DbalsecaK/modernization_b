@@ -1,8 +1,7 @@
 {
   "app": {
     "productShort": "Modernización",
-    "version": "Versión {{version}}",
-    "sampleData": "Prototipo · datos de ejemplo"
+    "version": "Versión {{version}}"
   },
   "common": {
     "active": "Activo",
@@ -44,7 +43,7 @@
     "tenant": "Cliente",
     "allTenants": "Todos los clientes",
     "search": "Buscar",
-    "searchPlaceholder": "Buscar proyectos, reglas, programas…",
+    "searchPlaceholder": "Busca proyectos, reglas, agentes, skills…",
     "language": "Idioma",
     "notifications": "Notificaciones",
     "switchTheme": "Cambiar a tema {{theme}}",
@@ -195,9 +194,6 @@
     "projectProgress": "Avance de proyectos",
     "risks": "Riesgos y bloqueos",
     "riskBudget": "{{project}} usó el {{pct}}% de su presupuesto.",
-    "riskGate_one": "{{count}} regla espera la aprobación de negocio.",
-    "riskGate_other": "{{count}} reglas esperan la aprobación de negocio.",
-    "riskPartly": "{{project}} está PARTLY PROVEN: reglas P0 sin un test que pase.",
     "monthlySpend": "Gasto mensual en IA",
     "monthlySpendHint": "Todos los proyectos y proveedores",
     "runningExecutions": "Ejecuciones en curso",
@@ -208,15 +204,40 @@
     "pendingApprovals": "Aprobaciones pendientes",
     "tenants": "Clientes",
     "activeUsers": "Usuarios activos",
-    "withoutMfa_one": "{{count}} sin MFA",
-    "withoutMfa_other": "{{count}} sin MFA",
     "monthSpend": "Gasto del mes",
     "connectionsHealthy": "Conexiones IA operativas",
-    "spendByTenant": "Gasto por cliente",
     "alerts": "Alertas",
     "alertConnection": "La conexión \"{{name}}\" falló su última prueba.",
-    "alertMfa": "{{name}} aún no configura MFA.",
-    "alertWorker": "El worker {{name}} está fuera de línea."
+    "noTenant": "Elige un cliente para ver su dashboard",
+    "noTenantHint": "El dashboard muestra los proyectos del cliente activo.",
+    "loading": "Cargando el dashboard…",
+    "loadError": "No se pudo cargar el dashboard",
+    "needsCostView": "El dinero requiere el permiso cost.view",
+    "noProjects": "Todavía no hay proyectos.",
+    "notStarted": "Sin iniciar",
+    "progressOf": "Avance de {{project}}",
+    "noRisks": "Nada requiere atención.",
+    "noSpend": "Sin gasto en IA en los últimos seis meses.",
+    "riskEscalation": "{{project}} escaló a una persona: los agentes agotaron sus intentos.",
+    "riskVerdict": "{{project}} está {{verdict}}: hay reglas sin un test que pase.",
+    "riskGates_one": "{{count}} compuerta espera aprobación.",
+    "riskGates_other": "{{count}} compuertas esperan aprobación.",
+    "noActivity": "Sin actividad de agentes en este momento.",
+    "noTasks": "Nada te está esperando.",
+    "taskKinds": {
+      "question": "Pregunta",
+      "gate": "Compuerta"
+    },
+    "adminOnly": "La vista de administrador requiere el permiso users.manage",
+    "adminOnlyHint": "Muestra usuarios, conexiones de IA y alertas de presupuesto del cliente.",
+    "pendingInvitations_one": "{{count}} invitación pendiente",
+    "pendingInvitations_other": "{{count}} invitaciones pendientes",
+    "spendByProject": "Gasto por proyecto",
+    "noAlerts": "Sin alertas.",
+    "alertBudget": "{{project}} superó el {{level}}% de su presupuesto.",
+    "tenantBudget": "El presupuesto del cliente",
+    "more_one": "y {{count}} más",
+    "more_other": "y {{count}} más"
   },
   "flows": {
     "modernization": "Modernización",
@@ -531,7 +552,6 @@
       "success": "Éxito"
     },
     "contractsTitle": "Contratos",
-    "contractsHint": "Operaciones que serán el OpenAPI, cada una ligada a las reglas que atiende.",
     "operation": "Operación",
     "gateApproved": "Compuerta C1 aprobada. Puede empezar el diseño.",
     "ruleApproved": "{{id}} aprobada.",
@@ -577,7 +597,22 @@
     "c1": {
       "ready": "Las historias y el plan pueden aprobarse en la compuerta C1 (en la pestaña Ejecuciones).",
       "blocked": "La compuerta C1 aún no puede aprobarse:"
-    }
+    },
+    "noScreens": "Este legacy no tiene pantallas",
+    "noScreensHint": "Las pantallas vienen de mapas BMS u otras fuentes de pantallas; un conjunto de procedimientos almacenados no tiene.",
+    "openInUiDesign": "Abrir en Diseño UI",
+    "length": "Longitud",
+    "navigation": "Lleva a",
+    "fieldTypes": {
+      "numeric": "Numérico",
+      "secret": "Secreto",
+      "text": "Texto"
+    },
+    "noContracts": "Todavía no hay contratos",
+    "noContractsHint": "Los contratos aparecen con el diseño, en la fase de diseño.",
+    "contractsFromOpenapi": "Desde el documento OpenAPI derivado del diseño aprobado, cada operación con las reglas que atiende.",
+    "contractsFromDesign": "Desde los casos de uso del diseño aprobado, cada operación con las reglas que atiende.",
+    "operationName": "Id de operación"
   },
   "ruleStatus": {
     "approved": "Aprobada",
@@ -703,23 +738,56 @@
     "services": "Servicios",
     "endpoints": "Endpoints",
     "adrs": "Decisiones de arquitectura",
-    "adrState": {
-      "accepted": "Aceptada",
-      "proposed": "Propuesta"
-    },
     "contract": "Contrato (OpenAPI)",
     "fitness": "Fitness functions",
-    "fitnessDomain": "La capa de dominio no depende de ningún framework",
-    "fitnessAdapters": "Los adaptadores solo dependen de puertos",
-    "fitnessNaming": "Paquetes y clases siguen la constitución del cliente",
-    "fitnessRuleIds": "Cada clase de dominio nombra las reglas que implementa"
+    "loading": "Cargando la arquitectura…",
+    "loadError": "No se pudo cargar la arquitectura",
+    "emptyHint": "Ejecuta el pipeline: la fase de diseño escribe aquí la arquitectura del destino, para aprobarla en la compuerta C3.",
+    "useCases": "Servicios de aplicación",
+    "useCasesHint": "Un servicio por caso de uso del diseño, con las reglas que implementa y los puertos que usa.",
+    "useCase": "Servicio",
+    "ports": "Puertos",
+    "legacy": "Reemplaza",
+    "entities": "Entidades",
+    "entity": "Entidad",
+    "table": "Tabla",
+    "legacyTable": "Tabla legacy",
+    "fieldCount_one": "{{count}} campo",
+    "fieldCount_other": "{{count}} campos",
+    "portsTitle": "Puertos",
+    "portsHint": "Interfaces de las que depende el dominio; los adaptadores las implementan.",
+    "replaces": "reemplaza {{program}}",
+    "noPorts": "El diseño no tiene puertos.",
+    "adrsHint": "Decisiones registradas en el diseño, con su contexto y consecuencias.",
+    "adrContext": "Contexto",
+    "adrDecision": "Decisión",
+    "adrConsequences": "Consecuencias",
+    "noAdrs": "El diseño no registra decisiones.",
+    "contractFromDesign": "Derivado de los casos de uso del diseño",
+    "seeOperations": "Ver operaciones",
+    "contractTruncated": "Se muestra el inicio del documento.",
+    "noOpenapi": "El documento OpenAPI se escribe cuando se genera un pack de frontend. Las operaciones están en Especificación › Contratos.",
+    "fitnessHint": "Los chequeos del veredicto más reciente de cada módulo, calculados por código.",
+    "noFitness": "Todavía no hay veredicto: los chequeos aparecen después de la fase de verificación.",
+    "fitnessOf": "Chequeos de {{module}}"
   },
   "code": {
     "title": "Código generado",
-    "subtitle": "Navega por módulo. Descargar y hacer push requieren permisos.",
-    "download": "Descargar",
+    "download": "Descargar zip",
     "push": "Push a Git",
-    "notYet": "El código se genera después de las compuertas C1–C3. Se muestra el módulo piloto como vista previa."
+    "generatedAt_one": "Última generación, {{date}} · {{count}} archivo",
+    "generatedAt_other": "Última generación, {{date}} · {{count}} archivos",
+    "files": "Archivos generados",
+    "downloadNeedsPermission": "Descargar requiere el permiso code.download",
+    "pushInDelivery": "El push a Git lo hace la fase de entrega del pipeline",
+    "implements": "implementa",
+    "loading": "Cargando el código generado…",
+    "loadingFile": "Cargando el archivo…",
+    "loadError": "No se pudo cargar el código generado",
+    "fileError": "No se pudo cargar el archivo.",
+    "emptyHint": "Ejecuta el pipeline: la fase de generación escribe aquí el backend y el frontend.",
+    "noCodeView": "Ver código requiere el permiso code.view",
+    "noCodeViewHint": "Pide a un administrador del proyecto el rol de developer o revisor."
   },
   "traceability": {
     "hint": "Cada vínculo está verificado: la línea legacy existe, el método destino existe y un test que pasó nombra la regla.",
@@ -913,8 +981,6 @@
     "budget": "Presupuesto",
     "used": "{{pct}}% usado",
     "tokens": "Tokens",
-    "forecast": "Proyección al terminar",
-    "forecastHint": "Según el costo del trabajo ya hecho",
     "byPhase": "Costo por fase",
     "byAgent": "Costo por agente",
     "selfCorrectionShare": "Los reintentos de autocorrección costaron {{usd}} ({{pct}}% del total). Es la mejor señal de dónde le cuesta al pipeline."
@@ -1636,30 +1702,44 @@
   },
   "platform": {
     "title": "Operación de plataforma",
-    "description": "Salud de workers, colas, sandboxes y despliegues. Solo NexTI.",
+    "description": "Salud de workers, colas y ejecuciones de todos los clientes. Solo NexTI.",
     "queue": "Trabajos en cola",
-    "queueHint": "En todos los planos de datos",
+    "queueHint": "Trabajos esperando un worker",
     "workers": "Workers en línea",
     "errors": "Errores (24 h)",
-    "errorsHint": "Ver trazas en Langfuse",
-    "sandboxes": "Sandboxes activos",
-    "sandboxesHint": "Aislados, sin salida a red",
+    "errorsHint": "Trabajos que fallaron después de sus reintentos",
     "workersTitle": "Workers",
     "worker": "Worker",
-    "pool": "Pool",
     "jobs": "Trabajos",
-    "cpu": "CPU",
     "status": {
       "busy": "Ocupado",
       "idle": "Libre",
-      "offline": "Fuera de línea",
-      "healthy": "Operativo",
-      "updating": "Actualizando"
+      "offline": "Fuera de línea"
     },
     "deployments": "Despliegues",
-    "deploymentsHint": "Instancias y la versión de la plataforma que corre cada una.",
-    "instance": "Instancia",
-    "version": "Versión"
+    "deploymentsHint": "La versión que ejecuta esta API.",
+    "loading": "Cargando el estado de la plataforma…",
+    "loadError": "No se pudo cargar el estado de la plataforma",
+    "runs": "Ejecuciones en curso",
+    "runsHint_one": "{{count}} esperando a una persona · cada una en su sandbox",
+    "runsHint_other": "{{count}} esperando a una persona · cada una en su sandbox",
+    "workersHint": "Un worker está fuera de línea cuando su último latido tiene más de 30 segundos.",
+    "noWorkers": "Ningún worker se registró. Inicia uno con pnpm worker:dev.",
+    "heartbeat": "Último latido",
+    "queuesTitle": "Colas",
+    "queuesEmpty": "Ningún trabajo está esperando ni en curso.",
+    "queueName": "Cola",
+    "waiting": "En espera",
+    "running": "En curso",
+    "failuresTitle": "Trabajos fallidos",
+    "failuresHint": "El último día, los más recientes primero.",
+    "noFailures": "Ningún trabajo falló en el último día.",
+    "job": "Trabajo",
+    "attempts": "Intentos",
+    "failedAt": "Falló",
+    "apiVersion": "API",
+    "instancesLater": "Las versiones por instancia desplegada llegan con los perfiles de despliegue (M9).",
+    "refresh": "Actualizar"
   },
   "notFound": {
     "title": "Página no encontrada",
@@ -1673,7 +1753,8 @@
       "rule": "Regla",
       "agent": "Agente",
       "skill": "Skill"
-    }
+    },
+    "searching": "Buscando…"
   },
   "notifications": {
     "markAllRead": "Marcar todas como leídas",
@@ -1682,7 +1763,19 @@
       "escalation": "Escalamiento",
       "budget": "Presupuesto",
       "verdict": "Veredicto",
-      "connection": "Conexión"
+      "question": "Pregunta",
+      "runFinished": "Ejecución",
+      "runFailed": "Ejecución"
+    },
+    "empty": "Nada nuevo en los últimos siete días.",
+    "text": {
+      "question": "{{project}} pregunta: {{title}}",
+      "gate": "{{project}}: {{title}} espera tu aprobación",
+      "escalation": "{{project}} escaló a una persona en {{title}}",
+      "runFinished": "La ejecución de {{project}} terminó",
+      "runFailed": "La ejecución de {{project}} falló en {{title}}",
+      "verdict": "Nuevo veredicto en {{project}}: {{title}}",
+      "budget": "{{project}} superó el {{title}} de su presupuesto"
     }
   },
   "tools": {
@@ -2475,5 +2568,24 @@
       "missingInformation": "Falta información",
       "retriesExhausted": "Intentos agotados"
     }
+  },
+  "projectCosts": {
+    "loading": "Cargando el consumo del proyecto…",
+    "loadError": "No se pudo cargar el consumo del proyecto",
+    "emptyHint": "Todavía no hay consumo. Ejecuta el pipeline para ver en qué se va el presupuesto, por fase, agente y modelo.",
+    "noUsageView": "Ver el consumo requiere el permiso usage.view",
+    "noUsageViewHint": "Pide a un administrador del proyecto o del cliente un rol que lo incluya.",
+    "tokensOnly": "Ves solo tokens: el dinero requiere el permiso cost.view.",
+    "noBudget": "Este proyecto no tiene presupuesto",
+    "calls_one": "{{count}} llamada",
+    "calls_other": "{{count}} llamadas",
+    "selfCorrection": "Autocorrección",
+    "tokensByPhase": "Tokens por fase",
+    "tokensByAgent": "Tokens por agente",
+    "byModel": "Por modelo",
+    "model": "Modelo",
+    "inputTokens": "Tokens de entrada",
+    "outputTokens": "Tokens de salida",
+    "cost": "Costo"
   }
 }
