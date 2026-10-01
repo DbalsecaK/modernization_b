@@ -14,6 +14,7 @@ RUN pnpm --filter @nexti/web exec vite build
 
 FROM nginxinc/nginx-unprivileged:1.29.2-alpine@sha256:031d8c8ab79d2d171a2a383aa50a06f527791c05ba1aeae9ca05d7b9779caf8e
 COPY infra/images/web/nginx.conf.template /etc/nginx/templates/default.conf.template
+COPY infra/images/web/security-headers.conf /etc/nginx/snippets/security-headers.conf
 COPY --from=build /src/apps/web/dist /usr/share/nginx/html
 ENV API_UPSTREAM=http://api:8100
 EXPOSE 8080

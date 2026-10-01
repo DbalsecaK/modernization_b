@@ -190,6 +190,31 @@ jobs:
           curl -fsS http://127.0.0.1:5173/api/v1/health/live | grep -q '"ok"'
           curl -fsSI http://127.0.0.1:5173/ | grep -qi 'content-security-policy'
           test "$(docker inspect -f '{{.State.Running}}' nexti-platform-worker-1)" = true
+      # DAST (15.7, ADR-0024): ZAP's baseline (passive) scan of the running web and its API. The rules the platform
+      # meets fail the build if they regress (infra/dast/zap-rules.tsv); the rest are reported.
+      - name: DAST (OWASP ZAP baseline)
+        run: |
+          mkdir -p /tmp/zap && chmod 777 /tmp/zap
+          docker run --rm --network host -v /tmp/zap:/zap/wrk:rw -v "$PWD/infra/dast:/zap/rules:ro" \
+            ghcr.io/zaproxy/zaproxy:2.16.1@sha256:7840969c7c9fead565bf9734b12f49f6886db90b1d35b1f74d79710bbd081dab \
+            zap-baseline.py -t http://127.0.0.1:5173 -c /zap/rules/zap-rules.tsv -I -r zap-report.html
+      # SBOM of each image (SPDX), kept with the run; the images of main are signed by the release workflow.
+      - name: SBOM (Syft)
+        run: |
+          mkdir -p /tmp/sbom
+          for image in nexti-migrate nexti-api nexti-worker nexti-web; do
+            docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
+              anchore/syft:v1.33.0@sha256:f94e5d9fce1f2278491a8e3a63bd5f6ddb81fdfdbb8bf7a1637565c1d5344357 "$image:dev" -o spdx-json -q > "/tmp/sbom/$image.spdx.json"
+            test -s "/tmp/sbom/$image.spdx.json"
+          done
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        with:
+          name: platform-sbom-and-dast
+          path: |
+            /tmp/sbom
+            /tmp/zap/zap-report.html
+          retention-days: 14
       - name: Logs
         if: failure()
         run: $COMPOSE --profile platform logs --tail 200 migrate api worker web
