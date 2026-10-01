@@ -47,9 +47,19 @@ class Stories:
     dependencies: list[Dependency] = field(default_factory=list)
     waves: list[list[str]] = field(default_factory=list)
     usage: list[Usage] = field(default_factory=list)
+    origin: str = "extracted"  # where the stories come from (7.7): extracted from the legacy, or from documents
 
     def keys(self) -> list[str]:
         return [f"US-{i:03d}" for i in range(1, len(self.drafts) + 1)]
+
+
+def check_criteria(index: int, draft: StoryDraft) -> list[str]:
+    """The Gherkin problems of a story's criteria (D-26), one line per criterion."""
+    problems = []
+    for criterion, found in gherkin.validate_criteria(draft.criteria).items():
+        codes = ", ".join(f"{p.message} (line {p.line})" if p.line else p.message for p in found)
+        problems.append(f"story {index} '{draft.title}', criterion {criterion + 1}: {codes}")
+    return problems
 
 
 def check(drafts: Sequence[StoryDraft], rules: Sequence[Rule]) -> list[str]:
@@ -58,9 +68,7 @@ def check(drafts: Sequence[StoryDraft], rules: Sequence[Rule]) -> list[str]:
     known = {r.id for r in rules}
     covered: set[str] = set()
     for index, draft in enumerate(drafts, start=1):
-        for criterion, found in gherkin.validate_criteria(draft.criteria).items():
-            codes = ", ".join(f"{p.message} (line {p.line})" if p.line else p.message for p in found)
-            problems.append(f"story {index} '{draft.title}', criterion {criterion + 1}: {codes}")
+        problems += check_criteria(index, draft)
         unknown = [link for link in draft.links if link not in known]
         if unknown:
             problems.append(f"story {index} '{draft.title}' links unknown rules: {', '.join(unknown)}")

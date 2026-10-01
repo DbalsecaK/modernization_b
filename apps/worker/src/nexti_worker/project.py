@@ -17,15 +17,20 @@ from nexti_adapter_cobol import TraceRunner, is_trace
 from nexti_core.adapters import Edge, Inventory, LegacyRunner, LegacyUnavailableError, Node, SourceFile
 from nexti_core.db.session import DbScope, scoped_connection
 from nexti_core.object_store import ObjectStore
+from nexti_core.secrets import SecretStore
 from nexti_core.spec.characterization import GoldenMaster, Suite
-from nexti_core.spec.model import Rule
+from nexti_core.spec.model import Capability, Rule
 from nexti_core.spec.screens import ScreenSpec
 from nexti_graph import GraphStore, Scope
+from nexti_ingest import documents as document_reader
+from nexti_ingest import figma
 from nexti_ingest.archive import read_text_files
+from nexti_ingest.documents import Document
 from nexti_model_gateway.gateway import CallContext, NoProfileError
 from nexti_model_gateway.service import GatewayService
 from nexti_orchestration import RunContext
 from nexti_orchestration.extraction import ModelCaller, ModelReply
+from nexti_orchestration.feature import FeatureStory
 from nexti_orchestration.modernization import pick_adapter
 from nexti_orchestration.store import Usage
 from nexti_orchestration.stories import Stories
@@ -87,6 +92,34 @@ class SourceRunner:
         return await runner.run(files, suite)
 
 
+class LiveFigma:
+    """Figma read with the tenant's integration (ADR-0018): the newest Figma integration that has a token; the token
+    is read from the secrets store for each file and never kept."""
+
+    def __init__(self, engine: AsyncEngine, tenant_id: uuid.UUID, secrets: SecretStore | None,
+                 http: Any, base_url: str = figma.API) -> None:  # fmt: skip
+        self.engine = engine
+        self.tenant_id = tenant_id
+        self.secrets = secrets
+        self.http = http
+        self.base_url = base_url
+
+    async def file(self, key: str) -> dict[str, Any]:
+        async with scoped_connection(self.engine, DbScope(tenant_id=self.tenant_id)) as conn:
+            path = (
+                await conn.execute(
+                    text("SELECT vault_path FROM tenant_integration WHERE kind = 'figma' AND vault_path IS NOT NULL "
+                         "ORDER BY (status = 'ok') DESC, updated_at DESC LIMIT 1")
+                )
+            ).scalar_one_or_none()  # fmt: skip
+        if path is None or self.secrets is None or self.http is None:
+            raise figma.FigmaError("The tenant has no Figma integration: connect it in Administration > Integrations")
+        token = await self.secrets.get(path)
+        if not token:
+            raise figma.FigmaError("The Figma integration has no token: set it in Administration > Integrations")
+        return await figma.FigmaClient(self.http, token, self.base_url).file(key)
+
+
 class WorkerProjectPort:
     def __init__(
         self,
@@ -97,6 +130,7 @@ class WorkerProjectPort:
         graph: GraphStore | None,
         sandboxes: Callable[[str], Sandbox] | None = None,
         legacy: Callable[[], LegacyRunner] | None = None,
+        figma_reader: figma.FigmaReader | None = None,
     ) -> None:
         self.engine = engine
         self.run = run
@@ -107,6 +141,7 @@ class WorkerProjectPort:
         self._files: list[SourceFile] | None = None
         self._sandboxes = sandboxes
         self._legacy = legacy
+        self._figma = figma_reader
 
     def _db(self) -> Any:
         return scoped_connection(self.engine, DbScope(tenant_id=self.run.tenant_id))
@@ -134,6 +169,85 @@ class WorkerProjectPort:
             files += read_zip(data)
         self._files = files
         return files
+
+    # -- inputs of Flow 2 (M7) -----------------------------------------------------------------------------------
+    async def _accepted(self, kind: str) -> list[Any]:
+        """The newest accepted version of each input of a kind."""
+        async with self._db() as conn:
+            rows = (
+                await conn.execute(
+                    text("SELECT DISTINCT ON (name) name, object_key, url FROM input_artifact WHERE project_id = :p "
+                         "AND kind = :k AND status = 'accepted' AND deleted_at IS NULL ORDER BY name, version DESC"),
+                    {"p": self.run.project_id, "k": kind},
+                )
+            ).all()  # fmt: skip
+        return list(rows)
+
+    async def documents(self) -> list[Document]:
+        found = []
+        for row in await self._accepted("document"):
+            if row.object_key and self.objects is not None:
+                found.append((row.name, b"".join(await self.objects.read(row.object_key))))
+        binary = any(not name.lower().endswith(document_reader.TEXT_SUFFIXES) for name, _ in found)
+        sandbox = self.sandbox(document_reader.IMAGE) if binary and self._sandboxes is not None else None
+        return await document_reader.convert(sandbox, found)
+
+    async def figma_files(self) -> list[tuple[str, dict[str, Any]]]:
+        keys = sorted({k for row in await self._accepted("figma_link") if (k := figma.file_key(row.url or ""))})
+        if not keys:
+            return []
+        if self._figma is None:
+            raise figma.FigmaError("Figma cannot be read by this worker")
+        return [(key, await self._figma.file(key)) for key in keys]
+
+    async def input_names(self, kind: str) -> list[str]:
+        return [row.url or row.name for row in await self._accepted(kind)]
+
+    async def load_inputs(self) -> dict[str, str]:
+        async with self._db() as conn:
+            rows = (
+                await conn.execute(
+                    text("SELECT DISTINCT ON (path) path, object_key FROM generated_artifact WHERE project_id = :p "
+                         "AND path LIKE 'inputs/%' ORDER BY path, created_at DESC"),
+                    {"p": self.run.project_id},
+                )
+            ).all()  # fmt: skip
+        return {row.path: await self._get(row.object_key) for row in rows}
+
+    async def save_capabilities(self, capabilities: Sequence[Capability]) -> None:
+        await self._save_elements("capability", [(c.id, c.model_dump(mode="json")) for c in capabilities])
+
+    async def load_stories(self) -> list[FeatureStory]:
+        async with self._db() as conn:
+            rows = (
+                await conn.execute(
+                    text("SELECT DISTINCT ON (s.key) s.key, v.title, v.criteria, v.links, v.status FROM user_story s "
+                         "JOIN user_story_version v ON v.story_id = s.id WHERE s.project_id = :p "
+                         "ORDER BY s.key, v.version DESC"),
+                    {"p": self.run.project_id},
+                )
+            ).all()  # fmt: skip
+        return [FeatureStory(r.key, r.title, list(r.criteria), list(r.links), r.status) for r in rows]
+
+    async def _save_elements(self, element_type: str, items: Sequence[tuple[str, dict[str, Any]]]) -> None:
+        """A new version of each element whose content changed."""
+        async with self._db() as conn:
+            current = {
+                r.key: r
+                for r in (
+                    await conn.execute(
+                        text("SELECT DISTINCT ON (key) key, version, data FROM spec_element WHERE project_id = :p "
+                             "AND element_type = :e ORDER BY key, version DESC"),
+                        {"p": self.run.project_id, "e": element_type},
+                    )
+                ).all()
+            }  # fmt: skip
+            for key, data in items:
+                previous = current.get(key)
+                if previous is not None and previous.data == data:
+                    continue
+                await self._insert_element(conn, key, (previous.version + 1) if previous else 1, "review", data,
+                                           element_type)  # fmt: skip
 
     # -- graph ---------------------------------------------------------------------------------------------------
     async def save_inventory(self, inventory: Inventory) -> None:
@@ -244,11 +358,11 @@ class WorkerProjectPort:
                     text(
                         "INSERT INTO user_story_version (tenant_id, story_id, version, feature, title, narrative, "
                         "criteria, links, priority, estimate, status, origin, action) VALUES (:t, :s, 1, :f, :ti, :n, "
-                        "CAST(:c AS jsonb), CAST(:l AS jsonb), :pr, :e, 'review', 'extracted', 'create')"
+                        "CAST(:c AS jsonb), CAST(:l AS jsonb), :pr, :e, 'review', :o, 'create')"
                     ),
                     {"t": self.run.tenant_id, "s": story_id, "f": draft.feature, "ti": draft.title,
                      "n": draft.narrative, "c": json.dumps(draft.criteria), "l": json.dumps(draft.links),
-                     "pr": draft.priority, "e": draft.estimate},
+                     "pr": draft.priority, "e": draft.estimate, "o": stories.origin},
                 )  # fmt: skip
             story_ids = list(ids.values())
             await conn.execute(
@@ -286,8 +400,8 @@ class WorkerProjectPort:
                 Node(f"story:{k}", "Story", d.title, properties={"priority": d.priority})
                 for k, d in zip(keys, stories.drafts, strict=True)
             ])  # fmt: skip
-            edges = [Edge(f"story:{k}", "COVERS", f"rule:{link}") for k, d in zip(keys, stories.drafts, strict=True)
-                     for link in d.links]  # fmt: skip
+            edges = [Edge(f"story:{k}", "COVERS", f"{'screen' if link.startswith('SCR-') else 'rule'}:{link}")
+                     for k, d in zip(keys, stories.drafts, strict=True) for link in d.links]  # fmt: skip
             edges += [Edge(f"story:{d.story}", "DEPENDS_ON", f"story:{d.on}", {"strength": d.strength})
                       for d in stories.dependencies]  # fmt: skip
             await self.graph.upsert_edges(self.scope, edges)
@@ -399,7 +513,7 @@ class WorkerProjectPort:
                 await conn.execute(
                     text("SELECT DISTINCT ON (path) path, object_key, rules FROM generated_artifact "
                          "WHERE project_id = :p AND path NOT LIKE 'design/%' AND path NOT LIKE 'characterization/%' "
-                         "AND path NOT LIKE 'frontend/%' ORDER BY path, created_at DESC"),
+                         "AND path NOT LIKE 'frontend/%' AND path NOT LIKE 'inputs/%' ORDER BY path, created_at DESC"),
                     {"p": self.run.project_id},
                 )
             ).all()  # fmt: skip

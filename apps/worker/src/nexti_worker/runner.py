@@ -27,12 +27,13 @@ from nexti_core.db.session import DbScope, scoped_connection
 from nexti_core.object_store import ObjectStore
 from nexti_core.secrets import SecretStore
 from nexti_graph import GraphStore
+from nexti_ingest.figma import FigmaReader
 from nexti_model_gateway.service import GatewayService
 from nexti_orchestration import Executor, compile_graph, executors_for, pending_interrupts, thread_config
 from nexti_sandbox import Sandbox
 from nexti_worker.loading import load_run
 from nexti_worker.probe import ServicesProbe
-from nexti_worker.project import WorkerProjectPort
+from nexti_worker.project import LiveFigma, WorkerProjectPort
 from nexti_worker.store import DbRunStore
 
 log = structlog.get_logger("nexti_worker")
@@ -54,6 +55,7 @@ class Runtime:
     graph: GraphStore | None = None
     sandboxes: Callable[[str], Sandbox] | None = None  # the sandbox of a pack, by image (M4)
     legacy: Callable[[], LegacyRunner] | None = None  # the engine that runs the legacy for the golden master (M4)
+    figma: FigmaReader | None = None  # Figma answers (tests and demo); by default the tenant's integration (M7)
 
 
 async def _resume_value(
@@ -115,7 +117,14 @@ async def execute_run(runtime: Runtime, run_id: uuid.UUID, tenant_id: uuid.UUID)
     )  # fmt: skip
     port = (
         WorkerProjectPort(
-            runtime.engine, run, runtime.gateway, runtime.objects, runtime.graph, runtime.sandboxes, runtime.legacy
+            runtime.engine,
+            run,
+            runtime.gateway,
+            runtime.objects,
+            runtime.graph,
+            runtime.sandboxes,
+            runtime.legacy,
+            runtime.figma or LiveFigma(runtime.engine, tenant_id, runtime.secrets, runtime.http),
         )
         if runtime.gateway is not None
         else None
