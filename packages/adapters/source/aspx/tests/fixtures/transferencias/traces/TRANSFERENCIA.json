@@ -1,0 +1,1317 @@
+{
+ "program": "TRANSFERENCIA",
+ "transaction": "Transferencia.aspx",
+ "engine": "aspx-trace",
+ "note": "Traces of the fictitious application, recorded in its test environment (spec 8.3, ADR-0020): each one the values of the page's controls, the event (btnTransferir_Click), what the page showed and the tables before and after.",
+ "schema": {
+  "tables": [
+   {
+    "name": "CUENTAS",
+    "key": [
+     "CTA_NUMERO"
+    ],
+    "columns": [
+     {
+      "name": "CTA_NUMERO",
+      "type": "VARCHAR(10)",
+      "nullable": false
+     },
+     {
+      "name": "CTA_ESTADO",
+      "type": "CHAR(1)",
+      "nullable": false
+     },
+     {
+      "name": "CTA_SALDO",
+      "type": "DECIMAL(13,2)",
+      "nullable": false
+     }
+    ]
+   },
+   {
+    "name": "TRANSFERENCIAS",
+    "key": [
+     "TRF_NUMERO"
+    ],
+    "columns": [
+     {
+      "name": "TRF_NUMERO",
+      "type": "INT",
+      "nullable": false
+     },
+     {
+      "name": "TRF_ORIGEN",
+      "type": "VARCHAR(10)",
+      "nullable": false
+     },
+     {
+      "name": "TRF_DESTINO",
+      "type": "VARCHAR(10)",
+      "nullable": false
+     },
+     {
+      "name": "TRF_MONTO",
+      "type": "DECIMAL(11,2)",
+      "nullable": false
+     },
+     {
+      "name": "TRF_COMISION",
+      "type": "DECIMAL(7,2)",
+      "nullable": false
+     },
+     {
+      "name": "TRF_TIPO",
+      "type": "CHAR(3)",
+      "nullable": false
+     }
+    ]
+   }
+  ]
+ },
+ "results": [
+  {
+   "case": {
+    "name": "programada_hasta_mil",
+    "description": "A scheduled transfer of up to 1,000 pays the fixed fee",
+    "rules": [],
+    "inputs": {
+     "txtCuentaOrigen": "1000000001",
+     "txtCuentaDestino": "1000000002",
+     "txtMonto": "500.00",
+     "ddlTipo": "PRO"
+    },
+    "setup": {
+     "CUENTAS": [
+      {
+       "CTA_NUMERO": "1000000001",
+       "CTA_ESTADO": "A",
+       "CTA_SALDO": "20000.00"
+      },
+      {
+       "CTA_NUMERO": "1000000002",
+       "CTA_ESTADO": "A",
+       "CTA_SALDO": "150.00"
+      },
+      {
+       "CTA_NUMERO": "1000000003",
+       "CTA_ESTADO": "I",
+       "CTA_SALDO": "9000.00"
+      },
+      {
+       "CTA_NUMERO": "1000000004",
+       "CTA_ESTADO": "A",
+       "CTA_SALDO": "500.50"
+      },
+      {
+       "CTA_NUMERO": "1000000005",
+       "CTA_ESTADO": "A",
+       "CTA_SALDO": "100.00"
+      }
+     ],
+     "TRANSFERENCIAS": [
+      {
+       "TRF_NUMERO": 7,
+       "TRF_ORIGEN": "1000000001",
+       "TRF_DESTINO": "1000000002",
+       "TRF_MONTO": "10.00",
+       "TRF_COMISION": "0.50",
+       "TRF_TIPO": "PRO"
+      }
+     ]
+    },
+    "stubs": {}
+   },
+   "observation": {
+    "returns": 0,
+    "outputs": {
+     "lblMensaje": "TRANSFERENCIA REALIZADA",
+     "lblComision": "0.50"
+    },
+    "tables": {
+     "CUENTAS": [
+      {
+       "CTA_NUMERO": "1000000001",
+       "CTA_ESTADO": "A",
+       "CTA_SALDO": "19499.50"
+      },
+      {
+       "CTA_NUMERO": "1000000002",
+       "CTA_ESTADO": "A",
+       "CTA_SALDO": "650.00"
+      },
+      {
+       "CTA_NUMERO": "1000000003",
+       "CTA_ESTADO": "I",
+       "CTA_SALDO": "9000.00"
+      },
+      {
+       "CTA_NUMERO": "1000000004",
+       "CTA_ESTADO": "A",
+       "CTA_SALDO": "500.50"
+      },
+      {
+       "CTA_NUMERO": "1000000005",
+       "CTA_ESTADO": "A",
+       "CTA_SALDO": "100.00"
+      }
+     ],
+     "TRANSFERENCIAS": [
+      {
+       "TRF_NUMERO": "7",
+       "TRF_ORIGEN": "1000000001",
+       "TRF_DESTINO": "1000000002",
+       "TRF_MONTO": "10.00",
+       "TRF_COMISION": "0.50",
+       "TRF_TIPO": "PRO"
+      },
+      {
+       "TRF_NUMERO": "8",
+       "TRF_ORIGEN": "1000000001",
+       "TRF_DESTINO": "1000000002",
+       "TRF_MONTO": "500.00",
+       "TRF_COMISION": "0.50",
+       "TRF_TIPO": "PRO"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "case": {
+    "name": "inmediata_hasta_mil",
+    "description": "An immediate transfer adds 1.00 to the fixed fee",
+    "rules": [],
+    "inputs": {
+     "txtCuentaOrigen": "1000000001",
+     "txtCuentaDestino": "1000000002",
+     "txtMonto": "800.00",
+     "ddlTipo": "INM"
+    },
+    "setup": {
+     "CUENTAS": [
+      {
+       "CTA_NUMERO": "1000000001",
+       "CTA_ESTADO": "A",
+       "CTA_SALDO": "20000.00"
+      },
+      {
+       "CTA_NUMERO": "1000000002",
+       "CTA_ESTADO": "A",
+       "CTA_SALDO": "150.00"
+      },
+      {
+       "CTA_NUMERO": "1000000003",
+       "CTA_ESTADO": "I",
+       "CTA_SALDO": "9000.00"
+      },
+      {
+       "CTA_NUMERO": "1000000004",
+       "CTA_ESTADO": "A",
+       "CTA_SALDO": "500.50"
+      },
+      {
+       "CTA_NUMERO": "1000000005",
+       "CTA_ESTADO": "A",
+       "CTA_SALDO": "100.00"
+      }
+     ],
+     "TRANSFERENCIAS": [
+      {
+       "TRF_NUMERO": 7,
+       "TRF_ORIGEN": "1000000001",
+       "TRF_DESTINO": "1000000002",
+       "TRF_MONTO": "10.00",
+       "TRF_COMISION": "0.50",
+       "TRF_TIPO": "PRO"
+      }
+     ]
+    },
+    "stubs": {}
+   },
+   "observation": {
+    "returns": 0,
+    "outputs": {
+     "lblMensaje": "TRANSFERENCIA REALIZADA",
+     "lblComision": "1.50"
+    },
+    "tables": {
+     "CUENTAS": [
+      {
+       "CTA_NUMERO": "1000000001",
+       "CTA_ESTADO": "A",
+       "CTA_SALDO": "19198.50"
+      },
+      {
+       "CTA_NUMERO": "1000000002",
+       "CTA_ESTADO": "A",
+       "CTA_SALDO": "950.00"
+      },
+      {
+       "CTA_NUMERO": "1000000003",
+       "CTA_ESTADO": "I",
+       "CTA_SALDO": "9000.00"
+      },
+      {
+       "CTA_NUMERO": "1000000004",
+       "CTA_ESTADO": "A",
+       "CTA_SALDO": "500.50"
+      },
+      {
+       "CTA_NUMERO": "1000000005",
+       "CTA_ESTADO": "A",
+       "CTA_SALDO": "100.00"
+      }
+     ],
+     "TRANSFERENCIAS": [
+      {
+       "TRF_NUMERO": "7",
+       "TRF_ORIGEN": "1000000001",
+       "TRF_DESTINO": "1000000002",
+       "TRF_MONTO": "10.00",
+       "TRF_COMISION": "0.50",
+       "TRF_TIPO": "PRO"
+      },
+      {
+       "TRF_NUMERO": "8",
+       "TRF_ORIGEN": "1000000001",
+       "TRF_DESTINO": "1000000002",
+       "TRF_MONTO": "800.00",
+       "TRF_COMISION": "1.50",
+       "TRF_TIPO": "INM"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "case": {
+    "name": "programada_sobre_mil",
+    "description": "Above 1,000 the fee is 0.1 % of the amount",
+    "rules": [],
+    "inputs": {
+     "txtCuentaOrigen": "1000000001",
+     "txtCuentaDestino": "1000000002",
+     "txtMonto": "2500.00",
+     "ddlTipo": "PRO"
+    },
+    "setup": {
+     "CUENTAS": [
+      {
+       "CTA_NUMERO": "1000000001",
+       "CTA_ESTADO": "A",
+       "CTA_SALDO": "20000.00"
+      },
+      {
+       "CTA_NUMERO": "1000000002",
+       "CTA_ESTADO": "A",
+       "CTA_SALDO": "150.00"
+      },
+      {
+       "CTA_NUMERO": "1000000003",
+       "CTA_ESTADO": "I",
+       "CTA_SALDO": "9000.00"
+      },
+      {
+       "CTA_NUMERO": "1000000004",
+       "CTA_ESTADO": "A",
+       "CTA_SALDO": "500.50"
+      },
+      {
+       "CTA_NUMERO": "1000000005",
+       "CTA_ESTADO": "A",
+       "CTA_SALDO": "100.00"
+      }
+     ],
+     "TRANSFERENCIAS": [
+      {
+       "TRF_NUMERO": 7,
+       "TRF_ORIGEN": "1000000001",
+       "TRF_DESTINO": "1000000002",
+       "TRF_MONTO": "10.00",
+       "TRF_COMISION": "0.50",
+       "TRF_TIPO": "PRO"
+      }
+     ]
+    },
+    "stubs": {}
+   },
+   "observation": {
+    "returns": 0,
+    "outputs": {
+     "lblMensaje": "TRANSFERENCIA REALIZADA",
+     "lblComision": "2.50"
+    },
+    "tables": {
+     "CUENTAS": [
+      {
+       "CTA_NUMERO": "1000000001",
+       "CTA_ESTADO": "A",
+       "CTA_SALDO": "17497.50"
+      },
+      {
+       "CTA_NUMERO": "1000000002",
+       "CTA_ESTADO": "A",
+       "CTA_SALDO": "2650.00"
+      },
+      {
+       "CTA_NUMERO": "1000000003",
+       "CTA_ESTADO": "I",
+       "CTA_SALDO": "9000.00"
+      },
+      {
+       "CTA_NUMERO": "1000000004",
+       "CTA_ESTADO": "A",
+       "CTA_SALDO": "500.50"
+      },
+      {
+       "CTA_NUMERO": "1000000005",
+       "CTA_ESTADO": "A",
+       "CTA_SALDO": "100.00"
+      }
+     ],
+     "TRANSFERENCIAS": [
+      {
+       "TRF_NUMERO": "7",
+       "TRF_ORIGEN": "1000000001",
+       "TRF_DESTINO": "1000000002",
+       "TRF_MONTO": "10.00",
+       "TRF_COMISION": "0.50",
+       "TRF_TIPO": "PRO"
+      },
+      {
+       "TRF_NUMERO": "8",
+       "TRF_ORIGEN": "1000000001",
+       "TRF_DESTINO": "1000000002",
+       "TRF_MONTO": "2500.00",
+       "TRF_COMISION": "2.50",
+       "TRF_TIPO": "PRO"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "case": {
+    "name": "tope_de_comision",
+    "description": "The percentage fee is capped at 5.00",
+    "rules": [],
+    "inputs": {
+     "txtCuentaOrigen": "1000000001",
+     "txtCuentaDestino": "1000000002",
+     "txtMonto": "9000.00",
+     "ddlTipo": "PRO"
+    },
+    "setup": {
+     "CUENTAS": [
+      {
+       "CTA_NUMERO": "1000000001",
+       "CTA_ESTADO": "A",
+       "CTA_SALDO": "20000.00"
+      },
+      {
+       "CTA_NUMERO": "1000000002",
+       "CTA_ESTADO": "A",
+       "CTA_SALDO": "150.00"
+      },
+      {
+       "CTA_NUMERO": "1000000003",
+       "CTA_ESTADO": "I",
+       "CTA_SALDO": "9000.00"
+      },
+      {
+       "CTA_NUMERO": "1000000004",
+       "CTA_ESTADO": "A",
+       "CTA_SALDO": "500.50"
+      },
+      {
+       "CTA_NUMERO": "1000000005",
+       "CTA_ESTADO": "A",
+       "CTA_SALDO": "100.00"
+      }
+     ],
+     "TRANSFERENCIAS": [
+      {
+       "TRF_NUMERO": 7,
+       "TRF_ORIGEN": "1000000001",
+       "TRF_DESTINO": "1000000002",
+       "TRF_MONTO": "10.00",
+       "TRF_COMISION": "0.50",
+       "TRF_TIPO": "PRO"
+      }
+     ]
+    },
+    "stubs": {}
+   },
+   "observation": {
+    "returns": 0,
+    "outputs": {
+     "lblMensaje": "TRANSFERENCIA REALIZADA",
+     "lblComision": "5.00"
+    },
+    "tables": {
+     "CUENTAS": [
+      {
+       "CTA_NUMERO": "1000000001",
+       "CTA_ESTADO": "A",
+       "CTA_SALDO": "10995.00"
+      },
+      {
+       "CTA_NUMERO": "1000000002",
+       "CTA_ESTADO": "A",
+       "CTA_SALDO": "9150.00"
+      },
+      {
+       "CTA_NUMERO": "1000000003",
+       "CTA_ESTADO": "I",
+       "CTA_SALDO": "9000.00"
+      },
+      {
+       "CTA_NUMERO": "1000000004",
+       "CTA_ESTADO": "A",
+       "CTA_SALDO": "500.50"
+      },
+      {
+       "CTA_NUMERO": "1000000005",
+       "CTA_ESTADO": "A",
+       "CTA_SALDO": "100.00"
+      }
+     ],
+     "TRANSFERENCIAS": [
+      {
+       "TRF_NUMERO": "7",
+       "TRF_ORIGEN": "1000000001",
+       "TRF_DESTINO": "1000000002",
+       "TRF_MONTO": "10.00",
+       "TRF_COMISION": "0.50",
+       "TRF_TIPO": "PRO"
+      },
+      {
+       "TRF_NUMERO": "8",
+       "TRF_ORIGEN": "1000000001",
+       "TRF_DESTINO": "1000000002",
+       "TRF_MONTO": "9000.00",
+       "TRF_COMISION": "5.00",
+       "TRF_TIPO": "PRO"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "case": {
+    "name": "tope_mas_inmediata",
+    "description": "The cap applies before the immediate surcharge",
+    "rules": [],
+    "inputs": {
+     "txtCuentaOrigen": "1000000001",
+     "txtCuentaDestino": "1000000002",
+     "txtMonto": "7000.00",
+     "ddlTipo": "INM"
+    },
+    "setup": {
+     "CUENTAS": [
+      {
+       "CTA_NUMERO": "1000000001",
+       "CTA_ESTADO": "A",
+       "CTA_SALDO": "20000.00"
+      },
+      {
+       "CTA_NUMERO": "1000000002",
+       "CTA_ESTADO": "A",
+       "CTA_SALDO": "150.00"
+      },
+      {
+       "CTA_NUMERO": "1000000003",
+       "CTA_ESTADO": "I",
+       "CTA_SALDO": "9000.00"
+      },
+      {
+       "CTA_NUMERO": "1000000004",
+       "CTA_ESTADO": "A",
+       "CTA_SALDO": "500.50"
+      },
+      {
+       "CTA_NUMERO": "1000000005",
+       "CTA_ESTADO": "A",
+       "CTA_SALDO": "100.00"
+      }
+     ],
+     "TRANSFERENCIAS": [
+      {
+       "TRF_NUMERO": 7,
+       "TRF_ORIGEN": "1000000001",
+       "TRF_DESTINO": "1000000002",
+       "TRF_MONTO": "10.00",
+       "TRF_COMISION": "0.50",
+       "TRF_TIPO": "PRO"
+      }
+     ]
+    },
+    "stubs": {}
+   },
+   "observation": {
+    "returns": 0,
+    "outputs": {
+     "lblMensaje": "TRANSFERENCIA REALIZADA",
+     "lblComision": "6.00"
+    },
+    "tables": {
+     "CUENTAS": [
+      {
+       "CTA_NUMERO": "1000000001",
+       "CTA_ESTADO": "A",
+       "CTA_SALDO": "12994.00"
+      },
+      {
+       "CTA_NUMERO": "1000000002",
+       "CTA_ESTADO": "A",
+       "CTA_SALDO": "7150.00"
+      },
+      {
+       "CTA_NUMERO": "1000000003",
+       "CTA_ESTADO": "I",
+       "CTA_SALDO": "9000.00"
+      },
+      {
+       "CTA_NUMERO": "1000000004",
+       "CTA_ESTADO": "A",
+       "CTA_SALDO": "500.50"
+      },
+      {
+       "CTA_NUMERO": "1000000005",
+       "CTA_ESTADO": "A",
+       "CTA_SALDO": "100.00"
+      }
+     ],
+     "TRANSFERENCIAS": [
+      {
+       "TRF_NUMERO": "7",
+       "TRF_ORIGEN": "1000000001",
+       "TRF_DESTINO": "1000000002",
+       "TRF_MONTO": "10.00",
+       "TRF_COMISION": "0.50",
+       "TRF_TIPO": "PRO"
+      },
+      {
+       "TRF_NUMERO": "8",
+       "TRF_ORIGEN": "1000000001",
+       "TRF_DESTINO": "1000000002",
+       "TRF_MONTO": "7000.00",
+       "TRF_COMISION": "6.00",
+       "TRF_TIPO": "INM"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "case": {
+    "name": "redondeo_hacia_arriba",
+    "description": "0.1 % of 1,005 rounds half away from zero to 1.01",
+    "rules": [],
+    "inputs": {
+     "txtCuentaOrigen": "1000000001",
+     "txtCuentaDestino": "1000000002",
+     "txtMonto": "1005.00",
+     "ddlTipo": "PRO"
+    },
+    "setup": {
+     "CUENTAS": [
+      {
+       "CTA_NUMERO": "1000000001",
+       "CTA_ESTADO": "A",
+       "CTA_SALDO": "20000.00"
+      },
+      {
+       "CTA_NUMERO": "1000000002",
+       "CTA_ESTADO": "A",
+       "CTA_SALDO": "150.00"
+      },
+      {
+       "CTA_NUMERO": "1000000003",
+       "CTA_ESTADO": "I",
+       "CTA_SALDO": "9000.00"
+      },
+      {
+       "CTA_NUMERO": "1000000004",
+       "CTA_ESTADO": "A",
+       "CTA_SALDO": "500.50"
+      },
+      {
+       "CTA_NUMERO": "1000000005",
+       "CTA_ESTADO": "A",
+       "CTA_SALDO": "100.00"
+      }
+     ],
+     "TRANSFERENCIAS": [
+      {
+       "TRF_NUMERO": 7,
+       "TRF_ORIGEN": "1000000001",
+       "TRF_DESTINO": "1000000002",
+       "TRF_MONTO": "10.00",
+       "TRF_COMISION": "0.50",
+       "TRF_TIPO": "PRO"
+      }
+     ]
+    },
+    "stubs": {}
+   },
+   "observation": {
+    "returns": 0,
+    "outputs": {
+     "lblMensaje": "TRANSFERENCIA REALIZADA",
+     "lblComision": "1.01"
+    },
+    "tables": {
+     "CUENTAS": [
+      {
+       "CTA_NUMERO": "1000000001",
+       "CTA_ESTADO": "A",
+       "CTA_SALDO": "18993.99"
+      },
+      {
+       "CTA_NUMERO": "1000000002",
+       "CTA_ESTADO": "A",
+       "CTA_SALDO": "1155.00"
+      },
+      {
+       "CTA_NUMERO": "1000000003",
+       "CTA_ESTADO": "I",
+       "CTA_SALDO": "9000.00"
+      },
+      {
+       "CTA_NUMERO": "1000000004",
+       "CTA_ESTADO": "A",
+       "CTA_SALDO": "500.50"
+      },
+      {
+       "CTA_NUMERO": "1000000005",
+       "CTA_ESTADO": "A",
+       "CTA_SALDO": "100.00"
+      }
+     ],
+     "TRANSFERENCIAS": [
+      {
+       "TRF_NUMERO": "7",
+       "TRF_ORIGEN": "1000000001",
+       "TRF_DESTINO": "1000000002",
+       "TRF_MONTO": "10.00",
+       "TRF_COMISION": "0.50",
+       "TRF_TIPO": "PRO"
+      },
+      {
+       "TRF_NUMERO": "8",
+       "TRF_ORIGEN": "1000000001",
+       "TRF_DESTINO": "1000000002",
+       "TRF_MONTO": "1005.00",
+       "TRF_COMISION": "1.01",
+       "TRF_TIPO": "PRO"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "case": {
+    "name": "misma_cuenta",
+    "description": "The destination cannot be the origin",
+    "rules": [],
+    "inputs": {
+     "txtCuentaOrigen": "1000000001",
+     "txtCuentaDestino": "1000000001",
+     "txtMonto": "100.00",
+     "ddlTipo": "PRO"
+    },
+    "setup": {
+     "CUENTAS": [
+      {
+       "CTA_NUMERO": "1000000001",
+       "CTA_ESTADO": "A",
+       "CTA_SALDO": "20000.00"
+      },
+      {
+       "CTA_NUMERO": "1000000002",
+       "CTA_ESTADO": "A",
+       "CTA_SALDO": "150.00"
+      },
+      {
+       "CTA_NUMERO": "1000000003",
+       "CTA_ESTADO": "I",
+       "CTA_SALDO": "9000.00"
+      },
+      {
+       "CTA_NUMERO": "1000000004",
+       "CTA_ESTADO": "A",
+       "CTA_SALDO": "500.50"
+      },
+      {
+       "CTA_NUMERO": "1000000005",
+       "CTA_ESTADO": "A",
+       "CTA_SALDO": "100.00"
+      }
+     ],
+     "TRANSFERENCIAS": [
+      {
+       "TRF_NUMERO": 7,
+       "TRF_ORIGEN": "1000000001",
+       "TRF_DESTINO": "1000000002",
+       "TRF_MONTO": "10.00",
+       "TRF_COMISION": "0.50",
+       "TRF_TIPO": "PRO"
+      }
+     ]
+    },
+    "stubs": {}
+   },
+   "observation": {
+    "returns": 0,
+    "outputs": {
+     "lblMensaje": "LA CUENTA DESTINO ES LA MISMA",
+     "lblComision": ""
+    },
+    "tables": {
+     "CUENTAS": [
+      {
+       "CTA_NUMERO": "1000000001",
+       "CTA_ESTADO": "A",
+       "CTA_SALDO": "20000.00"
+      },
+      {
+       "CTA_NUMERO": "1000000002",
+       "CTA_ESTADO": "A",
+       "CTA_SALDO": "150.00"
+      },
+      {
+       "CTA_NUMERO": "1000000003",
+       "CTA_ESTADO": "I",
+       "CTA_SALDO": "9000.00"
+      },
+      {
+       "CTA_NUMERO": "1000000004",
+       "CTA_ESTADO": "A",
+       "CTA_SALDO": "500.50"
+      },
+      {
+       "CTA_NUMERO": "1000000005",
+       "CTA_ESTADO": "A",
+       "CTA_SALDO": "100.00"
+      }
+     ],
+     "TRANSFERENCIAS": [
+      {
+       "TRF_NUMERO": "7",
+       "TRF_ORIGEN": "1000000001",
+       "TRF_DESTINO": "1000000002",
+       "TRF_MONTO": "10.00",
+       "TRF_COMISION": "0.50",
+       "TRF_TIPO": "PRO"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "case": {
+    "name": "origen_no_existe",
+    "description": "An origin account that does not exist",
+    "rules": [],
+    "inputs": {
+     "txtCuentaOrigen": "1000000099",
+     "txtCuentaDestino": "1000000002",
+     "txtMonto": "100.00",
+     "ddlTipo": "PRO"
+    },
+    "setup": {
+     "CUENTAS": [
+      {
+       "CTA_NUMERO": "1000000001",
+       "CTA_ESTADO": "A",
+       "CTA_SALDO": "20000.00"
+      },
+      {
+       "CTA_NUMERO": "1000000002",
+       "CTA_ESTADO": "A",
+       "CTA_SALDO": "150.00"
+      },
+      {
+       "CTA_NUMERO": "1000000003",
+       "CTA_ESTADO": "I",
+       "CTA_SALDO": "9000.00"
+      },
+      {
+       "CTA_NUMERO": "1000000004",
+       "CTA_ESTADO": "A",
+       "CTA_SALDO": "500.50"
+      },
+      {
+       "CTA_NUMERO": "1000000005",
+       "CTA_ESTADO": "A",
+       "CTA_SALDO": "100.00"
+      }
+     ],
+     "TRANSFERENCIAS": [
+      {
+       "TRF_NUMERO": 7,
+       "TRF_ORIGEN": "1000000001",
+       "TRF_DESTINO": "1000000002",
+       "TRF_MONTO": "10.00",
+       "TRF_COMISION": "0.50",
+       "TRF_TIPO": "PRO"
+      }
+     ]
+    },
+    "stubs": {}
+   },
+   "observation": {
+    "returns": 0,
+    "outputs": {
+     "lblMensaje": "CUENTA ORIGEN NO EXISTE",
+     "lblComision": ""
+    },
+    "tables": {
+     "CUENTAS": [
+      {
+       "CTA_NUMERO": "1000000001",
+       "CTA_ESTADO": "A",
+       "CTA_SALDO": "20000.00"
+      },
+      {
+       "CTA_NUMERO": "1000000002",
+       "CTA_ESTADO": "A",
+       "CTA_SALDO": "150.00"
+      },
+      {
+       "CTA_NUMERO": "1000000003",
+       "CTA_ESTADO": "I",
+       "CTA_SALDO": "9000.00"
+      },
+      {
+       "CTA_NUMERO": "1000000004",
+       "CTA_ESTADO": "A",
+       "CTA_SALDO": "500.50"
+      },
+      {
+       "CTA_NUMERO": "1000000005",
+       "CTA_ESTADO": "A",
+       "CTA_SALDO": "100.00"
+      }
+     ],
+     "TRANSFERENCIAS": [
+      {
+       "TRF_NUMERO": "7",
+       "TRF_ORIGEN": "1000000001",
+       "TRF_DESTINO": "1000000002",
+       "TRF_MONTO": "10.00",
+       "TRF_COMISION": "0.50",
+       "TRF_TIPO": "PRO"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "case": {
+    "name": "origen_inactiva",
+    "description": "An inactive origin account",
+    "rules": [],
+    "inputs": {
+     "txtCuentaOrigen": "1000000003",
+     "txtCuentaDestino": "1000000002",
+     "txtMonto": "100.00",
+     "ddlTipo": "PRO"
+    },
+    "setup": {
+     "CUENTAS": [
+      {
+       "CTA_NUMERO": "1000000001",
+       "CTA_ESTADO": "A",
+       "CTA_SALDO": "20000.00"
+      },
+      {
+       "CTA_NUMERO": "1000000002",
+       "CTA_ESTADO": "A",
+       "CTA_SALDO": "150.00"
+      },
+      {
+       "CTA_NUMERO": "1000000003",
+       "CTA_ESTADO": "I",
+       "CTA_SALDO": "9000.00"
+      },
+      {
+       "CTA_NUMERO": "1000000004",
+       "CTA_ESTADO": "A",
+       "CTA_SALDO": "500.50"
+      },
+      {
+       "CTA_NUMERO": "1000000005",
+       "CTA_ESTADO": "A",
+       "CTA_SALDO": "100.00"
+      }
+     ],
+     "TRANSFERENCIAS": [
+      {
+       "TRF_NUMERO": 7,
+       "TRF_ORIGEN": "1000000001",
+       "TRF_DESTINO": "1000000002",
+       "TRF_MONTO": "10.00",
+       "TRF_COMISION": "0.50",
+       "TRF_TIPO": "PRO"
+      }
+     ]
+    },
+    "stubs": {}
+   },
+   "observation": {
+    "returns": 0,
+    "outputs": {
+     "lblMensaje": "CUENTA ORIGEN INACTIVA",
+     "lblComision": ""
+    },
+    "tables": {
+     "CUENTAS": [
+      {
+       "CTA_NUMERO": "1000000001",
+       "CTA_ESTADO": "A",
+       "CTA_SALDO": "20000.00"
+      },
+      {
+       "CTA_NUMERO": "1000000002",
+       "CTA_ESTADO": "A",
+       "CTA_SALDO": "150.00"
+      },
+      {
+       "CTA_NUMERO": "1000000003",
+       "CTA_ESTADO": "I",
+       "CTA_SALDO": "9000.00"
+      },
+      {
+       "CTA_NUMERO": "1000000004",
+       "CTA_ESTADO": "A",
+       "CTA_SALDO": "500.50"
+      },
+      {
+       "CTA_NUMERO": "1000000005",
+       "CTA_ESTADO": "A",
+       "CTA_SALDO": "100.00"
+      }
+     ],
+     "TRANSFERENCIAS": [
+      {
+       "TRF_NUMERO": "7",
+       "TRF_ORIGEN": "1000000001",
+       "TRF_DESTINO": "1000000002",
+       "TRF_MONTO": "10.00",
+       "TRF_COMISION": "0.50",
+       "TRF_TIPO": "PRO"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "case": {
+    "name": "destino_no_existe",
+    "description": "An inactive destination counts as not existing",
+    "rules": [],
+    "inputs": {
+     "txtCuentaOrigen": "1000000001",
+     "txtCuentaDestino": "1000000003",
+     "txtMonto": "100.00",
+     "ddlTipo": "PRO"
+    },
+    "setup": {
+     "CUENTAS": [
+      {
+       "CTA_NUMERO": "1000000001",
+       "CTA_ESTADO": "A",
+       "CTA_SALDO": "20000.00"
+      },
+      {
+       "CTA_NUMERO": "1000000002",
+       "CTA_ESTADO": "A",
+       "CTA_SALDO": "150.00"
+      },
+      {
+       "CTA_NUMERO": "1000000003",
+       "CTA_ESTADO": "I",
+       "CTA_SALDO": "9000.00"
+      },
+      {
+       "CTA_NUMERO": "1000000004",
+       "CTA_ESTADO": "A",
+       "CTA_SALDO": "500.50"
+      },
+      {
+       "CTA_NUMERO": "1000000005",
+       "CTA_ESTADO": "A",
+       "CTA_SALDO": "100.00"
+      }
+     ],
+     "TRANSFERENCIAS": [
+      {
+       "TRF_NUMERO": 7,
+       "TRF_ORIGEN": "1000000001",
+       "TRF_DESTINO": "1000000002",
+       "TRF_MONTO": "10.00",
+       "TRF_COMISION": "0.50",
+       "TRF_TIPO": "PRO"
+      }
+     ]
+    },
+    "stubs": {}
+   },
+   "observation": {
+    "returns": 0,
+    "outputs": {
+     "lblMensaje": "CUENTA DESTINO NO EXISTE",
+     "lblComision": ""
+    },
+    "tables": {
+     "CUENTAS": [
+      {
+       "CTA_NUMERO": "1000000001",
+       "CTA_ESTADO": "A",
+       "CTA_SALDO": "20000.00"
+      },
+      {
+       "CTA_NUMERO": "1000000002",
+       "CTA_ESTADO": "A",
+       "CTA_SALDO": "150.00"
+      },
+      {
+       "CTA_NUMERO": "1000000003",
+       "CTA_ESTADO": "I",
+       "CTA_SALDO": "9000.00"
+      },
+      {
+       "CTA_NUMERO": "1000000004",
+       "CTA_ESTADO": "A",
+       "CTA_SALDO": "500.50"
+      },
+      {
+       "CTA_NUMERO": "1000000005",
+       "CTA_ESTADO": "A",
+       "CTA_SALDO": "100.00"
+      }
+     ],
+     "TRANSFERENCIAS": [
+      {
+       "TRF_NUMERO": "7",
+       "TRF_ORIGEN": "1000000001",
+       "TRF_DESTINO": "1000000002",
+       "TRF_MONTO": "10.00",
+       "TRF_COMISION": "0.50",
+       "TRF_TIPO": "PRO"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "case": {
+    "name": "saldo_insuficiente",
+    "description": "The balance must cover the amount and the fee",
+    "rules": [],
+    "inputs": {
+     "txtCuentaOrigen": "1000000005",
+     "txtCuentaDestino": "1000000002",
+     "txtMonto": "100.00",
+     "ddlTipo": "PRO"
+    },
+    "setup": {
+     "CUENTAS": [
+      {
+       "CTA_NUMERO": "1000000001",
+       "CTA_ESTADO": "A",
+       "CTA_SALDO": "20000.00"
+      },
+      {
+       "CTA_NUMERO": "1000000002",
+       "CTA_ESTADO": "A",
+       "CTA_SALDO": "150.00"
+      },
+      {
+       "CTA_NUMERO": "1000000003",
+       "CTA_ESTADO": "I",
+       "CTA_SALDO": "9000.00"
+      },
+      {
+       "CTA_NUMERO": "1000000004",
+       "CTA_ESTADO": "A",
+       "CTA_SALDO": "500.50"
+      },
+      {
+       "CTA_NUMERO": "1000000005",
+       "CTA_ESTADO": "A",
+       "CTA_SALDO": "100.00"
+      }
+     ],
+     "TRANSFERENCIAS": [
+      {
+       "TRF_NUMERO": 7,
+       "TRF_ORIGEN": "1000000001",
+       "TRF_DESTINO": "1000000002",
+       "TRF_MONTO": "10.00",
+       "TRF_COMISION": "0.50",
+       "TRF_TIPO": "PRO"
+      }
+     ]
+    },
+    "stubs": {}
+   },
+   "observation": {
+    "returns": 0,
+    "outputs": {
+     "lblMensaje": "SALDO INSUFICIENTE",
+     "lblComision": ""
+    },
+    "tables": {
+     "CUENTAS": [
+      {
+       "CTA_NUMERO": "1000000001",
+       "CTA_ESTADO": "A",
+       "CTA_SALDO": "20000.00"
+      },
+      {
+       "CTA_NUMERO": "1000000002",
+       "CTA_ESTADO": "A",
+       "CTA_SALDO": "150.00"
+      },
+      {
+       "CTA_NUMERO": "1000000003",
+       "CTA_ESTADO": "I",
+       "CTA_SALDO": "9000.00"
+      },
+      {
+       "CTA_NUMERO": "1000000004",
+       "CTA_ESTADO": "A",
+       "CTA_SALDO": "500.50"
+      },
+      {
+       "CTA_NUMERO": "1000000005",
+       "CTA_ESTADO": "A",
+       "CTA_SALDO": "100.00"
+      }
+     ],
+     "TRANSFERENCIAS": [
+      {
+       "TRF_NUMERO": "7",
+       "TRF_ORIGEN": "1000000001",
+       "TRF_DESTINO": "1000000002",
+       "TRF_MONTO": "10.00",
+       "TRF_COMISION": "0.50",
+       "TRF_TIPO": "PRO"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "case": {
+    "name": "saldo_exacto",
+    "description": "A balance that exactly covers amount and fee is enough",
+    "rules": [],
+    "inputs": {
+     "txtCuentaOrigen": "1000000004",
+     "txtCuentaDestino": "1000000002",
+     "txtMonto": "500.00",
+     "ddlTipo": "PRO"
+    },
+    "setup": {
+     "CUENTAS": [
+      {
+       "CTA_NUMERO": "1000000001",
+       "CTA_ESTADO": "A",
+       "CTA_SALDO": "20000.00"
+      },
+      {
+       "CTA_NUMERO": "1000000002",
+       "CTA_ESTADO": "A",
+       "CTA_SALDO": "150.00"
+      },
+      {
+       "CTA_NUMERO": "1000000003",
+       "CTA_ESTADO": "I",
+       "CTA_SALDO": "9000.00"
+      },
+      {
+       "CTA_NUMERO": "1000000004",
+       "CTA_ESTADO": "A",
+       "CTA_SALDO": "500.50"
+      },
+      {
+       "CTA_NUMERO": "1000000005",
+       "CTA_ESTADO": "A",
+       "CTA_SALDO": "100.00"
+      }
+     ],
+     "TRANSFERENCIAS": [
+      {
+       "TRF_NUMERO": 7,
+       "TRF_ORIGEN": "1000000001",
+       "TRF_DESTINO": "1000000002",
+       "TRF_MONTO": "10.00",
+       "TRF_COMISION": "0.50",
+       "TRF_TIPO": "PRO"
+      }
+     ]
+    },
+    "stubs": {}
+   },
+   "observation": {
+    "returns": 0,
+    "outputs": {
+     "lblMensaje": "TRANSFERENCIA REALIZADA",
+     "lblComision": "0.50"
+    },
+    "tables": {
+     "CUENTAS": [
+      {
+       "CTA_NUMERO": "1000000001",
+       "CTA_ESTADO": "A",
+       "CTA_SALDO": "20000.00"
+      },
+      {
+       "CTA_NUMERO": "1000000002",
+       "CTA_ESTADO": "A",
+       "CTA_SALDO": "650.00"
+      },
+      {
+       "CTA_NUMERO": "1000000003",
+       "CTA_ESTADO": "I",
+       "CTA_SALDO": "9000.00"
+      },
+      {
+       "CTA_NUMERO": "1000000004",
+       "CTA_ESTADO": "A",
+       "CTA_SALDO": "0.00"
+      },
+      {
+       "CTA_NUMERO": "1000000005",
+       "CTA_ESTADO": "A",
+       "CTA_SALDO": "100.00"
+      }
+     ],
+     "TRANSFERENCIAS": [
+      {
+       "TRF_NUMERO": "7",
+       "TRF_ORIGEN": "1000000001",
+       "TRF_DESTINO": "1000000002",
+       "TRF_MONTO": "10.00",
+       "TRF_COMISION": "0.50",
+       "TRF_TIPO": "PRO"
+      },
+      {
+       "TRF_NUMERO": "8",
+       "TRF_ORIGEN": "1000000004",
+       "TRF_DESTINO": "1000000002",
+       "TRF_MONTO": "500.00",
+       "TRF_COMISION": "0.50",
+       "TRF_TIPO": "PRO"
+      }
+     ]
+    }
+   }
+  }
+ ]
+}
