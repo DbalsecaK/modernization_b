@@ -213,9 +213,10 @@ export function Tabs<T extends string>({
   )
 }
 
+/** A table that scrolls sideways on narrow screens; the scroll area can be reached with the keyboard (WCAG 2.1.1). */
 export function Table({ children }: { children: ReactNode }) {
   return (
-    <div className="overflow-x-auto">
+    <div className="overflow-x-auto focus:outline-2 focus:outline-brand" tabIndex={0}>
       <table className="w-full text-left text-sm">{children}</table>
     </div>
   )
