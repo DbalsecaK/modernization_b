@@ -1,0 +1,43 @@
+{{- if .Values.networkPolicy.enabled }}
+{{- if .Values.controlPlane.enabled }}
+# The web takes traffic from the ingress; the API only from the web (and its own pods, for the probes).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "nexti.fullname" . }}-api
+  labels:
+    {{- include "nexti.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/instance: {{ .Release.Name }}
+      app.kubernetes.io/component: api
+  policyTypes: ["Ingress"]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/instance: {{ .Release.Name }}
+              app.kubernetes.io/component: web
+      ports:
+        - {port: 8100, protocol: TCP}
+---
+{{- end }}
+{{- if .Values.dataPlane.enabled }}
+# The worker serves nothing: no ingress. Its egress goes to the data services, the model gateway and the customer's
+# repositories; the sandbox containers themselves run without network (15.5).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "nexti.fullname" . }}-worker
+  labels:
+    {{- include "nexti.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/instance: {{ .Release.Name }}
+      app.kubernetes.io/component: worker
+  policyTypes: ["Ingress"]
+  ingress: []
+{{- end }}
+{{- end }}

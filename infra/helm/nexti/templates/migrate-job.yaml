@@ -1,0 +1,40 @@
+{{- if .Values.controlPlane.enabled }}
+# The migrations, before each installation and upgrade (the API starts on the new schema).
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "nexti.fullname" . }}-migrate
+  labels:
+    {{- include "nexti.labels" . | nindent 4 }}
+    app.kubernetes.io/component: migrate
+  annotations:
+    helm.sh/hook: pre-install,pre-upgrade
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+spec:
+  backoffLimit: 2
+  template:
+    metadata:
+      labels:
+        {{- include "nexti.labels" . | nindent 8 }}
+        app.kubernetes.io/component: migrate
+    spec:
+      restartPolicy: Never
+      automountServiceAccountToken: false
+      securityContext:
+        {{- include "nexti.podSecurity" . | nindent 8 }}
+      containers:
+        - name: migrate
+          image: {{ include "nexti.image" (list . "nexti-migrate") }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            {{- include "nexti.containerSecurity" . | nindent 12 }}
+          env:
+            {{- include "nexti.env" . | nindent 12 }}
+          envFrom:
+            - secretRef:
+                name: {{ .Values.secretName }}
+          volumeMounts:
+            - {name: tmp, mountPath: /tmp}
+      volumes:
+        - {name: tmp, emptyDir: {}}
+{{- end }}

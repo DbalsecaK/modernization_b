@@ -193,3 +193,20 @@ jobs:
       - name: Logs
         if: failure()
         run: $COMPOSE --profile platform logs --tail 200 migrate api worker web
+
+  helm:
+    name: Platform · Helm chart and profiles
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      # The chart and each deployment profile (ADR-0024): lint, render and validate against the Kubernetes schema.
+      - name: Lint, render and validate
+        run: |
+          HELM="docker run --rm -v $PWD/infra/helm:/charts alpine/helm:3.19.0@sha256:aef9b56f64e866207d9591d0abd8f6d767b36aadd12edf68f8a719716d9d29c9"
+          $HELM lint --strict /charts/nexti
+          mkdir -p /tmp/manifests
+          for profile in shared-saas dedicated-saas customer-cloud on-prem; do
+            $HELM template nexti /charts/nexti -f /charts/nexti/profiles/$profile.yaml > /tmp/manifests/$profile.yaml
+          done
+          docker run --rm -v /tmp/manifests:/m ghcr.io/yannh/kubeconform:v0.7.0@sha256:85dbef6b4b312b99133decc9c6fc9495e9fc5f92293d4ff3b7e1b30f5611823c \
+            -strict -summary -kubernetes-version 1.31.0 /m
