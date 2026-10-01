@@ -1658,7 +1658,6 @@
     "network": "Network",
     "ipAllowList": "Restrict access to allowed IP ranges",
     "allowedRanges": "Allowed ranges (CIDR)",
-    "integrationHint": "Repositories, work items and design files",
     "auditTitle": "Audit log",
     "auditHint": "Append-only and hash-chained. Exportable for regulatory audits.",
     "tenantSlug": "Identifier",
@@ -2587,5 +2586,44 @@
     "inputTokens": "Input tokens",
     "outputTokens": "Output tokens",
     "cost": "Cost"
+  },
+  "integrations": {
+    "add": "Add integration",
+    "edit": "Edit integration",
+    "formHint": "The token is sent once to the secrets store and is never shown again. Projects of this customer use it to read their Figma files.",
+    "kind": "Tool",
+    "name": "Name",
+    "token": "Token",
+    "newToken": "New token (optional)",
+    "tokenHint": "A Figma personal access token with read access to the files.",
+    "rotateHint": "Leave it empty to keep the current token.",
+    "saved": "Integration {{name}} saved",
+    "failed": "The integration could not be saved: {{message}}",
+    "none": "No integrations yet",
+    "noneHint": "Connect Figma so the projects of New Feature can read their design files.",
+    "stored": "Stored in the secrets store",
+    "missing": "Missing",
+    "account": "Account",
+    "lastCheck": "Last check",
+    "test": "Test",
+    "tested": "{{name}} tested",
+    "delete": "Delete {{name}}",
+    "confirmDelete": "Delete the integration {{name}}? Its token is removed from the secrets store.",
+    "deleted": "Integration {{name}} deleted",
+    "later": "Available with the backlog integration (M7b)",
+    "soon": "Coming soon",
+    "note": "Tokens live only in the secrets store (OpenBao); the database keeps their path. Every change is audited.",
+    "kinds": {
+      "figma": "Figma",
+      "jira": "Jira",
+      "azure_devops": "Azure DevOps",
+      "github": "GitHub",
+      "gitlab": "GitLab"
+    },
+    "status": {
+      "ok": "Connected",
+      "failed": "Failed",
+      "untested": "Not tested"
+    }
   }
 }

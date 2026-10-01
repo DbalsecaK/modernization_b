@@ -45,9 +45,11 @@ from nexti_core.db.models import (
     ProviderConnection,
     Role,
     RoleAssignment,
+    TenantIntegration,
     UsageLedger,
 )
 from nexti_core.object_store import ObjectStore, ObjectStoreConfig, input_key
+from nexti_core.secrets import integration_path
 from nexti_model_gateway.secrets import SecretsConfig, SecretStore, connection_path
 
 from .conftest import SETTINGS, World
@@ -79,6 +81,7 @@ NOT_AUDITED = {("PATCH", "/api/v1/me"), ("POST", "/api/v1/projects:compose"), ("
 
 # OpenRouter is simulated in these tests (shapes recorded from the real API, packages/model_gateway/tests).
 OPENROUTER = "https://openrouter.test/api/v1"
+FIGMA = "https://figma.test/v1"  # the Figma API, simulated
 MODEL = "openai/gpt-4o-mini"
 MODEL_INFO: dict[str, Any] = {
     "id": MODEL,
@@ -275,6 +278,24 @@ class Ctx:
                 )
             )  # fmt: skip
         return connection_id
+
+    async def integration(self, tenant_id: uuid.UUID | None = None, token: str = "figd_test") -> uuid.UUID:  # noqa: S107
+        """A Figma integration of the tenant whose token is in OpenBao (the database holds only the path)."""
+        tenant_id = tenant_id or self.world.tenant_a
+        integration_id = uuid.uuid4()
+        path = integration_path(tenant_id, integration_id)
+        async with httpx.AsyncClient(timeout=10) as http:
+            await SecretStore(SecretsConfig(SETTINGS.secrets_url, SETTINGS.secrets_token.get_secret_value()), http).put(
+                path, token
+            )
+        async with self.owner.begin() as conn:
+            await conn.execute(
+                insert(TenantIntegration).values(
+                    id=integration_id, tenant_id=tenant_id, kind="figma", name=f"Figma {integration_id.hex[:8]}",
+                    vault_path=path,
+                )
+            )  # fmt: skip
+        return integration_id
 
     async def profile(self, tenant_id: uuid.UUID | None = None) -> uuid.UUID:
         tenant_id = tenant_id or self.world.tenant_a
@@ -551,6 +572,10 @@ async def _new_connection(ctx: Ctx) -> Request:
     return "/api/v1/ai/connections", {"name": f"OR {uuid.uuid4().hex[:8]}", "apiKey": "sk-or-v1-test-new"}
 
 
+async def _new_integration(ctx: Ctx) -> Request:
+    return "/api/v1/integrations", {"kind": "figma", "name": f"Figma {uuid.uuid4().hex[:8]}", "token": "figd_new-token"}
+
+
 async def _profile_body(ctx: Ctx) -> dict[str, Any]:
     _, offering = await ctx.offering()
     return {
@@ -786,6 +811,30 @@ CASES = [
         "admin",
         "member",
         _with("connection", "/api/v1/ai/connections/{id}:test"),
+    ),
+    # Integrations of the tenant (M7): integrations.manage.
+    Case("GET", "/api/v1/integrations", "admin", "member", fixed("/api/v1/integrations")),
+    Case("POST", "/api/v1/integrations", "admin", "member", _new_integration),
+    Case(
+        "PATCH",
+        "/api/v1/integrations/{integration_id}",
+        "admin",
+        "member",
+        _with("integration", "/api/v1/integrations/{id}", {"name": "Renamed", "token": "figd_rotated-token"}),
+    ),
+    Case(
+        "DELETE",
+        "/api/v1/integrations/{integration_id}",
+        "admin",
+        "member",
+        _with("integration", "/api/v1/integrations/{id}"),
+    ),
+    Case(
+        "POST",
+        "/api/v1/integrations/{integration_id}:test",
+        "admin",
+        "member",
+        _with("integration", "/api/v1/integrations/{id}:test"),
     ),
     Case("GET", "/api/v1/ai/catalog", "admin", "member", fixed("/api/v1/ai/catalog")),
     Case("POST", "/api/v1/ai/catalog:sync", "admin", "member", fixed("/api/v1/ai/catalog:sync")),
@@ -1031,7 +1080,8 @@ async def root(owner_engine: AsyncEngine) -> uuid.UUID:
 
 @pytest.fixture
 def api(api_settings: Settings) -> Iterator[TestClient]:
-    settings = api_settings.model_copy(update={"dev_auth_enabled": True, "openrouter_url": OPENROUTER})
+    settings = api_settings.model_copy(update={"dev_auth_enabled": True, "openrouter_url": OPENROUTER,
+                                          "figma_url": FIGMA})  # fmt: skip
     with TestClient(create_app(settings), base_url="https://testserver") as client:
         yield client
 
@@ -1047,6 +1097,7 @@ def openrouter() -> Iterator[respx.MockRouter]:
             json={"data": {"label": "sk-or-v1-...", "limit": None, "is_free_tier": False}}
         )
         router.post(f"{OPENROUTER}/chat/completions").respond(json=CHAT)
+        router.get(f"{FIGMA}/me").respond(json={"id": "1", "handle": "disenador.ficticio", "email": "d@example.com"})
         router.route().pass_through()
         yield router
 
@@ -1284,6 +1335,56 @@ async def test_the_api_key_goes_to_the_secrets_store_only(
         store = SecretStore(SecretsConfig(SETTINGS.secrets_url, SETTINGS.secrets_token.get_secret_value()), http)
         assert await store.get(path) == rotated
         assert api.delete(f"/api/v1/ai/connections/{connection_id}", headers=headers).status_code == 204
+        assert await store.get(path) is None
+
+
+async def test_integrations_of_another_tenant_are_unreachable_and_their_token_stays_in_the_store(
+    api: TestClient, app_engine: AsyncEngine, owner_engine: AsyncEngine, fga: OpenFga, world: World, root: uuid.UUID
+) -> None:
+    await reconcile(app_engine, fga)
+    ctx = Ctx(world, root, owner_engine)
+    b_integration = await ctx.integration(world.tenant_b)
+    headers = act_as(api, "admin", ctx)
+    assert str(b_integration) not in {i["id"] for i in api.get("/api/v1/integrations").json()}
+    assert api.patch(f"/api/v1/integrations/{b_integration}", json={"name": "x"}, headers=headers).status_code == 404
+    assert api.post(f"/api/v1/integrations/{b_integration}:test", headers=headers).status_code == 404
+    assert api.delete(f"/api/v1/integrations/{b_integration}", headers=headers).status_code == 404
+
+    canary = f"figd_canary-{uuid.uuid4().hex}"
+    rotated = f"figd_rotated-{uuid.uuid4().hex}"
+    created = api.post("/api/v1/integrations", json={"kind": "figma", "name": f"Figma {canary[-8:]}",
+                                                     "token": canary}, headers=headers)  # fmt: skip
+    assert created.status_code == 201, created.text
+    integration_id = created.json()["id"]
+    patched = api.patch(f"/api/v1/integrations/{integration_id}", json={"token": rotated}, headers=headers)
+    tested = api.post(f"/api/v1/integrations/{integration_id}:test", headers=headers)
+    listed = api.get("/api/v1/integrations")
+    assert (tested.json()["status"], tested.json()["account"]) == ("ok", "disenador.ficticio")
+    for res in (created, patched, tested, listed):
+        assert canary not in res.text
+        assert rotated not in res.text
+    later = api.post("/api/v1/integrations", json={"kind": "jira", "name": "Jira", "token": "jira-token-1"},
+                     headers=headers)  # fmt: skip
+    assert (later.status_code, later.json()["code"]) == (422, "integration_not_available")
+    async with owner_engine.connect() as conn:
+        row: str = (
+            await conn.execute(text("SELECT row_to_json(i)::text FROM tenant_integration i WHERE id = :id"),
+                               {"id": integration_id})
+        ).scalar_one()  # fmt: skip
+        audit_rows: str = (
+            await conn.execute(text("SELECT coalesce(string_agg(details::text, ''), '') FROM audit_log"))
+        ).scalar_one()
+        actions: set[str] = set((await conn.execute(text("SELECT action FROM audit_log WHERE target = :t"),
+                                          {"t": f"integration:{integration_id}"})).scalars())  # fmt: skip
+    assert {"integration.create", "integration.update", "integration.test"} <= actions
+    for value in (canary, rotated):
+        assert value not in row
+        assert value not in audit_rows
+    path = integration_path(world.tenant_a, uuid.UUID(integration_id))
+    async with httpx.AsyncClient(timeout=10) as http:
+        store = SecretStore(SecretsConfig(SETTINGS.secrets_url, SETTINGS.secrets_token.get_secret_value()), http)
+        assert await store.get(path) == rotated
+        assert api.delete(f"/api/v1/integrations/{integration_id}", headers=headers).status_code == 204
         assert await store.get(path) is None
 
 

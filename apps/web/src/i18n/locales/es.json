@@ -1658,7 +1658,6 @@
     "network": "Red",
     "ipAllowList": "Restringir el acceso a rangos de IP permitidos",
     "allowedRanges": "Rangos permitidos (CIDR)",
-    "integrationHint": "Repositorios, tickets y archivos de diseño",
     "auditTitle": "Auditoría",
     "auditHint": "Inmutable y con hashes encadenados. Exportable para auditorías regulatorias.",
     "tenantSlug": "Identificador",
@@ -2587,5 +2586,44 @@
     "inputTokens": "Tokens de entrada",
     "outputTokens": "Tokens de salida",
     "cost": "Costo"
+  },
+  "integrations": {
+    "add": "Agregar integración",
+    "edit": "Editar integración",
+    "formHint": "El token se envía una vez al almacén de secretos y no se vuelve a mostrar. Los proyectos de este cliente lo usan para leer sus archivos de Figma.",
+    "kind": "Herramienta",
+    "name": "Nombre",
+    "token": "Token",
+    "newToken": "Token nuevo (opcional)",
+    "tokenHint": "Un token personal de Figma con permiso de lectura de los archivos.",
+    "rotateHint": "Déjalo vacío para conservar el token actual.",
+    "saved": "Integración {{name}} guardada",
+    "failed": "No se pudo guardar la integración: {{message}}",
+    "none": "Aún no hay integraciones",
+    "noneHint": "Conecta Figma para que los proyectos de Nueva funcionalidad lean sus archivos de diseño.",
+    "stored": "Guardado en el almacén de secretos",
+    "missing": "Falta",
+    "account": "Cuenta",
+    "lastCheck": "Última prueba",
+    "test": "Probar",
+    "tested": "{{name}} probada",
+    "delete": "Eliminar {{name}}",
+    "confirmDelete": "¿Eliminar la integración {{name}}? Su token se borra del almacén de secretos.",
+    "deleted": "Integración {{name}} eliminada",
+    "later": "Disponible con la integración de backlog (M7b)",
+    "soon": "Próximamente",
+    "note": "Los tokens viven solo en el almacén de secretos (OpenBao); la base de datos guarda su ruta. Cada cambio queda auditado.",
+    "kinds": {
+      "figma": "Figma",
+      "jira": "Jira",
+      "azure_devops": "Azure DevOps",
+      "github": "GitHub",
+      "gitlab": "GitLab"
+    },
+    "status": {
+      "ok": "Conectada",
+      "failed": "Falló",
+      "untested": "Sin probar"
+    }
   }
 }

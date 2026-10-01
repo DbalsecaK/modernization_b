@@ -34,6 +34,7 @@ type tenant
     define project_create: [role#assignee] or admin
     define code_view: [role#assignee] or admin
     define models_configure: [role#assignee] or admin
+    define integrations_manage: [role#assignee] or admin
     define usage_view: [role#assignee] or admin
     define cost_view: [role#assignee] or admin
     define skills_publish: [role#assignee] or admin

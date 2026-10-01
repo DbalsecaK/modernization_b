@@ -56,6 +56,8 @@ class Settings(BaseSettings):
     secrets_mount: str = "secret"
     # OpenRouter API base; empty uses the gateway default (tests point it to a simulated server).
     openrouter_url: str | None = None
+    # Figma REST API base (M7, ADR-0018); tests point it to a simulated server.
+    figma_url: str = "https://api.figma.com/v1"
     # Inputs of the projects (M2): object storage (S3 API, MinIO locally) and malware scanning (ClamAV, ADR-0008).
     object_store_url: str = ""
     object_store_access_key: str = ""
