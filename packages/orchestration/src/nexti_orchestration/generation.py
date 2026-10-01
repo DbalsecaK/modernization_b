@@ -308,7 +308,9 @@ class GenerationPhases:
                     "\n\nAcceptance criteria of the user stories. Besides the tests of the rule scenarios, write one "
                     "test per criterion whose method name starts with the prefix given (for example "
                     "ac_US001_2_rejects_an_amount_below_the_minimum) and checks what the criterion says; when a "
-                    f"criterion is about a screen only, test the behaviour of the service behind it:\n{criteria}"
+                    "criterion is about a screen only, test the behaviour of the service behind it. Expected values "
+                    "come only from the criteria and the rule scenarios: never compute a new expected amount yourself, "
+                    f"and do not assert what no scenario states:\n{criteria}"
                 )
             messages = [
                 {"role": "system", "content": prompt(pack.tester_prompt)},
