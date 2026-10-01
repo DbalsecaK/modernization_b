@@ -145,8 +145,9 @@ async def test_the_fictitious_webforms_application_reaches_a_verdict_capped_at_p
     assert {"C1", "C2", "C3", "C4"} <= set(decided)
     (inventory,) = [e for e in events if e["phase"] == "inventory" and e["kind"] == "completed"][-1:]
     assert "2 page(s), 1 class(es)" in inventory["message"]
-    verdicts = {v["module"]: v for v in await fetch(owner_engine, "SELECT module, verdict, checks, not_proven, "
-                                                    "proof_pack_key FROM verdict WHERE run_id = :r", r=run_id)}  # fmt: skip
+    rows = await fetch(owner_engine, "SELECT module, verdict, checks, not_proven, proof_pack_key FROM verdict "
+                       "WHERE run_id = :r", r=run_id)  # fmt: skip
+    verdicts = {v["module"]: v for v in rows}
     backend = next(v for m, v in verdicts.items() if not m.startswith("frontend-"))
     frontend = verdicts.get("frontend-react")
     checks = {c["key"]: c["status"] for c in backend["checks"]}
