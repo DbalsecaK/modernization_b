@@ -153,8 +153,13 @@ export function useAcceptRecommended() {
   })
 }
 
-export const useTasks = () =>
-  useQuery({ queryKey: keys.tasks, queryFn: () => unwrap(api.GET('/api/v1/tasks')), refetchInterval: 30_000 })
+export const useTasks = (enabled = true) =>
+  useQuery({
+    queryKey: keys.tasks,
+    queryFn: () => unwrap(api.GET('/api/v1/tasks')),
+    refetchInterval: 30_000,
+    enabled,
+  })
 
 const MAX_EVENTS = 200
 

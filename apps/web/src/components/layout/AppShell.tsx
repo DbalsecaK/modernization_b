@@ -24,7 +24,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { canOpen, initials, signOut, switchTenant, useMe } from '@/api/session'
 import { setTheme, useTheme } from '@/lib/theme'
 import { setLanguage } from '@/i18n'
-import { tasks } from '@/mocks/data'
+import { useTasks } from '@/api/runs'
 import { Avatar } from '@/components/ui/primitives'
 import { Toaster } from '@/components/ui/overlay'
 import { GlobalSearch, NotificationsMenu } from './TopbarWidgets'
@@ -33,7 +33,7 @@ import { AgentActivityPanel } from './AgentActivityPanel'
 const nav = [
   { to: '/', key: 'dashboard', Icon: LayoutDashboard },
   { to: '/projects', key: 'projects', Icon: FolderKanban },
-  { to: '/tasks', key: 'tasks', Icon: Inbox, badge: tasks.length },
+  { to: '/tasks', key: 'tasks', Icon: Inbox },
   { to: '/usage', key: 'usage', Icon: CircleDollarSign },
   { to: '/ai-config', key: 'aiConfig', Icon: Bot },
   { to: '/catalog', key: 'catalog', Icon: BookOpen },
@@ -53,6 +53,8 @@ export function Logo({ className }: { className?: string }) {
 function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const { t } = useTranslation()
   const me = useMe()
+  // Pending tasks of the active tenant, the same list as My tasks; without a tenant there are none.
+  const pending = useTasks(canOpen(me, 'tasks') && !!me?.activeTenant).data?.length ?? 0
   return (
     <nav className="flex h-full flex-col bg-sidebar text-sidebar-text" aria-label={t('nav.main')}>
       <div className="flex h-16 items-center gap-2 px-5">
@@ -62,7 +64,7 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
       <ul className="flex-1 space-y-0.5 px-3 py-2">
         {nav
           .filter(({ key }) => canOpen(me, key))
-          .map(({ to, key, Icon, ...rest }) => (
+          .map(({ to, key, Icon }) => (
             <li key={to}>
               <Link
                 to={to}
@@ -73,10 +75,8 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
               >
                 <Icon size={18} aria-hidden />
                 <span className="flex-1">{t(`nav.${key}`)}</span>
-                {'badge' in rest && rest.badge ? (
-                  <span className="rounded-full bg-accent px-1.5 text-xs font-semibold text-[#052158]">
-                    {rest.badge}
-                  </span>
+                {key === 'tasks' && pending > 0 ? (
+                  <span className="rounded-full bg-accent px-1.5 text-xs font-semibold text-[#052158]">{pending}</span>
                 ) : null}
               </Link>
             </li>
