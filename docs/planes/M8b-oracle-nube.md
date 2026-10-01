@@ -1,6 +1,6 @@
 # Plan del hito M8b — Packs Oracle y nube (AWS, Azure)
 
-- **Estado:** en curso (desde 2026-10-01).
+- **Estado:** cerrado (2026-10-01).
 - **Fuente:** `docs/ESPECIFICACION_PLATAFORMA.md` secciones 8.4 (packs de destino: persistencia y despliegue) y 20
   (M8b); ADR-0021.
 - **Rama:** `m8b-oracle-nube`. Un commit por paso y PR al terminar.
@@ -51,3 +51,59 @@
 |---|---|
 | La aplicación ficticia genera y verifica su destino con Oracle | `test_acceptance_m8b.py` (golden master de M4 en Oracle) |
 | Su IaC para AWS y Azure pasa la validación y las fitness functions del pack | Pruebas del pack de despliegue y la aceptación |
+
+## 4. Cierre
+
+**Lo que se entrega**
+
+- **Oracle en el pack Spring Boot.** El destino `spring-boot` + `oracle` elige el pack `SpringBootOraclePack`:
+  - tipos Oracle (NUMBER, VARCHAR2, DATE, TIMESTAMP) y el DDL del esquema;
+  - los identificadores reservados (por ejemplo `number`) van entre comillas en el DDL, los INSERT y los volcados;
+  - el harness de equivalencia corre contra Oracle Database Free 23ai en la imagen `nexti-sandbox-java-oracle:1`.
+- **Pack de despliegue `nexti-pack-iac`.** Genera OpenTofu por código desde el diseño y el destino:
+  - AWS: VPC, ECS Fargate detrás de un ALB con HTTPS, RDS cifrado y privado, Secrets Manager y CloudWatch;
+  - Azure: red virtual, Container Apps, PostgreSQL Flexible, Azure SQL u Oracle Database@Azure, Key Vault y Log
+    Analytics;
+  - un README con el mapeo de los conceptos del legado a los servicios gestionados.
+- **Validación sin credenciales** en `nexti-sandbox-iac:1`. Corre `tofu init` y `tofu validate` con los proveedores
+  de la imagen y sin red. El código calcula 5 fitness functions: cifrado en reposo, base no pública, sin secretos en
+  el código, etiquetas y logs.
+- **En el pipeline:**
+  - la generación escribe la IaC en `infra/<nube>/`;
+  - la verificación, también la de Flujo 2, le da su propio veredicto `iac-<nube>` con su paquete de prueba;
+  - la pestaña Código muestra la IaC y la de Validación sus 6 chequeos (en/es).
+
+**Aceptación grabada** (`test_acceptance_m8b.py`): la aplicación ficticia de M4 con destino Spring Boot + Oracle +
+AWS.
+
+- **Backend en Oracle: PROVEN.**
+  - 39 tests en un build limpio;
+  - 11 de 11 reglas verificadas por casos golden;
+  - los 28 casos golden y las 12 entradas nuevas coinciden;
+  - el canario cambió el margen de sobregiro y un caso golden se puso en rojo;
+  - el legado intacto.
+- **IaC de AWS: PROVEN** con los 6 chequeos.
+- Azure (PostgreSQL, SQL Server y Oracle) y AWS con PostgreSQL se validan en las pruebas del pack de despliegue.
+
+La corrida registra 51 llamadas por 1,53 USD en el ledger. Las respuestas de inventario, reglas, diseño y
+caracterización se reproducen de las grabaciones de M4. Solo 5 llamadas fueron nuevas (los adaptadores para Oracle),
+así que el gasto real queda muy por debajo de los 2 USD asignados.
+
+**Cambios respecto del plan**
+
+- **El sandbox de Oracle no corre con `--network none` ni con los datos en un tmpfs.**
+  - Sin interfaz de red, Oracle falla con ORA-00600. Corre en una red `--internal` creada para la corrida, sin
+    salida a internet ni a otros contenedores.
+  - Los datafiles de unos 3 GB necesitan la raíz escribible.
+  - El sandbox admite estas dos excepciones y un usuario propio solo cuando el pack las pide (ADR-0021).
+- **OpenTofu se copia como binario** sobre Alpine. La imagen oficial termina con `ONBUILD exit 1`. Los proveedores
+  quedan desempaquetados como único espejo, sin acceso a registros.
+- **Oracle en .NET (ODP.NET) queda para después.** El destino .NET sigue con SQL Server.
+
+**Limitaciones conocidas**
+
+- La IaC se valida sin credenciales. Lo que solo muestran un `plan` o un despliegue no se comprueba (cuotas, nombres
+  ya tomados, permisos de la cuenta), y el veredicto lo declara como no probado.
+- GCP y Kubernetes genérico no tienen generador: un destino con esas nubes no recibe IaC.
+- La imagen de Oracle tarda alrededor de un minuto en arrancar, así que la verificación en Oracle es más lenta que
+  en PostgreSQL.
