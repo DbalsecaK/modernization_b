@@ -11,7 +11,7 @@ from nexti_sandbox.build import BuildResult, parse_junit
 IMAGE = "nexti-sandbox-dotnet:1"
 # SQL Server needs about 2 GB and writes where it is installed: /var/opt/mssql is a tmpfs of its own. xUnit v3 runs
 # each test project as its own executable, so /work allows running what it builds (ADR-0017).
-LIMITS = Limits(cpus=2.0, memory_mb=3072, pids=1024, timeout_seconds=900, work_mb=1536,
+LIMITS = Limits(cpus=2.0, memory_mb=3072, pids=1024, timeout_seconds=1500, work_mb=1536,
                 max_output_bytes=2 * 1024 * 1024, scratch=(("/var/opt/mssql", 1024),), work_exec=True)  # fmt: skip
 REPORT_START = "===JUNIT-XML==="
 

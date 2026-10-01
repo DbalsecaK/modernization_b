@@ -1,4 +1,5 @@
-"""CICS traces as the golden master (spec 8.3, ADR-0015). A CICS program cannot run on the platform, so its behaviour
+"""Recorded traces as the golden master (spec 8.3; CICS ADR-0015, ASPX ADR-0020). A CICS program (or a WebForms
+page) cannot run on the platform, so its behaviour
 comes from traces exported from the customer's test region: each one a case already observed (the inputs of the map
 or the COMMAREA, the records of the files before and after, the programs it called and how they answered, the
 fields it sent back). The traces travel in the source archive (`traces/*.json`).
@@ -16,7 +17,7 @@ from pydantic import ValidationError
 
 from nexti_core.adapters import SourceFile
 from nexti_core.spec.characterization import (
-    TRACE_ENGINE,
+    TRACE_ENGINES,
     GoldenMaster,
     Recorded,
     Schema,
@@ -33,6 +34,7 @@ class TraceSet:
     file: str
     schema: Schema
     results: tuple[Recorded, ...]
+    engine: str = "cics-trace"
 
 
 def is_trace(file: SourceFile) -> bool:
@@ -48,12 +50,13 @@ def load_traces(files: list[SourceFile]) -> tuple[list[TraceSet], list[str]]:
             continue
         try:
             data = json.loads(file.text)
-            if data.get("engine") != TRACE_ENGINE:
-                problems.append(f"{file.path}: not a CICS trace (engine {data.get('engine')!r})")
+            if data.get("engine") not in TRACE_ENGINES:
+                problems.append(f"{file.path}: not a recorded trace (engine {data.get('engine')!r})")
                 continue
             results = tuple(Recorded.model_validate(r) for r in data["results"])
             sets.append(TraceSet(str(data["program"]).upper(), str(data.get("transaction", "")).upper(), file.path,
-                                 Schema.model_validate(data.get("schema", {})), results))  # fmt: skip
+                                 Schema.model_validate(data.get("schema", {})), results,
+                                 str(data["engine"])))  # fmt: skip
         except (ValueError, KeyError, ValidationError) as exc:
             problems.append(f"{file.path}: unreadable trace ({str(exc)[:200]})")
     return sets, problems
@@ -69,7 +72,7 @@ def _same_inputs(a: Mapping[str, object], b: Mapping[str, object]) -> bool:
 class TraceRunner:
     """The golden master from recorded traces. The legacy does not run: fresh inputs cannot be observed."""
 
-    engine = TRACE_ENGINE
+    engine = "cics-trace"  # until a run reads the traces: then the engine they were recorded with
 
     async def run(self, files: list[SourceFile], suite: Suite) -> GoldenMaster:
         sets, problems = load_traces(files)
@@ -96,5 +99,6 @@ class TraceRunner:
             raise ValueError(f"these cases have no recorded trace: {', '.join(missing)}. Use the traces of "
                              f"{trace.program} by name: {available}")  # fmt: skip
         # The same inputs the verification digests later (source intact, 11.3 check 6): the traces are part of them.
-        return GoldenMaster(program=trace.program, source_sha256=source_digest(files), engine=self.engine,
+        self.engine = trace.engine
+        return GoldenMaster(program=trace.program, source_sha256=source_digest(files), engine=trace.engine,
                             schema_=trace.schema, results=results)  # fmt: skip

@@ -10,6 +10,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Any, Protocol
 
+from nexti_adapter_aspx import AspxAdapter
 from nexti_adapter_cobol import CobolAdapter
 from nexti_adapter_sybase import SybaseAdapter
 from nexti_core.adapters import Inventory, SourceAdapter, SourceFile
@@ -20,7 +21,7 @@ from nexti_orchestration.model import Option, PhaseFailedError, PhaseResult, Que
 from nexti_orchestration.stories import FALLBACK_WRITER, STORY_WRITER, RuleData, Stories, derive
 from nexti_orchestration.usage import total
 
-ADAPTERS: tuple[SourceAdapter, ...] = (SybaseAdapter(), CobolAdapter())
+ADAPTERS: tuple[SourceAdapter, ...] = (SybaseAdapter(), CobolAdapter(), AspxAdapter())
 DETECT_THRESHOLD = 0.5
 
 
@@ -45,7 +46,7 @@ def pick_adapter(files: list[SourceFile]) -> SourceAdapter:
     if not scored or scored[0][0] < DETECT_THRESHOLD:
         raise PhaseFailedError(
             "No source adapter recognises these inputs (supported in this version: Sybase ASE "
-            "stored procedures, COBOL/CICS with BMS maps)"
+            "stored procedures, COBOL/CICS with BMS maps, ASP.NET WebForms)"
         )
     return scored[0][2]
 
@@ -240,7 +241,8 @@ class ModernizationPhases:
 UNIT_LABELS = ("StoredProcedure", "Program")
 _SUMMARY = (("procedures", "procedure(s)"), ("transactions", "transaction(s)"), ("programs", "program(s)"),
             ("paragraphs", "paragraph(s)"), ("statements", "statements"), ("tables", "tables"), ("files", "file(s)"),
-            ("maps", "map(s)"), ("copybooks", "copybook(s)"))  # fmt: skip
+            ("maps", "map(s)"), ("copybooks", "copybook(s)"), ("pages", "page(s)"), ("classes", "class(es)"),
+            ("methods", "method(s)"))  # fmt: skip
 
 
 def inventory_summary(metrics: dict[str, int]) -> str:

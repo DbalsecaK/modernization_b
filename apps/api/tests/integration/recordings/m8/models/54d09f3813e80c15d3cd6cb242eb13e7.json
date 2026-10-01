@@ -1,0 +1,28 @@
+{
+  "request_digest": "54d09f3813e80c15d3cd6cb242eb13e7",
+  "model": "anthropic/claude-sonnet-5.5",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are the Rules Verifier of a legacy modernization platform, an independent reviewer. You receive one business rule\nwritten by another agent and the exact source lines it cites. You did not write the rule: check it against the code\nonly.\n\nDecide:\n- `supported`: true only if the cited lines implement the rule as written, including its concrete values\n  (codes, amounts, states, limits) and its condition.\n- `problems`: every discrepancy you find: a value that differs from the code, a condition the code does not have, a\n  missing branch the rule should mention, a citation that does not contain the behaviour.\n- `corrected_statement`: if the rule is close but a detail is wrong, the statement rewritten to match the code;\n  otherwise null.\n\nAnswer with one JSON object and nothing else:\n{\"supported\": true, \"problems\": [], \"corrected_statement\": null}\n"
+    },
+    {
+      "role": "user",
+      "content": "Rule:\n{\"name\":\"Transfer posting: debit amount plus commission, credit amount, record transfer\",\"category\":\"lifecycle\",\"priority\":\"P0\",\"statement\":\"A valid transfer debits the origin account by amount plus commission and credits the destination with the amount only (the commission is retained by the bank). It records a TRANSFERENCIAS row with the next sequential number (MAX+1, or 1 if empty), and commits all changes in one transaction.\",\"condition\":\"All validations pass\",\"action\":\"Origin balance -= monto + comision; destination balance += monto; number = ISNULL(MAX(TRF_NUMERO),0)+1; insert TRANSFERENCIAS (number, origin, destination, amount, commission, type); commit; show commission and 'TRANSFERENCIA REALIZADA'; redirect to Comprobante.aspx?numero=<number>.\"}\n\nCited lines:\nTransferencia.aspx.cs:75-105:\n   75              SqlCommand debitar = new SqlCommand(\n   76                  \"UPDATE CUENTAS SET CTA_SALDO = CTA_SALDO - @valor WHERE CTA_NUMERO = @cuenta\", cn, tx);\n   77              debitar.Parameters.AddWithValue(\"@valor\", monto + comision);\n   78              debitar.Parameters.AddWithValue(\"@cuenta\", origen);\n   79              debitar.ExecuteNonQuery();\n   80  \n   81              SqlCommand acreditar = new SqlCommand(\n   82                  \"UPDATE CUENTAS SET CTA_SALDO = CTA_SALDO + @valor WHERE CTA_NUMERO = @cuenta\", cn, tx);\n   83              acreditar.Parameters.AddWithValue(\"@valor\", monto);\n   84              acreditar.Parameters.AddWithValue(\"@cuenta\", destino);\n   85              acreditar.ExecuteNonQuery();\n   86  \n   87              SqlCommand siguiente = new SqlCommand(\n   88                  \"SELECT ISNULL(MAX(TRF_NUMERO), 0) + 1 FROM TRANSFERENCIAS\", cn, tx);\n   89              int numero = (int)siguiente.ExecuteScalar();\n   90  \n   91              SqlCommand registrar = new SqlCommand(\n   92                  \"INSERT INTO TRANSFERENCIAS (TRF_NUMERO, TRF_ORIGEN, TRF_DESTINO, TRF_MONTO, TRF_COMISION, TRF_TIPO) \" +\n   93                  \"VALUES (@numero, @origen, @destino, @monto, @comision, @tipo)\", cn, tx);\n   94              registrar.Parameters.AddWithValue(\"@numero\", numero);\n   95              registrar.Parameters.AddWithValue(\"@origen\", origen);\n   96              registrar.Parameters.AddWithValue(\"@destino\", destino);\n   97              registrar.Parameters.AddWithValue(\"@monto\", monto);\n   98              registrar.Parameters.AddWithValue(\"@comision\", comision);\n   99              registrar.Parameters.AddWithValue(\"@tipo\", tipo);\n  100              registrar.ExecuteNonQuery();\n  101  \n  102              tx.Commit();\n  103              lblComision.Text = comision.ToString(\"0.00\");\n  104              lblMensaje.Text = \"TRANSFERENCIA REALIZADA\";\n  105              Response.Redirect(\"Comprobante.aspx?numero=\" + numero);"
+    }
+  ],
+  "response": {
+    "request_id": "gen-1790852809-f9E18BsGe8HwVx3cwn19",
+    "model": "anthropic/claude-sonnet-5.5",
+    "provider_name": "Anthropic",
+    "content": "{\"supported\": true, \"problems\": [], \"corrected_statement\": null}",
+    "usage": {
+      "input_tokens": 1477,
+      "output_tokens": 410,
+      "reasoning_tokens": 385,
+      "cache_read_tokens": 0,
+      "cache_write_tokens": 0,
+      "provider_cost_usd": "0.007054"
+    }
+  }
+}

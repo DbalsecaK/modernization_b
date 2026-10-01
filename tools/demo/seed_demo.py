@@ -32,6 +32,7 @@ from integration import test_acceptance_m6 as m6  # noqa: E402
 from integration import test_acceptance_m6b as m6b  # noqa: E402
 from integration import test_acceptance_m6c as m6c  # noqa: E402
 from integration import test_acceptance_m7 as m7  # noqa: E402
+from integration import test_acceptance_m8 as m8  # noqa: E402
 from integration.run_support import NO_FRONTEND, TARGET, FakeSandbox, make_config, make_run, seed_screens  # noqa: E402
 from sqlalchemy import text  # noqa: E402
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine  # noqa: E402
@@ -58,6 +59,7 @@ DEMOS = {
     "m6b": ("Demo · Pagos frontend React y Angular", ["bms"]),
     "m6c": ("Demo · Pagos Sybase → .NET 10", ["sybase-sp"]),
     "m7": ("Demo · Simulador de crédito (nueva funcionalidad)", ["functional-document", "figma"]),
+    "m8": ("Demo · Transferencias ASPX → .NET 10 + React", ["aspx-webforms"]),
 }
 DESCRIPTION = "Demo project replayed from the {key} acceptance recordings: a full run with no model cost."
 MAX_STEPS = 30
@@ -224,6 +226,12 @@ async def demo_m7(demo: Demo) -> uuid.UUID:
                           feature=True)  # fmt: skip
 
 
+async def demo_m8(demo: Demo) -> uuid.UUID:
+    """ASP.NET WebForms: the transfer pages rewritten to .NET 10 + React, verified against the recorded traces."""
+    return await pipeline(demo, DEMOS["m8"][0], m8.RECORDINGS, m8.TEAM, m8.sources(), None,
+                          target=m8.TARGET_DOTNET)  # fmt: skip
+
+
 async def demo_m6(demo: Demo) -> uuid.UUID:
     return await pipeline(demo, DEMOS["m6"][0], m6.RECORDINGS, m6.TEAM, m6.sources(), None)
 
@@ -275,7 +283,7 @@ async def demo_m6b(demo: Demo) -> uuid.UUID:
 
 
 BUILDERS: dict[str, Callable[[Demo], Awaitable[uuid.UUID]]] = {
-    "m4": demo_m4, "m6": demo_m6, "m6b": demo_m6b, "m6c": demo_m6c, "m7": demo_m7,
+    "m4": demo_m4, "m6": demo_m6, "m6b": demo_m6b, "m6c": demo_m6c, "m7": demo_m7, "m8": demo_m8,
 }  # fmt: skip
 
 

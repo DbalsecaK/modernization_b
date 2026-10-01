@@ -25,5 +25,6 @@ reemplaza y se marca el anterior como "Reemplazado por ADR-NNNN".
 | [0017](0017-pack-dotnet-y-contrato-de-packs-de-backend.md) | Pack .NET 10 con SQL Server y un contrato común de packs de backend | Aceptada |
 | [0018](0018-flujo-2-insumos-citables-y-veredicto.md) | Flujo 2: insumos citables, integraciones del tenant y veredicto por criterios | Aceptada |
 | [0019](0019-backlog-jira-azure-devops.md) | Backlog en Jira y Azure DevOps: sincronización idempotente y ciclo del bug | Aceptada |
+| [0020](0020-aspx-parser-trazas-y-uplift.md) | ASPX / .NET Framework: parser determinista, trazas como golden master y evaluación de uplift | Aceptada |
 
 Plantilla: contexto, decisión, alternativas consideradas, consecuencias y cómo se valida.
