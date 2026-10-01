@@ -1923,6 +1923,45 @@
         "title": "ConnectionUpdate",
         "type": "object"
       },
+      "ContractsOut": {
+        "description": "The HTTP contract of the target: the OpenAPI document the frontend pack derived from the design, when there is\none, and its operations; without a frontend the operations come straight from the design's use cases.",
+        "properties": {
+          "openapi": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Openapi"
+          },
+          "operations": {
+            "items": {
+              "$ref": "#/components/schemas/OperationOut"
+            },
+            "title": "Operations",
+            "type": "array"
+          },
+          "source": {
+            "enum": [
+              "openapi",
+              "design"
+            ],
+            "title": "Source",
+            "type": "string"
+          }
+        },
+        "required": [
+          "source",
+          "operations",
+          "openapi"
+        ],
+        "title": "ContractsOut",
+        "type": "object"
+      },
       "CoverageOut": {
         "properties": {
           "complete": {
@@ -2077,6 +2116,277 @@
         "title": "DependencyIn",
         "type": "object"
       },
+      "DesignDecisionOut": {
+        "properties": {
+          "consequences": {
+            "default": "",
+            "title": "Consequences",
+            "type": "string"
+          },
+          "context": {
+            "default": "",
+            "title": "Context",
+            "type": "string"
+          },
+          "decision": {
+            "title": "Decision",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "decision"
+        ],
+        "title": "DesignDecisionOut",
+        "type": "object"
+      },
+      "DesignEntityOut": {
+        "properties": {
+          "fields": {
+            "items": {
+              "$ref": "#/components/schemas/DesignFieldOut"
+            },
+            "title": "Fields",
+            "type": "array"
+          },
+          "key": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Key",
+            "type": "array"
+          },
+          "legacyTable": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Legacytable"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "table": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Table"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "DesignEntityOut",
+        "type": "object"
+      },
+      "DesignErrorOut": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "legacyCode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Legacycode"
+          },
+          "message": {
+            "default": "",
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code"
+        ],
+        "title": "DesignErrorOut",
+        "type": "object"
+      },
+      "DesignFieldOut": {
+        "properties": {
+          "column": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Column"
+          },
+          "legacy": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Legacy"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "type": {
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "type"
+        ],
+        "title": "DesignFieldOut",
+        "type": "object"
+      },
+      "DesignOut": {
+        "properties": {
+          "basePackage": {
+            "title": "Basepackage",
+            "type": "string"
+          },
+          "context": {
+            "title": "Context",
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "title": "Createdat",
+            "type": "string"
+          },
+          "decisions": {
+            "items": {
+              "$ref": "#/components/schemas/DesignDecisionOut"
+            },
+            "title": "Decisions",
+            "type": "array"
+          },
+          "entities": {
+            "items": {
+              "$ref": "#/components/schemas/DesignEntityOut"
+            },
+            "title": "Entities",
+            "type": "array"
+          },
+          "infrastructure": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Infrastructure",
+            "type": "array"
+          },
+          "ports": {
+            "items": {
+              "$ref": "#/components/schemas/DesignPortOut"
+            },
+            "title": "Ports",
+            "type": "array"
+          },
+          "runId": {
+            "format": "uuid",
+            "title": "Runid",
+            "type": "string"
+          },
+          "useCases": {
+            "items": {
+              "$ref": "#/components/schemas/DesignUseCaseOut"
+            },
+            "title": "Usecases",
+            "type": "array"
+          }
+        },
+        "required": [
+          "runId",
+          "createdAt",
+          "context",
+          "basePackage"
+        ],
+        "title": "DesignOut",
+        "type": "object"
+      },
+      "DesignPortMethodOut": {
+        "properties": {
+          "description": {
+            "default": "",
+            "title": "Description",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "DesignPortMethodOut",
+        "type": "object"
+      },
+      "DesignPortOut": {
+        "properties": {
+          "entity": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entity"
+          },
+          "legacyProgram": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Legacyprogram"
+          },
+          "methods": {
+            "items": {
+              "$ref": "#/components/schemas/DesignPortMethodOut"
+            },
+            "title": "Methods",
+            "type": "array"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "DesignPortOut",
+        "type": "object"
+      },
       "DesignSystemOut": {
         "properties": {
           "createdAt": {
@@ -2114,6 +2424,66 @@
           "createdAt"
         ],
         "title": "DesignSystemOut",
+        "type": "object"
+      },
+      "DesignUseCaseOut": {
+        "properties": {
+          "description": {
+            "default": "",
+            "title": "Description",
+            "type": "string"
+          },
+          "errors": {
+            "items": {
+              "$ref": "#/components/schemas/DesignErrorOut"
+            },
+            "title": "Errors",
+            "type": "array"
+          },
+          "httpMethod": {
+            "default": "POST",
+            "title": "Httpmethod",
+            "type": "string"
+          },
+          "legacyProgram": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Legacyprogram"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "path": {
+            "default": "",
+            "title": "Path",
+            "type": "string"
+          },
+          "ports": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Ports",
+            "type": "array"
+          },
+          "rules": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Rules",
+            "type": "array"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "DesignUseCaseOut",
         "type": "object"
       },
       "DevLoginIn": {
@@ -3820,6 +4190,42 @@
           "policyReason"
         ],
         "title": "OfferingOut",
+        "type": "object"
+      },
+      "OperationOut": {
+        "properties": {
+          "method": {
+            "title": "Method",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          },
+          "rules": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Rules",
+            "type": "array"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          }
+        },
+        "required": [
+          "method",
+          "path",
+          "name",
+          "summary",
+          "rules"
+        ],
+        "title": "OperationOut",
         "type": "object"
       },
       "PermissionOut": {
@@ -9962,6 +10368,58 @@
         ]
       }
     },
+    "/api/v1/projects/{project_id}/contracts": {
+      "get": {
+        "description": "The newest OpenAPI document, else the operations of the newest design, else nothing.",
+        "operationId": "contracts_api_v1_projects__project_id__contracts_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/ContractsOut"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "title": "Response Contracts Api V1 Projects  Project Id  Contracts Get"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Contracts",
+        "tags": [
+          "architecture"
+        ]
+      }
+    },
     "/api/v1/projects/{project_id}/coverage": {
       "get": {
         "operationId": "get_coverage_api_v1_projects__project_id__coverage_get",
@@ -10002,6 +10460,58 @@
         "summary": "Get Coverage",
         "tags": [
           "spec"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/design": {
+      "get": {
+        "description": "The newest design, or nothing before the design phase.",
+        "operationId": "design_api_v1_projects__project_id__design_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/DesignOut"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "title": "Response Design Api V1 Projects  Project Id  Design Get"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Design",
+        "tags": [
+          "architecture"
         ]
       }
     },

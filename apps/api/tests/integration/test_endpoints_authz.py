@@ -57,6 +57,7 @@ from .run_support import (
     make_config,
     make_project,
     make_run,
+    seed_architecture,
     seed_graph,
     seed_proposal,
     seed_screens,
@@ -426,6 +427,13 @@ class Ctx:
         await self.sync_authz()
         return project_id, verdict_id
 
+    async def architecture_project(self) -> uuid.UUID:
+        """A fresh project of tenant A with the design of the fictitious application and its OpenAPI document."""
+        project_id = await make_project(self.owner, self.world.tenant_a)
+        await seed_architecture(self.owner, object_store(), self.world.tenant_a, project_id)
+        await self.sync_authz()
+        return project_id
+
     async def spec_project(self) -> uuid.UUID:
         """A fresh project of tenant A with rules, stories (US-003 discarded), dependencies and a plan."""
         project_id = await make_project(self.owner, self.world.tenant_a)
@@ -709,6 +717,13 @@ def _verified(suffix: str) -> Callable[[Ctx], Awaitable[Request]]:
     return make
 
 
+def _architecture(suffix: str) -> Callable[[Ctx], Awaitable[Request]]:
+    async def make(ctx: Ctx) -> Request:
+        return f"/api/v1/projects/{await ctx.architecture_project()}{suffix}", None
+
+    return make
+
+
 PROTO = "/api/v1/projects/{project_id}/screens/{key}/prototypes/{version}"
 UI_CHAT = "/api/v1/projects/{project_id}/screens/{key}/chat"
 STORY = {"title": "Pay an order", "criteria": [VALID_CRITERION], "links": ["RULE-001"]}
@@ -987,6 +1002,8 @@ CASES = [
         _verified("/code/file?path=src/main/java/demo/PayOrderService.java"),
     ),
     Case("GET", "/api/v1/projects/{project_id}/code:download", "admin", "outsider", _verified("/code:download")),
+    Case("GET", "/api/v1/projects/{project_id}/design", "admin", "outsider", _architecture("/design")),
+    Case("GET", "/api/v1/projects/{project_id}/contracts", "admin", "outsider", _architecture("/contracts")),
 ]  # fmt: skip
 
 

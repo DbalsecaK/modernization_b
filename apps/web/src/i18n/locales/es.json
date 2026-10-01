@@ -531,7 +531,6 @@
       "success": "Éxito"
     },
     "contractsTitle": "Contratos",
-    "contractsHint": "Operaciones que serán el OpenAPI, cada una ligada a las reglas que atiende.",
     "operation": "Operación",
     "gateApproved": "Compuerta C1 aprobada. Puede empezar el diseño.",
     "ruleApproved": "{{id}} aprobada.",
@@ -577,7 +576,22 @@
     "c1": {
       "ready": "Las historias y el plan pueden aprobarse en la compuerta C1 (en la pestaña Ejecuciones).",
       "blocked": "La compuerta C1 aún no puede aprobarse:"
-    }
+    },
+    "noScreens": "Este legacy no tiene pantallas",
+    "noScreensHint": "Las pantallas vienen de mapas BMS u otras fuentes de pantallas; un conjunto de procedimientos almacenados no tiene.",
+    "openInUiDesign": "Abrir en Diseño UI",
+    "length": "Longitud",
+    "navigation": "Lleva a",
+    "fieldTypes": {
+      "numeric": "Numérico",
+      "secret": "Secreto",
+      "text": "Texto"
+    },
+    "noContracts": "Todavía no hay contratos",
+    "noContractsHint": "Los contratos aparecen con el diseño, en la fase de diseño.",
+    "contractsFromOpenapi": "Desde el documento OpenAPI derivado del diseño aprobado, cada operación con las reglas que atiende.",
+    "contractsFromDesign": "Desde los casos de uso del diseño aprobado, cada operación con las reglas que atiende.",
+    "operationName": "Id de operación"
   },
   "ruleStatus": {
     "approved": "Aprobada",
@@ -703,16 +717,38 @@
     "services": "Servicios",
     "endpoints": "Endpoints",
     "adrs": "Decisiones de arquitectura",
-    "adrState": {
-      "accepted": "Aceptada",
-      "proposed": "Propuesta"
-    },
     "contract": "Contrato (OpenAPI)",
     "fitness": "Fitness functions",
-    "fitnessDomain": "La capa de dominio no depende de ningún framework",
-    "fitnessAdapters": "Los adaptadores solo dependen de puertos",
-    "fitnessNaming": "Paquetes y clases siguen la constitución del cliente",
-    "fitnessRuleIds": "Cada clase de dominio nombra las reglas que implementa"
+    "loading": "Cargando la arquitectura…",
+    "loadError": "No se pudo cargar la arquitectura",
+    "emptyHint": "Ejecuta el pipeline: la fase de diseño escribe aquí la arquitectura del destino, para aprobarla en la compuerta C3.",
+    "useCases": "Servicios de aplicación",
+    "useCasesHint": "Un servicio por caso de uso del diseño, con las reglas que implementa y los puertos que usa.",
+    "useCase": "Servicio",
+    "ports": "Puertos",
+    "legacy": "Reemplaza",
+    "entities": "Entidades",
+    "entity": "Entidad",
+    "table": "Tabla",
+    "legacyTable": "Tabla legacy",
+    "fieldCount_one": "{{count}} campo",
+    "fieldCount_other": "{{count}} campos",
+    "portsTitle": "Puertos",
+    "portsHint": "Interfaces de las que depende el dominio; los adaptadores las implementan.",
+    "replaces": "reemplaza {{program}}",
+    "noPorts": "El diseño no tiene puertos.",
+    "adrsHint": "Decisiones registradas en el diseño, con su contexto y consecuencias.",
+    "adrContext": "Contexto",
+    "adrDecision": "Decisión",
+    "adrConsequences": "Consecuencias",
+    "noAdrs": "El diseño no registra decisiones.",
+    "contractFromDesign": "Derivado de los casos de uso del diseño",
+    "seeOperations": "Ver operaciones",
+    "contractTruncated": "Se muestra el inicio del documento.",
+    "noOpenapi": "El documento OpenAPI se escribe cuando se genera un pack de frontend. Las operaciones están en Especificación › Contratos.",
+    "fitnessHint": "Los chequeos del veredicto más reciente de cada módulo, calculados por código.",
+    "noFitness": "Todavía no hay veredicto: los chequeos aparecen después de la fase de verificación.",
+    "fitnessOf": "Chequeos de {{module}}"
   },
   "code": {
     "title": "Código generado",

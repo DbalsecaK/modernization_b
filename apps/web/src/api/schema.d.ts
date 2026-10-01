@@ -758,6 +758,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/projects/{project_id}/contracts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Contracts
+         * @description The newest OpenAPI document, else the operations of the newest design, else nothing.
+         */
+        get: operations["contracts_api_v1_projects__project_id__contracts_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/projects/{project_id}/coverage": {
         parameters: {
             query?: never;
@@ -767,6 +787,26 @@ export interface paths {
         };
         /** Get Coverage */
         get: operations["get_coverage_api_v1_projects__project_id__coverage_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/projects/{project_id}/design": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Design
+         * @description The newest design, or nothing before the design phase.
+         */
+        get: operations["design_api_v1_projects__project_id__design_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2658,6 +2698,24 @@ export interface components {
             /** Name */
             name?: string | null;
         };
+        /**
+         * ContractsOut
+         * @description The HTTP contract of the target: the OpenAPI document the frontend pack derived from the design, when there is
+         *     one, and its operations; without a frontend the operations come straight from the design's use cases.
+         */
+        ContractsOut: {
+            /** Openapi */
+            openapi: {
+                [key: string]: unknown;
+            } | null;
+            /** Operations */
+            operations: components["schemas"]["OperationOut"][];
+            /**
+             * Source
+             * @enum {string}
+             */
+            source: "openapi" | "design";
+        };
         /** CoverageOut */
         CoverageOut: {
             /** Complete */
@@ -2715,6 +2773,107 @@ export interface components {
              */
             strength: "hard" | "soft";
         };
+        /** DesignDecisionOut */
+        DesignDecisionOut: {
+            /**
+             * Consequences
+             * @default
+             */
+            consequences: string;
+            /**
+             * Context
+             * @default
+             */
+            context: string;
+            /** Decision */
+            decision: string;
+            /** Title */
+            title: string;
+        };
+        /** DesignEntityOut */
+        DesignEntityOut: {
+            /** Fields */
+            fields?: components["schemas"]["DesignFieldOut"][];
+            /** Key */
+            key?: string[];
+            /** Legacytable */
+            legacyTable?: string | null;
+            /** Name */
+            name: string;
+            /** Table */
+            table?: string | null;
+        };
+        /** DesignErrorOut */
+        DesignErrorOut: {
+            /** Code */
+            code: string;
+            /** Legacycode */
+            legacyCode?: string | null;
+            /**
+             * Message
+             * @default
+             */
+            message: string;
+        };
+        /** DesignFieldOut */
+        DesignFieldOut: {
+            /** Column */
+            column?: string | null;
+            /** Legacy */
+            legacy?: string | null;
+            /** Name */
+            name: string;
+            /** Type */
+            type: string;
+        };
+        /** DesignOut */
+        DesignOut: {
+            /** Basepackage */
+            basePackage: string;
+            /** Context */
+            context: string;
+            /**
+             * Createdat
+             * Format: date-time
+             */
+            createdAt: string;
+            /** Decisions */
+            decisions?: components["schemas"]["DesignDecisionOut"][];
+            /** Entities */
+            entities?: components["schemas"]["DesignEntityOut"][];
+            /** Infrastructure */
+            infrastructure?: string[];
+            /** Ports */
+            ports?: components["schemas"]["DesignPortOut"][];
+            /**
+             * Runid
+             * Format: uuid
+             */
+            runId: string;
+            /** Usecases */
+            useCases?: components["schemas"]["DesignUseCaseOut"][];
+        };
+        /** DesignPortMethodOut */
+        DesignPortMethodOut: {
+            /**
+             * Description
+             * @default
+             */
+            description: string;
+            /** Name */
+            name: string;
+        };
+        /** DesignPortOut */
+        DesignPortOut: {
+            /** Entity */
+            entity?: string | null;
+            /** Legacyprogram */
+            legacyProgram?: string | null;
+            /** Methods */
+            methods?: components["schemas"]["DesignPortMethodOut"][];
+            /** Name */
+            name: string;
+        };
         /** DesignSystemOut */
         DesignSystemOut: {
             /**
@@ -2735,6 +2894,34 @@ export interface components {
             };
             /** Version */
             version: number;
+        };
+        /** DesignUseCaseOut */
+        DesignUseCaseOut: {
+            /**
+             * Description
+             * @default
+             */
+            description: string;
+            /** Errors */
+            errors?: components["schemas"]["DesignErrorOut"][];
+            /**
+             * Httpmethod
+             * @default POST
+             */
+            httpMethod: string;
+            /** Legacyprogram */
+            legacyProgram?: string | null;
+            /** Name */
+            name: string;
+            /**
+             * Path
+             * @default
+             */
+            path: string;
+            /** Ports */
+            ports?: string[];
+            /** Rules */
+            rules?: string[];
         };
         /** DevLoginIn */
         DevLoginIn: {
@@ -3302,6 +3489,19 @@ export interface components {
             upstreamProvider: string;
             /** Zdr */
             zdr: boolean;
+        };
+        /** OperationOut */
+        OperationOut: {
+            /** Method */
+            method: string;
+            /** Name */
+            name: string;
+            /** Path */
+            path: string;
+            /** Rules */
+            rules: string[];
+            /** Summary */
+            summary: string;
         };
         /** PermissionOut */
         PermissionOut: {
@@ -6271,6 +6471,37 @@ export interface operations {
             };
         };
     };
+    contracts_api_v1_projects__project_id__contracts_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ContractsOut"] | null;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_coverage_api_v1_projects__project_id__coverage_get: {
         parameters: {
             query?: never;
@@ -6289,6 +6520,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CoverageOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    design_api_v1_projects__project_id__design_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DesignOut"] | null;
                 };
             };
             /** @description Validation Error */

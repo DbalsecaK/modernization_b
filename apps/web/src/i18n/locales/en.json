@@ -531,7 +531,6 @@
       "success": "Success"
     },
     "contractsTitle": "Contracts",
-    "contractsHint": "Operations that will become the OpenAPI, each linked to the rules it serves.",
     "operation": "Operation",
     "gateApproved": "Gate C1 approved. Design can start.",
     "ruleApproved": "{{id}} approved.",
@@ -577,7 +576,22 @@
     "c1": {
       "ready": "The stories and the plan can be approved at gate C1 (in the Runs tab).",
       "blocked": "Gate C1 cannot be approved yet:"
-    }
+    },
+    "noScreens": "This legacy has no screens",
+    "noScreensHint": "Screens come from BMS maps or other screen sources; a stored-procedure estate has none.",
+    "openInUiDesign": "Open in UI design",
+    "length": "Length",
+    "navigation": "Leads to",
+    "fieldTypes": {
+      "numeric": "Numeric",
+      "secret": "Secret",
+      "text": "Text"
+    },
+    "noContracts": "No contracts yet",
+    "noContractsHint": "The contracts appear with the design, in the design phase.",
+    "contractsFromOpenapi": "From the OpenAPI document derived from the approved design, each operation with the rules it serves.",
+    "contractsFromDesign": "From the use cases of the approved design, each operation with the rules it serves.",
+    "operationName": "Operation id"
   },
   "ruleStatus": {
     "approved": "Approved",
@@ -703,16 +717,38 @@
     "services": "Services",
     "endpoints": "Endpoints",
     "adrs": "Architecture decisions",
-    "adrState": {
-      "accepted": "Accepted",
-      "proposed": "Proposed"
-    },
     "contract": "Contract (OpenAPI)",
     "fitness": "Fitness functions",
-    "fitnessDomain": "The domain layer has no framework dependencies",
-    "fitnessAdapters": "Adapters only depend on ports",
-    "fitnessNaming": "Package and class names follow the customer constitution",
-    "fitnessRuleIds": "Every domain class names the rule ids it implements"
+    "loading": "Loading the architecture…",
+    "loadError": "The architecture could not be loaded",
+    "emptyHint": "Run the pipeline: the design phase writes the target's architecture here, for approval at gate C3.",
+    "useCases": "Application services",
+    "useCasesHint": "One service per use case of the design, with the rules it implements and the ports it uses.",
+    "useCase": "Service",
+    "ports": "Ports",
+    "legacy": "Replaces",
+    "entities": "Entities",
+    "entity": "Entity",
+    "table": "Table",
+    "legacyTable": "Legacy table",
+    "fieldCount_one": "{{count}} field",
+    "fieldCount_other": "{{count}} fields",
+    "portsTitle": "Ports",
+    "portsHint": "Interfaces the domain depends on; adapters implement them.",
+    "replaces": "replaces {{program}}",
+    "noPorts": "The design has no ports.",
+    "adrsHint": "Decisions recorded in the design, with their context and consequences.",
+    "adrContext": "Context",
+    "adrDecision": "Decision",
+    "adrConsequences": "Consequences",
+    "noAdrs": "The design records no decisions.",
+    "contractFromDesign": "Derived from the design's use cases",
+    "seeOperations": "See operations",
+    "contractTruncated": "Showing the beginning of the document.",
+    "noOpenapi": "The OpenAPI document is written when a frontend pack is generated. The operations are listed in Specification › Contracts.",
+    "fitnessHint": "The checks of the newest verdict of each module, computed by code.",
+    "noFitness": "No verdict yet: the checks appear after the verification phase.",
+    "fitnessOf": "Checks of {{module}}"
   },
   "code": {
     "title": "Generated code",

@@ -344,11 +344,14 @@ export function Avatar({ initials }: { initials: string }) {
   )
 }
 
-export function Code({ children, className }: { children: ReactNode; className?: string }) {
+/** A code block. With `label`, a block that may scroll can be reached and scrolled with the keyboard (WCAG 2.1.1). */
+export function Code({ children, className, label }: { children: ReactNode; className?: string; label?: string }) {
   return (
     <pre
+      tabIndex={label ? 0 : undefined}
+      aria-label={label}
       className={cn(
-        'overflow-x-auto rounded-md bg-surface-2 p-3 font-mono text-xs leading-relaxed text-text',
+        'overflow-x-auto rounded-md bg-surface-2 p-3 font-mono text-xs leading-relaxed text-text focus:outline-2 focus:outline-brand',
         className,
       )}
     >
