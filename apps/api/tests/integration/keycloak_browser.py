@@ -1,6 +1,9 @@
 """A minimal browser for Keycloak pages over http://localhost: keeps cookies by path, Secure ones included (browsers
 treat localhost as a secure context; httpx's cookie jar does not)."""
 
+import html
+import json
+import re
 from http.cookies import SimpleCookie
 from urllib.parse import urljoin, urlsplit
 
@@ -63,3 +66,39 @@ class Browser:
 
     def __exit__(self, *_: object) -> None:
         self.client.close()
+
+
+# Hidden fields the platform theme's pages post, read from the page's kcContext (the theme renders with React, so the
+# server's HTML has no <form>): the TOTP set-up sends back the secret Keycloak generated.
+_KC_HIDDEN = {"kc-totp-settings-form": ("totpSecret",)}
+
+
+def kc_value(page: str, key: str) -> str | None:
+    """A string of the page's kcContext (a JavaScript object, read value by value)."""
+    found = re.search(rf'"{re.escape(key)}"\s*:\s*("(?:[^"\\]|\\.)*")', page)
+    return str(json.loads(found.group(1))) if found else None
+
+
+def keycloak_form(page: str, form_id: str) -> tuple[str, dict[str, str]]:
+    """Where a Keycloak page posts and its hidden fields: the <form> of Keycloak's own theme (the test identity
+    provider) or, for the platform theme (Keycloakify), the kcContext's login action."""
+    found = re.search(rf'<form[^>]*id="{form_id}"[^>]*>.*?</form>', page, re.S)
+    if found:
+        action = html.unescape(re.search(r'action="([^"]+)"', found.group(0)).group(1))  # type: ignore[union-attr]
+        fields = {m.group(1): html.unescape(m.group(2))
+                  for m in re.finditer(r'<input[^>]*name="([^"]+)"[^>]*value="([^"]*)"', found.group(0))}  # fmt: skip
+        return action, fields
+    action = kc_value(page, "loginAction")
+    assert action, f"no form {form_id} and no kcContext in Keycloak's page (pageId {kc_value(page, 'pageId')})"
+    hidden = {name: value for name in _KC_HIDDEN.get(form_id, ()) if (value := kc_value(page, name)) is not None}
+    return action, hidden
+
+
+def totp_secret(page: str) -> str:
+    """The TOTP secret of the set-up page: Keycloak's manual-mode text, or the kcContext of the platform theme."""
+    found = re.search(r'id="kc-totp-secret-key"[^>]*>([^<]+)<', page)
+    if found:
+        return html.unescape(found.group(1)).strip()
+    secret = kc_value(page, "totpSecretEncoded")
+    assert secret, f"no TOTP secret in Keycloak's page (pageId {kc_value(page, 'pageId')})"
+    return secret

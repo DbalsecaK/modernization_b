@@ -1,0 +1,118 @@
+/* The prototype's tokens (packages/ds, apps/web AuthLayout): navy brand panel, green accent, Inter. */
+:root {
+  --nx-navy: #052158;
+  --nx-navy-ink: #c9d3ea;
+  --nx-accent: #05e194;
+  --nx-brand: #1d4ed8;
+  --nx-surface: #ffffff;
+  --nx-text: #0f172a;
+  --nx-font: 'Inter', 'Segoe UI', system-ui, sans-serif;
+}
+
+body.nx-body,
+.nx-split {
+  font-family: var(--nx-font);
+  background: var(--nx-surface);
+  color: var(--nx-text);
+  margin: 0;
+}
+
+.nx-split {
+  display: flex;
+  min-height: 100vh;
+}
+
+.nx-hero {
+  display: none;
+  position: relative;
+  overflow: hidden;
+  width: 44%;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 2.5rem;
+  background: var(--nx-navy);
+  color: #fff;
+}
+
+.nx-hero::after {
+  content: '';
+  position: absolute;
+  right: -6rem;
+  bottom: -6rem;
+  width: 20rem;
+  height: 20rem;
+  border-radius: 9999px;
+  border: 40px solid rgb(5 225 148 / 10%);
+}
+
+.nx-logo {
+  font-size: 1.875rem;
+  font-weight: 700;
+}
+
+.nx-logo span {
+  color: var(--nx-accent);
+}
+
+.nx-hero h2 {
+  max-width: 28rem;
+  font-size: 1.875rem;
+  line-height: 1.25;
+  font-weight: 600;
+}
+
+.nx-hero p,
+.nx-hero li {
+  color: var(--nx-navy-ink);
+}
+
+.nx-hero ul {
+  padding: 0;
+  list-style: none;
+}
+
+.nx-hero li {
+  position: relative;
+  padding-left: 1rem;
+  margin: 0.75rem 0;
+  font-size: 0.875rem;
+}
+
+.nx-hero li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0.5rem;
+  width: 0.375rem;
+  height: 0.375rem;
+  border-radius: 9999px;
+  background: var(--nx-accent);
+}
+
+.nx-note {
+  font-size: 0.75rem;
+}
+
+.nx-main {
+  flex: 1;
+}
+
+.nx-main .login-pf-page,
+.nx-main .pf-v5-c-login {
+  background: transparent;
+}
+
+.nx-card {
+  box-shadow: none;
+}
+
+.nx-primary {
+  background-color: var(--nx-navy) !important;
+  border-color: var(--nx-navy) !important;
+}
+
+@media (min-width: 1024px) {
+  .nx-hero {
+    display: flex;
+  }
+}

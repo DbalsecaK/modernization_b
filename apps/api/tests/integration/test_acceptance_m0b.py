@@ -17,7 +17,6 @@ Each login is what a browser does on Keycloak's pages (the forms are submitted, 
 import base64
 import hashlib
 import hmac
-import html
 import re
 import struct
 import time
@@ -40,7 +39,7 @@ from nexti_api.settings import Settings
 from nexti_core.db.models import AppUser, Membership, Role, RoleAssignment
 
 from .conftest import SETTINGS, World, compose_env, keycloak_admin_headers
-from .keycloak_browser import Browser
+from .keycloak_browser import Browser, keycloak_form, totp_secret
 from .test_runs_api import sign_in
 
 PASSWORD = compose_env("KC_DEV_USER_PASSWORD")
@@ -58,15 +57,6 @@ def totp(secret: str, at: float | None = None) -> str:
     digest = hmac.new(raw, struct.pack(">Q", int((at or time.time()) // 30)), hashlib.sha1).digest()
     offset = digest[-1] & 0x0F
     return f"{(struct.unpack('>I', digest[offset : offset + 4])[0] & 0x7FFFFFFF) % 1_000_000:06d}"
-
-
-def form(page: str, form_id: str) -> tuple[str, dict[str, str]]:
-    found = re.search(rf'<form[^>]*id="{form_id}"[^>]*>.*?</form>', page, re.S)
-    assert found, f"form {form_id} not found in Keycloak's page: {re.findall(r'<form[^>]*id="([^"]+)"', page)}"
-    action = html.unescape(re.search(r'action="([^"]+)"', found.group(0)).group(1))  # type: ignore[union-attr]
-    fields = {m.group(1): html.unescape(m.group(2))
-              for m in re.finditer(r'<input[^>]*name="([^"]+)"[^>]*value="([^"]*)"', found.group(0))}  # fmt: skip
-    return action, fields
 
 
 def _page_text(page: str) -> str:
@@ -90,7 +80,7 @@ class Login:
         return self.kc.follow(self.kc.get(res.headers["location"]), CALLBACK)
 
     def submit(self, page: httpx.Response, form_id: str, fields: dict[str, str]) -> httpx.Response:
-        action, values = form(page.text, form_id)
+        action, values = keycloak_form(page.text, form_id)
         return self.kc.follow(self.kc.post(action, data={**values, **fields}), CALLBACK)
 
     def callback(self, res: httpx.Response) -> Any:
@@ -242,9 +232,8 @@ async def test_enterprise_identity_end_to_end(
         await _platform_user(owner_engine, mfa, mfa_sub, [world.tenant_a])
         login = Login(api)
         page = login.submit(login.start(mfa), "kc-form-login", {"username": mfa, "password": PASSWORD})
-        manual = login.kc.get(str(page.url) + "&mode=manual")
-        secret = html.unescape(re.search(r'id="kc-totp-secret-key"[^>]*>([^<]+)<', manual.text).group(1))  # type: ignore[union-attr]
-        done = login.callback(login.submit(manual, "kc-totp-settings-form",
+        secret = totp_secret(page.text)
+        done = login.callback(login.submit(page, "kc-totp-settings-form",
                                            {"totp": totp(secret), "userLabel": "phone"}))  # fmt: skip
         assert done.status_code == 302, done.headers
         assert done.headers["location"].endswith("/projects"), done.headers

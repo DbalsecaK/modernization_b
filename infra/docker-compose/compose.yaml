@@ -45,7 +45,9 @@ services:
       REDIS_PASSWORD: ${REDIS_PASSWORD}
 
   keycloak:
-    image: quay.io/keycloak/keycloak:26.7.4
+    # Keycloak 26.7.4 with the platform's login theme built with Keycloakify (ADR-0022): infra/keycloak/Dockerfile.
+    build: ../keycloak
+    image: nexti-keycloak:1
     # Development mode with the realm imported on start (spec 15.1, D-27). Existing realms are not overwritten.
     command: ["start-dev", "--import-realm"]
     environment:

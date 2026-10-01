@@ -114,6 +114,6 @@ Se toma la opción recomendada en cada punto, porque el aprobador pidió avanzar
 | Cuenta propia con MFA (TOTP) en un tenant que la exige | `test_acceptance_m0b.py` |
 | Un dominio "solo SSO" no entra con contraseña | `test_acceptance_m0b.py` |
 | El token trae la Organization y de ella sale el `tenant_id` | `test_acceptance_m0b.py` |
-| Un usuario en dos Organizations solo ve el tenant activo | `test_acceptance_m0b.py` y `test_tenant_isolation` |
+| Un usuario en dos Organizations solo ve el tenant activo | `test_acceptance_m0b.py` y `test_rls.py` |
 | Los grupos del IdP se traducen a los roles esperados | `test_acceptance_m0b.py` |
-| La configuración solo la cambia quien tiene el permiso, en su tenant, y queda auditada | `test_auth_admin_api.py` |
+| La configuración solo la cambia quien tiene el permiso, en su tenant, y queda auditada | `test_endpoints_authz.py` (casos de `/api/v1/identity` y aislamiento) |

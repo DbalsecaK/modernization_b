@@ -11,6 +11,7 @@
   "rememberMe": false,
   "verifyEmail": false,
   "editUsernameAllowed": false,
+  "loginTheme": "nexti",
   "internationalizationEnabled": true,
   "supportedLocales": ["en", "es"],
   "defaultLocale": "en",

@@ -1,7 +1,5 @@
 """Keycloak events reach the platform audit log (M0 acceptance: every sensitive action, Keycloak's included)."""
 
-import html
-import re
 import uuid
 from typing import Any
 
@@ -13,6 +11,7 @@ from nexti_api.audit.keycloak_events import pull_keycloak_events
 from nexti_api.keycloak_admin import KeycloakAdmin
 
 from .conftest import SETTINGS
+from .keycloak_browser import keycloak_form
 from .test_auth_flow import PASSWORD, keycloak_sign_in
 
 AUTH_URL = (
@@ -26,7 +25,7 @@ SAFE_DETAIL_KEYS = {"keycloak_event_id", "client_id", "ip_address", "error", "au
 def failed_sign_in(username: str) -> None:
     with httpx.Client(follow_redirects=True, timeout=20) as kc:
         page = kc.get(AUTH_URL)
-        action = html.unescape(re.search(r'id="kc-form-login"[^>]*action="([^"]+)"', page.text).group(1))  # type: ignore[union-attr]
+        action, _ = keycloak_form(page.text, "kc-form-login")
         cookies = "; ".join(f"{c.name}={c.value}" for c in kc.cookies.jar)
         res = kc.post(action, data={"username": username, "password": "wrong-password"}, headers={"Cookie": cookies})
     assert res.status_code == 200  # the form again, with the error

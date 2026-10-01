@@ -1,0 +1,21 @@
+{
+  "name": "nexti-keycloak-theme",
+  "private": true,
+  "version": "1.0.0",
+  "description": "The Keycloak login theme of the NexTI platform, built with Keycloakify from the prototype's sign-in screens (ADR-0022).",
+  "type": "module",
+  "scripts": {
+    "build": "vite build && keycloakify build"
+  },
+  "dependencies": {
+    "keycloakify": "11.16.0",
+    "react": "18.3.1",
+    "react-dom": "18.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "18.3.31",
+    "@types/react-dom": "18.3.7",
+    "@vitejs/plugin-react": "4.7.0",
+    "vite": "5.4.21"
+  }
+}
