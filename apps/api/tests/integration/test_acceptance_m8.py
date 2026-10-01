@@ -51,7 +51,11 @@ RECORD = os.environ.get("NEXTI_RECORD_M8") == "1"
 
 
 def sources() -> dict[str, bytes]:
-    return {p.relative_to(EXAMPLE).as_posix(): p.read_bytes() for p in sorted(EXAMPLE.rglob("*")) if p.is_file()}
+    """The archive of the example, in the same order on every system (case-insensitive, as Windows sorts paths): the
+    order of the files is part of what the agents read, so it must not depend on where the test runs."""
+    found = [p for p in EXAMPLE.rglob("*") if p.is_file()]
+    return {p.relative_to(EXAMPLE).as_posix(): p.read_bytes()
+            for p in sorted(found, key=lambda p: p.relative_to(EXAMPLE).as_posix().casefold())}  # fmt: skip
 
 
 @pytest.fixture(scope="module")
