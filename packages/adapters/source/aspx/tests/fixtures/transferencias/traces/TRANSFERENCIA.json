@@ -129,7 +129,8 @@
     "returns": 0,
     "outputs": {
      "lblMensaje": "TRANSFERENCIA REALIZADA",
-     "lblComision": "0.50"
+     "lblComision": "0.50",
+     "numero": "8"
     },
     "tables": {
      "CUENTAS": [
@@ -239,7 +240,8 @@
     "returns": 0,
     "outputs": {
      "lblMensaje": "TRANSFERENCIA REALIZADA",
-     "lblComision": "1.50"
+     "lblComision": "1.50",
+     "numero": "8"
     },
     "tables": {
      "CUENTAS": [
@@ -348,7 +350,8 @@
     "returns": 0,
     "outputs": {
      "lblMensaje": "TRANSFERENCIA REALIZADA",
-     "lblComision": "2.50"
+     "lblComision": "2.50",
+     "numero": "8"
     },
     "tables": {
      "CUENTAS": [
@@ -457,7 +460,8 @@
     "returns": 0,
     "outputs": {
      "lblMensaje": "TRANSFERENCIA REALIZADA",
-     "lblComision": "5.00"
+     "lblComision": "5.00",
+     "numero": "8"
     },
     "tables": {
      "CUENTAS": [
@@ -567,7 +571,8 @@
     "returns": 0,
     "outputs": {
      "lblMensaje": "TRANSFERENCIA REALIZADA",
-     "lblComision": "6.00"
+     "lblComision": "6.00",
+     "numero": "8"
     },
     "tables": {
      "CUENTAS": [
@@ -676,7 +681,8 @@
     "returns": 0,
     "outputs": {
      "lblMensaje": "TRANSFERENCIA REALIZADA",
-     "lblComision": "1.01"
+     "lblComision": "1.01",
+     "numero": "8"
     },
     "tables": {
      "CUENTAS": [
@@ -782,10 +788,9 @@
     "stubs": {}
    },
    "observation": {
-    "returns": 0,
+    "returns": -1,
     "outputs": {
-     "lblMensaje": "LA CUENTA DESTINO ES LA MISMA",
-     "lblComision": ""
+     "lblMensaje": "LA CUENTA DESTINO ES LA MISMA"
     },
     "tables": {
      "CUENTAS": [
@@ -883,10 +888,9 @@
     "stubs": {}
    },
    "observation": {
-    "returns": 0,
+    "returns": -1,
     "outputs": {
-     "lblMensaje": "CUENTA ORIGEN NO EXISTE",
-     "lblComision": ""
+     "lblMensaje": "CUENTA ORIGEN NO EXISTE"
     },
     "tables": {
      "CUENTAS": [
@@ -984,10 +988,9 @@
     "stubs": {}
    },
    "observation": {
-    "returns": 0,
+    "returns": -1,
     "outputs": {
-     "lblMensaje": "CUENTA ORIGEN INACTIVA",
-     "lblComision": ""
+     "lblMensaje": "CUENTA ORIGEN INACTIVA"
     },
     "tables": {
      "CUENTAS": [
@@ -1085,10 +1088,9 @@
     "stubs": {}
    },
    "observation": {
-    "returns": 0,
+    "returns": -1,
     "outputs": {
-     "lblMensaje": "CUENTA DESTINO NO EXISTE",
-     "lblComision": ""
+     "lblMensaje": "CUENTA DESTINO NO EXISTE"
     },
     "tables": {
      "CUENTAS": [
@@ -1186,10 +1188,9 @@
     "stubs": {}
    },
    "observation": {
-    "returns": 0,
+    "returns": -1,
     "outputs": {
-     "lblMensaje": "SALDO INSUFICIENTE",
-     "lblComision": ""
+     "lblMensaje": "SALDO INSUFICIENTE"
     },
     "tables": {
      "CUENTAS": [
@@ -1291,7 +1292,8 @@
     "returns": 0,
     "outputs": {
      "lblMensaje": "TRANSFERENCIA REALIZADA",
-     "lblComision": "0.50"
+     "lblComision": "0.50",
+     "numero": "8"
     },
     "tables": {
      "CUENTAS": [

@@ -95,10 +95,10 @@ def inspect_zip(stream: BinaryIO, limits: Limits, findings: SecretFindings | Non
 
 
 # The legacy code the pipeline reads from an accepted archive (already inspected at upload by `inspect_zip`): Sybase
-# procedures (M4), BMS maps (M5), COBOL programs, copybooks, CICS definitions and traces (M6); each source adapter
-# adds its languages.
+# procedures (M4), BMS maps (M5), COBOL programs, copybooks, CICS definitions and traces (M6), ASP.NET WebForms pages,
+# code-behind and configuration (M8); each source adapter adds its languages.
 SOURCE_SUFFIXES = (".sp", ".sql", ".prc", ".proc", ".tsql", ".syb", ".txt", ".bms", ".cbl", ".cob", ".cobol", ".cpy",
-                   ".copy", ".csd", ".json")  # fmt: skip
+                   ".copy", ".csd", ".json", ".aspx", ".ascx", ".master", ".cs", ".config")  # fmt: skip
 MAX_SOURCE_FILE_BYTES = 5 * 1024 * 1024
 MAX_SOURCE_TOTAL_BYTES = 50 * 1024 * 1024
 

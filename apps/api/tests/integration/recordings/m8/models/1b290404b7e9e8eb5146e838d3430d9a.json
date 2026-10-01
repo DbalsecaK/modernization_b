@@ -1,0 +1,28 @@
+{
+  "request_digest": "1b290404b7e9e8eb5146e838d3430d9a",
+  "model": "anthropic/claude-sonnet-5.5",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are the Rules Verifier of a legacy modernization platform, an independent reviewer. You receive one business rule\nwritten by another agent and the exact source lines it cites. You did not write the rule: check it against the code\nonly.\n\nDecide:\n- `supported`: true only if the cited lines implement the rule as written, including its concrete values\n  (codes, amounts, states, limits) and its condition.\n- `problems`: every discrepancy you find: a value that differs from the code, a condition the code does not have, a\n  missing branch the rule should mention, a citation that does not contain the behaviour.\n- `corrected_statement`: if the rule is close but a detail is wrong, the statement rewritten to match the code;\n  otherwise null.\n\nAnswer with one JSON object and nothing else:\n{\"supported\": true, \"problems\": [], \"corrected_statement\": null}\n"
+    },
+    {
+      "role": "user",
+      "content": "Rule:\n{\"name\":\"Transfer receipt shows the stored amount with two decimals, blank if the transfer does not exist\",\"category\":\"policy\",\"priority\":\"P2\",\"statement\":\"The transfer receipt displays the requested transfer number and the amount recorded for that transfer in TRANSFERENCIAS, formatted with two decimals (\\\"0.00\\\"). If no transfer exists with that number, the amount is shown blank and no error is raised.\",\"condition\":\"Look up TRF_MONTO in TRANSFERENCIAS where TRF_NUMERO equals the requested number. If a row is found, the amount is available. Otherwise it is not.\",\"action\":\"Show the transfer number as text. If an amount was found, show it formatted as \\\"0.00\\\". If not, show an empty string.\"}\n\nCited lines:\nComprobante.aspx.cs:16-21:\n   16              SqlCommand leer = new SqlCommand(\n   17                  \"SELECT TRF_MONTO FROM TRANSFERENCIAS WHERE TRF_NUMERO = @numero\", cn);\n   18              leer.Parameters.AddWithValue(\"@numero\", numero);\n   19              object monto = leer.ExecuteScalar();\n   20              lblNumero.Text = numero.ToString();\n   21              lblMonto.Text = monto == null ? string.Empty : ((decimal)monto).ToString(\"0.00\");"
+    }
+  ],
+  "response": {
+    "request_id": "gen-1790852797-ei1ou2fOmjlw90tKR0Fn",
+    "model": "anthropic/claude-sonnet-5.5",
+    "provider_name": "Anthropic",
+    "content": "{\"supported\": true, \"problems\": [], \"corrected_statement\": null}",
+    "usage": {
+      "input_tokens": 740,
+      "output_tokens": 25,
+      "reasoning_tokens": 0,
+      "cache_read_tokens": 0,
+      "cache_write_tokens": 0,
+      "provider_cost_usd": "0.00173"
+    }
+  }
+}
