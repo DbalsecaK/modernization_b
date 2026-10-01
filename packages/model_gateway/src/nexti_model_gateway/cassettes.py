@@ -62,10 +62,11 @@ def _load(data: dict[str, Any]) -> ChatResult:
 class RecordingClient(OpenRouterClient):
     """The provider client with recorded responses. Everything but `chat` is the real client's."""
 
-    def __init__(self, inner: OpenRouterClient, directory: Path, mode: Mode) -> None:
+    def __init__(self, inner: OpenRouterClient, directory: Path, mode: Mode, shared: tuple[Path, ...] = ()) -> None:
         super().__init__(inner.http, inner.base_url)
         self.directory = directory
         self.mode = mode
+        self.shared = shared  # other recordings, read when this folder has no answer; never written
         self.hits = 0
         self.recorded = 0
 
@@ -75,9 +76,10 @@ class RecordingClient(OpenRouterClient):
     async def chat(self, api_key: str, body: dict[str, Any], timeout_seconds: float) -> ChatResult:
         key = request_key(body)
         path = self._path(key)
-        if path.exists():
+        found = next((p for p in (path, *(d / path.name for d in self.shared)) if p.exists()), None)
+        if found is not None:
             self.hits += 1
-            return _load(json.loads(path.read_text(encoding="utf-8"))["response"])
+            return _load(json.loads(found.read_text(encoding="utf-8"))["response"])
         if self.mode == "replay":
             raise MissingRecordingError(key, str(body.get("model", "")))
         result = await super().chat(api_key, body, timeout_seconds)

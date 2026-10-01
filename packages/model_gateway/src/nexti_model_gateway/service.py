@@ -33,11 +33,13 @@ class GatewayService:
         openrouter_url: str | None = None,
         *,
         cassettes: tuple[Path, Mode] | None = None,
+        shared_cassettes: tuple[Path, ...] = (),
     ) -> None:
-        """`cassettes` (development and test only, ADR-0012): a folder of recorded responses and the mode."""
+        """`cassettes` (development and test only, ADR-0012): a folder of recorded responses and the mode;
+        `shared_cassettes`: folders of other recordings read when this one has no answer (never written)."""
         self._secrets = SecretStore(secrets, http)
         client = OpenRouterClient(http, openrouter_url or BASE_URL)
-        self._client = RecordingClient(client, *cassettes) if cassettes else client
+        self._client = RecordingClient(client, *cassettes, shared=shared_cassettes) if cassettes else client
         self.gateway = ModelGateway(engine, self._secrets, self._client)
 
     async def complete(self, ctx: CallContext, messages: list[dict[str, Any]], **extra: Any) -> Completion:

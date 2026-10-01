@@ -13,18 +13,18 @@ from typing import Any, Protocol
 from nexti_adapter_sybase.golden import parameter_defaults
 from nexti_core.adapters import LegacyRunner, LegacyUnavailableError, SourceFile
 from nexti_core.spec.characterization import GoldenMaster, Suite, source_digest
+from nexti_core.spec.design import Design, UseCase
+from nexti_core.spec.equivalence import EquivalenceRun
 from nexti_core.spec.model import Rule
 from nexti_core.spec.screens import ScreenSpec
 from nexti_orchestration import frontend
 from nexti_orchestration.context import Attempt, PhaseContext
 from nexti_orchestration.model import PhaseFailedError, PhaseResult
+from nexti_orchestration.packs import BackendPack, backend_pack
 from nexti_orchestration.scope import scope_files, split_rules
 from nexti_pack_frontend import IMAGE as FRONTEND_IMAGE
 from nexti_pack_frontend import contract_of
 from nexti_pack_frontend.build import FrontendRun, build_and_test
-from nexti_pack_spring_boot import IMAGE, Design, UseCase, service_path
-from nexti_pack_spring_boot.canary import mutations
-from nexti_pack_spring_boot.equivalence import EquivalenceRun, run_equivalence
 from nexti_sandbox import Sandbox
 from nexti_verification import Verdict, build_proof_pack, differences, fresh_suite
 from nexti_verification import verdict as checks
@@ -111,13 +111,16 @@ class VerificationPhases:
         rules = await self.port.load_rules()
         source = await self.port.source_files()
         use_case = _module(design, master)
-        sandbox = self.port.sandbox(IMAGE)
+        backend = backend_pack(ctx.run.target)
+        if backend is None:
+            raise PhaseFailedError(f"The {ctx.run.target.get('backend')} pack is not available to verify with")
+        sandbox = self.port.sandbox(backend.image)
         defaults = parameter_defaults(source, master.program)
         case_rules = {r.case.name: r.case.rules for r in master.results}
 
         await ctx.store.event("started", "running", "Clean build, tests and golden master on the target",
                               phase=ctx.phase.key)  # fmt: skip
-        golden_run = await run_equivalence(sandbox, files, design, use_case, master, defaults)
+        golden_run = await backend.run_equivalence(sandbox, files, design, use_case, master, defaults)
         golden = outcomes(golden_run, case_rules)
         found: list[Any] = [
             checks.tests_ran(golden_run.build.passed, golden_run.build.failed, bool(golden_run.build.junit_xml)),
@@ -139,10 +142,12 @@ class VerificationPhases:
         )
         found.append(behaviour)
 
-        fresh, unavailable = await self._fresh(ctx, source, master, design, use_case, files, sandbox, defaults)
+        fresh, unavailable = await self._fresh(ctx, backend, source, master, design, use_case, files, sandbox,
+                                               defaults)  # fmt: skip
         found.append(checks.fresh_inputs(fresh, unavailable))
         if behaviour.status == "passed":
-            found.append(checks.canary(await self._canary(ctx, design, use_case, master, files, sandbox, defaults)))
+            found.append(checks.canary(await self._canary(ctx, backend, design, use_case, master, files, sandbox,
+                                                          defaults)))  # fmt: skip
         else:  # red before any change: a caught canary would prove nothing
             found.append(checks.Check("canary", "not_checked", "the unchanged code does not reproduce the golden "
                                       "master, so a deliberate change cannot be told apart"))  # fmt: skip
@@ -192,8 +197,8 @@ class VerificationPhases:
         return f"frontend-{flavour}: {verdict.verdict} ({passed} of {len(verdict.checks)} checks passed)"
 
     async def _fresh(
-        self, ctx: PhaseContext, source: list[SourceFile], master: GoldenMaster, design: Design, use_case: UseCase,
-        files: dict[str, str], sandbox: Sandbox, defaults: dict[str, Any],
+        self, ctx: PhaseContext, pack: BackendPack, source: list[SourceFile], master: GoldenMaster, design: Design,
+        use_case: UseCase, files: dict[str, str], sandbox: Sandbox, defaults: dict[str, Any],
     ) -> tuple[list[CaseOutcome] | None, str]:  # fmt: skip
         if master.from_traces:
             return None, ("the golden master comes from recorded traces and the legacy does not run here, so fresh "
@@ -209,20 +214,20 @@ class VerificationPhases:
             return None, f"the legacy could not run fresh inputs: {exc}"[:500]
         await ctx.store.event("info", "running", f"{len(fresh.cases)} fresh inputs ran on the legacy",
                               phase=ctx.phase.key)  # fmt: skip
-        run = await run_equivalence(sandbox, files, design, use_case, legacy, defaults)
+        run = await pack.run_equivalence(sandbox, files, design, use_case, legacy, defaults)
         if run.problem:
             return None, f"the fresh inputs could not run on the target: {run.problem}"[:500]
         return outcomes(run, {r.case.name: r.case.rules for r in legacy.results}), ""
 
     async def _canary(
-        self, ctx: PhaseContext, design: Design, use_case: UseCase, master: GoldenMaster, files: dict[str, str],
-        sandbox: Sandbox, defaults: dict[str, Any],
+        self, ctx: PhaseContext, pack: BackendPack, design: Design, use_case: UseCase, master: GoldenMaster,
+        files: dict[str, str], sandbox: Sandbox, defaults: dict[str, Any],
     ) -> list[dict[str, Any]]:  # fmt: skip
-        target = service_path(design, use_case)
+        target = pack.service_path(design, use_case)
         attempts: list[dict[str, Any]] = []
-        for mutation in mutations(files.get(target, "")):
-            run = await run_equivalence(sandbox, {**files, target: mutation.source}, design, use_case, master,
-                                        defaults)  # fmt: skip
+        for mutation in pack.mutations(files.get(target, "")):
+            run = await pack.run_equivalence(sandbox, {**files, target: mutation.source}, design, use_case, master,
+                                             defaults)  # fmt: skip
             failing = [f"test {t.name}" for t in run.build.tests if t.status == "failed"]
             if not run.build.compiled:
                 failing = ["the compiler"]

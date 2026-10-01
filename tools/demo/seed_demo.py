@@ -30,6 +30,7 @@ from fastapi.testclient import TestClient  # noqa: E402
 from integration import test_acceptance_m4 as m4  # noqa: E402
 from integration import test_acceptance_m6 as m6  # noqa: E402
 from integration import test_acceptance_m6b as m6b  # noqa: E402
+from integration import test_acceptance_m6c as m6c  # noqa: E402
 from integration.run_support import NO_FRONTEND, TARGET, FakeSandbox, make_config, make_run, seed_screens  # noqa: E402
 from sqlalchemy import text  # noqa: E402
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine  # noqa: E402
@@ -53,6 +54,7 @@ DEMOS = {
     "m4": ("Demo · Pagos Sybase → Spring Boot", ["sybase-sp"]),
     "m6": ("Demo · Pagos COBOL/CICS → Spring Boot", ["cobol-cics", "bms"]),
     "m6b": ("Demo · Pagos frontend React y Angular", ["bms"]),
+    "m6c": ("Demo · Pagos Sybase → .NET 10", ["sybase-sp"]),
 }
 DESCRIPTION = "Demo project replayed from the {key} acceptance recordings: a full run with no model cost."
 MAX_STEPS = 30
@@ -107,9 +109,9 @@ class Demo:
             await reconcile(self.app, await fga_module.connect(http, self.settings))
         self.headers = sign_in(self.api, self.user)
 
-    def gateway(self, http: httpx.AsyncClient, recordings: Path) -> GatewayService:
+    def gateway(self, http: httpx.AsyncClient, recordings: Path, shared: tuple[Path, ...] = ()) -> GatewayService:
         secrets = GatewaySecrets(self.settings.secrets_url, self.settings.secrets_token.get_secret_value())
-        return GatewayService(self.app, http, secrets, cassettes=(recordings, "replay"))
+        return GatewayService(self.app, http, secrets, cassettes=(recordings, "replay"), shared_cassettes=shared)
 
     async def unqueue(self, run_id: uuid.UUID) -> None:
         """Drops the jobs the API queued to resume the run: this process runs it, no worker must pick it up."""
@@ -157,16 +159,17 @@ def sign_in(api: TestClient, user: uuid.UUID) -> dict[str, str]:
 
 
 async def pipeline(demo: Demo, name: str, recordings: Path, team: dict[str, str], files: dict[str, bytes],
-                   legacy: Callable[[], Any] | None) -> uuid.UUID:  # fmt: skip
-    """A whole modernization run (M4, M6) of the fictitious application, replayed."""
+                   legacy: Callable[[], Any] | None, target: dict[str, str] | None = None,
+                   shared: tuple[Path, ...] = ()) -> uuid.UUID:  # fmt: skip
+    """A whole modernization run (M4, M6, M6c) of the fictitious application, replayed."""
     project_id = await demo.project(name)
-    version = await make_config(demo.owner, demo.tenant, project_id, team=team, target=NO_FRONTEND)
+    version = await make_config(demo.owner, demo.tenant, project_id, team=team, target=target or NO_FRONTEND)
     await m4.upload_source(demo.owner, demo.store, demo.tenant, project_id, files)
     await demo.sync_authz()
     run_id = await make_run(demo.owner, demo.tenant, project_id, version, kind="pipeline",
                             started_by=demo.launcher)  # fmt: skip
     async with httpx.AsyncClient(timeout=60) as http:
-        gateway = demo.gateway(http, recordings / "models")
+        gateway = demo.gateway(http, recordings / "models", shared)
         path = await m4.model_for(demo.owner, gateway, demo.tenant, project_id, live=False)
         secrets = SecretsConfig(demo.settings.secrets_url, demo.settings.secrets_token.get_secret_value())
         # The knowledge graph of the Inventory tab, as the worker writes it.
@@ -198,6 +201,14 @@ async def demo_m4(demo: Demo) -> uuid.UUID:
     recorded = m4.RecordedRunner(m4.RECORDINGS / "golden", "replay", None)
     sources = {"sp/sp_pago_orden.sp": (m4.FIXTURES / "sp_pago_orden.sp").read_bytes()}
     return await pipeline(demo, DEMOS["m4"][0], m4.RECORDINGS, m4.FULL_TEAM, sources, lambda: recorded)
+
+
+async def demo_m6c(demo: Demo) -> uuid.UUID:
+    """The M4 run with the backend on .NET 10 + SQL Server: M4's answers up to the design, M6c's from generation."""
+    recorded = m4.RecordedRunner(m4.RECORDINGS / "golden", "replay", None)
+    sources = {"sp/sp_pago_orden.sp": (m4.FIXTURES / "sp_pago_orden.sp").read_bytes()}
+    return await pipeline(demo, DEMOS["m6c"][0], m6c.RECORDINGS, m4.FULL_TEAM, sources, lambda: recorded,
+                          target=m6c.TARGET_DOTNET, shared=(m4.RECORDINGS / "models",))  # fmt: skip
 
 
 async def demo_m6(demo: Demo) -> uuid.UUID:
@@ -250,7 +261,9 @@ async def demo_m6b(demo: Demo) -> uuid.UUID:
     return project_id
 
 
-BUILDERS: dict[str, Callable[[Demo], Awaitable[uuid.UUID]]] = {"m4": demo_m4, "m6": demo_m6, "m6b": demo_m6b}
+BUILDERS: dict[str, Callable[[Demo], Awaitable[uuid.UUID]]] = {
+    "m4": demo_m4, "m6": demo_m6, "m6b": demo_m6b, "m6c": demo_m6c,
+}  # fmt: skip
 
 
 async def main(reset: bool, only: list[str]) -> int:

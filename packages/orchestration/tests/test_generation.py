@@ -194,9 +194,9 @@ def test_the_wiring_builds_each_service_from_its_ports() -> None:
 
 
 async def test_a_backend_without_a_pack_waits_in_generation() -> None:
-    run = context({"backend": "dotnet-10"})
+    run = context({"backend": "go"})
     port = MemoryGenerationPort()
-    with pytest.raises(PhaseUnavailableError, match="dotnet-10 pack"):
+    with pytest.raises(PhaseUnavailableError, match="go pack"):
         await GenerationPhases(port).generation(phase_context(run, "generation", MemoryStore()))
 
 
