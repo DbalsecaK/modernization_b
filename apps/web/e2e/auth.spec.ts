@@ -17,7 +17,9 @@ test('sign in with Keycloak, no token in the browser, sign out', async ({ page, 
   await page.goto('/admin')
   await expect(page).toHaveURL(/\/login/)
   await expectAccessible(page)
-  await page.getByRole('button', { name: 'Sign in with your platform account' }).click()
+  // Email first (M0b): without an identity provider for the domain, the BFF sends the person to Keycloak's page.
+  await page.getByLabel('Work email').fill('landrade@andesbank.example')
+  await page.getByRole('button', { name: 'Continue' }).click()
 
   await expect(page).toHaveURL(/localhost:8180\/realms\/nexti/)
   await page

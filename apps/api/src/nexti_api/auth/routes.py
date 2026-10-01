@@ -1,4 +1,9 @@
-"""BFF endpoints: /auth/login, /auth/callback, /auth/logout (outside /api/v1, proxied by the web origin)."""
+"""BFF endpoints: /auth/login, /auth/callback, /auth/logout (outside /api/v1, proxied by the web origin).
+
+M0b (ADR-0022): the login takes the e-mail first and sends the user to their provider (home-realm discovery); the
+callback applies the tenant's rules on the validated token: SSO-only domains, own accounts allowed or not, MFA
+required (a second round to Keycloak asks only for the second factor), JIT and the groups of the provider.
+"""
 
 import secrets
 from typing import Annotated
@@ -18,6 +23,15 @@ from nexti_api.auth.session import (
 )
 from nexti_api.auth.users import SignInDeniedError, sign_in, user_tenants
 from nexti_api.authz.require import Authorized, authenticated
+from nexti_api.identity.signin import (
+    MFA,
+    organization_member,
+    provision,
+    route_for,
+    sso_required,
+    sync_groups,
+    tenant_rules,
+)
 from nexti_api.observability import log
 from nexti_api.settings import Settings
 from nexti_core.audit import ActorKind
@@ -56,18 +70,38 @@ async def audit_platform(engine: AsyncEngine, event: AuditEvent) -> None:
         await record(conn, event)
 
 
+# Reasons the login page explains with their own message; any other reason shows the generic one.
+VISIBLE_REASONS = {"no_platform_access", "sso_required", "mfa_required"}
+
+
 def _failure_redirect(settings: Settings, code: str) -> RedirectResponse:
     response = RedirectResponse(f"{settings.web_origin.rstrip('/')}/login?error={code}", status_code=302)
     response.delete_cookie(login_cookie_name(settings), path="/", secure=settings.session_cookie_secure)
     return response
 
 
-@router.get("/login", summary="Start sign-in with Keycloak (authorization code + PKCE)")
-async def login(request: Request, return_to: Annotated[str | None, Query(alias="returnTo")] = None) -> Response:
+@router.get("/login", summary="Start sign-in with Keycloak (authorization code + PKCE, home-realm discovery)")
+async def login(
+    request: Request,
+    return_to: Annotated[str | None, Query(alias="returnTo")] = None,
+    email: Annotated[str | None, Query(max_length=254)] = None,
+) -> Response:
+    engine: AsyncEngine | None = request.app.state.resources.engine
+    email = email.strip().lower() if email and "@" in email else None
+    route = await route_for(engine, email) if engine is not None and email else None
+    if route is not None and route.alias:
+        return await start_login(request, return_to, login_hint=email, idp_hint=route.alias)
+    return await start_login(request, return_to, login_hint=email, acr=MFA if route and route.mfa_required else None)
+
+
+async def start_login(
+    request: Request, return_to: str | None, *, login_hint: str | None = None, idp_hint: str | None = None,
+    acr: str | None = None, step_up: bool = False,
+) -> Response:  # fmt: skip
     settings: Settings = request.app.state.settings
     oidc: OidcClient = request.app.state.oidc
     store: SessionStore = request.app.state.sessions
-    pending = oidc.start_login()
+    pending = oidc.start_login(login_hint=login_hint, idp_hint=idp_hint, acr=acr)
     # Binds the pending login to this browser: a callback URL replayed in another browser is rejected.
     binding = secrets.token_urlsafe(32)
     await store.save_login(
@@ -77,6 +111,7 @@ async def login(request: Request, return_to: Annotated[str | None, Query(alias="
             "nonce": pending.nonce,
             "verifier": pending.code_verifier,
             "return_to": safe_return_path(return_to),
+            "step_up": "1" if step_up else "",
         },
     )
     response = RedirectResponse(pending.authorization_url, status_code=302)
@@ -109,7 +144,7 @@ async def callback(
                 details={"method": "keycloak", "reason": reason},
             ),
         )  # fmt: skip
-        return _failure_redirect(settings, "sign_in_failed" if reason != "no_platform_access" else reason)
+        return _failure_redirect(settings, reason if reason in VISIBLE_REASONS else "sign_in_failed")
 
     if error or not code or not state:
         return await fail("provider_error" if error else "missing_parameters")
@@ -122,10 +157,16 @@ async def callback(
     except OidcError as exc:
         log.warning("oidc_exchange_failed", error=str(exc))
         return await fail("token_exchange_failed")
+    claims = tokens.claims
+    if sso_required(await route_for(engine, claims.email), claims):
+        return await fail("sso_required", claims.email)
     try:
-        user = await sign_in(engine, tokens.claims)
+        user = await sign_in(engine, claims)
     except SignInDeniedError as exc:
-        return await fail(exc.code, tokens.claims.email)
+        if exc.code != "no_platform_access" or not await provision(engine, claims):
+            return await fail(exc.code, claims.email)
+        user = await sign_in(engine, claims)  # the account JIT just created
+    idp_roles = await sync_groups(engine, claims, user.id) if claims.identity_provider else []
 
     if tokens.claims.email and tokens.claims.email_verified:
         # Imported here: the administration package depends on this module.
@@ -136,10 +177,24 @@ async def callback(
             if relay is not None:
                 relay.wake()
     tenants = await user_tenants(engine, user.id)
+    # The Organization of the token chooses the tenant, when the user belongs to it; else the first one.
+    by_slug = {t.slug: t for t in tenants}
+    active = next((by_slug[o] for o in claims.organizations if o in by_slug), tenants[0] if tenants else None)
+    if active is not None and not claims.identity_provider:
+        rules = await tenant_rules(engine, active.id, user.id)
+        if not rules.local_accounts:
+            return await fail("sso_required", claims.email)
+        if rules.mfa_required and claims.acr != MFA:
+            if pending.get("step_up"):
+                return await fail("mfa_required", claims.email)
+            # Keycloak already knows the password: this round asks only for the second factor.
+            return await start_login(request, pending["return_to"], login_hint=claims.email, acr=MFA, step_up=True)
+    if active is not None:
+        await organization_member(request.app.state, engine, active.id, user.id, claims.sub)
     session_id, _ = await store.create(
         user_id=user.id,
         auth_method="keycloak",
-        active_tenant_id=tenants[0].id if tenants else None,
+        active_tenant_id=active.id if active else None,
         keycloak_sub=tokens.claims.sub,
         refresh_token=tokens.refresh_token,
     )
@@ -147,7 +202,8 @@ async def callback(
         engine,
         AuditEvent(
             action="auth.login", outcome="success", actor_kind="user", actor_id=user.id, actor_label=user.email,
-            details={"method": "keycloak", "tenants": len(tenants)},
+            details={"method": "keycloak", "tenants": len(tenants), "via": claims.identity_provider or "password",
+                     "mfa": claims.acr == MFA, "idp_roles": idp_roles},
         ),
     )  # fmt: skip
     response = RedirectResponse(f"{settings.web_origin.rstrip('/')}{pending['return_to']}", status_code=302)

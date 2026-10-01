@@ -3,7 +3,6 @@ import { useTranslation } from 'react-i18next'
 import { Check, Download, Plus, RotateCw, ShieldCheck, Trash2 } from 'lucide-react'
 import { useTab } from '@/lib/useTab'
 import { formatDateTime } from '@/lib/format'
-import { identityProviders } from '@/mocks/data'
 import { can, useMe } from '@/api/session'
 import {
   INTEGRATIONS_MANAGE,
@@ -26,7 +25,9 @@ import {
   type Role,
 } from '@/api/admin'
 import { toast } from '@/components/ui/overlay'
-import { errorMessage, IdentityProviderForm, InviteForm, RoleForm, TenantForm } from './AdminForms'
+import { errorMessage, InviteForm, RoleForm, TenantForm } from './AdminForms'
+import { Authentication } from './Authentication'
+import { IDENTITY_MANAGE } from '@/api/identity'
 import { Integrations } from './Integrations'
 import {
   Badge,
@@ -59,6 +60,7 @@ export function AdminPage() {
     if (tab === 'tenants') return isSuperAdmin
     if (tab === 'audit') return can(me, 'audit.view')
     if (tab === 'integrations') return can(me, INTEGRATIONS_MANAGE)
+    if (tab === 'authentication') return can(me, IDENTITY_MANAGE)
     return manageUsers
   })
   const [tab, setTab] = useTab<Tab>(visible.length ? visible : ['users'], visible[0] ?? 'users')
@@ -70,7 +72,7 @@ export function AdminPage() {
       {tab === 'tenants' && <Tenants />}
       {tab === 'users' && me?.activeTenant && <Users />}
       {tab === 'roles' && me?.activeTenant && <Roles />}
-      {tab === 'authentication' && <Authentication />}
+      {tab === 'authentication' && me?.activeTenant && <Authentication />}
       {tab === 'security' && <Security />}
       {tab === 'integrations' && me?.activeTenant && <Integrations />}
       {tab === 'audit' && me?.activeTenant && <Audit />}
@@ -492,189 +494,6 @@ function Roles() {
 }
 
 // Design of the per-customer sign-in settings (M0b, D-27): shown with a notice, not connected yet.
-function Authentication() {
-  const { t } = useTranslation()
-  const me = useMe()
-  const [local, setLocal] = useState(true)
-  const [sso, setSso] = useState(true)
-  const [breached, setBreached] = useState(true)
-  const [mfaAll, setMfaAll] = useState(true)
-  const [methods, setMethods] = useState({ totp: true, passkey: true, recovery: true, sms: false })
-  const [idpOpen, setIdpOpen] = useState(false)
-
-  return (
-    <div className="space-y-6">
-      <Notice tone="info">{t('admin.auth.availableInM0b')}</Notice>
-      <div className="flex flex-wrap items-center gap-3">
-        <Select className="max-w-xs" value={me?.activeTenant?.id ?? ''} disabled aria-label={t('admin.tenant')}>
-          {(me?.tenants ?? []).map((x) => (
-            <option key={x.id} value={x.id}>
-              {x.name}
-            </option>
-          ))}
-        </Select>
-        <span className="text-sm text-muted">{t('admin.auth.perTenant')}</span>
-      </div>
-
-      <Card>
-        <CardHeader title={t('admin.auth.methods')} subtitle={t('admin.auth.methodsHint')} />
-        <CardBody className="grid gap-4 md:grid-cols-2">
-          <div className="rounded-md border border-border p-4">
-            <Toggle
-              checked={sso}
-              onChange={setSso}
-              label={<span className="font-medium">{t('admin.auth.sso')}</span>}
-            />
-            <p className="mt-2 text-sm text-text-2">{t('admin.auth.ssoHint')}</p>
-          </div>
-          <div className="rounded-md border border-border p-4">
-            <Toggle
-              checked={local}
-              onChange={setLocal}
-              label={<span className="font-medium">{t('admin.auth.local')}</span>}
-            />
-            <p className="mt-2 text-sm text-text-2">{t('admin.auth.localHint')}</p>
-          </div>
-          {!sso && !local && (
-            <div className="md:col-span-2">
-              <Notice tone="critical">{t('admin.auth.noMethod')}</Notice>
-            </div>
-          )}
-        </CardBody>
-      </Card>
-
-      <Card>
-        <CardHeader
-          title={t('admin.auth.providers')}
-          subtitle={t('admin.auth.providersHint')}
-          action={
-            <Button size="sm" variant="primary" disabled={!sso} onClick={() => setIdpOpen(true)}>
-              <Plus size={14} /> {t('admin.auth.addProvider')}
-            </Button>
-          }
-        />
-        <IdentityProviderForm open={idpOpen} onClose={() => setIdpOpen(false)} />
-        <Table>
-          <thead>
-            <tr>
-              <Th>{t('admin.auth.provider')}</Th>
-              <Th>{t('admin.tenant')}</Th>
-              <Th>{t('admin.auth.domains')}</Th>
-              <Th>{t('admin.auth.enforced')}</Th>
-              <Th>{t('admin.status')}</Th>
-            </tr>
-          </thead>
-          <tbody>
-            {identityProviders.map((p) => (
-              <tr key={p.id}>
-                <Td className="text-text">{p.type}</Td>
-                <Td>{p.tenant}</Td>
-                <Td className="font-mono text-xs">{p.domains.join(', ')}</Td>
-                <Td>
-                  {p.enforced ? (
-                    <Badge tone="brand">{t('admin.auth.ssoOnly')}</Badge>
-                  ) : (
-                    <Badge>{t('admin.auth.optional')}</Badge>
-                  )}
-                </Td>
-                <Td>
-                  <Badge tone="good">{t('common.active')}</Badge>
-                </Td>
-              </tr>
-            ))}
-          </tbody>
-        </Table>
-      </Card>
-
-      <div className="grid gap-6 lg:grid-cols-2">
-        <Card>
-          <CardHeader title={t('admin.auth.passwordPolicy')} subtitle={t('admin.auth.passwordPolicyHint')} />
-          <CardBody className="grid gap-4 sm:grid-cols-2">
-            <Field label={t('admin.auth.minLength')}>
-              <Input type="number" defaultValue={12} disabled={!local} />
-            </Field>
-            <Field label={t('admin.auth.history')}>
-              <Input type="number" defaultValue={10} disabled={!local} />
-            </Field>
-            <Field label={t('admin.auth.expiry')} hint={t('admin.auth.expiryHint')}>
-              <Input type="number" defaultValue={0} disabled={!local} />
-            </Field>
-            <Field label={t('admin.auth.complexity')}>
-              <Select defaultValue="all" disabled={!local}>
-                <option value="all">{t('admin.auth.complexityAll')}</option>
-                <option value="three">{t('admin.auth.complexityThree')}</option>
-              </Select>
-            </Field>
-            <div className="sm:col-span-2">
-              <Toggle checked={breached} onChange={setBreached} label={t('admin.auth.breached')} disabled={!local} />
-            </div>
-          </CardBody>
-        </Card>
-        <Card>
-          <CardHeader title={t('admin.auth.mfaPolicy')} subtitle={t('admin.auth.mfaPolicyHint')} />
-          <CardBody className="space-y-3">
-            <Toggle checked={mfaAll} onChange={setMfaAll} label={t('admin.auth.mfaRequired')} />
-            <div className="grid gap-2 pt-2 sm:grid-cols-2">
-              <Toggle
-                checked={methods.totp}
-                onChange={(v) => setMethods({ ...methods, totp: v })}
-                label={t('admin.auth.totp')}
-              />
-              <Toggle
-                checked={methods.passkey}
-                onChange={(v) => setMethods({ ...methods, passkey: v })}
-                label={t('admin.auth.passkeys')}
-              />
-              <Toggle
-                checked={methods.recovery}
-                onChange={(v) => setMethods({ ...methods, recovery: v })}
-                label={t('admin.auth.recoveryCodes')}
-              />
-              <Toggle
-                checked={methods.sms}
-                onChange={(v) => setMethods({ ...methods, sms: v })}
-                label={t('admin.auth.sms')}
-              />
-            </div>
-            {methods.sms && <Notice tone="warning">{t('admin.auth.smsWarning')}</Notice>}
-            {!mfaAll && <Notice tone="critical">{t('admin.auth.mfaOffWarning')}</Notice>}
-          </CardBody>
-        </Card>
-        <Card>
-          <CardHeader title={t('admin.auth.sessions')} />
-          <CardBody className="grid gap-4 sm:grid-cols-2">
-            <Field label={t('admin.auth.idleTimeout')}>
-              <Input type="number" defaultValue={30} />
-            </Field>
-            <Field label={t('admin.auth.absoluteLifetime')}>
-              <Input type="number" defaultValue={12} />
-            </Field>
-            <Field label={t('admin.auth.concurrent')}>
-              <Input type="number" defaultValue={3} />
-            </Field>
-          </CardBody>
-        </Card>
-        <Card>
-          <CardHeader title={t('admin.auth.lockout')} />
-          <CardBody className="grid gap-4 sm:grid-cols-2">
-            <Field label={t('admin.auth.failedAttempts')}>
-              <Input type="number" defaultValue={5} />
-            </Field>
-            <Field label={t('admin.auth.lockoutMinutes')}>
-              <Input type="number" defaultValue={15} />
-            </Field>
-          </CardBody>
-        </Card>
-      </div>
-      <div className="flex justify-end">
-        <Button variant="primary" onClick={() => toast(t('adminForms.authSaved'))}>
-          <ShieldCheck size={16} /> {t('admin.auth.save')}
-        </Button>
-      </div>
-    </div>
-  )
-}
-
 function Security() {
   const { t } = useTranslation()
   const [ipList, setIpList] = useState(false)

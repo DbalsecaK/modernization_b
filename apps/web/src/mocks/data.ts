@@ -1401,33 +1401,6 @@ export const auditLog: AuditEntry[] = [
   },
 ]
 
-export const identityProviders = [
-  {
-    id: 'idp1',
-    tenant: 'Andes Bank',
-    type: 'Microsoft Entra ID (OIDC)',
-    domains: ['andesbank.example'],
-    enforced: true,
-    status: 'active',
-  },
-  {
-    id: 'idp2',
-    tenant: 'Pacific Credit Union',
-    type: 'Okta (SAML 2.0)',
-    domains: ['pacificcu.example'],
-    enforced: false,
-    status: 'active',
-  },
-  {
-    id: 'idp3',
-    tenant: 'NexTI Internal',
-    type: 'Google Workspace (OIDC)',
-    domains: ['nexti.example'],
-    enforced: false,
-    status: 'active',
-  },
-]
-
 export const workers = [
   { id: 'w-analysis-1', pool: 'analysis', status: 'busy', jobs: 12, cpu: 71 },
   { id: 'w-analysis-2', pool: 'analysis', status: 'busy', jobs: 9, cpu: 64 },

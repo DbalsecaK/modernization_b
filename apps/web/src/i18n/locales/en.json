@@ -90,7 +90,8 @@
       "invalidEmail": "Enter a valid email address.",
       "invalidCredentials": "The email or password is incorrect.",
       "signInFailed": "Sign-in did not complete. Try again.",
-      "noPlatformAccess": "Your account has no access to the platform yet. Ask your administrator for an invitation."
+      "noPlatformAccess": "Your account has no access to the platform yet. Ask your administrator for an invitation.",
+      "mfaRequired": "Your organization requires a second factor (TOTP or passkey) and it was not completed. Sign in again."
     },
     "mfa": {
       "title": "Two-step verification",
@@ -1607,7 +1608,6 @@
     "permission": "Permission",
     "segregation": "Segregation of duties is enforced: whoever launched a generation cannot approve its own gate.",
     "auth": {
-      "perTenant": "Authentication is configured per customer.",
       "methods": "Sign-in methods",
       "methodsHint": "Enable single sign-on, the platform's own accounts, or both.",
       "sso": "Single sign-on (SSO)",
@@ -1660,7 +1660,43 @@
       "failedAttempts": "Failed attempts before lockout",
       "lockoutMinutes": "Lockout duration (minutes)",
       "save": "Save authentication settings",
-      "availableInM0b": "Single sign-on, MFA and the per-customer sign-in policies arrive with milestone M0b. This tab shows their design; in M0 accounts use email and password in the platform's identity provider."
+      "actions": "Actions",
+      "tenantDomains": "E-mail domains of the customer",
+      "tenantDomainsHint": "People with these domains sign in to this customer. A domain with an SSO-only provider never uses a password.",
+      "noProviders": "No identity provider yet",
+      "noProvidersHint": "Add Microsoft Entra ID, Okta, Google or any OIDC or SAML 2.0 provider.",
+      "status": {
+        "active": "Active",
+        "pending": "Pending",
+        "failed": "Failed"
+      },
+      "applyAgain": "Apply again",
+      "applied": {
+        "active": "Saved: Keycloak took the provider",
+        "pending": "Saved: pending in Keycloak",
+        "failed": "Saved, but Keycloak did not take it: see the error"
+      },
+      "providerDeleted": "Provider deleted",
+      "mfaSsoNote": "People who sign in through an identity provider use the second factor of that provider.",
+      "realmPolicy": "Passwords, lockout and sessions",
+      "realmPolicyHint": "Set for the whole platform realm; a customer that needs others moves to a dedicated realm.",
+      "realmUnavailable": "Keycloak's policies could not be read.",
+      "editProvider": "Edit identity provider",
+      "providerName": "Name",
+      "keepSecret": "Leave empty to keep the current secret (it is never shown).",
+      "groupsClaim": "Groups claim",
+      "groupsAttribute": "Groups attribute",
+      "endpoints": "Endpoints (optional)",
+      "endpointsHint": "Taken from the issuer's OpenID configuration when left empty.",
+      "endpoint": {
+        "authorization_url": "Authorization URL",
+        "token_url": "Token URL",
+        "jwks_url": "JWKS URL",
+        "userinfo_url": "User info URL"
+      },
+      "defaultRole": "Role without a mapped group",
+      "defaultRoleHint": "Given to a person whose groups map to no role.",
+      "noDefaultRole": "None"
     },
     "securityData": "Data",
     "retention": "Project data retention",

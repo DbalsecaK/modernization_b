@@ -90,6 +90,15 @@ try {
   Step 'Docker services (PostgreSQL, Keycloak, OpenFGA, OpenBao, MinIO, Neo4j, Redis, ClamAV, Mailpit)'
   Invoke-Checked 'docker' @('compose', '-f', 'infra/docker-compose/compose.yaml', 'up', '-d', '--wait')
   Done 'services healthy'
+  # The realm is imported only when it does not exist (ADR-0022): a Keycloak created before M0b lacks the test
+  # identity provider and the Organizations. Recreating its database imports the current realm files.
+  if (-not (Test-Url "http://localhost:$(if ($env:KEYCLOAK_PORT) { $env:KEYCLOAK_PORT } else { 8180 })/realms/idp-test")) {
+    Write-Host '    Keycloak has a realm from before M0b; recreating its database to import the current realm files' -ForegroundColor Yellow
+    Invoke-Checked 'docker' @('compose', '-f', 'infra/docker-compose/compose.yaml', 'stop', 'keycloak')
+    Invoke-Checked 'docker' @('compose', '-f', 'infra/docker-compose/compose.yaml', 'exec', '-T', 'postgres', 'psql', '-U', 'postgres', '-c', 'DROP DATABASE keycloak WITH (FORCE)', '-c', 'CREATE DATABASE keycloak OWNER keycloak')
+    Invoke-Checked 'docker' @('compose', '-f', 'infra/docker-compose/compose.yaml', 'up', '-d', '--wait', 'keycloak')
+    Done 'Keycloak realm imported'
+  }
 
   if ($Sync -or -not (Test-Path (Join-Path $Root '.venv'))) {
     Step 'Python dependencies (uv sync)'

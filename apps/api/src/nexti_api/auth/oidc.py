@@ -39,6 +39,12 @@ class IdentityClaims:
     email: str | None
     email_verified: bool
     name: str | None
+    # M0b (ADR-0022): the Organization(s) of the token, the identity provider the user came through, the groups that
+    # provider sent and the level of authentication reached (`mfa` with a second factor).
+    organizations: tuple[str, ...] = ()
+    identity_provider: str | None = None
+    idp_groups: tuple[str, ...] = ()
+    acr: str | None = None
 
 
 @dataclass(frozen=True)
@@ -72,22 +78,31 @@ class OidcClient:
             "client_secret": self.settings.oidc_client_secret.get_secret_value(),
         }
 
-    def start_login(self) -> LoginRequest:
+    def start_login(
+        self, *, login_hint: str | None = None, idp_hint: str | None = None, acr: str | None = None
+    ) -> LoginRequest:
+        """`idp_hint` sends the user straight to their provider (home-realm discovery); `acr` asks for a level of
+        authentication (`mfa`); `login_hint` fills the e-mail on Keycloak's page."""
         state = secrets.token_urlsafe(32)
         nonce = secrets.token_urlsafe(32)
         verifier = secrets.token_urlsafe(64)
-        query = urlencode(
-            {
-                "client_id": self.settings.oidc_client_id,
-                "response_type": "code",
-                "scope": "openid email profile",
-                "redirect_uri": self.redirect_uri,
-                "state": state,
-                "nonce": nonce,
-                "code_challenge": _pkce_challenge(verifier),
-                "code_challenge_method": "S256",
-            }
-        )
+        params = {
+            "client_id": self.settings.oidc_client_id,
+            "response_type": "code",
+            "scope": "openid email profile organization",
+            "redirect_uri": self.redirect_uri,
+            "state": state,
+            "nonce": nonce,
+            "code_challenge": _pkce_challenge(verifier),
+            "code_challenge_method": "S256",
+        }
+        if login_hint:
+            params["login_hint"] = login_hint
+        if idp_hint:
+            params["kc_idp_hint"] = idp_hint
+        if acr:
+            params["acr_values"] = acr
+        query = urlencode(params)
         url = f"{self.settings.keycloak_public_issuer}/protocol/openid-connect/auth?{query}"
         return LoginRequest(state=state, nonce=nonce, code_verifier=verifier, authorization_url=url)
 
@@ -146,11 +161,19 @@ class OidcClient:
         if azp is not None and azp != self.settings.oidc_client_id:
             raise OidcError("ID token was issued to another client")
         email = claims.get("email")
+        organizations = claims.get("organization") or ()
+        if isinstance(organizations, dict):  # with attributes the claim is {alias: {...}}
+            organizations = tuple(organizations)
+        groups = claims.get("idp_groups") or ()
         return IdentityClaims(
             sub=str(claims["sub"]),
             email=str(email).lower() if email else None,
             email_verified=bool(claims.get("email_verified", False)),
             name=claims.get("name") or claims.get("preferred_username"),
+            organizations=tuple(str(o) for o in (organizations if isinstance(organizations, list | tuple) else ())),
+            identity_provider=str(claims["identity_provider"]) if claims.get("identity_provider") else None,
+            idp_groups=tuple(str(g) for g in (groups if isinstance(groups, list) else [groups])),
+            acr=str(claims["acr"]) if claims.get("acr") else None,
         )
 
     async def logout(self, refresh_token: str) -> bool:

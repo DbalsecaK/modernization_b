@@ -1,0 +1,63 @@
+{
+  "realm": "idp-test",
+  "displayName": "Test identity provider (development and tests only)",
+  "enabled": true,
+  "sslRequired": "external",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "registrationEmailAsUsername": true,
+  "duplicateEmailsAllowed": false,
+  "rememberMe": false,
+  "eventsEnabled": false,
+  "groups": [{ "name": "finance" }, { "name": "it-admins" }, { "name": "auditors" }],
+  "clients": [
+    {
+      "clientId": "nexti-broker",
+      "name": "NexTI platform (as an external application of this IdP)",
+      "description": "The realm nexti brokers its logins to this realm, as it would to Entra ID or Okta (ADR-0022).",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "${KC_IDP_TEST_CLIENT_SECRET}",
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "redirectUris": ["http://localhost:${KEYCLOAK_PORT}/realms/nexti/broker/*"],
+      "webOrigins": [],
+      "protocolMappers": [
+        {
+          "name": "groups",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-group-membership-mapper",
+          "config": { "claim.name": "groups", "full.path": "false", "id.token.claim": "true", "access.token.claim": "true",
+                      "userinfo.token.claim": "true" }
+        }
+      ],
+      "defaultClientScopes": ["profile", "email", "basic"]
+    }
+  ],
+  "users": [
+    {
+      "username": "lucia@corp.example",
+      "email": "lucia@corp.example",
+      "firstName": "Lucía",
+      "lastName": "Paredes",
+      "enabled": true,
+      "emailVerified": true,
+      "groups": ["/finance"],
+      "credentials": [{ "type": "password", "value": "${KC_DEV_USER_PASSWORD}", "temporary": false }]
+    },
+    {
+      "username": "jorge@corp.example",
+      "email": "jorge@corp.example",
+      "firstName": "Jorge",
+      "lastName": "Mena",
+      "enabled": true,
+      "emailVerified": true,
+      "groups": ["/it-admins", "/auditors"],
+      "credentials": [{ "type": "password", "value": "${KC_DEV_USER_PASSWORD}", "temporary": false }]
+    }
+  ]
+}

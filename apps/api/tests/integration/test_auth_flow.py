@@ -1,7 +1,6 @@
 """Sign-in with a local Keycloak account through the BFF, end to end against the real Keycloak (M0 acceptance):
 login and logout work, no token ever reaches the browser, the session lives in an httpOnly cookie."""
 
-import html
 import re
 import uuid
 from collections.abc import Iterator
@@ -20,6 +19,7 @@ from nexti_api.settings import Settings
 from nexti_core.db.models import AppUser, Membership
 
 from .conftest import SETTINGS, World, compose_env
+from .keycloak_browser import keycloak_form
 
 # The response type of starlette's TestClient (httpx or httpx2, whichever the environment has).
 TestResponse = Any
@@ -58,12 +58,11 @@ def keycloak_sign_in(authorization_url: str, username: str, password: str) -> st
     """Do what the user does on the Keycloak page; return the callback URL Keycloak redirects to."""
     with httpx.Client(follow_redirects=True, timeout=20) as kc:
         page = kc.get(authorization_url)
-        match = re.search(r'<form[^>]*id="kc-form-login"[^>]*action="([^"]+)"', page.text)
-        assert match, "Keycloak login form not found"
+        action, _ = keycloak_form(page.text, "kc-form-login")
         # Keycloak's cookies are Secure; browsers send them to http://localhost (a secure context), httpx does not.
         cookies = "; ".join(f"{c.name}={c.value}" for c in kc.cookies.jar)
         res = kc.post(
-            html.unescape(match.group(1)),
+            action,
             data={"username": username, "password": password, "credentialId": ""},
             headers={"Cookie": cookies},
             follow_redirects=False,

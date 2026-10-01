@@ -65,11 +65,12 @@ test('creating a role shows an accessible toast and the matrix saves', async ({ 
 
 test('switches toggle with the keyboard and pass axe', async ({ page }) => {
   await page.getByRole('tab', { name: 'Authentication' }).click()
-  const sms = page.getByRole('switch', { name: 'SMS codes' })
-  const before = await sms.getAttribute('aria-checked')
-  await sms.focus()
+  // The tenant's sign-in settings come from the API (M0b); toggling does not save until "Save".
+  const mfa = page.getByRole('switch', { name: 'Require MFA for every user' })
+  const before = await mfa.getAttribute('aria-checked')
+  await mfa.focus()
   await page.keyboard.press('Space')
-  await expect(sms).not.toHaveAttribute('aria-checked', before ?? '')
+  await expect(mfa).not.toHaveAttribute('aria-checked', before ?? '')
   await expectAccessible(page, 'main')
 })
 

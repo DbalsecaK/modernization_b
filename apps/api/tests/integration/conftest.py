@@ -270,3 +270,7 @@ async def cleanup_keycloak_test_users() -> AsyncIterator[None]:
         for user in users:
             if str(user.get("email", "")).startswith("m0test-"):
                 await http.delete(f"{base}/users/{user['id']}", headers=headers)
+        # Identity providers made by the tests (M0b): their aliases carry m0test.
+        for provider in (await http.get(f"{base}/identity-provider/instances", headers=headers)).json():
+            if "m0test" in str(provider.get("alias", "")):
+                await http.delete(f"{base}/identity-provider/instances/{provider['alias']}", headers=headers)
