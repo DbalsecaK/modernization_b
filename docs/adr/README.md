@@ -24,5 +24,6 @@ reemplaza y se marca el anterior como "Reemplazado por ADR-NNNN".
 | [0016](0016-packs-de-frontend-react-y-angular.md) | Packs de frontend React y Angular: contrato OpenAPI, cliente tipado y arnés de pantallas | Aceptada |
 | [0017](0017-pack-dotnet-y-contrato-de-packs-de-backend.md) | Pack .NET 10 con SQL Server y un contrato común de packs de backend | Aceptada |
 | [0018](0018-flujo-2-insumos-citables-y-veredicto.md) | Flujo 2: insumos citables, integraciones del tenant y veredicto por criterios | Aceptada |
+| [0019](0019-backlog-jira-azure-devops.md) | Backlog en Jira y Azure DevOps: sincronización idempotente y ciclo del bug | Aceptada |
 
 Plantilla: contexto, decisión, alternativas consideradas, consecuencias y cómo se valida.
