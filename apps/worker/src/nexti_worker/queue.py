@@ -8,7 +8,7 @@ import structlog
 from procrastinate import App, Blueprint, JobContext, PsycopgConnector, RetryStrategy
 
 from nexti_core.jobs import BACKLOG_SYNC_TASK, EXECUTE_RUN_TASK, RUNS_QUEUE, UI_CHANGE_TASK
-from nexti_worker.backlog import sync_backlog, tracker_for
+from nexti_worker.backlog import bug_fixer, sync_backlog, tracker_for
 from nexti_worker.runner import Runtime, execute_run, fail_run
 from nexti_worker.ui_chat import apply_ui_change
 
@@ -68,7 +68,8 @@ async def sync_backlog_task(context: JobContext, project_id: str, tenant_id: str
     runtime = _runtime(context)
     summary = await sync_backlog(runtime.engine, runtime.objects, runtime.secrets,
                                  runtime.trackers or tracker_for(runtime.http), uuid.UUID(tenant_id),
-                                 uuid.UUID(project_id), reason)  # fmt: skip
+                                 uuid.UUID(project_id), reason, bug_fixer(runtime, uuid.UUID(tenant_id),
+                                                                          uuid.UUID(project_id)))  # fmt: skip
     log.info("backlog.job_done", project_id=project_id, reason=reason, summary=summary)
 
 

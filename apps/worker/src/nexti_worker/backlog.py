@@ -8,7 +8,7 @@ import io
 import json
 import uuid
 import zipfile
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from typing import Any
 
@@ -41,6 +41,8 @@ class Link:
 
 
 TrackerFactory = Callable[[Link, str], BacklogTracker]
+# The bug cycle (bugfix.fix_bugs) for the open bugs of a linked project, when the worker has the models and sandboxes.
+Fixer = Callable[[BacklogTracker, Link], Awaitable[str]]
 
 
 def tracker_for(http: httpx.AsyncClient) -> TrackerFactory:
@@ -162,7 +164,7 @@ async def desired_backlog(engine: AsyncEngine, objects: ObjectStore | None, tena
 
 async def sync_backlog(engine: AsyncEngine, objects: ObjectStore | None, secrets: SecretStore | None,
                        trackers: TrackerFactory, tenant_id: uuid.UUID, project_id: uuid.UUID,
-                       reason: str = "manual") -> str:  # fmt: skip
+                       reason: str = "manual", fixer: Fixer | None = None) -> str:  # fmt: skip
     """Sync the project's backlog; returns a summary (also kept as the link's last sync detail)."""
     link = await load_link(engine, tenant_id, project_id)
     if link is None:
@@ -202,6 +204,11 @@ async def sync_backlog(engine: AsyncEngine, objects: ObjectStore | None, secrets
         return await _finish(engine, tenant_id, project_id, str(exc), ok=False)
     summary = (f"{outcome.created} created, {outcome.updated} updated, {outcome.transitioned} moved"
                + (f", {outcome.recovered} recovered by label" if outcome.recovered else ""))  # fmt: skip
+    if fixer is not None and link.rules.get("autoFix", True):
+        try:
+            summary += f"; bugs: {await fixer(tracker, link)}"
+        except TrackerError as exc:
+            summary += f"; bugs: {exc}"
     return await _finish(engine, tenant_id, project_id, summary, ok=True)
 
 
@@ -214,3 +221,16 @@ async def _finish(engine: AsyncEngine, tenant_id: uuid.UUID, project_id: uuid.UU
                                           actor_label=ACTOR, target=f"project:{project_id}", tenant_id=tenant_id,
                                           details={"detail": detail[:300]}))  # fmt: skip
     return detail
+
+
+def bug_fixer(runtime: Any, tenant_id: uuid.UUID, project_id: uuid.UUID) -> Fixer | None:
+    """The bug cycle when the runtime has the models, the object store and the sandboxes; None otherwise."""
+    if runtime.gateway is None or runtime.objects is None or runtime.sandboxes is None:
+        return None
+    from nexti_worker.bugfix import fix_bugs
+
+    async def fix(tracker: BacklogTracker, link: Link) -> str:
+        return await fix_bugs(runtime.engine, runtime.objects, runtime.gateway, runtime.sandboxes, tracker, tenant_id,
+                              project_id, link.integration_id)  # fmt: skip
+
+    return fix
