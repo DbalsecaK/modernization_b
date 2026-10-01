@@ -141,6 +141,8 @@ export function roleLabel(t: (key: string) => string, role: { key: string; name:
 // Integrations of the tenant (M7, ADR-0018): the token goes to the secrets store and never comes back.
 export type Integration = Schemas['IntegrationOut']
 export type IntegrationKind = Integration['kind']
+/** The tenant permission that manages integrations (the API checks it anyway). */
+export const INTEGRATIONS_MANAGE = 'integrations.manage'
 const integrationsKey = ['admin', 'integrations'] as const
 
 export const useIntegrations = (enabled = true) =>

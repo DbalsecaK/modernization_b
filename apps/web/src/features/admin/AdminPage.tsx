@@ -6,6 +6,7 @@ import { formatDateTime } from '@/lib/format'
 import { identityProviders } from '@/mocks/data'
 import { can, useMe } from '@/api/session'
 import {
+  INTEGRATIONS_MANAGE,
   roleLabel,
   useAudit,
   useDeleteRole,
@@ -57,7 +58,7 @@ export function AdminPage() {
   const visible = TABS.filter((tab) => {
     if (tab === 'tenants') return isSuperAdmin
     if (tab === 'audit') return can(me, 'audit.view')
-    if (tab === 'integrations') return can(me, 'integrations.manage')
+    if (tab === 'integrations') return can(me, INTEGRATIONS_MANAGE)
     return manageUsers
   })
   const [tab, setTab] = useTab<Tab>(visible.length ? visible : ['users'], visible[0] ?? 'users')
