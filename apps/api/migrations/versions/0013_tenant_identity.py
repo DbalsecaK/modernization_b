@@ -9,6 +9,8 @@
 - `identity_route(domain)`: home-realm discovery before sign-in, when there is no user nor tenant yet. It returns only
   what the login page needs: the provider of the domain, whether the domain is SSO-only and whether the tenant asks
   own accounts for a second factor.
+- `identity_provider_tenant(alias)`: the tenant of the provider a user just signed in with (its alias comes in the
+  validated ID token), so the platform can provision the user (JIT) and map the groups in that tenant only.
 - New tenant permission `identity.manage`, held by the tenant administrator.
 
 Revision ID: 0013
@@ -116,6 +118,14 @@ def upgrade() -> None:
     REVOKE ALL ON FUNCTION identity_route(text) FROM PUBLIC;
     GRANT EXECUTE ON FUNCTION identity_route(text) TO platform_app;
 
+    CREATE FUNCTION identity_provider_tenant(p_alias text) RETURNS uuid
+      LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public, pg_temp AS $$
+      SELECT p.tenant_id FROM tenant_identity_provider p JOIN tenant t ON t.id = p.tenant_id AND t.status = 'active'
+       WHERE p.alias = p_alias AND p.status = 'active'
+    $$;
+    REVOKE ALL ON FUNCTION identity_provider_tenant(text) FROM PUBLIC;
+    GRANT EXECUTE ON FUNCTION identity_provider_tenant(text) TO platform_app;
+
     INSERT INTO permission (key, description)
       VALUES ('identity.manage', 'Configure how the tenant signs in: SSO providers, own accounts and MFA');
     INSERT INTO permission_scope (permission_key, scope) VALUES ('identity.manage', 'tenant');
@@ -130,6 +140,7 @@ def downgrade() -> None:
     DELETE FROM role_permission WHERE permission_key = 'identity.manage';
     DELETE FROM permission_scope WHERE permission_key = 'identity.manage';
     DELETE FROM permission WHERE key = 'identity.manage';
+    DROP FUNCTION IF EXISTS identity_provider_tenant(text);
     DROP FUNCTION identity_route(text);
     ALTER TABLE role_assignment DROP COLUMN source;
     DROP TABLE tenant_identity_provider;
