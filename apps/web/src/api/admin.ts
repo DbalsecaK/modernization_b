@@ -137,3 +137,36 @@ const BASE_ROLES = new Set([
 export function roleLabel(t: (key: string) => string, role: { key: string; name: string; isSystem?: boolean }) {
   return BASE_ROLES.has(role.key) ? t(`roles.${role.key}`) : role.name
 }
+
+// Integrations of the tenant (M7, ADR-0018): the token goes to the secrets store and never comes back.
+export type Integration = Schemas['IntegrationOut']
+export type IntegrationKind = Integration['kind']
+/** The tenant permission that manages integrations (the API checks it anyway). */
+export const INTEGRATIONS_MANAGE = 'integrations.manage'
+const integrationsKey = ['admin', 'integrations'] as const
+
+export const useIntegrations = (enabled = true) =>
+  useQuery({ queryKey: integrationsKey, queryFn: () => unwrap(api.GET('/api/v1/integrations')), enabled })
+export const useCreateIntegration = () =>
+  useAdminMutation(
+    (body: Schemas['IntegrationCreate']) => unwrap(api.POST('/api/v1/integrations', { body })),
+    [integrationsKey],
+  )
+export const useUpdateIntegration = () =>
+  useAdminMutation(
+    ({ id, ...body }: Schemas['IntegrationUpdate'] & { id: string }) =>
+      unwrap(api.PATCH('/api/v1/integrations/{integration_id}', { params: { path: { integration_id: id } }, body })),
+    [integrationsKey],
+  )
+export const useDeleteIntegration = () =>
+  useAdminMutation(
+    (id: string) =>
+      unwrap(api.DELETE('/api/v1/integrations/{integration_id}', { params: { path: { integration_id: id } } })),
+    [integrationsKey],
+  )
+export const useTestIntegration = () =>
+  useAdminMutation(
+    (id: string) =>
+      unwrap(api.POST('/api/v1/integrations/{integration_id}:test', { params: { path: { integration_id: id } } })),
+    [integrationsKey],
+  )

@@ -31,6 +31,7 @@ from integration import test_acceptance_m4 as m4  # noqa: E402
 from integration import test_acceptance_m6 as m6  # noqa: E402
 from integration import test_acceptance_m6b as m6b  # noqa: E402
 from integration import test_acceptance_m6c as m6c  # noqa: E402
+from integration import test_acceptance_m7 as m7  # noqa: E402
 from integration.run_support import NO_FRONTEND, TARGET, FakeSandbox, make_config, make_run, seed_screens  # noqa: E402
 from sqlalchemy import text  # noqa: E402
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine  # noqa: E402
@@ -42,6 +43,7 @@ from nexti_api.settings import Settings  # noqa: E402
 from nexti_core.object_store import ObjectStore, ObjectStoreConfig  # noqa: E402
 from nexti_core.secrets import SecretsConfig, SecretStore  # noqa: E402
 from nexti_graph import GraphStore  # noqa: E402
+from nexti_ingest.figma import RecordedFigma  # noqa: E402
 from nexti_model_gateway.service import GatewayService  # noqa: E402
 from nexti_model_gateway.service import SecretsConfig as GatewaySecrets  # noqa: E402
 from nexti_sandbox import DockerSandbox  # noqa: E402
@@ -55,6 +57,7 @@ DEMOS = {
     "m6": ("Demo · Pagos COBOL/CICS → Spring Boot", ["cobol-cics", "bms"]),
     "m6b": ("Demo · Pagos frontend React y Angular", ["bms"]),
     "m6c": ("Demo · Pagos Sybase → .NET 10", ["sybase-sp"]),
+    "m7": ("Demo · Simulador de crédito (nueva funcionalidad)", ["functional-document", "figma"]),
 }
 DESCRIPTION = "Demo project replayed from the {key} acceptance recordings: a full run with no model cost."
 MAX_STEPS = 30
@@ -160,11 +163,15 @@ def sign_in(api: TestClient, user: uuid.UUID) -> dict[str, str]:
 
 async def pipeline(demo: Demo, name: str, recordings: Path, team: dict[str, str], files: dict[str, bytes],
                    legacy: Callable[[], Any] | None, target: dict[str, str] | None = None,
-                   shared: tuple[Path, ...] = ()) -> uuid.UUID:  # fmt: skip
-    """A whole modernization run (M4, M6, M6c) of the fictitious application, replayed."""
+                   shared: tuple[Path, ...] = (), feature: bool = False) -> uuid.UUID:  # fmt: skip
+    """A whole run of a fictitious application, replayed: a modernization (M4, M6, M6c) or, with `feature`, a new
+    functionality from documents and Figma (M7)."""
     project_id = await demo.project(name)
     version = await make_config(demo.owner, demo.tenant, project_id, team=team, target=target or NO_FRONTEND)
-    await m4.upload_source(demo.owner, demo.store, demo.tenant, project_id, files)
+    if feature:
+        await m7.upload_inputs(demo.owner, demo.store, demo.tenant, project_id)
+    else:
+        await m4.upload_source(demo.owner, demo.store, demo.tenant, project_id, files)
     await demo.sync_authz()
     run_id = await make_run(demo.owner, demo.tenant, project_id, version, kind="pipeline",
                             started_by=demo.launcher)  # fmt: skip
@@ -185,7 +192,7 @@ async def pipeline(demo: Demo, name: str, recordings: Path, team: dict[str, str]
             dsn=demo.settings.database_url.get_secret_value().replace("postgresql+asyncpg://", "postgresql://", 1),
             sandbox=FakeSandbox(), http=http, objects=demo.store, secrets=SecretStore(secrets, http),
             gateway=gateway, sandboxes=lambda image: DockerSandbox(image=image), legacy=legacy,
-            graph=graph,
+            graph=graph, figma=RecordedFigma(m7.EXAMPLE / "figma"),
         )  # fmt: skip
         try:
             decided = await demo.drive(project_id, run_id, runtime)
@@ -209,6 +216,12 @@ async def demo_m6c(demo: Demo) -> uuid.UUID:
     sources = {"sp/sp_pago_orden.sp": (m4.FIXTURES / "sp_pago_orden.sp").read_bytes()}
     return await pipeline(demo, DEMOS["m6c"][0], m6c.RECORDINGS, m4.FULL_TEAM, sources, lambda: recorded,
                           target=m6c.TARGET_DOTNET, shared=(m4.RECORDINGS / "models",))  # fmt: skip
+
+
+async def demo_m7(demo: Demo) -> uuid.UUID:
+    """Flow 2: the credit simulator from its requirements, stories and Figma file, built and validated."""
+    return await pipeline(demo, DEMOS["m7"][0], m7.RECORDINGS, m7.TEAM, {}, None, target=m7.TARGET_FEATURE,
+                          feature=True)  # fmt: skip
 
 
 async def demo_m6(demo: Demo) -> uuid.UUID:
@@ -262,7 +275,7 @@ async def demo_m6b(demo: Demo) -> uuid.UUID:
 
 
 BUILDERS: dict[str, Callable[[Demo], Awaitable[uuid.UUID]]] = {
-    "m4": demo_m4, "m6": demo_m6, "m6b": demo_m6b, "m6c": demo_m6c,
+    "m4": demo_m4, "m6": demo_m6, "m6b": demo_m6b, "m6c": demo_m6c, "m7": demo_m7,
 }  # fmt: skip
 
 

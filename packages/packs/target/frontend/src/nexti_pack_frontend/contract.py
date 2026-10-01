@@ -13,7 +13,7 @@ Conventions every page follows:
 import re
 from dataclasses import asdict, dataclass
 
-from nexti_core.spec.screens import ScreenSpec
+from nexti_core.spec.screens import ScreenField, ScreenSpec
 
 
 @dataclass(frozen=True)
@@ -56,12 +56,22 @@ def component_of(screen_id: str) -> str:
 
 
 def contract_of(screen: ScreenSpec) -> ScreenContract:
+    web = screen.rows is None  # a screen of Flow 2: its fields carry neutral types, not terminal attributes
+
+    def numeric(f: ScreenField) -> bool:
+        return "numeric" in f.attributes or (web and (f.type or "").startswith(("decimal", "integer")))
+
     fields = tuple(
         FieldContract(f.name, (f.label or f.name).strip(), "output" if f.kind == "output" else "input", f.length,
-                      f.required, "numeric" in f.attributes, "dark" in f.attributes)
+                      f.required, numeric(f), "dark" in f.attributes)
         for f in screen.fields if f.kind != "literal"
     )  # fmt: skip
     actions = tuple(ActionContract(a.key, a.label or a.key, a.target) for a in screen.actions)
+    if web and actions and not any(a.key == "ENTER" for a in actions) and any(f.kind == "input" for f in fields):
+        # A web screen (Flow 2, from Figma or documents): its first button submits the form. It calls the backend and
+        # may go on to the screen it names once the call succeeds, so it is not a plain navigation.
+        first = actions[0]
+        actions = (ActionContract("ENTER", first.label, None), *actions[1:])
     if not any(a.key == "ENTER" for a in actions) and any(f.kind == "input" for f in fields):
         actions = (ActionContract("ENTER", "Enter", None), *actions)
     return ScreenContract(screen.id, screen.name, module_of(screen.id), component_of(screen.id), fields, actions)
@@ -71,8 +81,9 @@ def describe(contract: ScreenContract) -> str:
     """The contract in plain words for the agent's prompt."""
     lines = [f"Screen {contract.id} '{contract.name}' (component {contract.component}, file {contract.module}):"]
     for f in contract.fields:
-        traits = [f.kind, f"length {f.length}"] + [t for t, on in (("required", f.required), ("numeric", f.numeric),
-                                                                   ("secret", f.secret)) if on]  # fmt: skip
+        size = f"length {f.length}" if f.length else "no length limit"
+        traits = [f.kind, size] + [t for t, on in (("required", f.required), ("numeric", f.numeric),
+                                                   ("secret", f.secret)) if on]  # fmt: skip
         lines.append(f'  field data-field="{f.name}" label "{f.label}": {", ".join(traits)}')
     for a in contract.actions:
         lines.append(

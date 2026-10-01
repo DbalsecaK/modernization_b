@@ -6,6 +6,7 @@ import { formatDateTime } from '@/lib/format'
 import { identityProviders } from '@/mocks/data'
 import { can, useMe } from '@/api/session'
 import {
+  INTEGRATIONS_MANAGE,
   roleLabel,
   useAudit,
   useDeleteRole,
@@ -26,6 +27,7 @@ import {
 } from '@/api/admin'
 import { toast } from '@/components/ui/overlay'
 import { errorMessage, IdentityProviderForm, InviteForm, RoleForm, TenantForm } from './AdminForms'
+import { Integrations } from './Integrations'
 import {
   Badge,
   Button,
@@ -56,6 +58,7 @@ export function AdminPage() {
   const visible = TABS.filter((tab) => {
     if (tab === 'tenants') return isSuperAdmin
     if (tab === 'audit') return can(me, 'audit.view')
+    if (tab === 'integrations') return can(me, INTEGRATIONS_MANAGE)
     return manageUsers
   })
   const [tab, setTab] = useTab<Tab>(visible.length ? visible : ['users'], visible[0] ?? 'users')
@@ -69,7 +72,7 @@ export function AdminPage() {
       {tab === 'roles' && me?.activeTenant && <Roles />}
       {tab === 'authentication' && <Authentication />}
       {tab === 'security' && <Security />}
-      {tab === 'integrations' && <Integrations />}
+      {tab === 'integrations' && me?.activeTenant && <Integrations />}
       {tab === 'audit' && me?.activeTenant && <Audit />}
     </>
   )
@@ -702,34 +705,6 @@ function Security() {
           </Field>
         </CardBody>
       </Card>
-    </div>
-  )
-}
-
-function Integrations() {
-  const { t } = useTranslation()
-  const items = [
-    ['GitHub', true],
-    ['GitLab', false],
-    ['Azure DevOps', true],
-    ['Jira', true],
-    ['Figma', true],
-  ] as const
-  return (
-    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-      {items.map(([name, on]) => (
-        <Card key={name}>
-          <CardBody className="flex items-center justify-between gap-3">
-            <div>
-              <div className="text-sm font-semibold text-text">{name}</div>
-              <div className="text-xs text-muted">{t('admin.integrationHint')}</div>
-            </div>
-            <Button size="sm" variant={on ? 'secondary' : 'primary'}>
-              {on ? t('common.configure') : t('common.connect')}
-            </Button>
-          </CardBody>
-        </Card>
-      ))}
     </div>
   )
 }

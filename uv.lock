@@ -1353,12 +1353,14 @@ version = "0.1.0"
 source = { editable = "packages/ingest" }
 dependencies = [
     { name = "httpx" },
+    { name = "nexti-sandbox" },
     { name = "pillow" },
 ]
 
 [package.metadata]
 requires-dist = [
     { name = "httpx", specifier = ">=0.28" },
+    { name = "nexti-sandbox", editable = "packages/sandbox" },
     { name = "pillow", specifier = ">=11.0" },
 ]
 

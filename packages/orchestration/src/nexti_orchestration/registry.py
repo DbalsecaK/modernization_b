@@ -8,6 +8,8 @@ from typing import Protocol, cast
 
 from nexti_orchestration.characterization import CharacterizationPhases, CharacterizationPort
 from nexti_orchestration.demo import demo_executors
+from nexti_orchestration.feature import FeaturePhases, FeaturePort
+from nexti_orchestration.feature_build import FeatureBuildPhases, FeatureBuildPort
 from nexti_orchestration.generation import GenerationPhases, GenerationPort
 from nexti_orchestration.graph import Executor
 from nexti_orchestration.model import RunContext
@@ -47,4 +49,19 @@ def executors_for(
             executors.update({"design": generation.design, "generation": generation.generation})
         if hasattr(port, "save_verdict"):  # a port that can also keep verdicts and proof packs
             executors["verification"] = VerificationPhases(cast(VerificationPort, port)).verification
+    if port is not None and run.flow == "newFeature" and hasattr(port, "documents"):  # Flow 2 (M7)
+        feature = FeaturePhases(cast(FeaturePort, port))
+        build = FeatureBuildPhases(cast(FeatureBuildPort, port))
+        generation = GenerationPhases(cast(GenerationPort, port))
+        executors.update({
+            "ingestion": feature.ingestion,
+            "normalization": feature.normalization,
+            "consolidation": feature.consolidation,
+            "specReview": build.spec_review,
+            "ui": UiPhases(cast(UiPort, port)).ui,
+            "design": generation.design,
+            "generation": generation.generation,
+            "validation": build.validation,
+            "delivery": build.delivery,
+        })  # fmt: skip
     return executors

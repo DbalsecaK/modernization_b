@@ -1,0 +1,46 @@
+{
+  "model": "anthropic/claude-sonnet-5.5",
+  "mode": "record",
+  "verdict": "PROVEN",
+  "checks": {
+    "tests_ran": "passed",
+    "criteria_covered": "passed",
+    "contracts": "passed",
+    "canary": "passed",
+    "questions_closed": "passed",
+    "traced_to_inputs": "passed"
+  },
+  "details": {
+    "tests_ran": "20 test(s) passed in a clean build (JUnit XML)",
+    "criteria_covered": "6 acceptance criteria covered by passing tests",
+    "contracts": "1 operation(s) of the contract have their endpoint",
+    "canary": "line 15 changed (private static final BigDecimal MIN_AMOUNT = new BigDecimal(\"1000.01\");) turned test accepts_the_lower_amount_limit() red",
+    "questions_closed": "no question is open",
+    "traced_to_inputs": "10 element(s) traced to the lines of their inputs"
+  },
+  "frontend": "PROVEN",
+  "frontend_checks": {
+    "compiles": "passed",
+    "screens_mount": "passed",
+    "fields_covered": "passed",
+    "validations": "passed",
+    "actions": "passed",
+    "accessibility": "passed"
+  },
+  "stories": 2,
+  "rules": 6,
+  "screens": 2,
+  "questions": [
+    "SCR-SIMULADOR 'Simulador' has no empty state.",
+    "The button 'Botón Descargar PDF' of the Figma frame 'Resultado' navigates nowhere."
+  ],
+  "model_calls": 12,
+  "cost_usd": "0.46138400",
+  "decisions": [
+    "questions",
+    "C1",
+    "C2",
+    "C3",
+    "C4"
+  ]
+}

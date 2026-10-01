@@ -7,7 +7,7 @@ import re
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 from functools import partial
-from typing import Any, Literal, Protocol
+from typing import Any, Literal, Protocol, cast
 
 from nexti_adapter_bms import BmsAdapter
 from nexti_agents import prompt
@@ -118,10 +118,15 @@ class UiPhases:
         self.port = port
 
     async def ui(self, ctx: PhaseContext) -> PhaseResult:
-        screens = screens_of(await self.port.source_files())
-        if not screens:
-            return PhaseResult(summary="The sources have no screens: nothing to design")
-        await ctx.step("screens", lambda: self._save(screens))
+        if ctx.run.flow == "newFeature":  # Flow 2: the screens of the approved specification (from Figma, documents)
+            screens = await cast(Any, self.port).load_screens()
+            if not screens:
+                return PhaseResult(summary="The specification has no screens: nothing to design")
+        else:
+            screens = screens_of(await self.port.source_files())
+            if not screens:
+                return PhaseResult(summary="The sources have no screens: nothing to design")
+            await ctx.step("screens", lambda: self._save(screens))
         design_system = await ctx.step("design-system", self._design_system)
         for screen in screens:
             piece = ctx.for_shard(f"screen:{screen.id}")

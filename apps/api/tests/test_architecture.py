@@ -18,6 +18,9 @@ FORBIDDEN_TEXT = ("openrouter.ai/api", "X-Vault-Token", "/v1/secret/data")
 SECRETS_CLIENT = ROOT / "packages" / "core" / "src" / "nexti_core" / "secrets.py"
 SECRETS_USERS = {
     ROOT / "apps" / "api" / "src" / "nexti_api" / "projects" / "repository.py",
+    # The tenant integrations (Figma, M7, ADR-0018): the API writes their token; the worker reads it to read Figma.
+    ROOT / "apps" / "api" / "src" / "nexti_api" / "admin" / "integrations.py",
+    ROOT / "apps" / "worker" / "src" / "nexti_worker" / "project.py",
     # The worker's preflight resolves the repository token (read only) to check the repository (spec 11.1).
     ROOT / "apps" / "worker" / "src" / "nexti_worker" / "probe.py",
     ROOT / "apps" / "worker" / "src" / "nexti_worker" / "runner.py",

@@ -661,6 +661,25 @@ class ProjectRepository(Base):
     updated_at: Mapped[datetime] = _now()
 
 
+# Integrations of the tenant (migration 0011, ADR-0018): Figma now, Jira / Azure DevOps / Git in M7b.
+class TenantIntegration(Base):
+    __tablename__ = "tenant_integration"
+    __table_args__ = (UniqueConstraint("tenant_id", "name"), Index("tenant_integration_kind", "tenant_id", "kind"))
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    tenant_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("tenant.id", ondelete="CASCADE"), nullable=False)
+    kind: Mapped[str] = mapped_column(Text, nullable=False)
+    name: Mapped[str] = mapped_column(Text, nullable=False)
+    # Where the token lives in the secrets store (ADR-0007); never the token itself.
+    vault_path: Mapped[str | None] = mapped_column(Text)
+    account: Mapped[str | None] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(Text, nullable=False, server_default="untested")
+    last_tested_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    last_test_detail: Mapped[str | None] = mapped_column(Text)
+    created_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("app_user.id"))
+    created_at: Mapped[datetime] = _now()
+    updated_at: Mapped[datetime] = _now()
+
+
 # Runs of the project pipeline (migration 0007). The queue (procrastinate_*) and the LangGraph checkpointer
 # (checkpoint*) are infrastructure outside this mapping (ADR-0009).
 class Run(Base):

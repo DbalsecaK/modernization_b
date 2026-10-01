@@ -82,8 +82,9 @@ async def _evidence(request: Request, conn: AsyncConnection, project_id: uuid.UU
         return {}
     data = b"".join(await services.store(request).read(latest["proof_pack_key"]))
     with zipfile.ZipFile(io.BytesIO(data)) as archive:
-        trace = json.loads(archive.read("TRACE.json"))
-        equivalence = json.loads(archive.read("EQUIVALENCE.json"))
+        names = set(archive.namelist())
+        trace = json.loads(archive.read("TRACE.json")) if "TRACE.json" in names else []
+        equivalence = json.loads(archive.read("EQUIVALENCE.json")) if "EQUIVALENCE.json" in names else {}
     cases = list(equivalence.get("golden_master") or []) + list(equivalence.get("fresh_inputs") or [])
     return {"verdict": latest, "trace": {t["rule"]: t for t in trace}, "cases": cases}
 
@@ -141,6 +142,15 @@ async def _legacy_files(request: Request, conn: AsyncConnection, project_id: uui
     for row in rows.mappings():
         data = b"".join(await services.store(request).read(row["object_key"]))
         files.update(read_text_files(data))
+    # Flow 2 (ADR-0018): the citable text of the documents and Figma files, as ingestion kept it.
+    inputs = await conn.execute(
+        text("SELECT DISTINCT ON (path) path, object_key FROM generated_artifact WHERE project_id = :p "
+             "AND path LIKE 'inputs/%' AND path NOT LIKE '%.json' ORDER BY path, created_at DESC"),
+        {"p": project_id},
+    )  # fmt: skip
+    for row in inputs.mappings():
+        content = b"".join(await services.store(request).read(row["object_key"])).decode("utf-8", "replace")
+        files[row["path"].removeprefix("inputs/")] = content
     return files
 
 

@@ -42,6 +42,7 @@ PERMISSIONS: tuple[Permission, ...] = (
     Permission("code.download", ("project",), "Download code"),
     Permission("code.push", ("project",), "Push code to the customer repository"),
     Permission("models.configure", ("tenant",), "Configure AI connections, catalog and profiles"),
+    Permission("integrations.manage", ("tenant",), "Connect the tenant's external tools (Figma, Jira, Azure DevOps)"),
     Permission("usage.view", ("tenant", "project"), "View token usage"),
     Permission("cost.view", ("tenant",), "View costs in money"),
     Permission("agents.select", ("project",), "Select the agents of a project"),
@@ -68,6 +69,7 @@ BASE_ROLES: tuple[BaseRole, ...] = (
         (
             "project.create",
             "models.configure",
+            "integrations.manage",
             "usage.view",
             "cost.view",
             "skills.publish",

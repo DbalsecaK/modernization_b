@@ -7,6 +7,7 @@ from pathlib import Path
 
 from nexti_adapter_bms import BmsAdapter
 from nexti_core.adapters import SourceFile
+from nexti_core.spec.screens import ScreenSpec
 from nexti_pack_frontend import contract_of, describe, openapi, runtime, typescript_client
 from nexti_pack_spring_boot import Design
 
@@ -58,3 +59,19 @@ def test_the_screen_contract_follows_the_screen_specs() -> None:
     text = describe(order)
     assert 'data-field="ORDEN"' in text
     assert "required" in text
+
+
+def test_the_first_button_of_a_web_screen_submits_its_form() -> None:
+    """A screen of Flow 2 (no terminal grid): its first button calls the backend, so it is the submit, not a plain
+    navigation the harness would click with the required fields empty."""
+    screen = ScreenSpec.model_validate({
+        "id": "SCR-SIMULADOR", "name": "Simulador",
+        "fields": [{"name": "monto", "kind": "input", "length": 0, "required": True, "type": "decimal(12,2,signed)"}],
+        "actions": [{"key": "calcular", "label": "Calcular", "target": "SCR-RESULTADO"},
+                    {"key": "limpiar", "label": "Limpiar"}],
+    })  # fmt: skip
+    contract = contract_of(screen)
+    assert [(a.key, a.label, a.target) for a in contract.actions] == [("ENTER", "Calcular", None),
+                                                                       ("limpiar", "Limpiar", None)]  # fmt: skip
+    assert contract.fields[0].numeric
+    assert "no length limit" in describe(contract)

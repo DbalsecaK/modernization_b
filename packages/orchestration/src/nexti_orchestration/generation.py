@@ -32,8 +32,10 @@ from nexti_pack_spring_boot.pack import PACK as SPRING_BOOT
 from nexti_pack_spring_boot.pack import wiring
 from nexti_sandbox import Sandbox
 from nexti_sandbox.build import BuildResult
+from nexti_verification.verdict import criterion_test
 
 ARCHITECT = "solution-architect"
+FEATURE_ARCHITECT = "solution-architect-feature"  # the prompt of the design without legacy (Flow 2)
 DEVELOPER = "backend-dev"
 TESTER = "test-engineer"
 
@@ -150,13 +152,15 @@ def _rules_text(rules: Sequence[Rule]) -> str:
 
 async def propose_design(
     caller: ModelCaller, rules: Sequence[Rule], inventory: str, *, max_iterations: int = 3,
-    names: set[str] | None = None, source: str = "",
+    names: set[str] | None = None, source: str = "", system: str = ARCHITECT, label: str = "Inventory",
 ) -> tuple[Design, list[Usage]]:  # fmt: skip
+    """The design from the rules. Flow 1 gives the inventory of the legacy; Flow 2 gives the approved screens and
+    stories (`label`) and its own prompt (`system`), with no legacy to map."""
     messages = [
-        {"role": "system", "content": prompt(ARCHITECT)},
+        {"role": "system", "content": prompt(system)},
         {
             "role": "user",
-            "content": f"Inventory:\n{inventory}\n\nApproved rules:\n{_rules_text(rules)}"
+            "content": f"{label}:\n{inventory}\n\nApproved rules:\n{_rules_text(rules)}"
             + (f"\n\nLegacy source (the columns and parameters to map):\n{source}" if source else ""),
         },
     ]
@@ -194,12 +198,18 @@ class GenerationPhases:
 
         async def work() -> Attempt:
             try:
-                files = await self.port.source_files()
-                design, usage = await propose_design(
-                    self.port.models, rules, await self.port.inventory_digest(),
-                    max_iterations=ctx.run.max_iterations, names=legacy_names(files),
-                    source="\n\n".join(f"// {f.path}\n{f.text}" for f in files),
-                )  # fmt: skip
+                if ctx.run.flow == "newFeature":  # Flow 2: contracts first from the screens and stories (ADR-0018)
+                    design, usage = await propose_design(
+                        self.port.models, rules, await self._feature_context(), max_iterations=ctx.run.max_iterations,
+                        system=FEATURE_ARCHITECT, label="Approved screens and user stories (there is no legacy)",
+                    )  # fmt: skip
+                else:
+                    files = await self.port.source_files()
+                    design, usage = await propose_design(
+                        self.port.models, rules, await self.port.inventory_digest(),
+                        max_iterations=ctx.run.max_iterations, names=legacy_names(files),
+                        source="\n\n".join(f"// {f.path}\n{f.text}" for f in files),
+                    )  # fmt: skip
             except ReplyError as exc:
                 raise PhaseFailedError(str(exc)[:1500]) from exc
             await self.port.save_design(design)
@@ -209,6 +219,29 @@ class GenerationPhases:
 
         attempt = await ctx.invoke(ARCHITECT, work, what="Target design")
         return PhaseResult(summary=attempt.summary)
+
+    async def _feature_context(self) -> str:
+        """What the architect designs from in Flow 2: the screens and the stories with their criteria."""
+        screens = await self.port.load_screens() if hasattr(self.port, "load_screens") else []
+        stories = await self.port.load_stories() if hasattr(self.port, "load_stories") else []
+        active = [s for s in stories if s.status not in ("discarded", "merged")]
+        return json.dumps({
+            "screens": [s.model_dump(mode="json", exclude_none=True, exclude={"sources"}) for s in screens],
+            "stories": [{"key": s.key, "title": s.title, "links": s.links, "criteria": s.criteria} for s in active],
+        }, ensure_ascii=False, indent=1)  # fmt: skip
+
+    async def _criteria(self, design: Design) -> dict[str, str]:
+        """Flow 2: the acceptance criteria each use case must have tests for (the stories that link its rules)."""
+        if not hasattr(self.port, "load_stories"):
+            return {}
+        stories = [s for s in await self.port.load_stories() if s.status not in ("discarded", "merged")]
+        found: dict[str, str] = {}
+        for use_case in design.use_cases:
+            lines = [f"- {criterion_test(s.key, n)}...:\n{c}" for s in stories if set(s.links) & set(use_case.rules)
+                     for n, c in enumerate(s.criteria, start=1)]  # fmt: skip
+            if lines:
+                found[use_case.name] = "\n".join(lines)
+        return found
 
     async def generation(self, ctx: PhaseContext) -> PhaseResult:
         pack = backend_pack(ctx.run.target)
@@ -229,10 +262,12 @@ class GenerationPhases:
             raise PhaseFailedError(f"The generated skeleton does not compile: {build.compile_errors[:1500]}")
         await ctx.store.event("info", "succeeded", "Layers contracts and domain model compile", phase=ctx.phase.key)
         tests_run = 0
+        criteria = await self._criteria(design) if ctx.run.flow == "newFeature" else {}
         for use_case in design.use_cases:
             # One shard per piece: its invocations and journal entries never mix with another piece's.
             piece = ctx.for_shard(f"use-case:{use_case.name}")
-            files[pack.test_path(design, use_case)] = await self._tests(piece, pack, design, use_case, rules, files)
+            files[pack.test_path(design, use_case)] = await self._tests(piece, pack, design, use_case, rules, files,
+                                                                        criteria.get(use_case.name, ""))  # fmt: skip
             files[pack.service_path(design, use_case)] = await self._service(piece, pack, design, use_case, rules,
                                                                              files, sandbox)  # fmt: skip
         for port_spec in design.ports:
@@ -262,16 +297,25 @@ class GenerationPhases:
 
     async def _tests(
         self, ctx: PhaseContext, pack: BackendPack, design: Design, use_case: UseCase, rules: dict[str, Rule],
-        files: dict[str, str],
+        files: dict[str, str], criteria: str = "",
     ) -> str:  # fmt: skip
         async def work() -> Attempt:
+            request = (f"Design:\n{design.model_dump_json(indent=1)}\n\nUse case: {use_case.name}\n\n"
+                       f"Rules:\n{_rules_text([rules[r] for r in use_case.rules if r in rules])}\n\n"
+                       f"Existing files:\n{pack.existing(files, design)}")  # fmt: skip
+            if criteria:  # Flow 2: the approved acceptance criteria are the oracle too (ADR-0018)
+                request += (
+                    "\n\nAcceptance criteria of the user stories. Besides the tests of the rule scenarios, write one "
+                    "test per criterion whose method name starts with the prefix given (for example "
+                    "ac_US001_2_rejects_an_amount_below_the_minimum) and checks what the criterion says; when a "
+                    "criterion is about a screen only, test the behaviour of the service behind it. Expected values "
+                    "come only from the criteria and the rule scenarios: never compute a new expected amount yourself, "
+                    f"and do not assert what no scenario states:\n{criteria}"
+                )
             messages = [
                 {"role": "system", "content": prompt(pack.tester_prompt)},
-                {"role": "user", "content": (
-                    f"Design:\n{design.model_dump_json(indent=1)}\n\nUse case: {use_case.name}\n\n"
-                    f"Rules:\n{_rules_text([rules[r] for r in use_case.rules if r in rules])}\n\n"
-                    f"Existing files:\n{pack.existing(files, design)}")},
-            ]  # fmt: skip
+                {"role": "user", "content": request},
+            ]
             reply = await self.port.models.complete(TESTER, "generation", messages)
             code = code_block(pack, reply.content)
             reference = await self.port.save_file(pack.test_path(design, use_case), code)

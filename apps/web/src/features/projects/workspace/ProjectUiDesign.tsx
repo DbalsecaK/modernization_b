@@ -90,7 +90,7 @@ export function ProjectUiDesign({ project, onOpenRuns }: { project: ProjectDetai
 
   return (
     <div className="space-y-6">
-      <Notice tone="info">{t('uiDesign.fromBms')}</Notice>
+      <Notice tone="info">{t(project.flow === 'newFeature' ? 'uiDesign.fromFigma' : 'uiDesign.fromBms')}</Notice>
       <Card>
         <CardHeader
           title={t('uiDesign.catalog')}
@@ -167,7 +167,11 @@ function ScreenDesign({
   return (
     <>
       <div className="grid gap-6 xl:grid-cols-2">
-        <LegacyScreen screen={screen} field={field} onField={onField} />
+        {screen.rows ? (
+          <LegacyScreen screen={screen} field={field} onField={onField} />
+        ) : (
+          <SpecScreen screen={screen} field={field} onField={onField} />
+        )}
         <Card>
           <CardHeader
             title={t('uiDesign.prototype')}
@@ -250,6 +254,66 @@ function ScreenDesign({
         canEdit={can(PROTOTYPE_EDIT)}
       />
     </>
+  )
+}
+
+/** A screen of Flow 2 (from Figma or documents): its fields as the spec defines them; click one to follow it. */
+function SpecScreen({
+  screen,
+  field,
+  onField,
+}: {
+  screen: ScreenData
+  field: string | null
+  onField: (name: string | null) => void
+}) {
+  const { t } = useTranslation()
+  const fields = screen.fields.filter((f) => f.kind !== 'literal')
+  return (
+    <Card>
+      <CardHeader title={t('uiDesign.inputScreen')} subtitle={screen.name} />
+      <CardBody>
+        <Table>
+          <thead>
+            <tr>
+              <Th>{t('uiDesign.specField')}</Th>
+              <Th>{t('uiDesign.specKind')}</Th>
+              <Th>{t('uiDesign.specRule')}</Th>
+            </tr>
+          </thead>
+          <tbody>
+            {fields.map((f) => (
+              <tr key={f.name} className={cn(f.name === field && 'bg-primary/10')}>
+                <Td>
+                  <button
+                    type="button"
+                    className="text-left font-medium text-text hover:underline"
+                    onClick={() => onField(f.name === field ? null : f.name)}
+                  >
+                    {f.label || f.name}
+                  </button>
+                  <div className="font-mono text-xs text-muted">{f.name}</div>
+                </Td>
+                <Td>{t(`uiDesign.kinds.${f.kind}`)}</Td>
+                <Td className="text-xs">
+                  {[f.required ? t('uiDesign.required') : '', f.validation ?? ''].filter(Boolean).join(' · ') || '—'}
+                </Td>
+              </tr>
+            ))}
+          </tbody>
+        </Table>
+        {(screen.actions ?? []).length > 0 && (
+          <div className="mt-3 flex flex-wrap gap-2">
+            {(screen.actions ?? []).map((a) => (
+              <Badge key={a.key} tone="neutral">
+                {a.label || a.key}
+                {a.target ? ` → ${a.target}` : ''}
+              </Badge>
+            ))}
+          </div>
+        )}
+      </CardBody>
+    </Card>
   )
 }
 
