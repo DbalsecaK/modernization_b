@@ -1727,6 +1727,40 @@ async def test_platform_operations_show_workers_queues_and_failures(
             await conn.execute(text("DELETE FROM procrastinate_workers WHERE id IN (:a, :s)"), {"a": alive, "s": stale})
 
 
+async def test_platform_instances_show_their_version_and_profile_to_operators_only(
+    api: TestClient,
+    app_engine: AsyncEngine,
+    owner_engine: AsyncEngine,
+    fga: OpenFga,
+    world: World,
+    root: uuid.UUID,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """ADR-0024: each instance registers its version and profile; operators see it, the processes cannot read it."""
+    from nexti_core.instances import beat
+
+    await reconcile(app_engine, fga)
+    name = f"nexti-worker-m0test-{uuid.uuid4().hex[:6]}"
+    monkeypatch.setenv("HOSTNAME", name)
+    monkeypatch.setenv("NEXTI_VERSION", "0.9.0-test")
+    monkeypatch.setenv("NEXTI_PROFILE", "customer-cloud")
+    await beat(app_engine, "worker", "nexti-worker", started=True)
+    await beat(app_engine, "worker", "nexti-worker")
+    try:
+        async with app_engine.connect() as conn:  # the application role, without platform scope
+            assert (await conn.execute(text("SELECT count(*) FROM platform_instance"))).scalar_one() == 0
+        act_as(api, "root", Ctx(world, root, owner_engine))
+        instances = {i["name"]: i for i in api.get("/api/v1/platform/status").json()["instances"]}
+        found = instances[name]
+        assert (found["component"], found["version"], found["profile"], found["alive"]) == (
+            "worker", "0.9.0-test", "customer-cloud", True)  # fmt: skip
+        act_as(api, "admin", Ctx(world, root, owner_engine))
+        assert api.get("/api/v1/platform/status").status_code == 403
+    finally:
+        async with owner_engine.begin() as conn:
+            await conn.execute(text("DELETE FROM platform_instance WHERE name = :n"), {"n": name})
+
+
 async def test_the_catalog_shows_prices_and_the_tenant_policy(
     api: TestClient, app_engine: AsyncEngine, owner_engine: AsyncEngine, fga: OpenFga, world: World, root: uuid.UUID
 ) -> None:

@@ -1,0 +1,7 @@
+NexTI {{ .Chart.AppVersion }} installed ({{ ternary "control plane" "" .Values.controlPlane.enabled }}{{ if and .Values.controlPlane.enabled .Values.dataPlane.enabled }} + {{ end }}{{ ternary "data plane" "" .Values.dataPlane.enabled }}).
+{{- if .Values.controlPlane.enabled }}
+Web: {{ .Values.webOrigin }}
+{{- end }}
+{{- if .Values.openfga.bootstrap }}
+After the first installation, pin openfga.storeId and openfga.modelId and set openfga.bootstrap=false.
+{{- end }}

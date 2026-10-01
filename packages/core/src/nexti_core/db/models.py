@@ -1172,3 +1172,14 @@ class Release(Base):
     error: Mapped[str | None] = mapped_column(Text)
     created_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("app_user.id"))
     created_at: Mapped[datetime] = _now()
+
+
+# An API or worker process of the platform (migration 0015, ADR-0024); written through platform_heartbeat().
+class PlatformInstance(Base):
+    __tablename__ = "platform_instance"
+    name: Mapped[str] = mapped_column(Text, primary_key=True)
+    component: Mapped[str] = mapped_column(Text, nullable=False)
+    version: Mapped[str] = mapped_column(Text, nullable=False)
+    profile: Mapped[str] = mapped_column(Text, nullable=False)
+    started_at: Mapped[datetime] = _now()
+    last_seen_at: Mapped[datetime] = _now()

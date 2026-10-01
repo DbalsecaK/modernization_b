@@ -1,0 +1,7 @@
+# Data plane in the customer's cloud (14.3): workers, sandbox and the project data stay in the customer's account;
+# they connect out to NexTI's control plane and send state and metrics, never code.
+profile: customer-cloud
+controlPlane: {enabled: false}
+dataPlane: {enabled: true}
+ingress: {enabled: false}
+worker: {replicas: 2}

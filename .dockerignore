@@ -1,0 +1,14 @@
+# Build contexts of the images (infra/images, infra/sandbox/web, infra/sandbox/frontend): no local environments,
+# caches, secrets nor recordings.
+.git
+.venv
+**/node_modules
+**/__pycache__
+**/.pytest_cache
+**/.mypy_cache
+**/.ruff_cache
+**/dist
+**/test-results
+**/.env
+infra/docker-compose/.env
+apps/api/tests/integration/recordings

@@ -1,0 +1,90 @@
+# The NexTI platform (spec 14.3-14.4, ADR-0024). The data services (PostgreSQL, Redis, object storage, Keycloak,
+# OpenFGA, OpenBao, Neo4j, ClamAV) are not installed by this chart: managed services in the cloud, or their own charts
+# on-prem. Choose a profile (profiles/*.yaml) and give the endpoints and the secret below.
+
+image:
+  registry: ghcr.io/dbalsecak
+  tag: ""  # defaults to the chart's appVersion
+  pullPolicy: IfNotPresent
+
+# The two planes (14.3): both in shared or dedicated SaaS; only the data plane in the customer's cloud.
+controlPlane:
+  enabled: true
+dataPlane:
+  enabled: true
+
+appEnv: production
+# The deployment profile, shown with each instance in Operación de plataforma (set by profiles/*.yaml).
+profile: custom
+# Public URLs: the web (and the BFF behind it on the same origin) and Keycloak's page.
+webOrigin: https://nexti.example.com
+keycloakPublicUrl: https://auth.nexti.example.com
+
+# Endpoints of the data services; the credentials come from `secretName`.
+services:
+  keycloakUrl: http://keycloak:8080
+  secretsUrl: http://openbao:8200
+  objectStoreUrl: https://s3.amazonaws.com
+  openfgaUrl: http://openfga:8080
+  graphUri: bolt://neo4j:7687
+  malwareScannerHost: clamav
+  malwareScannerPort: 3310
+  osvUrl: https://api.osv.dev  # empty: dependencies of the generated code are not checked (offline)
+
+openfga:
+  storeId: ""  # pinned after the first installation
+  modelId: ""
+  bootstrap: true  # first installation: the API creates the store and loads this version's model
+
+# A Secret (usually synced from the cloud's secrets store) with: DATABASE_URL, MIGRATION_DATABASE_URL,
+# AUTHZ_RELAY_DATABASE_URL, REDIS_URL, OIDC_CLIENT_SECRET, KEYCLOAK_ADMIN_CLIENT_SECRET, SESSION_SECRET, SECRETS_TOKEN,
+# OBJECT_STORE_ACCESS_KEY, OBJECT_STORE_SECRET_KEY, OPENFGA_API_KEY, GRAPH_USER, GRAPH_PASSWORD.
+secretName: nexti-secrets
+
+api:
+  replicas: 2
+  resources:
+    requests: {cpu: 250m, memory: 512Mi}
+    limits: {cpu: "1", memory: 1Gi}
+
+web:
+  replicas: 2
+  resources:
+    requests: {cpu: 50m, memory: 64Mi}
+    limits: {cpu: 500m, memory: 256Mi}
+
+worker:
+  replicas: 1
+  resources:
+    requests: {cpu: "1", memory: 2Gi}
+    limits: {cpu: "4", memory: 8Gi}
+  # The sandboxes (15.5): a rootless Docker daemon in a sidecar of the worker pod. A cluster that forbids it points
+  # the worker to a dedicated sandbox host instead (dockerHost) and turns the sidecar off.
+  sandbox:
+    sidecar: true
+    image: docker.io/library/docker:28.5.1-dind-rootless@sha256:87d03cfe51f2bf87eec6dda1922dc572da4d37a1d21c5ca8e8b22c8a1fa107cc
+    dockerHost: ""  # e.g. tcp://sandbox-host:2376 when the sidecar is off
+    storage: 40Gi
+    resources:
+      requests: {cpu: "1", memory: 2Gi}
+      limits: {cpu: "6", memory: 12Gi}
+    # The sandbox images (infra/sandbox), pulled into the daemon and tagged with the names the packs use.
+    images:
+      - nexti-sandbox-java:2
+      - nexti-sandbox-java-oracle:1
+      - nexti-sandbox-dotnet:1
+      - nexti-sandbox-frontend:1
+      - nexti-sandbox-web:1
+      - nexti-sandbox-docs:1
+      - nexti-sandbox-iac:1
+      - nexti-sandbox-hardening:1
+
+ingress:
+  enabled: true
+  className: nginx
+  host: nexti.example.com
+  tlsSecretName: nexti-tls
+  annotations: {}
+
+networkPolicy:
+  enabled: true

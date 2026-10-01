@@ -41,6 +41,7 @@ from nexti_api.spec import plan as spec_plan
 from nexti_api.spec import screens as spec_screens
 from nexti_api.spec import stories as spec_stories
 from nexti_api.spec import validation as spec_validation
+from nexti_core.instances import beat_forever
 from nexti_model_gateway.service import GatewayService, SecretsConfig
 
 
@@ -132,6 +133,8 @@ def create_app(settings: Settings | None = None, health_checks: dict[str, health
             tasks.append(asyncio.create_task(_copy_keycloak_events(resources, admin, settings, stop)))
         if app.state.fga is not None and resources.engine is not None and settings.reconcile_interval_seconds > 0:
             tasks.append(asyncio.create_task(_reconcile_periodically(resources, app.state.fga, settings, stop)))
+        if resources.engine is not None:  # this instance in Operación de plataforma (ADR-0024)
+            tasks.append(asyncio.create_task(beat_forever(resources.engine, "api", "nexti-api", stop)))
         try:
             yield
         finally:

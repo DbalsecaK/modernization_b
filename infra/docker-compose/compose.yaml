@@ -251,6 +251,104 @@ services:
     ports:
       - 127.0.0.1:${LANGFUSE_PORT:-3100}:3000
 
+  # -- The platform itself in containers (ADR-0024), with `--profile platform`: the images of infra/images, the same
+  # services as development. The smoke test of the images and the simplest on-prem installation.
+  migrate:
+    profiles: ["platform"]
+    build: {context: ../.., dockerfile: infra/images/api/Dockerfile, target: migrate}
+    image: nexti-migrate:dev
+    environment: &platform-env
+      APP_ENV: staging
+      DATABASE_URL: postgresql+asyncpg://platform_app:${PLATFORM_APP_PASSWORD}@postgres:5432/platform
+      MIGRATION_DATABASE_URL: postgresql+asyncpg://platform_owner:${PLATFORM_OWNER_PASSWORD}@postgres:5432/platform
+      AUTHZ_RELAY_DATABASE_URL: postgresql+asyncpg://authz_relay:${AUTHZ_RELAY_PASSWORD}@postgres:5432/platform
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      KEYCLOAK_URL: http://keycloak:8080
+      KEYCLOAK_PUBLIC_URL: http://localhost:${KEYCLOAK_PORT:-8180}
+      OIDC_CLIENT_SECRET: ${KC_BFF_CLIENT_SECRET}
+      KEYCLOAK_ADMIN_CLIENT_SECRET: ${KC_ADMIN_CLIENT_SECRET}
+      WEB_ORIGIN: ${WEB_ORIGIN:-http://localhost:5173}
+      SESSION_SECRET: ${SESSION_SECRET}
+      SECRETS_URL: http://openbao:8200
+      SECRETS_TOKEN: ${OPENBAO_DEV_ROOT_SECRET}
+      OBJECT_STORE_URL: http://minio:9000
+      OBJECT_STORE_ACCESS_KEY: ${MINIO_ROOT_USER}
+      OBJECT_STORE_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
+      MALWARE_SCANNER_HOST: clamav
+      MALWARE_SCANNER_PORT: "3310"
+      OPENFGA_URL: http://openfga:8080
+      OPENFGA_API_KEY: ${OPENFGA_API_KEY}
+      OPENFGA_BOOTSTRAP: "true"
+      GRAPH_URI: bolt://neo4j:7687
+      GRAPH_USER: neo4j
+      GRAPH_PASSWORD: ${NEO4J_PASSWORD}
+      SESSION_COOKIE_SECURE: "true"
+      NEXTI_PROFILE: compose-platform
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  api:
+    profiles: ["platform"]
+    build: {context: ../.., dockerfile: infra/images/api/Dockerfile, target: api}
+    image: nexti-api:dev
+    environment: *platform-env
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+      openfga:
+        condition: service_healthy
+      openbao:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    read_only: true
+    tmpfs: ["/tmp"]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    healthcheck:
+      <<: *healthcheck
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8100/api/v1/health/live', timeout=4)"]
+
+  worker:
+    profiles: ["platform"]
+    build: {context: ../.., dockerfile: infra/images/worker/Dockerfile}
+    image: nexti-worker:dev
+    environment:
+      <<: *platform-env
+      # The host's Docker runs the sandboxes; their inputs go through a directory both see at the same path.
+      TMPDIR: /tmp/nexti-sandbox-io
+    user: "0:0"  # the Docker socket of the host belongs to root; Kubernetes uses a rootless sidecar instead
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /tmp/nexti-sandbox-io:/tmp/nexti-sandbox-io
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  web:
+    profiles: ["platform"]
+    build: {context: ../.., dockerfile: infra/images/web/Dockerfile}
+    image: nexti-web:dev
+    environment:
+      API_UPSTREAM: http://api:8100
+    ports:
+      - 127.0.0.1:${WEB_PORT:-5173}:8080
+    depends_on:
+      api:
+        condition: service_healthy
+    read_only: true
+    tmpfs: ["/tmp:uid=101,gid=101", "/var/cache/nginx:uid=101,gid=101", "/etc/nginx/conf.d:uid=101,gid=101"]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    healthcheck:
+      <<: *healthcheck
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/"]
+
 volumes:
   postgres_data:
   clamav_data:

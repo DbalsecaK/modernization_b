@@ -3766,6 +3766,29 @@ export interface components {
             /** Version */
             version: number | null;
         };
+        /** InstanceOut */
+        InstanceOut: {
+            /** Alive */
+            alive: boolean;
+            /** Component */
+            component: string;
+            /**
+             * Lastseenat
+             * Format: date-time
+             */
+            lastSeenAt: string;
+            /** Name */
+            name: string;
+            /** Profile */
+            profile: string;
+            /**
+             * Startedat
+             * Format: date-time
+             */
+            startedAt: string;
+            /** Version */
+            version: string;
+        };
         /** IntegrationCreate */
         IntegrationCreate: {
             /** Config */
@@ -4255,6 +4278,8 @@ export interface components {
             apiVersion: string;
             /** Failedlastday */
             failedLastDay: number;
+            /** Instances */
+            instances: components["schemas"]["InstanceOut"][];
             /** Queues */
             queues: components["schemas"]["QueueOut"][];
             /** Recentfailures */

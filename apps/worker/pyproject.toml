@@ -5,6 +5,7 @@ description = "Workers that run the project pipelines from the Procrastinate que
 requires-python = ">=3.12"
 dependencies = [
   "nexti-integrations",
+  "asyncpg>=0.31",
   "httpx>=0.28",
   "procrastinate>=3.0",
   "psycopg[binary]>=3.2",

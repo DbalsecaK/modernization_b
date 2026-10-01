@@ -171,3 +171,67 @@ jobs:
           node-version: 24
       - name: SCA JavaScript (pnpm audit)
         run: pnpm audit --prod --audit-level high
+
+  platform:
+    name: Platform · images and smoke test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      # The platform in containers (ADR-0024): the images of infra/images with the services of development.
+      - name: Build the images
+        run: |
+          python3 infra/docker-compose/init_env.py
+          $COMPOSE --profile platform build migrate api worker web
+      - name: Start the platform
+        run: $COMPOSE --profile platform up -d --wait migrate api worker web
+      - name: The web serves the app and, on the same origin, the API
+        run: |
+          curl -fsS http://127.0.0.1:5173/ | grep -q '<div id="root">'
+          curl -fsS http://127.0.0.1:5173/api/v1/health/live | grep -q '"ok"'
+          curl -fsSI http://127.0.0.1:5173/ | grep -qi 'content-security-policy'
+          test "$(docker inspect -f '{{.State.Running}}' nexti-platform-worker-1)" = true
+      # DAST (15.7, ADR-0024): ZAP's baseline (passive) scan of the running web and its API. The rules the platform
+      # meets fail the build if they regress (infra/dast/zap-rules.tsv); the rest are reported.
+      - name: DAST (OWASP ZAP baseline)
+        run: |
+          mkdir -p /tmp/zap && chmod 777 /tmp/zap
+          docker run --rm --network host -v /tmp/zap:/zap/wrk:rw -v "$PWD/infra/dast:/zap/rules:ro" \
+            ghcr.io/zaproxy/zaproxy:2.16.1@sha256:7840969c7c9fead565bf9734b12f49f6886db90b1d35b1f74d79710bbd081dab \
+            zap-baseline.py -t http://127.0.0.1:5173 -c /zap/rules/zap-rules.tsv -I -r zap-report.html
+      # SBOM of each image (SPDX), kept with the run; the images of main are signed by the release workflow.
+      - name: SBOM (Syft)
+        run: |
+          mkdir -p /tmp/sbom
+          for image in nexti-migrate nexti-api nexti-worker nexti-web; do
+            docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
+              anchore/syft:v1.33.0@sha256:f94e5d9fce1f2278491a8e3a63bd5f6ddb81fdfdbb8bf7a1637565c1d5344357 "$image:dev" -o spdx-json -q > "/tmp/sbom/$image.spdx.json"
+            test -s "/tmp/sbom/$image.spdx.json"
+          done
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        with:
+          name: platform-sbom-and-dast
+          path: |
+            /tmp/sbom
+            /tmp/zap/zap-report.html
+          retention-days: 14
+      - name: Logs
+        if: failure()
+        run: $COMPOSE --profile platform logs --tail 200 migrate api worker web
+
+  helm:
+    name: Platform · Helm chart and profiles
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      # The chart and each deployment profile (ADR-0024): lint, render and validate against the Kubernetes schema.
+      - name: Lint, render and validate
+        run: |
+          HELM="docker run --rm -v $PWD/infra/helm:/charts alpine/helm:3.19.0@sha256:aef9b56f64e866207d9591d0abd8f6d767b36aadd12edf68f8a719716d9d29c9"
+          $HELM lint --strict /charts/nexti
+          mkdir -p /tmp/manifests
+          for profile in shared-saas dedicated-saas customer-cloud on-prem; do
+            $HELM template nexti /charts/nexti -f /charts/nexti/profiles/$profile.yaml > /tmp/manifests/$profile.yaml
+          done
+          docker run --rm -v /tmp/manifests:/m ghcr.io/yannh/kubeconform:v0.7.0@sha256:85dbef6b4b312b99133decc9c6fc9495e9fc5f92293d4ff3b7e1b30f5611823c \
+            -strict -summary -kubernetes-version 1.31.0 /m

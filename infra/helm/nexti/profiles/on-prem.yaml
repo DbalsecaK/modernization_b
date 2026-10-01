@@ -1,0 +1,9 @@
+# On-prem (14.3): both planes in the customer's data center, with its own data services; the sandbox host can be a
+# dedicated machine when the cluster forbids the rootless daemon.
+profile: on-prem
+controlPlane: {enabled: true}
+dataPlane: {enabled: true}
+services:
+  osvUrl: ""  # no internet: dependencies of the generated code are not checked
+api: {replicas: 2}
+worker: {replicas: 1}

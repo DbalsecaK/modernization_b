@@ -2,6 +2,7 @@
 
 import asyncio
 import json
+import os
 from collections.abc import Iterable
 from pathlib import Path
 from typing import Any
@@ -11,7 +12,8 @@ import httpx
 from nexti_api.authz.names import Tuple
 from nexti_api.settings import API_DIR, Settings
 
-MODEL_FILE = API_DIR.parents[1] / "infra" / "openfga" / "model.json"
+# In the repository, infra/openfga/model.json; in the image (ADR-0024) the path comes from OPENFGA_MODEL_FILE.
+MODEL_FILE = Path(os.environ.get("OPENFGA_MODEL_FILE") or API_DIR.parents[1] / "infra" / "openfga" / "model.json")
 MAX_TUPLES_PER_WRITE = 100  # OpenFGA default limit per Write request
 # Relay and reconciler writing the same tuple at once: OpenFGA aborts one with 409; the retry is a no-op.
 WRITE_CONFLICT_RETRIES = 3
@@ -141,6 +143,9 @@ async def connect(http: httpx.AsyncClient, settings: Settings) -> OpenFga:
     key = settings.openfga_api_key.get_secret_value()
     if settings.openfga_store_id and settings.openfga_model_id:
         return OpenFga(http, settings.openfga_url, key, settings.openfga_store_id, settings.openfga_model_id)
-    if not settings.is_local:
-        raise OpenFgaError("OPENFGA_STORE_ID and OPENFGA_MODEL_ID must be pinned outside development/test")
+    if not settings.is_local and not settings.openfga_bootstrap:
+        raise OpenFgaError(
+            "OPENFGA_STORE_ID and OPENFGA_MODEL_ID must be pinned outside development/test "
+            "(or OPENFGA_BOOTSTRAP=true on a first installation)"
+        )
     return await ensure_store(http, settings.openfga_url, key, settings.openfga_store_name, load_model())

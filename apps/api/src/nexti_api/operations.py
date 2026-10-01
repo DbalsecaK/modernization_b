@@ -2,10 +2,9 @@
 the runs in progress across tenants, and the jobs that failed in the last day.
 
 Workers and jobs are Procrastinate's own tables (ADR-0009): a worker is alive while its heartbeat is recent. Runs are
-read with platform scope. Versions per deployed instance come with the deployment profiles (M9)."""
+read with platform scope. Each API and worker instance registers its version and deployment profile (ADR-0024)."""
 
 from datetime import UTC, datetime, timedelta
-from importlib.metadata import version
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Request
@@ -14,10 +13,12 @@ from sqlalchemy import text
 from nexti_api.admin.common import transaction
 from nexti_api.authz.require import Authorized, require_platform
 from nexti_api.schemas import ApiModel
+from nexti_core.instances import deployed_version
 
 router = APIRouter(prefix="/api/v1/platform", tags=["platform"])
 Operator = Annotated[Authorized, Depends(require_platform("superAdmin", "supportOperator"))]
 ALIVE = timedelta(seconds=30)
+INSTANCE_ALIVE = timedelta(minutes=3)  # three missed beats of a minute
 DAY = timedelta(hours=24)
 MAX_FAILURES = 10
 
@@ -43,8 +44,19 @@ class FailedJobOut(ApiModel):
     failed_at: datetime
 
 
+class InstanceOut(ApiModel):
+    name: str
+    component: str
+    version: str
+    profile: str
+    started_at: datetime
+    last_seen_at: datetime
+    alive: bool
+
+
 class PlatformStatus(ApiModel):
     api_version: str
+    instances: list[InstanceOut]
     workers: list[WorkerOut]
     queues: list[QueueOut]
     active_runs: int
@@ -68,12 +80,18 @@ async def status(request: Request, auth: Operator) -> PlatformStatus:
         runs = (await conn.execute(text(
             "SELECT count(*) FILTER (WHERE status = 'running') AS active, "
             "count(*) FILTER (WHERE status = 'waiting') AS waiting FROM run"))).one()  # fmt: skip
+        instances = (await conn.execute(text(
+            "SELECT name, component, version, profile, started_at, last_seen_at FROM platform_instance "
+            "ORDER BY component, name"))).all()  # fmt: skip
         failed = (await conn.execute(text(
             "SELECT j.id, j.task_name, j.queue_name, j.attempts, e.at FROM procrastinate_events e "
             "JOIN procrastinate_jobs j ON j.id = e.job_id WHERE e.type = 'failed' AND e.at >= :since "
             "ORDER BY e.at DESC"), {"since": now - DAY})).all()  # fmt: skip
     return PlatformStatus(
-        api_version=version("nexti-api"),
+        api_version=deployed_version("nexti-api"),
+        instances=[InstanceOut(name=i.name, component=i.component, version=i.version, profile=i.profile,
+                               started_at=i.started_at, last_seen_at=i.last_seen_at,
+                               alive=now - i.last_seen_at <= INSTANCE_ALIVE) for i in instances],
         workers=[WorkerOut(id=w.id, last_heartbeat=w.last_heartbeat, alive=now - w.last_heartbeat <= ALIVE,
                            running_jobs=w.running) for w in workers],
         queues=[QueueOut(queue=q.queue_name, waiting=q.waiting, running=q.running) for q in queues],

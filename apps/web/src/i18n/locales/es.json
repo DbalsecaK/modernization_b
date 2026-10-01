@@ -1769,7 +1769,7 @@
       "offline": "Fuera de línea"
     },
     "deployments": "Despliegues",
-    "deploymentsHint": "La versión que ejecuta esta API.",
+    "deploymentsHint": "Cada instancia de la API y del worker, con su versión y su perfil de despliegue.",
     "loading": "Cargando el estado de la plataforma…",
     "loadError": "No se pudo cargar el estado de la plataforma",
     "runs": "Ejecuciones en curso",
@@ -1789,9 +1789,20 @@
     "job": "Trabajo",
     "attempts": "Intentos",
     "failedAt": "Falló",
-    "apiVersion": "API",
-    "instancesLater": "Las versiones por instancia desplegada llegan con los perfiles de despliegue (M9).",
-    "refresh": "Actualizar"
+    "refresh": "Actualizar",
+    "apiVersionIs": "Esta API: {{version}}",
+    "noInstances": "Todavía no se registró ninguna instancia.",
+    "instance": "Instancia",
+    "component": "Componente",
+    "version": "Versión",
+    "profile": "Perfil",
+    "lastSeen": "Último latido",
+    "instanceAlive": "Activa",
+    "instanceSilent": "Sin latido",
+    "components": {
+      "api": "API",
+      "worker": "Worker"
+    }
   },
   "notFound": {
     "title": "Página no encontrada",

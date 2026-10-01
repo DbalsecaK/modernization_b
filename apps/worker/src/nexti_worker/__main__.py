@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import create_async_engine
 
 from nexti_adapter_sybase.ase import AseRunner, RecordedRunner
 from nexti_core.adapters import LegacyRunner
+from nexti_core.instances import beat_forever
 from nexti_core.jobs import RUNS_QUEUE
 from nexti_core.object_store import ObjectStore, ObjectStoreConfig
 from nexti_core.redaction import redact
@@ -90,6 +91,8 @@ async def run_worker(settings: WorkerSettings, *, name: str | None = None, wait:
             ) if settings.graph_uri else None,
         )  # fmt: skip
         app = create_app(settings.psycopg_dsn)
+        stop = asyncio.Event()
+        heartbeat = asyncio.create_task(beat_forever(engine, "worker", "nexti-worker", stop))  # ADR-0024
         try:
             async with app.open_async():
                 await app.run_worker_async(
@@ -102,6 +105,8 @@ async def run_worker(settings: WorkerSettings, *, name: str | None = None, wait:
                     additional_context={"runtime": runtime, "stalled_after_seconds": settings.stalled_after_seconds},
                 )
         finally:
+            stop.set()
+            await heartbeat
             await engine.dispose()
 
 

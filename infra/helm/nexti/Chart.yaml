@@ -1,0 +1,7 @@
+apiVersion: v2
+name: nexti
+description: The NexTI modernization platform (ADR-0024) - control plane (API, web, migrations) and data plane (worker and sandbox).
+type: application
+version: 0.9.0
+appVersion: "0.9.0"
+kubeVersion: ">=1.28.0-0"

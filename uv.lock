@@ -1658,6 +1658,7 @@ name = "nexti-worker"
 version = "0.1.0"
 source = { editable = "apps/worker" }
 dependencies = [
+    { name = "asyncpg" },
     { name = "httpx" },
     { name = "nexti-adapter-bms" },
     { name = "nexti-adapter-cobol" },
@@ -1681,6 +1682,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
+    { name = "asyncpg", specifier = ">=0.31" },
     { name = "httpx", specifier = ">=0.28" },
     { name = "nexti-adapter-bms", editable = "packages/adapters/source/bms" },
     { name = "nexti-adapter-cobol", editable = "packages/adapters/source/cobol" },

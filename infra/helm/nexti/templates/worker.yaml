@@ -1,0 +1,107 @@
+{{- if .Values.dataPlane.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "nexti.fullname" . }}-worker
+  labels:
+    {{- include "nexti.labels" . | nindent 4 }}
+    app.kubernetes.io/component: worker
+spec:
+  replicas: {{ .Values.worker.replicas }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: {{ .Release.Name }}
+      app.kubernetes.io/component: worker
+  template:
+    metadata:
+      labels:
+        {{- include "nexti.labels" . | nindent 8 }}
+        app.kubernetes.io/component: worker
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        {{- include "nexti.podSecurity" . | nindent 8 }}
+      {{- if .Values.worker.sandbox.sidecar }}
+      initContainers:
+        # The rootless Docker daemon of the sandboxes (15.5), as a native sidecar: it starts before the worker and
+        # stays. It runs as an unprivileged user; the sandbox containers keep their contract (no network, no
+        # privileges, limits).
+        - name: sandbox-daemon
+          image: {{ .Values.worker.sandbox.image }}
+          restartPolicy: Always
+          args: ["--host=unix:///run/sandbox/docker.sock"]
+          securityContext:
+            runAsUser: 1000
+            runAsGroup: 1000
+            runAsNonRoot: true
+            privileged: true  # rootless dockerd needs user namespaces; its containers stay unprivileged
+          startupProbe:
+            exec: {command: ["docker", "--host=unix:///run/sandbox/docker.sock", "info"]}
+            periodSeconds: 5
+            failureThreshold: 60
+          resources:
+            {{- toYaml .Values.worker.sandbox.resources | nindent 12 }}
+          volumeMounts:
+            - {name: sandbox-socket, mountPath: /run/sandbox}
+            - {name: sandbox-io, mountPath: /sandbox-io}
+            - {name: sandbox-data, mountPath: /home/rootless/.local/share/docker}
+        # The sandbox images, pulled into the daemon and tagged with the names the packs use.
+        - name: sandbox-images
+          image: {{ .Values.worker.sandbox.image }}
+          command: ["sh", "-c"]
+          args:
+            - |
+              set -e
+              for name in {{ join " " .Values.worker.sandbox.images }}; do
+                docker --host=unix:///run/sandbox/docker.sock pull "{{ .Values.image.registry }}/$name"
+                docker --host=unix:///run/sandbox/docker.sock tag "{{ .Values.image.registry }}/$name" "$name"
+              done
+          securityContext:
+            runAsUser: 1000
+            runAsGroup: 1000
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - {name: sandbox-socket, mountPath: /run/sandbox}
+      {{- end }}
+      containers:
+        - name: worker
+          image: {{ include "nexti.image" (list . "nexti-worker") }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            {{- include "nexti.containerSecurity" . | nindent 12 }}
+          env:
+            {{- include "nexti.env" . | nindent 12 }}
+            - name: DOCKER_HOST
+              value: {{ ternary "unix:///run/sandbox/docker.sock" .Values.worker.sandbox.dockerHost .Values.worker.sandbox.sidecar | quote }}
+            - name: TMPDIR
+              value: /sandbox-io
+          envFrom:
+            - secretRef:
+                name: {{ .Values.secretName }}
+          resources:
+            {{- toYaml .Values.worker.resources | nindent 12 }}
+          volumeMounts:
+            - {name: tmp, mountPath: /tmp}
+            - {name: sandbox-io, mountPath: /sandbox-io}
+            {{- if .Values.worker.sandbox.sidecar }}
+            - {name: sandbox-socket, mountPath: /run/sandbox}
+            {{- end }}
+      volumes:
+        - {name: tmp, emptyDir: {}}
+        # The sandbox inputs: the worker writes them, the daemon mounts them, at the same path.
+        - {name: sandbox-io, emptyDir: {}}
+        {{- if .Values.worker.sandbox.sidecar }}
+        - {name: sandbox-socket, emptyDir: {}}
+        - name: sandbox-data
+          ephemeral:
+            volumeClaimTemplate:
+              spec:
+                accessModes: ["ReadWriteOnce"]
+                resources:
+                  requests:
+                    storage: {{ .Values.worker.sandbox.storage }}
+        {{- end }}
+{{- end }}
