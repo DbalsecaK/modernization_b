@@ -97,6 +97,11 @@ class KeycloakAdmin:
         data: list[dict[str, Any]] = res.json()
         return data
 
+    async def realm(self) -> dict[str, Any]:
+        """The realm's settings (its password, lockout and session policies)."""
+        res = await self._request("GET", "")
+        return res.json() if res.status_code == 200 else {}
+
     # -- Organizations (ADR-0022): one per tenant, its alias is the tenant's slug -----------------------------------
     async def find_organization(self, alias: str, known_id: str | None = None) -> dict[str, Any] | None:
         """By the id the platform keeps, else by alias (Keycloak's search looks at names and domains, not aliases)."""
@@ -126,7 +131,8 @@ class KeycloakAdmin:
         return str(current["id"])
 
     async def add_organization_member(self, organization_id: str, user_id: str) -> None:
-        await self._request("POST", f"/organizations/{organization_id}/members", ok=(409,), json=user_id)
+        """Already a member (409) or no longer in Keycloak (404): nothing to do."""
+        await self._request("POST", f"/organizations/{organization_id}/members", ok=(404, 409), json=user_id)
 
     async def organization_members(self, organization_id: str) -> set[str]:
         res = await self._request("GET", f"/organizations/{organization_id}/members", params={"max": 1000})

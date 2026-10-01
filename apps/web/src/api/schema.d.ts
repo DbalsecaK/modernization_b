@@ -535,6 +535,79 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/identity": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Identity */
+        get: operations["get_identity_api_v1_identity_get"];
+        /** Update Identity */
+        put: operations["update_identity_api_v1_identity_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/identity/providers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create Provider */
+        post: operations["create_provider_api_v1_identity_providers_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/identity/providers/{provider_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete Provider */
+        delete: operations["delete_provider_api_v1_identity_providers__provider_id__delete"];
+        options?: never;
+        head?: never;
+        /** Update Provider */
+        patch: operations["update_provider_api_v1_identity_providers__provider_id__patch"];
+        trace?: never;
+    };
+    "/api/v1/identity/providers/{provider_id}:apply": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Apply Provider
+         * @description Writes the provider to Keycloak again (after a failure), keeping its secret.
+         */
+        post: operations["apply_provider_api_v1_identity_providers__provider_id__apply_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/integrations": {
         parameters: {
             query?: never;
@@ -3500,6 +3573,33 @@ export interface components {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
         };
+        /** IdentityOut */
+        IdentityOut: {
+            /** Domains */
+            domains: string[];
+            /** Localaccounts */
+            localAccounts: boolean;
+            /** Mfarequired */
+            mfaRequired: boolean;
+            /** Organization */
+            organization: string | null;
+            /** Providers */
+            providers: components["schemas"]["ProviderOut"][];
+            realm: components["schemas"]["RealmPolicy"] | null;
+            /** Sso */
+            sso: boolean;
+        };
+        /** IdentityUpdate */
+        IdentityUpdate: {
+            /** Domains */
+            domains?: string[];
+            /** Localaccounts */
+            localAccounts: boolean;
+            /** Mfarequired */
+            mfaRequired: boolean;
+            /** Sso */
+            sso: boolean;
+        };
         /** ImpactOut */
         ImpactOut: {
             /** Depth */
@@ -4454,6 +4554,108 @@ export interface components {
             /** Version */
             version: number;
         };
+        /** ProviderCreate */
+        ProviderCreate: {
+            /** Clientsecret */
+            clientSecret?: string | null;
+            /** Defaultrole */
+            defaultRole?: string | null;
+            /** Displayname */
+            displayName: string;
+            /** Domains */
+            domains?: string[];
+            /** Grouproles */
+            groupRoles?: {
+                [key: string]: string;
+            };
+            /**
+             * Jit
+             * @default true
+             */
+            jit: boolean;
+            /**
+             * Protocol
+             * @enum {string}
+             */
+            protocol: "oidc" | "saml";
+            /** Settings */
+            settings?: {
+                [key: string]: string;
+            };
+            /**
+             * Ssoonly
+             * @default false
+             */
+            ssoOnly: boolean;
+        };
+        /** ProviderOut */
+        ProviderOut: {
+            /** Alias */
+            alias: string;
+            /**
+             * Createdat
+             * Format: date-time
+             */
+            createdAt: string;
+            /** Defaultrole */
+            defaultRole: string | null;
+            /** Displayname */
+            displayName: string;
+            /** Domains */
+            domains: string[];
+            /** Grouproles */
+            groupRoles: {
+                [key: string]: string;
+            };
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Jit */
+            jit: boolean;
+            /** Lasterror */
+            lastError: string | null;
+            /**
+             * Protocol
+             * @enum {string}
+             */
+            protocol: "oidc" | "saml";
+            /** Settings */
+            settings: {
+                [key: string]: string;
+            };
+            /** Ssoonly */
+            ssoOnly: boolean;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "pending" | "active" | "failed";
+        };
+        /** ProviderUpdate */
+        ProviderUpdate: {
+            /** Clientsecret */
+            clientSecret?: string | null;
+            /** Defaultrole */
+            defaultRole?: string | null;
+            /** Displayname */
+            displayName?: string | null;
+            /** Domains */
+            domains?: string[] | null;
+            /** Grouproles */
+            groupRoles?: {
+                [key: string]: string;
+            } | null;
+            /** Jit */
+            jit?: boolean | null;
+            /** Settings */
+            settings?: {
+                [key: string]: string;
+            } | null;
+            /** Ssoonly */
+            ssoOnly?: boolean | null;
+        };
         /** QuestionOut */
         QuestionOut: {
             /** Affects */
@@ -4543,6 +4745,22 @@ export interface components {
              * @enum {string}
              */
             status: "ok" | "fail";
+        };
+        /**
+         * RealmPolicy
+         * @description What Keycloak applies to the whole shared realm (read-only here).
+         */
+        RealmPolicy: {
+            /** Lockoutfailures */
+            lockoutFailures: number;
+            /** Lockoutminutes */
+            lockoutMinutes: number;
+            /** Passwordpolicy */
+            passwordPolicy: string;
+            /** Sessionidleminutes */
+            sessionIdleMinutes: number;
+            /** Sessionmaxhours */
+            sessionMaxHours: number;
         };
         /** RecommendationOut */
         RecommendationOut: {
@@ -6586,6 +6804,187 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Readiness"];
+                };
+            };
+        };
+    };
+    get_identity_api_v1_identity_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IdentityOut"];
+                };
+            };
+        };
+    };
+    update_identity_api_v1_identity_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IdentityUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IdentityOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_provider_api_v1_identity_providers_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProviderCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_provider_api_v1_identity_providers__provider_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                provider_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_provider_api_v1_identity_providers__provider_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                provider_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProviderUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    apply_provider_api_v1_identity_providers__provider_id__apply_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                provider_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProviderOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

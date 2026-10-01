@@ -3641,6 +3641,101 @@
         "title": "HTTPValidationError",
         "type": "object"
       },
+      "IdentityOut": {
+        "properties": {
+          "domains": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Domains",
+            "type": "array"
+          },
+          "localAccounts": {
+            "title": "Localaccounts",
+            "type": "boolean"
+          },
+          "mfaRequired": {
+            "title": "Mfarequired",
+            "type": "boolean"
+          },
+          "organization": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Organization"
+          },
+          "providers": {
+            "items": {
+              "$ref": "#/components/schemas/ProviderOut"
+            },
+            "title": "Providers",
+            "type": "array"
+          },
+          "realm": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RealmPolicy"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "sso": {
+            "title": "Sso",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "localAccounts",
+          "sso",
+          "mfaRequired",
+          "domains",
+          "organization",
+          "providers",
+          "realm"
+        ],
+        "title": "IdentityOut",
+        "type": "object"
+      },
+      "IdentityUpdate": {
+        "properties": {
+          "domains": {
+            "items": {
+              "maxLength": 253,
+              "minLength": 3,
+              "type": "string"
+            },
+            "maxItems": 50,
+            "title": "Domains",
+            "type": "array"
+          },
+          "localAccounts": {
+            "title": "Localaccounts",
+            "type": "boolean"
+          },
+          "mfaRequired": {
+            "title": "Mfarequired",
+            "type": "boolean"
+          },
+          "sso": {
+            "title": "Sso",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "localAccounts",
+          "sso",
+          "mfaRequired"
+        ],
+        "title": "IdentityUpdate",
+        "type": "object"
+      },
       "ImpactOut": {
         "properties": {
           "depth": {
@@ -6472,6 +6567,311 @@
         "title": "PrototypeOut",
         "type": "object"
       },
+      "ProviderCreate": {
+        "properties": {
+          "clientSecret": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Clientsecret"
+          },
+          "defaultRole": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Defaultrole"
+          },
+          "displayName": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Displayname",
+            "type": "string"
+          },
+          "domains": {
+            "items": {
+              "maxLength": 253,
+              "minLength": 3,
+              "type": "string"
+            },
+            "maxItems": 50,
+            "title": "Domains",
+            "type": "array"
+          },
+          "groupRoles": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "maxProperties": 100,
+            "title": "Grouproles",
+            "type": "object"
+          },
+          "jit": {
+            "default": true,
+            "title": "Jit",
+            "type": "boolean"
+          },
+          "protocol": {
+            "enum": [
+              "oidc",
+              "saml"
+            ],
+            "title": "Protocol",
+            "type": "string"
+          },
+          "settings": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "maxProperties": 12,
+            "title": "Settings",
+            "type": "object"
+          },
+          "ssoOnly": {
+            "default": false,
+            "title": "Ssoonly",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "displayName",
+          "protocol"
+        ],
+        "title": "ProviderCreate",
+        "type": "object"
+      },
+      "ProviderOut": {
+        "properties": {
+          "alias": {
+            "title": "Alias",
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "title": "Createdat",
+            "type": "string"
+          },
+          "defaultRole": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Defaultrole"
+          },
+          "displayName": {
+            "title": "Displayname",
+            "type": "string"
+          },
+          "domains": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Domains",
+            "type": "array"
+          },
+          "groupRoles": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Grouproles",
+            "type": "object"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "jit": {
+            "title": "Jit",
+            "type": "boolean"
+          },
+          "lastError": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lasterror"
+          },
+          "protocol": {
+            "enum": [
+              "oidc",
+              "saml"
+            ],
+            "title": "Protocol",
+            "type": "string"
+          },
+          "settings": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Settings",
+            "type": "object"
+          },
+          "ssoOnly": {
+            "title": "Ssoonly",
+            "type": "boolean"
+          },
+          "status": {
+            "enum": [
+              "pending",
+              "active",
+              "failed"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "alias",
+          "displayName",
+          "protocol",
+          "settings",
+          "domains",
+          "ssoOnly",
+          "jit",
+          "groupRoles",
+          "defaultRole",
+          "status",
+          "lastError",
+          "createdAt"
+        ],
+        "title": "ProviderOut",
+        "type": "object"
+      },
+      "ProviderUpdate": {
+        "properties": {
+          "clientSecret": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Clientsecret"
+          },
+          "defaultRole": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Defaultrole"
+          },
+          "displayName": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Displayname"
+          },
+          "domains": {
+            "anyOf": [
+              {
+                "items": {
+                  "maxLength": 253,
+                  "minLength": 3,
+                  "type": "string"
+                },
+                "maxItems": 50,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Domains"
+          },
+          "groupRoles": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "maxProperties": 100,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Grouproles"
+          },
+          "jit": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Jit"
+          },
+          "settings": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "maxProperties": 12,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Settings"
+          },
+          "ssoOnly": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ssoonly"
+          }
+        },
+        "title": "ProviderUpdate",
+        "type": "object"
+      },
       "QuestionOut": {
         "properties": {
           "affects": {
@@ -6700,6 +7100,40 @@
           "checks"
         ],
         "title": "Readiness",
+        "type": "object"
+      },
+      "RealmPolicy": {
+        "description": "What Keycloak applies to the whole shared realm (read-only here).",
+        "properties": {
+          "lockoutFailures": {
+            "title": "Lockoutfailures",
+            "type": "integer"
+          },
+          "lockoutMinutes": {
+            "title": "Lockoutminutes",
+            "type": "integer"
+          },
+          "passwordPolicy": {
+            "title": "Passwordpolicy",
+            "type": "string"
+          },
+          "sessionIdleMinutes": {
+            "title": "Sessionidleminutes",
+            "type": "integer"
+          },
+          "sessionMaxHours": {
+            "title": "Sessionmaxhours",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "passwordPolicy",
+          "lockoutFailures",
+          "lockoutMinutes",
+          "sessionIdleMinutes",
+          "sessionMaxHours"
+        ],
+        "title": "RealmPolicy",
         "type": "object"
       },
       "RecommendationOut": {
@@ -10825,6 +11259,238 @@
         "summary": "Ready",
         "tags": [
           "ops"
+        ]
+      }
+    },
+    "/api/v1/identity": {
+      "get": {
+        "operationId": "get_identity_api_v1_identity_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IdentityOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Identity",
+        "tags": [
+          "admin"
+        ]
+      },
+      "put": {
+        "operationId": "update_identity_api_v1_identity_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IdentityUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IdentityOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Identity",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/identity/providers": {
+      "post": {
+        "operationId": "create_provider_api_v1_identity_providers_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProviderCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProviderOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Provider",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/identity/providers/{provider_id}": {
+      "delete": {
+        "operationId": "delete_provider_api_v1_identity_providers__provider_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "provider_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Provider Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Provider",
+        "tags": [
+          "admin"
+        ]
+      },
+      "patch": {
+        "operationId": "update_provider_api_v1_identity_providers__provider_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "provider_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Provider Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProviderUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProviderOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Provider",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/identity/providers/{provider_id}:apply": {
+      "post": {
+        "description": "Writes the provider to Keycloak again (after a failure), keeping its secret.",
+        "operationId": "apply_provider_api_v1_identity_providers__provider_id__apply_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "provider_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Provider Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProviderOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Apply Provider",
+        "tags": [
+          "admin"
         ]
       }
     },

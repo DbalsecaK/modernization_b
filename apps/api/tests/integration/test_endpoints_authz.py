@@ -47,6 +47,7 @@ from nexti_core.db.models import (
     ProviderConnection,
     Role,
     RoleAssignment,
+    TenantIdentityProvider,
     TenantIntegration,
     UsageLedger,
 )
@@ -55,7 +56,7 @@ from nexti_core.secrets import integration_path
 from nexti_integrations.simulated import FakeJira
 from nexti_model_gateway.secrets import SecretsConfig, SecretStore, connection_path
 
-from .conftest import SETTINGS, World
+from .conftest import SETTINGS, World, keycloak_admin_headers
 from .run_support import (
     VALID_CRITERION,
     execute,
@@ -85,6 +86,7 @@ NOT_AUDITED = {("PATCH", "/api/v1/me"), ("POST", "/api/v1/projects:compose"), ("
 # OpenRouter is simulated in these tests (shapes recorded from the real API, packages/model_gateway/tests).
 OPENROUTER = "https://openrouter.test/api/v1"
 FIGMA = "https://figma.test/v1"  # the Figma API, simulated
+IDP = "https://login.microsoftonline.com/00000000-0000-0000-0000-000000000000/v2.0"  # an Entra ID issuer
 JIRA_SITE = "https://andesbank.atlassian.net"  # Jira Cloud, simulated with state (nexti_integrations.simulated)
 MODEL = "openai/gpt-4o-mini"
 MODEL_INFO: dict[str, Any] = {
@@ -343,6 +345,20 @@ class Ctx:
                 )
             )  # fmt: skip
         return input_id
+
+    async def identity_provider(self, tenant_id: uuid.UUID | None = None) -> uuid.UUID:
+        """An OIDC provider of the tenant, as the platform stores it (no secret); Keycloak gets it when applied."""
+        tenant_id = tenant_id or self.world.tenant_a
+        provider_id = uuid.uuid4()
+        prefix = "andes-bank" if tenant_id == self.world.tenant_a else "pacific-cu"
+        async with self.owner.begin() as conn:
+            await conn.execute(insert(TenantIdentityProvider).values(
+                id=provider_id, tenant_id=tenant_id, alias=f"{prefix}-m0test-{provider_id.hex[:8]}",
+                display_name=f"SSO {provider_id.hex[:8]}", protocol="oidc", status="active",
+                settings={"issuer": IDP, "authorization_url": f"{IDP}/auth", "token_url": f"{IDP}/token",
+                          "jwks_url": f"{IDP}/jwks", "client_id": "nexti"},
+            ))  # fmt: skip
+        return provider_id
 
     async def tracker(self, tenant_id: uuid.UUID | None = None) -> uuid.UUID:
         """A Jira integration of the tenant (its token in OpenBao, its site in the config)."""
@@ -607,6 +623,16 @@ async def _new_integration(ctx: Ctx) -> Request:
     return "/api/v1/integrations", {"kind": "figma", "name": f"Figma {uuid.uuid4().hex[:8]}", "token": "figd_new-token"}
 
 
+async def _new_provider(ctx: Ctx) -> Request:
+    name = uuid.uuid4().hex[:8]
+    return "/api/v1/identity/providers", {
+        "displayName": f"m0test {name}", "protocol": "oidc", "clientSecret": "entra-client-value",
+        "settings": {"issuer": IDP, "authorization_url": f"{IDP}/auth", "token_url": f"{IDP}/token",
+                     "jwks_url": f"{IDP}/jwks", "client_id": "nexti"},
+        "domains": [f"{name}.example"], "groupRoles": {"it-admins": "tenantAdmin"},
+    }  # fmt: skip
+
+
 async def _profile_body(ctx: Ctx) -> dict[str, Any]:
     _, offering = await ctx.offering()
     return {
@@ -867,6 +893,17 @@ CASES = [
         "member",
         _with("integration", "/api/v1/integrations/{id}:test"),
     ),
+    # Administration → Authentication (M0b, ADR-0022): identity.manage.
+    Case("GET", "/api/v1/identity", "admin", "member", fixed("/api/v1/identity")),
+    Case("PUT", "/api/v1/identity", "admin", "member",
+         fixed("/api/v1/identity", {"localAccounts": True, "sso": True, "mfaRequired": False, "domains": []})),
+    Case("POST", "/api/v1/identity/providers", "admin", "member", _new_provider),
+    Case("PATCH", "/api/v1/identity/providers/{provider_id}", "admin", "member",
+         _with("identity_provider", "/api/v1/identity/providers/{id}", {"jit": False})),
+    Case("POST", "/api/v1/identity/providers/{provider_id}:apply", "admin", "member",
+         _with("identity_provider", "/api/v1/identity/providers/{id}:apply")),
+    Case("DELETE", "/api/v1/identity/providers/{provider_id}", "admin", "member",
+         _with("identity_provider", "/api/v1/identity/providers/{id}")),
     Case("GET", "/api/v1/ai/catalog", "admin", "member", fixed("/api/v1/ai/catalog")),
     Case("POST", "/api/v1/ai/catalog:sync", "admin", "member", fixed("/api/v1/ai/catalog:sync")),
     Case(
@@ -1440,6 +1477,56 @@ async def test_integrations_of_another_tenant_are_unreachable_and_their_token_st
         assert await store.get(path) == rotated
         assert api.delete(f"/api/v1/integrations/{integration_id}", headers=headers).status_code == 204
         assert await store.get(path) is None
+
+
+async def test_identity_of_another_tenant_is_unreachable_and_the_client_secret_goes_to_keycloak_only(
+    api: TestClient, app_engine: AsyncEngine, owner_engine: AsyncEngine, fga: OpenFga, world: World, root: uuid.UUID
+) -> None:
+    await reconcile(app_engine, fga)
+    ctx = Ctx(world, root, owner_engine)
+    b_provider = await ctx.identity_provider(world.tenant_b)
+    headers = act_as(api, "admin", ctx)
+    assert str(b_provider) not in {p["id"] for p in api.get("/api/v1/identity").json()["providers"]}
+    path = f"/api/v1/identity/providers/{b_provider}"
+    assert api.patch(path, json={"jit": False}, headers=headers).status_code == 404
+    assert api.post(f"{path}:apply", headers=headers).status_code == 404
+    assert api.delete(path, headers=headers).status_code == 404
+
+    canary = f"entra-canary-{uuid.uuid4().hex}"
+    _, body = await _new_provider(ctx)
+    assert isinstance(body, dict)
+    created = api.post("/api/v1/identity/providers", json={**body, "clientSecret": canary}, headers=headers)
+    assert created.status_code == 201, created.text
+    provider = created.json()
+    assert (provider["status"], provider["groupRoles"]) == ("active", {"it-admins": "tenantAdmin"}), provider
+    taken = api.post("/api/v1/identity/providers", json={**body, "displayName": "other"}, headers=headers)
+    assert (taken.status_code, taken.json()["code"]) == (409, "domain_taken")
+    wrong_role = {**body, "displayName": "other", "domains": [], "groupRoles": {"x": "noSuchRole"}}
+    refused = api.post("/api/v1/identity/providers", json=wrong_role, headers=headers)
+    assert (refused.status_code, refused.json()["code"]) == (422, "role_not_found")
+    off = api.put("/api/v1/identity", json={"localAccounts": False, "sso": False, "mfaRequired": True},
+                  headers=headers)  # fmt: skip
+    assert (off.status_code, off.json()["code"]) == (422, "identity_method_required")
+    identity = api.get("/api/v1/identity").json()
+    assert identity["organization"]
+    assert identity["realm"]["passwordPolicy"].startswith("length(12)")
+    async with owner_engine.connect() as conn:
+        row: str = (
+            await conn.execute(text("SELECT row_to_json(p)::text FROM tenant_identity_provider p WHERE id = :i"),
+                               {"i": provider["id"]})
+        ).scalar_one()  # fmt: skip
+        audit_rows: str = (
+            await conn.execute(text("SELECT coalesce(string_agg(details::text, ''), '') FROM audit_log"))
+        ).scalar_one()
+    for found in (created.text, row, audit_rows, api.get("/api/v1/identity").text):
+        assert canary not in found
+    async with httpx.AsyncClient(timeout=10) as http:
+        base = f"{SETTINGS.keycloak_url}/admin/realms/{SETTINGS.keycloak_realm}"
+        kc = (await http.get(f"{base}/identity-provider/instances/{provider['alias']}",
+                             headers=await keycloak_admin_headers(http))).json()  # fmt: skip
+    assert kc["config"]["kc.org.domain"] == body["domains"][0]
+    assert kc["config"]["clientSecret"] == "**********"  # Keycloak keeps it and never shows it
+    assert api.delete(f"/api/v1/identity/providers/{provider['id']}", headers=headers).status_code == 204
 
 
 async def test_a_jira_integration_is_checked_and_a_project_cannot_link_another_tenant_s(
