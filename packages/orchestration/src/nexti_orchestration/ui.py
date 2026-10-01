@@ -9,6 +9,7 @@ from dataclasses import dataclass, field
 from functools import partial
 from typing import Any, Literal, Protocol, cast
 
+from nexti_adapter_aspx import AspxAdapter
 from nexti_adapter_bms import BmsAdapter
 from nexti_agents import prompt
 from nexti_core.adapters import SourceFile
@@ -45,9 +46,12 @@ class UiPort(Protocol):
 
 
 def screens_of(files: list[SourceFile]) -> list[ScreenSpec]:
-    """The screens the legacy defines (BMS maps in this version; ASPX in M8)."""
-    adapter = BmsAdapter()
-    return adapter.screens(files) if adapter.detect(files) > 0 else []
+    """The screens the legacy defines: BMS maps (M5) or ASP.NET WebForms pages (M8)."""
+    bms = BmsAdapter()
+    if bms.detect(files) > 0:
+        return bms.screens(files)
+    aspx = AspxAdapter()
+    return aspx.screens(files) if aspx.detect(files) > 0 else []
 
 
 def tsx_block(content: str) -> str:

@@ -1416,6 +1416,7 @@ source = { editable = "packages/orchestration" }
 dependencies = [
     { name = "langgraph" },
     { name = "langgraph-checkpoint-postgres" },
+    { name = "nexti-adapter-aspx" },
     { name = "nexti-adapter-bms" },
     { name = "nexti-adapter-cobol" },
     { name = "nexti-adapter-sybase" },
@@ -1434,6 +1435,7 @@ dependencies = [
 requires-dist = [
     { name = "langgraph", specifier = ">=1.0" },
     { name = "langgraph-checkpoint-postgres", specifier = ">=3.0" },
+    { name = "nexti-adapter-aspx", editable = "packages/adapters/source/aspx" },
     { name = "nexti-adapter-bms", editable = "packages/adapters/source/bms" },
     { name = "nexti-adapter-cobol", editable = "packages/adapters/source/cobol" },
     { name = "nexti-adapter-sybase", editable = "packages/adapters/source/sybase" },
