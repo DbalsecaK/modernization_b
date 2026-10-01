@@ -43,7 +43,7 @@ PERMISSIONS: tuple[Permission, ...] = (
     Permission("code.push", ("project",), "Push code to the customer repository"),
     Permission("models.configure", ("tenant",), "Configure AI connections, catalog and profiles"),
     Permission("integrations.manage", ("tenant",), "Connect the tenant's external tools (Figma, Jira, Azure DevOps)"),
-    Permission("identity.manage", ("tenant",), "Configure how the tenant signs in: SSO providers, own accounts and MFA"),
+    Permission("identity.manage", ("tenant",), "Configure how the tenant signs in: SSO, own accounts and MFA"),
     Permission("usage.view", ("tenant", "project"), "View token usage"),
     Permission("cost.view", ("tenant",), "View costs in money"),
     Permission("agents.select", ("project",), "Select the agents of a project"),

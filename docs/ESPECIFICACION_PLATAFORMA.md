@@ -1054,7 +1054,7 @@ pentest periódico.
 
 `proyecto.crear`, `proyecto.configurar`, `insumo.subir`, `pipeline.ejecutar`, `compuerta.c1.aprobar`,
 `compuerta.c2.aprobar`, `compuerta.c3.aprobar`, `signoff.firmar`, `codigo.ver`, `codigo.descargar`,
-`codigo.push`, `pregunta.responder`, `historia.editar`, `plan.editar`, `prototipo.comentar`, `prototipo.editar`, `modelos.configurar`, `integraciones.gestionar`, `consumo.ver`, `costo.ver`, `agentes.seleccionar`, `skills.seleccionar`,
+`codigo.push`, `pregunta.responder`, `historia.editar`, `plan.editar`, `prototipo.comentar`, `prototipo.editar`, `modelos.configurar`, `integraciones.gestionar`, `identidad.gestionar`, `consumo.ver`, `costo.ver`, `agentes.seleccionar`, `skills.seleccionar`,
 `skills.publicar`, `usuarios.gestionar`, `auditoria.ver`.
 
 Los roles son **paquetes configurables** de permisos.

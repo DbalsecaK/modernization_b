@@ -29,7 +29,8 @@ DOMAIN = r"'^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$'"
 
 
 def upgrade() -> None:
-    op.execute(f"""
+    op.execute(
+        """
     CREATE FUNCTION valid_domains(p_domains text[]) RETURNS boolean LANGUAGE sql IMMUTABLE AS $$
       SELECT coalesce(bool_and(d ~ {DOMAIN} AND length(d) <= 253), true) FROM unnest(p_domains) AS d
     $$;
@@ -38,8 +39,9 @@ def upgrade() -> None:
       tenant_id uuid PRIMARY KEY REFERENCES tenant (id) ON DELETE CASCADE,
       local_accounts boolean NOT NULL DEFAULT true,
       sso boolean NOT NULL DEFAULT false,
-      mfa_required boolean NOT NULL DEFAULT false,
-      domains text[] NOT NULL DEFAULT '{{}}' CHECK (valid_domains(domains) AND cardinality(domains) <= 50),
+      -- Own accounts need a second factor ("MFA required"); the factors themselves live in Keycloak only.
+      second_factor boolean NOT NULL DEFAULT false,
+      domains text[] NOT NULL DEFAULT '{}' CHECK (valid_domains(domains) AND cardinality(domains) <= 50),
       -- The Keycloak Organization of the tenant (its alias is the tenant's slug); set by the reconciliation.
       organization_id text,
       updated_by uuid REFERENCES app_user (id),
@@ -51,16 +53,16 @@ def upgrade() -> None:
       id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
       tenant_id uuid NOT NULL REFERENCES tenant (id) ON DELETE CASCADE,
       -- The Keycloak alias, unique in the realm: the tenant's slug and a short name.
-      alias text NOT NULL UNIQUE CHECK (alias ~ '^[a-z0-9][a-z0-9-]{{1,62}}$'),
+      alias text NOT NULL UNIQUE CHECK (alias ~ '^[a-z0-9][a-z0-9-]{1,62}$'),
       display_name text NOT NULL CHECK (length(display_name) BETWEEN 1 AND 100),
       protocol text NOT NULL CHECK (protocol IN ('oidc', 'saml')),
       -- Where the provider is (issuer and endpoints, or SAML metadata); never a credential.
-      settings jsonb NOT NULL DEFAULT '{{}}'::jsonb CHECK (jsonb_typeof(settings) = 'object'),
-      domains text[] NOT NULL DEFAULT '{{}}' CHECK (valid_domains(domains) AND cardinality(domains) <= 50),
+      settings jsonb NOT NULL DEFAULT '{}'::jsonb CHECK (jsonb_typeof(settings) = 'object'),
+      domains text[] NOT NULL DEFAULT '{}' CHECK (valid_domains(domains) AND cardinality(domains) <= 50),
       sso_only boolean NOT NULL DEFAULT false,
       jit boolean NOT NULL DEFAULT true,
       -- Group of the provider -> key of a tenant role; the role given to a JIT user without a mapped group.
-      group_roles jsonb NOT NULL DEFAULT '{{}}'::jsonb CHECK (jsonb_typeof(group_roles) = 'object'),
+      group_roles jsonb NOT NULL DEFAULT '{}'::jsonb CHECK (jsonb_typeof(group_roles) = 'object'),
       default_role text,
       status text NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'active', 'failed')),
       last_error text,
@@ -87,7 +89,8 @@ def upgrade() -> None:
 
     ALTER TABLE role_assignment ADD COLUMN source text NOT NULL DEFAULT 'manual'
       CHECK (source IN ('manual', 'idp'));
-    """)
+    """.replace("{DOMAIN}", DOMAIN)
+    )
     for table in ("tenant_identity", "tenant_identity_provider"):
         op.execute(f"""
         ALTER TABLE {table} ENABLE ROW LEVEL SECURITY;
@@ -101,13 +104,13 @@ def upgrade() -> None:
     CREATE FUNCTION identity_route(p_domain text)
       RETURNS TABLE (tenant_id uuid, tenant_slug text, alias text, sso_only boolean, mfa_required boolean)
       LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public, pg_temp AS $$
-      SELECT t.id, t.slug, p.alias, p.sso_only, coalesce(i.mfa_required, false)
+      SELECT t.id, t.slug, p.alias, p.sso_only, coalesce(i.second_factor, false)
         FROM tenant_identity_provider p
         JOIN tenant t ON t.id = p.tenant_id AND t.status = 'active'
         LEFT JOIN tenant_identity i ON i.tenant_id = p.tenant_id
        WHERE lower(p_domain) = ANY (p.domains) AND p.status = 'active'
       UNION ALL
-      SELECT t.id, t.slug, NULL, false, i.mfa_required
+      SELECT t.id, t.slug, NULL, false, i.second_factor
         FROM tenant_identity i
         JOIN tenant t ON t.id = i.tenant_id AND t.status = 'active'
        WHERE lower(p_domain) = ANY (i.domains)
@@ -127,7 +130,7 @@ def upgrade() -> None:
     GRANT EXECUTE ON FUNCTION identity_provider_tenant(text) TO platform_app;
 
     INSERT INTO permission (key, description)
-      VALUES ('identity.manage', 'Configure how the tenant signs in: SSO providers, own accounts and MFA');
+      VALUES ('identity.manage', 'Configure how the tenant signs in: SSO, own accounts and MFA');
     INSERT INTO permission_scope (permission_key, scope) VALUES ('identity.manage', 'tenant');
     INSERT INTO role_permission (tenant_id, role_id, role_scope, permission_key)
       SELECT tenant_id, id, scope, 'identity.manage' FROM role WHERE key = 'tenantAdmin' AND scope = 'tenant'

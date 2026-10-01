@@ -68,10 +68,10 @@ def sso_required(route: Route | None, claims: IdentityClaims) -> bool:
 async def tenant_rules(engine: AsyncEngine, tenant_id: uuid.UUID, user_id: uuid.UUID) -> TenantRules:
     async with scoped_connection(engine, DbScope(tenant_id=tenant_id, user_id=user_id)) as conn:
         row = (
-            await conn.execute(select(TenantIdentity.local_accounts, TenantIdentity.mfa_required)
+            await conn.execute(select(TenantIdentity.local_accounts, TenantIdentity.second_factor)
                                .where(TenantIdentity.tenant_id == tenant_id))
         ).first()  # fmt: skip
-    return TenantRules(row.local_accounts, row.mfa_required) if row else TenantRules(True, False)
+    return TenantRules(row.local_accounts, row.second_factor) if row else TenantRules(True, False)
 
 
 async def _provider(engine: AsyncEngine, claims: IdentityClaims) -> tuple[uuid.UUID, Any] | None:

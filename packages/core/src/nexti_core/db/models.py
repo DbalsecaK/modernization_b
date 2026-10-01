@@ -1118,7 +1118,7 @@ class TenantIdentity(Base):
     tenant_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("tenant.id", ondelete="CASCADE"), primary_key=True)
     local_accounts: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
     sso: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
-    mfa_required: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
+    second_factor: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
     domains: Mapped[list[str]] = mapped_column(ARRAY(Text), nullable=False, server_default=text("'{}'"))
     organization_id: Mapped[str | None] = mapped_column(Text)
     updated_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("app_user.id"))
@@ -1128,7 +1128,10 @@ class TenantIdentity(Base):
 # An identity provider of a tenant, a Keycloak identity provider linked to its Organization. No secret is stored.
 class TenantIdentityProvider(Base):
     __tablename__ = "tenant_identity_provider"
-    __table_args__ = (UniqueConstraint("tenant_id", "display_name"),)
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "display_name"),
+        Index("tenant_identity_provider_domains", "domains", postgresql_using="gin"),
+    )
     id: Mapped[uuid.UUID] = _uuid_pk()
     tenant_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("tenant.id", ondelete="CASCADE"), nullable=False)
     alias: Mapped[str] = mapped_column(Text, nullable=False, unique=True)

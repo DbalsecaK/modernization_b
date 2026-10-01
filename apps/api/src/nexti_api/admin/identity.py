@@ -218,7 +218,7 @@ async def _out(request: Request, conn: AsyncConnection, tenant_id: uuid.UUID) ->
     identity = await service.identity_of(conn, tenant_id)
     rows = (await conn.execute(select(TenantIdentityProvider).order_by(TenantIdentityProvider.display_name))).all()
     issuer = request.app.state.settings.keycloak_public_issuer
-    return IdentityOut(local_accounts=identity.local_accounts, sso=identity.sso, mfa_required=identity.mfa_required,
+    return IdentityOut(local_accounts=identity.local_accounts, sso=identity.sso, mfa_required=identity.second_factor,
                        domains=list(identity.domains), organization=identity.organization_id,
                        providers=[_provider_out(r, issuer) for r in rows], realm=await _realm(request))  # fmt: skip
 
@@ -253,7 +253,7 @@ async def update_identity(request: Request, body: IdentityUpdate, auth: ManageId
         raise ProblemError(422, "identity_method_required", "At least one sign-in method must be enabled.")
     domains = _domains(body.domains)
     async with transaction(request, auth) as conn:
-        values = {"local_accounts": body.local_accounts, "sso": body.sso, "mfa_required": body.mfa_required,
+        values = {"local_accounts": body.local_accounts, "sso": body.sso, "second_factor": body.mfa_required,
                   "domains": domains, "updated_by": auth.user_id}  # fmt: skip
         await conn.execute(pg_insert(TenantIdentity).values(tenant_id=auth.tenant_id, **values)
                            .on_conflict_do_update(index_elements=[TenantIdentity.tenant_id], set_=values))  # fmt: skip

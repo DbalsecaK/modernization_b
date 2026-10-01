@@ -22,7 +22,7 @@ async def identity_of(conn: AsyncConnection, tenant_id: uuid.UUID) -> Any:
     row = (await conn.execute(select(TenantIdentity).where(TenantIdentity.tenant_id == tenant_id))).first()
     if row is not None:
         return row
-    return TenantIdentity(tenant_id=tenant_id, local_accounts=True, sso=False, mfa_required=False, domains=[],
+    return TenantIdentity(tenant_id=tenant_id, local_accounts=True, sso=False, second_factor=False, domains=[],
                           organization_id=None)  # fmt: skip
 
 
