@@ -34,6 +34,15 @@
   "eventsListeners": ["jboss-logging"],
   "adminEventsEnabled": true,
   "adminEventsDetailsEnabled": true,
+  "organizationsEnabled": true,
+  "otpPolicyType": "totp",
+  "otpPolicyAlgorithm": "HmacSHA1",
+  "otpPolicyDigits": 6,
+  "otpPolicyPeriod": 30,
+  "otpPolicyLookAheadWindow": 1,
+  "webAuthnPolicyRpEntityName": "NexTI Platform",
+  "webAuthnPolicyUserVerificationRequirement": "preferred",
+  "browserFlow": "nexti browser",
   "smtpServer": {
     "host": "mailpit",
     "port": "1025",
@@ -43,6 +52,216 @@
     "ssl": "false",
     "starttls": "false"
   },
+  "authenticationFlows": [
+    {
+      "alias": "nexti browser",
+      "description": "Cookie, the IdP of kc_idp_hint, or the forms by level of authentication (ADR-0022)",
+      "providerId": "basic-flow",
+      "topLevel": true,
+      "builtIn": false,
+      "authenticationExecutions": [
+        {
+          "authenticator": "auth-cookie",
+          "authenticatorFlow": false,
+          "requirement": "ALTERNATIVE",
+          "priority": 10,
+          "userSetupAllowed": false
+        },
+        {
+          "authenticator": "identity-provider-redirector",
+          "authenticatorFlow": false,
+          "requirement": "ALTERNATIVE",
+          "priority": 20,
+          "userSetupAllowed": false
+        },
+        {
+          "flowAlias": "nexti forms",
+          "authenticatorFlow": true,
+          "requirement": "ALTERNATIVE",
+          "priority": 30,
+          "userSetupAllowed": false
+        }
+      ]
+    },
+    {
+      "alias": "nexti forms",
+      "description": "Level 1: password; level 2: a second factor",
+      "providerId": "basic-flow",
+      "topLevel": false,
+      "builtIn": false,
+      "authenticationExecutions": [
+        {
+          "flowAlias": "nexti level 1",
+          "authenticatorFlow": true,
+          "requirement": "CONDITIONAL",
+          "priority": 10,
+          "userSetupAllowed": false
+        },
+        {
+          "flowAlias": "nexti level 2",
+          "authenticatorFlow": true,
+          "requirement": "CONDITIONAL",
+          "priority": 20,
+          "userSetupAllowed": false
+        }
+      ]
+    },
+    {
+      "alias": "nexti level 1",
+      "description": "Password",
+      "providerId": "basic-flow",
+      "topLevel": false,
+      "builtIn": false,
+      "authenticationExecutions": [
+        {
+          "authenticatorConfig": "nexti loa 1",
+          "authenticator": "conditional-level-of-authentication",
+          "authenticatorFlow": false,
+          "requirement": "REQUIRED",
+          "priority": 10,
+          "userSetupAllowed": false
+        },
+        {
+          "authenticator": "auth-username-password-form",
+          "authenticatorFlow": false,
+          "requirement": "REQUIRED",
+          "priority": 20,
+          "userSetupAllowed": false
+        }
+      ]
+    },
+    {
+      "alias": "nexti level 2",
+      "description": "A second factor: TOTP, a passkey or a recovery code",
+      "providerId": "basic-flow",
+      "topLevel": false,
+      "builtIn": false,
+      "authenticationExecutions": [
+        {
+          "authenticatorConfig": "nexti loa 2",
+          "authenticator": "conditional-level-of-authentication",
+          "authenticatorFlow": false,
+          "requirement": "REQUIRED",
+          "priority": 10,
+          "userSetupAllowed": false
+        },
+        {
+          "flowAlias": "nexti second factor",
+          "authenticatorFlow": true,
+          "requirement": "REQUIRED",
+          "priority": 20,
+          "userSetupAllowed": false
+        }
+      ]
+    },
+    {
+      "alias": "nexti second factor",
+      "description": "The factor the user has, or the enrolment of one",
+      "providerId": "basic-flow",
+      "topLevel": false,
+      "builtIn": false,
+      "authenticationExecutions": [
+        {
+          "flowAlias": "nexti existing factor",
+          "authenticatorFlow": true,
+          "requirement": "CONDITIONAL",
+          "priority": 10,
+          "userSetupAllowed": false
+        },
+        {
+          "flowAlias": "nexti enrolment",
+          "authenticatorFlow": true,
+          "requirement": "CONDITIONAL",
+          "priority": 20,
+          "userSetupAllowed": false
+        }
+      ]
+    },
+    {
+      "alias": "nexti existing factor",
+      "description": "TOTP, a passkey or a recovery code, when the user has one",
+      "providerId": "basic-flow",
+      "topLevel": false,
+      "builtIn": false,
+      "authenticationExecutions": [
+        {
+          "authenticator": "conditional-user-configured",
+          "authenticatorFlow": false,
+          "requirement": "REQUIRED",
+          "priority": 10,
+          "userSetupAllowed": false
+        },
+        {
+          "authenticator": "auth-otp-form",
+          "authenticatorFlow": false,
+          "requirement": "ALTERNATIVE",
+          "priority": 20,
+          "userSetupAllowed": false
+        },
+        {
+          "authenticator": "webauthn-authenticator",
+          "authenticatorFlow": false,
+          "requirement": "ALTERNATIVE",
+          "priority": 30,
+          "userSetupAllowed": false
+        },
+        {
+          "authenticator": "auth-recovery-authn-code-form",
+          "authenticatorFlow": false,
+          "requirement": "ALTERNATIVE",
+          "priority": 40,
+          "userSetupAllowed": false
+        }
+      ]
+    },
+    {
+      "alias": "nexti enrolment",
+      "description": "A user without a second factor sets up TOTP before going on",
+      "providerId": "basic-flow",
+      "topLevel": false,
+      "builtIn": false,
+      "authenticationExecutions": [
+        {
+          "authenticatorConfig": "nexti without factor",
+          "authenticator": "conditional-sub-flow-executed",
+          "authenticatorFlow": false,
+          "requirement": "REQUIRED",
+          "priority": 10,
+          "userSetupAllowed": false
+        },
+        {
+          "authenticator": "auth-otp-form",
+          "authenticatorFlow": false,
+          "requirement": "REQUIRED",
+          "priority": 20,
+          "userSetupAllowed": false
+        }
+      ]
+    }
+  ],
+  "authenticatorConfig": [
+    {
+      "alias": "nexti loa 1",
+      "config": {
+        "loa-condition-level": "1",
+        "loa-max-age": "36000"
+      }
+    },
+    {
+      "alias": "nexti loa 2",
+      "config": {
+        "loa-condition-level": "2",
+        "loa-max-age": "36000"
+      }
+    },
+    {
+      "alias": "nexti without factor",
+      "config": {
+        "flow_to_check": "nexti existing factor",
+        "check_result": "not-executed"
+      }
+    }
+  ],
   "clients": [
     {
       "clientId": "nexti-bff",
@@ -63,15 +282,32 @@
       "attributes": {
         "pkce.code.challenge.method": "S256",
         "post.logout.redirect.uris": "${WEB_ORIGIN}/*",
-        "use.refresh.tokens": "true"
+        "use.refresh.tokens": "true",
+        "acr.loa.map": "{\"password\":\"1\",\"mfa\":\"2\"}"
       },
-      "defaultClientScopes": ["web-origins", "acr", "profile", "roles", "basic", "email"],
+      "protocolMappers": [
+        {
+          "name": "identity provider",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usersessionmodel-note-mapper",
+          "config": { "user.session.note": "identity_provider", "claim.name": "identity_provider", "jsonType.label": "String",
+                      "id.token.claim": "true", "access.token.claim": "false", "userinfo.token.claim": "false" }
+        },
+        {
+          "name": "idp groups",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "config": { "user.attribute": "idp_groups", "claim.name": "idp_groups", "jsonType.label": "String", "multivalued": "true",
+                      "id.token.claim": "true", "access.token.claim": "false", "userinfo.token.claim": "false" }
+        }
+      ],
+      "defaultClientScopes": ["web-origins", "acr", "profile", "roles", "basic", "email", "organization"],
       "optionalClientScopes": []
     },
     {
       "clientId": "nexti-admin",
       "name": "NexTI platform admin service account",
-      "description": "Least-privilege service account used by the API for invitations (create users) and to read events for the audit log.",
+      "description": "Least-privilege service account of the API: invitations (create users), events for the audit log, and the Organizations and identity providers of each tenant (ADR-0022).",
       "enabled": true,
       "protocol": "openid-connect",
       "publicClient": false,
@@ -89,7 +325,8 @@
       "enabled": true,
       "serviceAccountClientId": "nexti-admin",
       "clientRoles": {
-        "realm-management": ["manage-users", "view-users", "query-users", "view-events"]
+        "realm-management": ["manage-users", "view-users", "query-users", "view-events", "view-realm", "manage-realm",
+                             "view-identity-providers", "manage-identity-providers"]
       }
     },
     {

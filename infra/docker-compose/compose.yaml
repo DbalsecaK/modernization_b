@@ -61,11 +61,15 @@ services:
       KC_BFF_CLIENT_SECRET: ${KC_BFF_CLIENT_SECRET:?set in .env}
       KC_ADMIN_CLIENT_SECRET: ${KC_ADMIN_CLIENT_SECRET:?set in .env}
       KC_DEV_USER_PASSWORD: ${KC_DEV_USER_PASSWORD:?set in .env}
+      KC_IDP_TEST_CLIENT_SECRET: ${KC_IDP_TEST_CLIENT_SECRET:?set in .env}
+      KEYCLOAK_PORT: ${KEYCLOAK_PORT:-8180}
       WEB_ORIGIN: ${WEB_ORIGIN:-http://localhost:5173}
     ports:
       - 127.0.0.1:${KEYCLOAK_PORT:-8180}:8080
     volumes:
       - ../keycloak/realm-nexti.json:/opt/keycloak/data/import/realm-nexti.json:ro
+      # The test identity provider (ADR-0022): a second realm the realm nexti brokers to, like Entra ID or Okta.
+      - ../keycloak/realm-idp-test.json:/opt/keycloak/data/import/realm-idp-test.json:ro
     depends_on:
       postgres:
         condition: service_healthy
