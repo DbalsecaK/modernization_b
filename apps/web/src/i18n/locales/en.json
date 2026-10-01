@@ -716,10 +716,21 @@
   },
   "code": {
     "title": "Generated code",
-    "subtitle": "Browse by module. Downloading and pushing require permissions.",
-    "download": "Download",
+    "download": "Download zip",
     "push": "Push to Git",
-    "notYet": "Code is generated after gates C1–C3. Showing the pilot module as a preview."
+    "generatedAt_one": "Newest generation, {{date}} · {{count}} file",
+    "generatedAt_other": "Newest generation, {{date}} · {{count}} files",
+    "files": "Generated files",
+    "downloadNeedsPermission": "Downloading needs the code.download permission",
+    "pushInDelivery": "Pushing to Git is done by the delivery phase of the pipeline",
+    "implements": "implements",
+    "loading": "Loading the generated code…",
+    "loadingFile": "Loading the file…",
+    "loadError": "The generated code could not be loaded",
+    "fileError": "The file could not be loaded.",
+    "emptyHint": "Run the pipeline: the generation phase writes the backend and the frontend here.",
+    "noCodeView": "Seeing code needs the code.view permission",
+    "noCodeViewHint": "Ask a project administrator for the developer or reviewer role."
   },
   "traceability": {
     "hint": "Every link is verified: the legacy line exists, the target method exists and a passing test names the rule.",

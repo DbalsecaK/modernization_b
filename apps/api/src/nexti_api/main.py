@@ -34,6 +34,7 @@ from nexti_api.runs import questions as runs_questions
 from nexti_api.runs import router as runs_router
 from nexti_api.runs import tasks as runs_tasks
 from nexti_api.settings import Settings, get_settings
+from nexti_api.spec import code as spec_code
 from nexti_api.spec import plan as spec_plan
 from nexti_api.spec import screens as spec_screens
 from nexti_api.spec import stories as spec_stories
@@ -172,6 +173,7 @@ def create_app(settings: Settings | None = None, health_checks: dict[str, health
         spec_stories.tools,
         spec_plan.router,
         spec_validation.router,
+        spec_code.router,
         spec_screens.router,
         graph_router.router,
     ):

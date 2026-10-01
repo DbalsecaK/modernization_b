@@ -667,6 +667,60 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/projects/{project_id}/code": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Code Tree */
+        get: operations["code_tree_api_v1_projects__project_id__code_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/projects/{project_id}/code/file": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Code File */
+        get: operations["code_file_api_v1_projects__project_id__code_file_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/projects/{project_id}/code:download": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Code Download
+         * @description The generated project as a zip, the same files the tree shows.
+         */
+        get: operations["code_download_api_v1_projects__project_id__code_download_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/projects/{project_id}/config": {
         parameters: {
             query?: never;
@@ -2367,6 +2421,45 @@ export interface components {
             path: string;
             /** Truncated */
             truncated: boolean;
+        };
+        /** CodeFileEntryOut */
+        CodeFileEntryOut: {
+            /** Layer */
+            layer: string;
+            /** Path */
+            path: string;
+            /** Rules */
+            rules: string[];
+            /** Sizebytes */
+            sizeBytes: number;
+        };
+        /** CodeFileOut */
+        CodeFileOut: {
+            /** Content */
+            content: string;
+            /** Layer */
+            layer: string;
+            /** Path */
+            path: string;
+            /** Sizebytes */
+            sizeBytes: number;
+            /** Truncated */
+            truncated: boolean;
+        };
+        /** CodeTreeOut */
+        CodeTreeOut: {
+            /** Files */
+            files: components["schemas"]["CodeFileEntryOut"][];
+            /**
+             * Generatedat
+             * Format: date-time
+             */
+            generatedAt: string;
+            /**
+             * Runid
+             * Format: uuid
+             */
+            runId: string;
         };
         /** CommentIn */
         CommentIn: {
@@ -6004,6 +6097,101 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["C1CheckOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    code_tree_api_v1_projects__project_id__code_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CodeTreeOut"] | null;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    code_file_api_v1_projects__project_id__code_file_get: {
+        parameters: {
+            query: {
+                path: string;
+            };
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CodeFileOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    code_download_api_v1_projects__project_id__code_download_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
             /** @description Validation Error */

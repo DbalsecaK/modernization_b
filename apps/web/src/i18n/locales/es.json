@@ -716,10 +716,21 @@
   },
   "code": {
     "title": "Código generado",
-    "subtitle": "Navega por módulo. Descargar y hacer push requieren permisos.",
-    "download": "Descargar",
+    "download": "Descargar zip",
     "push": "Push a Git",
-    "notYet": "El código se genera después de las compuertas C1–C3. Se muestra el módulo piloto como vista previa."
+    "generatedAt_one": "Última generación, {{date}} · {{count}} archivo",
+    "generatedAt_other": "Última generación, {{date}} · {{count}} archivos",
+    "files": "Archivos generados",
+    "downloadNeedsPermission": "Descargar requiere el permiso code.download",
+    "pushInDelivery": "El push a Git lo hace la fase de entrega del pipeline",
+    "implements": "implementa",
+    "loading": "Cargando el código generado…",
+    "loadingFile": "Cargando el archivo…",
+    "loadError": "No se pudo cargar el código generado",
+    "fileError": "No se pudo cargar el archivo.",
+    "emptyHint": "Ejecuta el pipeline: la fase de generación escribe aquí el backend y el frontend.",
+    "noCodeView": "Ver código requiere el permiso code.view",
+    "noCodeViewHint": "Pide a un administrador del proyecto el rol de developer o revisor."
   },
   "traceability": {
     "hint": "Cada vínculo está verificado: la línea legacy existe, el método destino existe y un test que pasó nombra la regla.",

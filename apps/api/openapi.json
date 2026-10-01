@@ -1214,6 +1214,98 @@
         "title": "CodeExcerptOut",
         "type": "object"
       },
+      "CodeFileEntryOut": {
+        "properties": {
+          "layer": {
+            "title": "Layer",
+            "type": "string"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          },
+          "rules": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Rules",
+            "type": "array"
+          },
+          "sizeBytes": {
+            "title": "Sizebytes",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "path",
+          "layer",
+          "sizeBytes",
+          "rules"
+        ],
+        "title": "CodeFileEntryOut",
+        "type": "object"
+      },
+      "CodeFileOut": {
+        "properties": {
+          "content": {
+            "title": "Content",
+            "type": "string"
+          },
+          "layer": {
+            "title": "Layer",
+            "type": "string"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          },
+          "sizeBytes": {
+            "title": "Sizebytes",
+            "type": "integer"
+          },
+          "truncated": {
+            "title": "Truncated",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "path",
+          "layer",
+          "sizeBytes",
+          "content",
+          "truncated"
+        ],
+        "title": "CodeFileOut",
+        "type": "object"
+      },
+      "CodeTreeOut": {
+        "properties": {
+          "files": {
+            "items": {
+              "$ref": "#/components/schemas/CodeFileEntryOut"
+            },
+            "title": "Files",
+            "type": "array"
+          },
+          "generatedAt": {
+            "format": "date-time",
+            "title": "Generatedat",
+            "type": "string"
+          },
+          "runId": {
+            "format": "uuid",
+            "title": "Runid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "runId",
+          "generatedAt",
+          "files"
+        ],
+        "title": "CodeTreeOut",
+        "type": "object"
+      },
       "CommentIn": {
         "properties": {
           "anchor": {
@@ -9620,6 +9712,152 @@
         "summary": "C1 Check",
         "tags": [
           "spec"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/code": {
+      "get": {
+        "operationId": "code_tree_api_v1_projects__project_id__code_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/CodeTreeOut"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "title": "Response Code Tree Api V1 Projects  Project Id  Code Get"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Code Tree",
+        "tags": [
+          "code"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/code/file": {
+      "get": {
+        "operationId": "code_file_api_v1_projects__project_id__code_file_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "path",
+            "required": true,
+            "schema": {
+              "maxLength": 500,
+              "title": "Path",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CodeFileOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Code File",
+        "tags": [
+          "code"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/code:download": {
+      "get": {
+        "description": "The generated project as a zip, the same files the tree shows.",
+        "operationId": "code_download_api_v1_projects__project_id__code_download_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Code Download",
+        "tags": [
+          "code"
         ]
       }
     },

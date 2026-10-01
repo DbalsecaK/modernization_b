@@ -167,6 +167,27 @@ class CodeExcerptOut(ApiModel):
     truncated: bool
 
 
+class CodeFileEntryOut(ApiModel):
+    path: str
+    layer: str
+    size_bytes: int
+    rules: list[str]
+
+
+class CodeTreeOut(ApiModel):
+    run_id: uuid.UUID
+    generated_at: datetime
+    files: list[CodeFileEntryOut]
+
+
+class CodeFileOut(ApiModel):
+    path: str
+    layer: str
+    size_bytes: int
+    content: str
+    truncated: bool
+
+
 class DifferenceOut(ApiModel):
     path: str
     expected: str | None

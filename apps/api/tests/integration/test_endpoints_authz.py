@@ -981,6 +981,12 @@ CASES = [
         "GET", "/api/v1/projects/{project_id}/traceability/{rule_key}", "admin", "outsider",
         _verified("/traceability/RULE-001"),
     ),
+    Case("GET", "/api/v1/projects/{project_id}/code", "admin", "outsider", _verified("/code")),
+    Case(
+        "GET", "/api/v1/projects/{project_id}/code/file", "admin", "outsider",
+        _verified("/code/file?path=src/main/java/demo/PayOrderService.java"),
+    ),
+    Case("GET", "/api/v1/projects/{project_id}/code:download", "admin", "outsider", _verified("/code:download")),
 ]  # fmt: skip
 
 

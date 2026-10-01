@@ -5,7 +5,7 @@ import { Card, CardHeader } from '@/components/ui/primitives'
 import { excerptLines, excerptRange } from './model'
 
 // A code excerpt with its real line numbers and the lines of the rule highlighted (same look as the prototype's
-// CodeLines in ../../tabs/SpecTabs.tsx). The highlight is also said in text, never by color alone, and the scrollable
+// CodeLines). The highlight is also said in text, never by color alone, and the scrollable
 // block can be reached with the keyboard.
 export function CodeExcerptView({ title, excerpt }: { title: string; excerpt: CodeExcerpt }) {
   const { t } = useTranslation()
