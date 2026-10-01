@@ -16,6 +16,8 @@ TAGS = ("project", "environment", "managed-by")
 DATABASES = {"aws_db_instance", "azurerm_postgresql_flexible_server", "azurerm_mssql_server",
              "azurerm_oracle_autonomous_database"}  # fmt: skip
 UNTAGGED = {"azurerm_subnet", "azurerm_role_assignment"}  # resources without tags in the provider
+# How a workload sends its logs: ECS (awslogs), EKS control plane, Container Apps and AKS (Log Analytics).
+LOG_SENDERS = ("awslogs", "enabled_cluster_log_types", "log_analytics_workspace_id")
 
 
 @dataclass(frozen=True)
@@ -86,7 +88,7 @@ def checks(hcl: str) -> list[Check]:
     without = [r.address for r in logs if "retention_in_days" not in r.body]
     if not logs:
         without.append("no log group or workspace")
-    elif "awslogs" not in hcl and "log_analytics_workspace_id" not in hcl:
+    elif not any(sender in hcl for sender in LOG_SENDERS):
         without.append("the service does not send its logs")
     found.append(_check("logs", without, "the service sends its logs to a group with retention"))
     return found
