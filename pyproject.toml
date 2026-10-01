@@ -1,6 +1,6 @@
 # Python workspace (uv). Members: the API and the shared packages (spec 19.3).
 [tool.uv.workspace]
-members = ["apps/api", "packages/core", "packages/model_gateway", "packages/agents", "packages/skills", "packages/ingest", "packages/integrations", "packages/sandbox", "packages/orchestration", "packages/adapters/source/sybase", "packages/adapters/source/bms", "packages/adapters/source/cobol", "packages/adapters/source/aspx", "packages/graph", "packages/packs/target/spring_boot", "packages/packs/target/dotnet", "packages/packs/target/frontend", "packages/packs/deploy/opentofu", "packages/hardening", "packages/verification", "packages/ui", "apps/worker"]
+members = ["apps/api", "packages/core", "packages/model_gateway", "packages/agents", "packages/skills", "packages/ingest", "packages/integrations", "packages/sandbox", "packages/orchestration", "packages/adapters/source/sybase", "packages/adapters/source/bms", "packages/adapters/source/cobol", "packages/adapters/source/aspx", "packages/graph", "packages/packs/target/spring_boot", "packages/packs/target/dotnet", "packages/packs/target/frontend", "packages/packs/deploy/opentofu", "packages/hardening", "packages/delivery", "packages/verification", "packages/ui", "apps/worker"]
 
 [dependency-groups]
 dev = [
@@ -20,7 +20,7 @@ target-version = "py312"
 select = ["E", "F", "W", "I", "B", "UP", "S", "C4", "SIM", "RUF", "ASYNC", "PT"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["nexti_api", "nexti_core", "nexti_model_gateway", "nexti_agents", "nexti_skills", "nexti_ingest", "nexti_integrations", "nexti_sandbox", "nexti_orchestration", "nexti_worker", "nexti_adapter_sybase", "nexti_adapter_bms", "nexti_adapter_cobol", "nexti_adapter_aspx", "nexti_graph", "nexti_pack_spring_boot", "nexti_pack_dotnet", "nexti_pack_frontend", "nexti_pack_iac", "nexti_hardening", "nexti_verification", "nexti_ui"]
+known-first-party = ["nexti_api", "nexti_core", "nexti_model_gateway", "nexti_agents", "nexti_skills", "nexti_ingest", "nexti_integrations", "nexti_sandbox", "nexti_orchestration", "nexti_worker", "nexti_adapter_sybase", "nexti_adapter_bms", "nexti_adapter_cobol", "nexti_adapter_aspx", "nexti_graph", "nexti_pack_spring_boot", "nexti_pack_dotnet", "nexti_pack_frontend", "nexti_pack_iac", "nexti_hardening", "nexti_delivery", "nexti_verification", "nexti_ui"]
 
 [tool.ruff.lint.per-file-ignores]
 "**/tests/**" = ["S101"]
@@ -28,12 +28,12 @@ known-first-party = ["nexti_api", "nexti_core", "nexti_model_gateway", "nexti_ag
 [tool.mypy]
 python_version = "3.12"
 strict = true
-mypy_path = ["apps/api/src", "packages/core/src", "packages/model_gateway/src", "packages/agents/src", "packages/skills/src", "packages/ingest/src", "packages/integrations/src", "packages/sandbox/src", "packages/orchestration/src", "packages/adapters/source/sybase/src", "packages/adapters/source/bms/src", "packages/adapters/source/cobol/src", "packages/adapters/source/aspx/src", "packages/graph/src", "packages/packs/target/spring_boot/src", "packages/packs/target/dotnet/src", "packages/packs/target/frontend/src", "packages/packs/deploy/opentofu/src", "packages/hardening/src", "packages/verification/src", "packages/ui/src", "apps/worker/src"]
+mypy_path = ["apps/api/src", "packages/core/src", "packages/model_gateway/src", "packages/agents/src", "packages/skills/src", "packages/ingest/src", "packages/integrations/src", "packages/sandbox/src", "packages/orchestration/src", "packages/adapters/source/sybase/src", "packages/adapters/source/bms/src", "packages/adapters/source/cobol/src", "packages/adapters/source/aspx/src", "packages/graph/src", "packages/packs/target/spring_boot/src", "packages/packs/target/dotnet/src", "packages/packs/target/frontend/src", "packages/packs/deploy/opentofu/src", "packages/hardening/src", "packages/delivery/src", "packages/verification/src", "packages/ui/src", "apps/worker/src"]
 explicit_package_bases = true
 plugins = ["pydantic.mypy"]
 
 [tool.pytest.ini_options]
-testpaths = ["apps/api/tests", "packages/core/tests", "packages/model_gateway/tests", "packages/ingest/tests", "packages/integrations/tests", "packages/sandbox/tests", "packages/orchestration/tests", "packages/adapters/source/sybase/tests", "packages/adapters/source/bms/tests", "packages/adapters/source/cobol/tests", "packages/adapters/source/aspx/tests", "packages/graph/tests", "packages/packs/target/spring_boot/tests", "packages/packs/target/dotnet/tests", "packages/packs/target/frontend/tests", "packages/packs/deploy/opentofu/tests", "packages/hardening/tests", "packages/verification/tests", "packages/ui/tests", "apps/worker/tests"]
+testpaths = ["apps/api/tests", "packages/core/tests", "packages/model_gateway/tests", "packages/ingest/tests", "packages/integrations/tests", "packages/sandbox/tests", "packages/orchestration/tests", "packages/adapters/source/sybase/tests", "packages/adapters/source/bms/tests", "packages/adapters/source/cobol/tests", "packages/adapters/source/aspx/tests", "packages/graph/tests", "packages/packs/target/spring_boot/tests", "packages/packs/target/dotnet/tests", "packages/packs/target/frontend/tests", "packages/packs/deploy/opentofu/tests", "packages/hardening/tests", "packages/delivery/tests", "packages/verification/tests", "packages/ui/tests", "apps/worker/tests"]
 addopts = ["--import-mode=importlib", "-ra"]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "session"
