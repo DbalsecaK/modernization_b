@@ -60,7 +60,7 @@ def test_traces_are_recognised_and_described_for_the_engineer() -> None:
     files = workspace()
     assert [f.path for f in files if is_trace(f)] == ["traces/PAGOORD.json"]
     broken = [SourceFile("traces/X.json", json.dumps({"engine": "other"}))]
-    assert "not a CICS trace" in load_traces(broken)[1][0]
+    assert "not a recorded trace" in load_traces(broken)[1][0]
     digest = CobolAdapter().digest(files)
     assert "Transaction PGOR" in digest
     assert "program:PAGOORD CALLS program:PAGODEB (LINK)" in digest

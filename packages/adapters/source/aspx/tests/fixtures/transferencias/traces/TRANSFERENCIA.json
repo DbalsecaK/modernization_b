@@ -73,7 +73,11 @@
    "case": {
     "name": "programada_hasta_mil",
     "description": "A scheduled transfer of up to 1,000 pays the fixed fee",
-    "rules": [],
+    "rules": [
+     "RULE-005",
+     "RULE-009",
+     "RULE-010"
+    ],
     "inputs": {
      "txtCuentaOrigen": "1000000001",
      "txtCuentaDestino": "1000000002",
@@ -180,7 +184,10 @@
    "case": {
     "name": "inmediata_hasta_mil",
     "description": "An immediate transfer adds 1.00 to the fixed fee",
-    "rules": [],
+    "rules": [
+     "RULE-005",
+     "RULE-008"
+    ],
     "inputs": {
      "txtCuentaOrigen": "1000000001",
      "txtCuentaDestino": "1000000002",
@@ -287,7 +294,9 @@
    "case": {
     "name": "programada_sobre_mil",
     "description": "Above 1,000 the fee is 0.1 % of the amount",
-    "rules": [],
+    "rules": [
+     "RULE-006"
+    ],
     "inputs": {
      "txtCuentaOrigen": "1000000001",
      "txtCuentaDestino": "1000000002",
@@ -394,7 +403,9 @@
    "case": {
     "name": "tope_de_comision",
     "description": "The percentage fee is capped at 5.00",
-    "rules": [],
+    "rules": [
+     "RULE-007"
+    ],
     "inputs": {
      "txtCuentaOrigen": "1000000001",
      "txtCuentaDestino": "1000000002",
@@ -501,7 +512,10 @@
    "case": {
     "name": "tope_mas_inmediata",
     "description": "The cap applies before the immediate surcharge",
-    "rules": [],
+    "rules": [
+     "RULE-007",
+     "RULE-008"
+    ],
     "inputs": {
      "txtCuentaOrigen": "1000000001",
      "txtCuentaDestino": "1000000002",
@@ -608,7 +622,9 @@
    "case": {
     "name": "redondeo_hacia_arriba",
     "description": "0.1 % of 1,005 rounds half away from zero to 1.01",
-    "rules": [],
+    "rules": [
+     "RULE-006"
+    ],
     "inputs": {
      "txtCuentaOrigen": "1000000001",
      "txtCuentaDestino": "1000000002",
@@ -715,7 +731,9 @@
    "case": {
     "name": "misma_cuenta",
     "description": "The destination cannot be the origin",
-    "rules": [],
+    "rules": [
+     "RULE-001"
+    ],
     "inputs": {
      "txtCuentaOrigen": "1000000001",
      "txtCuentaDestino": "1000000001",
@@ -814,7 +832,9 @@
    "case": {
     "name": "origen_no_existe",
     "description": "An origin account that does not exist",
-    "rules": [],
+    "rules": [
+     "RULE-002"
+    ],
     "inputs": {
      "txtCuentaOrigen": "1000000099",
      "txtCuentaDestino": "1000000002",
@@ -913,7 +933,9 @@
    "case": {
     "name": "origen_inactiva",
     "description": "An inactive origin account",
-    "rules": [],
+    "rules": [
+     "RULE-003"
+    ],
     "inputs": {
      "txtCuentaOrigen": "1000000003",
      "txtCuentaDestino": "1000000002",
@@ -1012,7 +1034,9 @@
    "case": {
     "name": "destino_no_existe",
     "description": "An inactive destination counts as not existing",
-    "rules": [],
+    "rules": [
+     "RULE-004"
+    ],
     "inputs": {
      "txtCuentaOrigen": "1000000001",
      "txtCuentaDestino": "1000000003",
@@ -1111,7 +1135,9 @@
    "case": {
     "name": "saldo_insuficiente",
     "description": "The balance must cover the amount and the fee",
-    "rules": [],
+    "rules": [
+     "RULE-009"
+    ],
     "inputs": {
      "txtCuentaOrigen": "1000000005",
      "txtCuentaDestino": "1000000002",
@@ -1210,7 +1236,10 @@
    "case": {
     "name": "saldo_exacto",
     "description": "A balance that exactly covers amount and fee is enough",
-    "rules": [],
+    "rules": [
+     "RULE-009",
+     "RULE-010"
+    ],
     "inputs": {
      "txtCuentaOrigen": "1000000004",
      "txtCuentaDestino": "1000000002",

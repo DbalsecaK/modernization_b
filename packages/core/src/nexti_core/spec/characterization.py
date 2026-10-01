@@ -22,6 +22,8 @@ if TYPE_CHECKING:
 Scalar = str | int | float | bool | None
 # The engine of a golden master taken from recorded traces (CICS, ADR-0015): the legacy did not run on the platform.
 TRACE_ENGINE = "cics-trace"
+# Every engine whose golden master comes from recorded traces (CICS ADR-0015, ASPX ADR-0020).
+TRACE_ENGINES = (TRACE_ENGINE, "aspx-trace")
 Identifier = Annotated[str, StringConstraints(pattern=r"^[A-Za-z_#@][A-Za-z0-9_#$@.]*$", max_length=200)]
 CASE_NAME = re.compile(r"^[a-z][a-z0-9_]{2,79}$")
 
@@ -133,7 +135,7 @@ class GoldenMaster(CharacterizationModel):
     @property
     def from_traces(self) -> bool:
         """Observed from recorded traces: the legacy cannot run fresh inputs (the verdict stays PARTLY PROVEN)."""
-        return self.engine == TRACE_ENGINE
+        return self.engine in TRACE_ENGINES
 
 
 def source_digest(files: "Sequence[SourceFile]") -> str:
