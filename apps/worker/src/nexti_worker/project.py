@@ -214,6 +214,14 @@ class WorkerProjectPort:
             ).all()  # fmt: skip
         return {row.path: await self._get(row.object_key) for row in rows}
 
+    async def open_questions(self) -> list[str]:
+        async with self._db() as conn:
+            rows = (
+                await conn.execute(text("SELECT question_text FROM question WHERE project_id = :p AND status = 'open' "
+                                        "ORDER BY created_at"), {"p": self.run.project_id})
+            ).scalars()  # fmt: skip
+            return [str(r) for r in rows]
+
     async def save_capabilities(self, capabilities: Sequence[Capability]) -> None:
         await self._save_elements("capability", [(c.id, c.model_dump(mode="json")) for c in capabilities])
 

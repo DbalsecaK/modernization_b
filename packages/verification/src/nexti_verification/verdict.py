@@ -12,6 +12,7 @@
 PROVEN: all pass. NOT PROVEN: one fails. PARTLY PROVEN: none failed but one could not be checked. Every verdict
 lists what it does not prove. PROVEN is evidence, not approval: a person signs off at C4."""
 
+import re
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Any, Literal
@@ -38,7 +39,17 @@ FRONTEND_CHECKS: tuple[tuple[str, str], ...] = (
     ("actions", "Actions"),
     ("accessibility", "Accessibility"),
 )
-_TITLES = dict(CHECKS) | dict(FRONTEND_CHECKS)
+# The checks of Flow 2 (11.4, 7.5; ADR-0018): there is no legacy, so the acceptance criteria are the oracle.
+FEATURE_CHECKS: tuple[tuple[str, str], ...] = (
+    ("tests_ran", "Tests ran"),
+    ("criteria_covered", "Criteria covered"),
+    ("contracts", "Contracts"),
+    ("canary", "Canary"),
+    ("questions_closed", "Questions closed"),
+    ("traced_to_inputs", "Traced to inputs"),
+)
+_TITLES = dict(CHECKS) | dict(FRONTEND_CHECKS) | dict(FEATURE_CHECKS)
+_CRITERION = re.compile(r"(?i)ac_?us-?_?0*(\d{1,4})_(\d{1,3})(?![0-9])")
 
 
 @dataclass(frozen=True)
@@ -196,6 +207,51 @@ def source_intact(characterized: str | None, current: str) -> Check:
     if characterized != current:
         return Check("source_intact", "failed", "the legacy changed after it was characterized", evidence)
     return Check("source_intact", "passed", "the legacy is the code that was characterized (SHA-256)", evidence)
+
+
+def criterion_test(story: str, number: int) -> str:
+    """The prefix of the test of a story's criterion, e.g. ac_US001_2_."""
+    return f"ac_{story.replace('-', '')}_{number}_"
+
+
+def criteria_covered(criteria: Sequence[tuple[str, int, str]], passed_tests: Sequence[str]) -> Check:
+    """Every criterion (story key, number, scenario name) has a test that carries its id and passed (7.5)."""
+    if not criteria:
+        return Check("criteria_covered", "not_checked", "no story has criteria that tests can cover")
+    found = {(int(m.group(1)), int(m.group(2))) for name in passed_tests for m in _CRITERION.finditer(name)}
+    missing = [f"{story} #{n} ({name})" for story, n, name in criteria
+               if (int(story.split("-")[-1]), n) not in found]  # fmt: skip
+    evidence = {"criteria": len(criteria), "missing": missing}
+    if missing:
+        detail = f"{len(missing)} of {len(criteria)} criteria without a passing test: {'; '.join(missing[:5])}"
+        return Check("criteria_covered", "failed", detail[:1000], evidence)
+    return Check("criteria_covered", "passed", f"{len(criteria)} acceptance criteria covered by passing tests",
+                 evidence)  # fmt: skip
+
+
+def contracts(operations: Sequence[str], missing: Sequence[str]) -> Check:
+    """Every operation of the contract derived from the design has its endpoint in the generated code."""
+    if not operations:
+        return Check("contracts", "not_checked", "the design has no operations")
+    evidence = {"operations": list(operations), "missing": list(missing)}
+    if missing:
+        return Check("contracts", "failed", f"operations without an endpoint: {', '.join(missing)}", evidence)
+    return Check("contracts", "passed", f"{len(operations)} operation(s) of the contract have their endpoint", evidence)
+
+
+def questions_closed(open_questions: Sequence[str]) -> Check:
+    if open_questions:
+        return Check("questions_closed", "failed", f"{len(open_questions)} question(s) still open: "
+                     f"{'; '.join(open_questions[:3])}"[:1000], {"open": list(open_questions)})  # fmt: skip
+    return Check("questions_closed", "passed", "no question is open", {"open": []})
+
+
+def traced_to_inputs(elements: int, untraced: Sequence[str]) -> Check:
+    """Every rule, screen and story cites an accepted input (directly, or through what it links)."""
+    evidence = {"elements": elements, "untraced": list(untraced)}
+    if untraced:
+        return Check("traced_to_inputs", "failed", f"not traced to an input: {', '.join(untraced[:10])}", evidence)
+    return Check("traced_to_inputs", "passed", f"{elements} element(s) traced to the lines of their inputs", evidence)
 
 
 def compute(
