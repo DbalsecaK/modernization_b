@@ -121,18 +121,27 @@ try {
     }
   }
 
+  if ($Demo) {
+    # Before the worker starts: the demo runs the pipeline in its own process.
+    Step 'Demo projects, reproduced from the recordings (no model cost; existing ones are kept)'
+    $workerPid = Join-Path $Pids 'worker.pid'
+    if ((Test-Path $workerPid) -and (Get-Process -Id (Get-Content $workerPid) -ErrorAction SilentlyContinue)) {
+      taskkill /PID (Get-Content $workerPid) /T /F *> $null
+      Remove-Item $workerPid -Force
+      Done 'worker stopped while the demo runs'
+      Start-Sleep -Seconds 35  # its heartbeat must go stale
+    }
+    Invoke-Checked $Uv @('run', '--no-sync', 'python', 'tools/demo/clean.py')
+    Invoke-Checked $Uv @('run', '--no-sync', 'python', 'tools/demo/seed_demo.py')
+    Invoke-Checked $Uv @('run', '--no-sync', 'python', 'tools/demo/inputs.py')
+  }
+
   Step 'API, worker and web'
   Start-Background 'api' "`"$Uv`" run --no-sync uvicorn --factory nexti_api.main:create_app --host 127.0.0.1 --port 8100"
   Start-Background 'worker' "`"$Uv`" run --no-sync python -m nexti_worker"
   Start-Background 'web' 'pnpm --filter @nexti/web dev --port 5173 --strictPort'
   Wait-Url 'API' 'http://127.0.0.1:8100/api/v1/health/live' 120
   Wait-Url 'Web' 'http://localhost:5173' 120
-
-  if ($Demo) {
-    Step 'Demo projects, reproduced from the recordings (no model cost; existing ones are kept)'
-    Invoke-Checked $Uv @('run', '--no-sync', 'python', 'tools/demo/seed_demo.py')
-    Invoke-Checked $Uv @('run', '--no-sync', 'python', 'tools/demo/inputs.py')
-  }
 }
 finally {
   Pop-Location

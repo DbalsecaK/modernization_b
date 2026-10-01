@@ -7,7 +7,8 @@ the acceptances), but the models' answers come from the recordings: the provider
 request without a recording fails instead of reaching the network, and nothing is spent. The usage ledger keeps the
 cost the recording had, so the Costs tab shows what the run cost when it was recorded.
 
-Development only (APP_ENV=development). Idempotent: a demo project that exists is left alone; --reset deletes the
+Development only (APP_ENV=development), and with the worker stopped: the runs go on in this process, and a worker
+would resume them without the recordings. Idempotent: a demo project that exists is left alone; --reset deletes the
 demo projects first.
 
     uv run --no-sync python tools/demo/seed_demo.py [--reset] [--only m4|m6|m6b]
@@ -39,6 +40,7 @@ from nexti_api.main import create_app  # noqa: E402
 from nexti_api.settings import Settings  # noqa: E402
 from nexti_core.object_store import ObjectStore, ObjectStoreConfig  # noqa: E402
 from nexti_core.secrets import SecretsConfig, SecretStore  # noqa: E402
+from nexti_graph import GraphStore  # noqa: E402
 from nexti_model_gateway.service import GatewayService  # noqa: E402
 from nexti_model_gateway.service import SecretsConfig as GatewaySecrets  # noqa: E402
 from nexti_sandbox import DockerSandbox  # noqa: E402
@@ -52,7 +54,9 @@ DEMOS = {
     "m6": ("Demo · Pagos COBOL/CICS → Spring Boot", ["cobol-cics", "bms"]),
     "m6b": ("Demo · Pagos frontend React y Angular", ["bms"]),
 }
+DESCRIPTION = "Demo project replayed from the {key} acceptance recordings: a full run with no model cost."
 MAX_STEPS = 30
+WORKER_ALIVE_SECONDS = 30
 
 
 class Demo:
@@ -107,11 +111,18 @@ class Demo:
         secrets = GatewaySecrets(self.settings.secrets_url, self.settings.secrets_token.get_secret_value())
         return GatewayService(self.app, http, secrets, cassettes=(recordings, "replay"))
 
+    async def unqueue(self, run_id: uuid.UUID) -> None:
+        """Drops the jobs the API queued to resume the run: this process runs it, no worker must pick it up."""
+        await self.rows(
+            "DELETE FROM procrastinate_jobs WHERE status = 'todo' AND args->>'run_id' = :r RETURNING id", r=str(run_id)
+        )
+
     async def drive(self, project_id: uuid.UUID, run_id: uuid.UUID, runtime: Runtime) -> list[str]:
         """Runs the pipeline to its end, approving each gate and taking each recommendation through the API."""
         base = f"/api/v1/projects/{project_id}"
         decided: list[str] = []
         for _ in range(MAX_STEPS):
+            await self.unqueue(run_id)
             await execute_run(runtime, run_id, self.tenant)
             (run,) = await self.rows("SELECT status, waiting_reason FROM run WHERE id = :r", r=run_id)
             if run["status"] != "waiting":
@@ -135,6 +146,7 @@ class Demo:
                 decided.append("questions")
             else:
                 break  # a phase this version does not have yet (hardening, delivery)
+        await self.unqueue(run_id)
         return decided
 
 
@@ -157,16 +169,27 @@ async def pipeline(demo: Demo, name: str, recordings: Path, team: dict[str, str]
         gateway = demo.gateway(http, recordings / "models")
         path = await m4.model_for(demo.owner, gateway, demo.tenant, project_id, live=False)
         secrets = SecretsConfig(demo.settings.secrets_url, demo.settings.secrets_token.get_secret_value())
+        # The knowledge graph of the Inventory tab, as the worker writes it.
+        graph = (
+            GraphStore.connect(
+                demo.settings.graph_uri, demo.settings.graph_user, demo.settings.graph_password.get_secret_value()
+            )
+            if demo.settings.graph_uri
+            else None
+        )
         runtime = Runtime(
             engine=demo.app,
             dsn=demo.settings.database_url.get_secret_value().replace("postgresql+asyncpg://", "postgresql://", 1),
             sandbox=FakeSandbox(), http=http, objects=demo.store, secrets=SecretStore(secrets, http),
             gateway=gateway, sandboxes=lambda image: DockerSandbox(image=image), legacy=legacy,
+            graph=graph,
         )  # fmt: skip
         try:
             decided = await demo.drive(project_id, run_id, runtime)
         finally:
             await gateway.delete_credential(path)
+            if graph is not None:
+                await graph.close()
     print(f"  {name}: decisions {decided}")
     return project_id
 
@@ -241,6 +264,17 @@ async def main(reset: bool, only: list[str]) -> int:
         with TestClient(create_app(settings.model_copy(update={"dev_auth_enabled": True})),
                         base_url="https://testserver") as api:  # fmt: skip
             demo = Demo(settings, owner, app, api)
+            alive = await demo.rows(
+                "SELECT id FROM procrastinate_workers WHERE last_heartbeat > now() - make_interval(secs => :s)",
+                s=WORKER_ALIVE_SECONDS,
+            )
+            if alive:
+                print(
+                    "A worker is running: stop it first (scripts/stop-local.ps1). The demo runs the pipeline in "
+                    "this process, and a worker would resume the same runs without the recordings.",
+                    file=sys.stderr,
+                )
+                return 2
             await demo.locate()
             for key in only:
                 name, sources = DEMOS[key]
@@ -257,6 +291,8 @@ async def main(reset: bool, only: list[str]) -> int:
                 # Cosmetic, after the run: the source technologies the wizard would have recorded.
                 await demo.rows("UPDATE project_config SET sources = CAST(:s AS text[]) WHERE project_id = :p "
                                 "RETURNING version", s=sources, p=project_id)  # fmt: skip
+                await demo.rows("UPDATE project SET description = :d WHERE id = :p RETURNING id",
+                                d=DESCRIPTION.format(key=key.upper()), p=project_id)  # fmt: skip
                 verdicts = await demo.rows("SELECT module, verdict FROM verdict WHERE project_id = :p ORDER BY module",
                                            p=project_id)  # fmt: skip
                 if not verdicts:

@@ -75,7 +75,7 @@ En Windows, un comando levanta todo (servicios, base de datos, sandboxes, API, w
 proyectos completos reproducidos desde las grabaciones, sin costo de modelos:
 
 ```powershell
-.\scripts\start-local.ps1 -Demo     # la primera vez tarda unos 25 minutos; luego, menos de un minuto
+.\scripts\start-local.ps1 -Demo     # la primera vez, unos 20 minutos; luego, uno o dos
 .\scripts\status-local.ps1
 .\scripts\stop-local.ps1
 ```

@@ -26,7 +26,7 @@ Desde la raíz del repositorio, en PowerShell:
 ```
 
 La primera vez construye las imágenes de sandbox (unos 10 a 15 minutos) y reproduce los tres proyectos de demo
-(unos 10 minutos). Las veces siguientes basta con `.\scripts\start-local.ps1`, que tarda menos de un minuto.
+(unos 5 minutos). Las veces siguientes basta con `.\scripts\start-local.ps1`, que tarda menos de un minuto.
 
 Si PowerShell no permite ejecutar scripts, usa:
 
@@ -46,7 +46,8 @@ Al terminar, el script muestra las direcciones:
 | `.\scripts\stop-local.ps1` | Detiene la API, el worker y la web |
 | `.\scripts\stop-local.ps1 -Services` | Además detiene los servicios Docker (los datos quedan en los volúmenes) |
 | `.\scripts\start-local.ps1 -Sync` | Después de un `git pull`: reinstala dependencias de Python y Node |
-| `pnpm demo:seed -- --reset` | Vuelve a crear los proyectos de demo desde cero |
+| `pnpm demo:clean` | Borra los proyectos que crean las pruebas E2E (`E2E …`), para que el listado muestre solo los sembrados y los de demo |
+| `.\scripts\stop-local.ps1` y luego `pnpm demo:seed --reset` | Vuelve a crear los proyectos de demo desde cero (con el worker detenido; después, arranca de nuevo) |
 
 Los registros de cada proceso quedan en `.local\logs\`.
 
@@ -64,6 +65,10 @@ Solo existe en desarrollo.
 | **Platform Admin** | NexTI | Superadministrador: Operación de plataforma y alta de clientes |
 
 ## 4. Proyectos de demo
+
+Entra como **María Torres**: los tres proyectos están en el cliente **Andes Bank** (selector de cliente de la barra
+superior) y en **Proyectos** aparecen con el prefijo **Demo ·**. Si entras como Platform Admin, tu cliente activo es
+NexTI y no los verás.
 
 | Proyecto | Origen y destino | Veredicto |
 |---|---|---|
@@ -153,7 +158,8 @@ entorno local. Por eso el modo real se prueba con el caso COBOL/CICS, que trae s
 | Un puerto ocupado | Cierra el programa que lo usa, o cambia el puerto en `infra/docker-compose/.env` y vuelve a arrancar |
 | `uv sync` falla con archivos bloqueados (OneDrive) | Pausa la sincronización de OneDrive y repite con `-Sync` |
 | La web no carga o la API no responde | Revisa `.local\logs\web.err.log` y `.local\logs\api.err.log` |
-| Una demo falla a mitad | `pnpm demo:seed -- --reset` la vuelve a crear |
+| Una demo falla a mitad | Detén todo con `stop-local.ps1`, ejecuta `pnpm demo:seed --reset` y vuelve a arrancar |
+| La demo dice *A worker is running* | La demo corre el pipeline en su propio proceso: detén el worker con `stop-local.ps1` y repite |
 
 ## 7. Qué todavía no se puede probar
 

@@ -1,9 +1,9 @@
 # Plan P1 — Arranque local y guía de prueba
 
-- **Estado:** en curso (desde 2026-10-01).
+- **Estado:** cerrado (2026-10-01), ver la sección 5. Sigue M6c (.NET 10 con SQL Server).
 - **Objetivo:** que el aprobador levante la plataforma en su máquina con un solo comando y la recorra de punta a punta
   en el navegador, sin ayuda y sin costo de modelos, siguiendo una guía.
-- **Rama:** `p1-arranque-local`, apilada sobre `p2-pantallas-conectadas` (PR #9). Un commit por paso y PR al terminar.
+- **Rama:** `p1-arranque-local`, sobre `main` después de mergear P2 (PR #9). Un commit por paso y PR al terminar.
 - **Decisión del aprobador (2026-09-30):** P2 primero, luego P1. No cambia la especificación ni la API: son
   herramientas de desarrollo y documentación.
 
@@ -50,3 +50,33 @@ Es idempotente: un proyecto de demo que ya existe no se repite; `--reset` lo bor
 | Los tres proyectos de demo quedan con su veredicto y todas sus pestañas con datos | `seed_demo.py` verifica los veredictos al terminar; recorrido E2E de las pestañas |
 | La demo no llama a ningún proveedor de modelos | Reproducción sin red hacia proveedores (credencial de marcador) y costo grabado, no gastado |
 | La guía permite recorrer los escenarios sin ayuda | Recorrido de la guía en limpio |
+
+## 5. Cierre de P1 (2026-10-01)
+
+| Criterio | Evidencia | Estado |
+|---|---|---|
+| Un comando deja la plataforma lista en `http://localhost:5173` | `start-local.ps1` en esta máquina: herramientas, `.env`, 9 servicios sanos, migraciones, datos de desarrollo, imágenes, API, worker y web; `status-local.ps1` lo confirma | ✅ |
+| Los tres proyectos de demo quedan con su veredicto y sus pestañas con datos | `pnpm demo:seed --reset`: Sybase PROVEN, COBOL/CICS PARTLY PROVEN, frontend React y Angular PROVEN, con todas las compuertas aprobadas; `e2e/demo.spec.ts` recorre validación, código, arquitectura, trazabilidad, costos, ejecuciones, inventario y pantallas, y los permisos de Luis Andrade | ✅ |
+| La demo no llama a ningún proveedor de modelos | Grabaciones en modo `replay` (una petición sin grabación falla sin salir a la red) y credencial de marcador | ✅ |
+| La guía permite recorrer los escenarios sin ayuda | `docs/GUIA_PRUEBA_LOCAL.md`, con sus pasos verificados contra la plataforma levantada por el script | ✅ |
+
+La reconstrucción de las tres demos tarda unos 5 minutos. En esta máquina las imágenes de sandbox ya existían, así
+que la construcción inicial de imágenes (unos 10 a 15 minutos, la misma que hace el CI) no se cronometró aquí.
+
+**Hallazgos de la prueba en limpio, ya corregidos**
+
+- Con el worker en marcha, cada aprobación de la demo encolaba un trabajo que el worker tomaba en paralelo, sin las
+  grabaciones. La demo ahora descarta esos trabajos, se niega a correr con un worker vivo, y `start-local.ps1 -Demo`
+  la ejecuta antes de levantar el worker.
+- La segregación de funciones exige que lance la ejecución alguien distinto de quien aprueba: lanza Luis Andrade
+  (analista en las demos) y aprueba María Torres (responsable). C4 necesita el rol de responsable del proyecto.
+- La demo no pasaba el grafo de conocimiento al worker y la pestaña Inventario quedaba vacía.
+- La web mostraba "Project not found" ante un corte de red transitorio del servidor de desarrollo; ahora reintenta
+  los errores que no son 4xx.
+
+**Limitaciones conocidas**
+
+- Los scripts son para Windows; en Linux y macOS se usan los comandos de `pnpm` de la sección Desarrollo del README.
+- El modo real se prueba con el caso COBOL/CICS. El caso Sybase necesita un motor Sybase vivo, que no forma parte del
+  entorno local.
+- La pestaña Costos de las demos muestra el costo que tuvo cada ejecución al grabarse, no un gasto en la máquina local.
