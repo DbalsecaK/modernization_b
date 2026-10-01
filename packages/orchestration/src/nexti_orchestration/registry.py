@@ -15,6 +15,7 @@ from nexti_orchestration.graph import Executor
 from nexti_orchestration.model import RunContext
 from nexti_orchestration.modernization import ModernizationPhases, ProjectPort
 from nexti_orchestration.preflight import Preflight, PreflightProbe
+from nexti_orchestration.release import ReleasePhases, ReleasePort
 from nexti_orchestration.ui import UiPhases, UiPort
 from nexti_orchestration.verification import VerificationPhases, VerificationPort
 
@@ -49,6 +50,9 @@ def executors_for(
             executors.update({"design": generation.design, "generation": generation.generation})
         if hasattr(port, "save_verdict"):  # a port that can also keep verdicts and proof packs
             executors["verification"] = VerificationPhases(cast(VerificationPort, port)).verification
+        if hasattr(port, "save_release"):  # hardening and delivery (M9a, ADR-0023)
+            release = ReleasePhases(cast(ReleasePort, port))
+            executors.update({"hardening": release.hardening, "delivery": release.delivery})
     if port is not None and run.flow == "newFeature" and hasattr(port, "documents"):  # Flow 2 (M7)
         feature = FeaturePhases(cast(FeaturePort, port))
         build = FeatureBuildPhases(cast(FeatureBuildPort, port))
@@ -64,4 +68,6 @@ def executors_for(
             "validation": build.validation,
             "delivery": build.delivery,
         })  # fmt: skip
+        if hasattr(port, "save_release"):
+            executors["delivery"] = ReleasePhases(cast(ReleasePort, port)).delivery
     return executors

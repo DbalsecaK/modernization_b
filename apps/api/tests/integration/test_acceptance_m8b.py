@@ -134,8 +134,7 @@ async def test_the_fictitious_application_reaches_a_verdict_on_oracle_with_its_a
     run = await state(owner_engine, run_id)
     events = await fetch(owner_engine, "SELECT kind, message FROM activity_event WHERE run_id = :r ORDER BY id",
                          r=run_id)  # fmt: skip
-    assert (run["status"], run["waiting_reason"], run["current_phase"]) == ("waiting", "phaseUnavailable",
-                                                                           "hardening"), (
+    assert run["status"] == "succeeded", (  # hardening and delivery (M9a) close the run
         run, [e for e in events if e["kind"] in ("failed", "escalated", "verificationFailed")][-5:])  # fmt: skip
     assert {"C1", "C4"} <= set(decided)
     rows = await fetch(owner_engine, "SELECT module, verdict, checks, proof_pack_key FROM verdict WHERE run_id = :r",
@@ -167,3 +166,13 @@ async def test_the_fictitious_application_reaches_a_verdict_on_oracle_with_its_a
     assert set(verdicts) == {"PayOrder", "iac-aws"}
     assert {"infra/aws/main.tf", "infra/aws/variables.tf", "infra/aws/outputs.tf", "infra/aws/README.md"} <= files
     assert any(p.endswith("/JdbcAccountRepository.java") for p in files)
+    # Hardening and delivery (M9a, ADR-0023): the report, the cutover plan and the release (a ZIP: no repository).
+    assert {
+        "hardening/report.json",
+        "hardening/REPORT.md",
+        "docs/cutover/PLAN.md",
+        "docs/cutover/routing.yaml",
+    } <= files
+    (release,) = await fetch(owner_engine, "SELECT kind, status, files FROM release WHERE run_id = :r", r=run_id)
+    assert (release["kind"], release["status"]) == ("zip", "ready")
+    assert release["files"] > 0

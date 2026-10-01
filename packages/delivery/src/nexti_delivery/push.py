@@ -30,11 +30,19 @@ class Pushed:
     files: int
 
 
+def _reason(exc: Exception, token: str | None) -> str:
+    """The kind and the message of a failure, never the token."""
+    text = f"{type(exc).__name__}: {exc}"[:240]
+    return text.replace(token, "***") if token else text
+
+
 def branch_name(run: str) -> str:
     return BRANCH_PREFIX + re.sub(r"[^a-z0-9-]+", "-", run.lower()).strip("-")[:40]
 
 
-def _client(url: str, token: str | None) -> tuple[HttpGitClient, str]:
+def _client(url: str, token: str | None, loopback_http: bool = False) -> tuple[HttpGitClient, str]:
+    if loopback_http:  # local environments only: a Git server of the tests on this machine, without TLS
+        url = re.sub(r"^https://(127\.0\.0\.1|localhost)([:/])", r"http://\1\2", url)
     match = re.match(r"^(https?://[^/]+)(/.*)$", url.rstrip("/"))
     if not match:
         raise PushError("only http(s) repository URLs are supported")
@@ -86,14 +94,14 @@ def _without(repo: MemoryRepo, tree: Tree | None, parts: list[str]) -> Tree | No
 
 async def push_release(
     url: str, token: str | None, base_branch: str, branch: str, prefix: str, files: Mapping[str, str], message: str,
-    ensure_host: Callable[[str], Awaitable[None]] | None = None,
+    ensure_host: Callable[[str], Awaitable[None]] | None = None, loopback_http: bool = False,
 ) -> Pushed:  # fmt: skip
     """Pushes `files` under `prefix` to a new commit on `branch`, parented on `base_branch` when it exists."""
     if not branch.startswith(BRANCH_PREFIX) or branch == base_branch:
         raise PushError("a release goes to its own nexti/ branch, never to the base branch")
     if ensure_host is not None:
         await ensure_host(url)
-    client, path = _client(url, token)
+    client, path = _client(url, token, loopback_http)
     repo = MemoryRepo()
     store = cast(Any, repo.object_store)  # dulwich types refs and ids as NewTypes of bytes
     base_ref = f"refs/heads/{base_branch}".encode()
@@ -104,7 +112,7 @@ async def push_release(
         if base_sha is not None:
             cast(Any, client).fetch(path, repo, determine_wants=lambda _refs, depth=None: [base_sha], depth=1)
     except Exception as exc:  # dulwich raises several kinds; none may leak the token
-        raise PushError(f"the repository could not be read ({type(exc).__name__})") from None
+        raise PushError(f"the repository could not be read ({_reason(exc, token)})") from None
     tree: Tree | None = None
     if base_sha is not None:
         tree = store[store[base_sha].tree]
@@ -130,7 +138,7 @@ async def push_release(
         send = cast(Any, client).send_pack
         result = send(path, lambda current: {**current, target: commit.id}, generate_pack_data=repo.generate_pack_data)
     except Exception as exc:
-        raise PushError(f"the repository refused the push ({type(exc).__name__})") from None
+        raise PushError(f"the repository refused the push ({_reason(exc, token)})") from None
     statuses = getattr(result, "ref_status", None) or {}
     if statuses.get(target):
         raise PushError(f"the repository refused the branch: {statuses[target]}"[:300])

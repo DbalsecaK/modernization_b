@@ -3,7 +3,7 @@ time, and the whole project as a zip.
 
 Files come from `generated_artifact` rows written by the worker; a path asked by the client is only looked up in that
 table, never used to build a storage key. Reading needs `code.view`; the zip needs `code.download` and is audited.
-Pushing to Git is the delivery phase of the pipeline (spec 6.1 phase 13), not an action of this tab."""
+Pushing to the customer's repository (`code.push`) and the hardening report are in `spec/delivery.py` (ADR-0023)."""
 
 import io
 import uuid

@@ -940,6 +940,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/projects/{project_id}/code:push": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Push Code
+         * @description The files of the Code tab to a new `nexti/` branch of the project's repository.
+         */
+        post: operations["push_code_api_v1_projects__project_id__code_push_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/projects/{project_id}/config": {
         parameters: {
             query?: never;
@@ -1083,6 +1103,23 @@ export interface paths {
          * @description What may break if the node changes (5.2): the units that use it, up to `depth` hops.
          */
         get: operations["impact_api_v1_projects__project_id__graph_impact_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/projects/{project_id}/hardening": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Hardening Report */
+        get: operations["hardening_report_api_v1_projects__project_id__hardening_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1263,6 +1300,23 @@ export interface paths {
          * @description Accept the recommendation of the open low-impact questions (all of the project, or the ones given).
          */
         post: operations["accept_recommended_api_v1_projects__project_id__questions_accept_recommended_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/projects/{project_id}/releases": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Releases */
+        get: operations["releases_api_v1_projects__project_id__releases_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -3573,6 +3627,57 @@ export interface components {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
         };
+        /** HardeningCheckOut */
+        HardeningCheckOut: {
+            /** Detail */
+            detail: string;
+            /** Kind */
+            kind: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "checked" | "not_checked";
+        };
+        /** HardeningFindingOut */
+        HardeningFindingOut: {
+            /** File */
+            file: string;
+            /** Kind */
+            kind: string;
+            /** Line */
+            line: number | null;
+            /** Message */
+            message: string;
+            /** Rule */
+            rule: string;
+            /**
+             * Severity
+             * @enum {string}
+             */
+            severity: "critical" | "high" | "medium" | "low";
+        };
+        /** HardeningOut */
+        HardeningOut: {
+            /** Checks */
+            checks: components["schemas"]["HardeningCheckOut"][];
+            /** Counts */
+            counts: {
+                [key: string]: number;
+            };
+            /** Findings */
+            findings: components["schemas"]["HardeningFindingOut"][];
+            /**
+             * Generatedat
+             * Format: date-time
+             */
+            generatedAt: string;
+            /**
+             * Runid
+             * Format: uuid
+             */
+            runId: string;
+        };
         /** IdentityOut */
         IdentityOut: {
             /** Domains */
@@ -4770,6 +4875,45 @@ export interface components {
             agent: string;
             /** Reason */
             reason: string;
+        };
+        /** ReleaseOut */
+        ReleaseOut: {
+            /** Branch */
+            branch: string | null;
+            /** Commitsha */
+            commitSha: string | null;
+            /**
+             * Createdat
+             * Format: date-time
+             */
+            createdAt: string;
+            /** Error */
+            error: string | null;
+            /** Files */
+            files: number;
+            /** Findings */
+            findings: {
+                [key: string]: number;
+            };
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "push" | "zip";
+            /** Repositoryurl */
+            repositoryUrl: string | null;
+            /** Runid */
+            runId: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "pushed" | "failed" | "ready";
         };
         /** RepositoryIn */
         RepositoryIn: {
@@ -7734,6 +7878,37 @@ export interface operations {
             };
         };
     };
+    push_code_api_v1_projects__project_id__code_push_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReleaseOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     change_config_api_v1_projects__project_id__config_put: {
         parameters: {
             query?: never;
@@ -7976,6 +8151,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ImpactOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    hardening_report_api_v1_projects__project_id__hardening_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HardeningOut"] | null;
                 };
             };
             /** @description Validation Error */
@@ -8340,6 +8546,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AcceptRecommendedOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    releases_api_v1_projects__project_id__releases_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReleaseOut"][];
                 };
             };
             /** @description Validation Error */

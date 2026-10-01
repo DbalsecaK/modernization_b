@@ -354,11 +354,11 @@ async def test_the_fictitious_application_reaches_a_verdict_computed_by_code(
         owner_engine, "SELECT phase, kind, message FROM activity_event WHERE run_id = :r ORDER BY id", r=run_id
     )
     run = await state(owner_engine, run_id)
-    assert (run["status"], run["waiting_reason"], run["current_phase"]) == (
-        "waiting",
-        "phaseUnavailable",
-        "hardening",
-    ), (run, [e for e in events if e["kind"] in ("failed", "escalated", "verificationFailed")][-5:])
+    # Hardening and delivery (M9a) close the run: the report and the release (a ZIP: no repository is linked).
+    assert run["status"] == "succeeded", (
+        run,
+        [e for e in events if e["kind"] in ("failed", "escalated", "verificationFailed")][-5:],
+    )
     assert {"C1", "C4"} <= set(decided)
 
     (verdict,) = await fetch(

@@ -7,9 +7,12 @@ import hashlib
 import io
 import json
 import uuid
+import zipfile
 from collections.abc import Callable, Sequence
+from dataclasses import dataclass
 from typing import Any
 
+import httpx
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine
 
@@ -33,6 +36,7 @@ from nexti_orchestration import RunContext
 from nexti_orchestration.extraction import ModelCaller, ModelReply
 from nexti_orchestration.feature import FeatureStory
 from nexti_orchestration.modernization import pick_adapter
+from nexti_orchestration.release import ReleaseRecord, Repository
 from nexti_orchestration.store import Usage
 from nexti_orchestration.stories import Stories
 from nexti_pack_spring_boot import Design
@@ -121,6 +125,16 @@ class LiveFigma:
         return await figma.FigmaClient(self.http, token, self.base_url).file(key)
 
 
+@dataclass(frozen=True)
+class DeliveryServices:
+    """What hardening and delivery need from the worker (ADR-0023)."""
+
+    http: httpx.AsyncClient | None = None
+    secrets: SecretStore | None = None
+    osv_url: str | None = None  # None: dependencies are not checked (offline, tests)
+    allow_private_hosts: bool = False  # local only: the test Git server
+
+
 class WorkerProjectPort:
     def __init__(
         self,
@@ -132,6 +146,7 @@ class WorkerProjectPort:
         sandboxes: Callable[[str], Sandbox] | None = None,
         legacy: Callable[[], LegacyRunner] | None = None,
         figma_reader: figma.FigmaReader | None = None,
+        delivery: DeliveryServices | None = None,
     ) -> None:
         self.engine = engine
         self.run = run
@@ -143,6 +158,7 @@ class WorkerProjectPort:
         self._sandboxes = sandboxes
         self._legacy = legacy
         self._figma = figma_reader
+        self._delivery = delivery or DeliveryServices()
 
     def _db(self) -> Any:
         return scoped_connection(self.engine, DbScope(tenant_id=self.run.tenant_id))
@@ -487,6 +503,64 @@ class WorkerProjectPort:
         if self._sandboxes is None:
             raise RuntimeError("no sandbox is configured for the packs")
         return self._sandboxes(image)
+
+    # -- hardening and delivery (M9a, ADR-0023) --------------------------------------------------------------------
+    def delivery_services(self) -> tuple[httpx.AsyncClient | None, str | None, bool]:
+        return self._delivery.http, self._delivery.osv_url, self._delivery.allow_private_hosts
+
+    async def load_test_report(self) -> str | None:
+        """The JUnit XML of the clean build, from the proof pack of the run's own verdict (not frontend nor IaC)."""
+        async with self._db() as conn:
+            key = (
+                await conn.execute(
+                    text("SELECT proof_pack_key FROM verdict WHERE run_id = :r AND module NOT LIKE 'frontend-%' "
+                         "AND module NOT LIKE 'iac-%' ORDER BY created_at DESC LIMIT 1"),
+                    {"r": self.run.run_id},
+                )
+            ).scalar()  # fmt: skip
+        if not key or self.objects is None:
+            return None
+        data = b"".join(await self.objects.read(key))
+        with zipfile.ZipFile(io.BytesIO(data)) as archive:
+            return archive.read("junit.xml").decode("utf-8") if "junit.xml" in archive.namelist() else None
+
+    async def repository(self) -> Repository | None:
+        async with self._db() as conn:
+            row = (
+                await conn.execute(text("SELECT url, branch, vault_path FROM project_repository WHERE project_id = :p"),
+                                   {"p": self.run.project_id})
+            ).first()  # fmt: skip
+        if row is None:
+            return None
+        token = None
+        if row.vault_path and self._delivery.secrets is not None:
+            token = await self._delivery.secrets.get(row.vault_path)
+        return Repository(row.url, row.branch or "main", token)
+
+    async def may_push(self) -> bool:
+        async with self._db() as conn:
+            found = (
+                await conn.execute(
+                    text("SELECT 1 FROM role_assignment ra JOIN role_permission rp ON rp.role_id = ra.role_id "
+                         "WHERE ra.user_id = (SELECT started_by FROM run WHERE id = :r) "
+                         "AND rp.permission_key = 'code.push' AND (ra.project_id IS NULL OR ra.project_id = :p) "
+                         "LIMIT 1"),
+                    {"r": self.run.run_id, "p": self.run.project_id},
+                )
+            ).first()  # fmt: skip
+        return found is not None
+
+    async def save_release(self, release: ReleaseRecord) -> None:
+        async with self._db() as conn:
+            await conn.execute(
+                text("INSERT INTO release (tenant_id, project_id, run_id, kind, status, repository_url, branch, "
+                     "commit_sha, base_sha, files, findings, error, created_by) VALUES (:t, :p, :r, :k, :s, :u, :b, "
+                     ":c, :base, :f, CAST(:fi AS jsonb), :e, (SELECT started_by FROM run WHERE id = :r))"),
+                {"t": self.run.tenant_id, "p": self.run.project_id, "r": self.run.run_id, "k": release.kind,
+                 "s": release.status, "u": release.repository_url, "b": release.branch, "c": release.commit_sha,
+                 "base": release.base_sha, "f": release.files, "fi": json.dumps(release.findings),
+                 "e": release.error},
+            )  # fmt: skip
 
     # -- characterization (M4) -----------------------------------------------------------------------------------
     def legacy_runner(self) -> LegacyRunner | None:

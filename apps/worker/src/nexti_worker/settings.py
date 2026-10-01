@@ -34,6 +34,8 @@ class WorkerSettings(BaseSettings):
     secrets_mount: str = "secret"
     # Only for local tests against a Git server on the developer's machine; never outside development/test.
     git_allow_private_hosts: bool = False
+    # Dependencies of the generated code in OSV (ADR-0023); empty turns the check off (offline deployments).
+    osv_url: str = "https://api.osv.dev"
     sandbox_image: str = ""
     sandbox_docker: str = "docker"
     # Models (M4): through the gateway with the tenant's connection; OpenRouter base URL for tests.

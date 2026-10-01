@@ -75,6 +75,7 @@ async def run_worker(settings: WorkerSettings, *, name: str | None = None, wait:
                 ), http,
             ) if settings.secrets_url else None,
             allow_private_hosts=settings.git_allow_private_hosts and settings.is_local,
+            osv_url=settings.osv_url or None,
             gateway=GatewayService(
                 engine, http,
                 GatewaySecrets(settings.secrets_url, settings.secrets_token.get_secret_value(), settings.secrets_mount),

@@ -132,8 +132,7 @@ async def test_the_fictitious_application_reaches_a_verdict_on_dotnet_and_sql_se
     run = await state(owner_engine, run_id)
     events = await fetch(owner_engine, "SELECT kind, message FROM activity_event WHERE run_id = :r ORDER BY id",
                          r=run_id)  # fmt: skip
-    assert (run["status"], run["waiting_reason"], run["current_phase"]) == ("waiting", "phaseUnavailable",
-                                                                           "hardening"), (
+    assert run["status"] == "succeeded", (  # hardening and delivery (M9a) close the run
         run, [e for e in events if e["kind"] in ("failed", "escalated", "verificationFailed")][-5:])  # fmt: skip
     assert {"C1", "C4"} <= set(decided)
     (verdict,) = await fetch(owner_engine, "SELECT module, verdict, checks, proof_pack_key FROM verdict "

@@ -45,6 +45,7 @@ from nexti_core.db.models import (
     ProjectBacklog,
     ProjectRepository,
     ProviderConnection,
+    Release,
     Role,
     RoleAssignment,
     TenantIdentityProvider,
@@ -490,6 +491,22 @@ class Ctx:
         await self.sync_authz()
         return project_id, verdict_id
 
+    async def pushable_project(self) -> uuid.UUID:
+        """A verified project whose repository is a Git server of the test, with `member` as its developer."""
+        project_id, _ = await self.verified_project()
+        async with self.owner.begin() as conn:
+            await conn.execute(insert(ProjectRepository).values(tenant_id=self.world.tenant_a, project_id=project_id,
+                                                                url=git_server(), branch="main"))  # fmt: skip
+            developer = (
+                await conn.execute(select(Role.id).where(Role.tenant_id == self.world.tenant_a,
+                                                         Role.key == "developer"))
+            ).scalar_one()  # fmt: skip
+            await conn.execute(insert(RoleAssignment).values(tenant_id=self.world.tenant_a, user_id=self.world.shared,
+                                                             role_id=developer, scope="project",
+                                                             project_id=project_id))  # fmt: skip
+        await self.sync_authz()
+        return project_id
+
     async def architecture_project(self) -> uuid.UUID:
         """A fresh project of tenant A with the design of the fictitious application and its OpenAPI document."""
         project_id = await make_project(self.owner, self.world.tenant_a)
@@ -795,6 +812,31 @@ def _verified(suffix: str) -> Callable[[Ctx], Awaitable[Request]]:
     async def make(ctx: Ctx) -> Request:
         project_id, verdict_id = await ctx.verified_project()
         return f"/api/v1/projects/{project_id}{suffix.format(verdict=verdict_id)}", None
+
+    return make
+
+
+def git_server() -> str:
+    """A bare repository served over smart HTTP by dulwich, in a thread of the test (the customer's Git server)."""
+    import tempfile
+    import threading
+    from wsgiref.simple_server import make_server
+
+    from dulwich.repo import Repo
+    from dulwich.server import DictBackend
+    from dulwich.web import WSGIRequestHandlerLogger, WSGIServerLogger, make_wsgi_chain
+
+    repo = Repo.init_bare(tempfile.mkdtemp(prefix="nexti-git-"))
+    app = make_wsgi_chain(DictBackend({"/customer.git": repo}))  # type: ignore[arg-type]
+    httpd = make_server("127.0.0.1", 0, app, handler_class=WSGIRequestHandlerLogger, server_class=WSGIServerLogger)
+    threading.Thread(target=httpd.serve_forever, daemon=True).start()
+    # Repository URLs are https (the platform refuses others); locally, loopback is served without TLS.
+    return f"https://127.0.0.1:{httpd.server_port}/customer.git"
+
+
+def _pushable(suffix: str) -> Callable[[Ctx], Awaitable[Request]]:
+    async def make(ctx: Ctx) -> Request:
+        return f"/api/v1/projects/{await ctx.pushable_project()}{suffix}", None
 
     return make
 
@@ -1133,6 +1175,11 @@ CASES = [
         _verified("/code/file?path=src/main/java/demo/PayOrderService.java"),
     ),
     Case("GET", "/api/v1/projects/{project_id}/code:download", "admin", "outsider", _verified("/code:download")),
+    # Hardening and delivery (M9a, ADR-0023): reading with code.view; pushing with code.push (here a developer of
+    # the project; the tenant administrator holds it too, through the tenant).
+    Case("GET", "/api/v1/projects/{project_id}/hardening", "admin", "outsider", _verified("/hardening")),
+    Case("GET", "/api/v1/projects/{project_id}/releases", "admin", "outsider", _verified("/releases")),
+    Case("POST", "/api/v1/projects/{project_id}/code:push", "member", "outsider", _pushable("/code:push")),
     Case("GET", "/api/v1/projects/{project_id}/design", "admin", "outsider", _architecture("/design")),
     Case("GET", "/api/v1/dashboard", "member", "root", fixed("/api/v1/dashboard")),
     Case("GET", "/api/v1/platform/status", "root", "admin", fixed("/api/v1/platform/status")),
@@ -1163,7 +1210,7 @@ async def root(owner_engine: AsyncEngine) -> uuid.UUID:
 @pytest.fixture
 def api(api_settings: Settings) -> Iterator[TestClient]:
     settings = api_settings.model_copy(update={"dev_auth_enabled": True, "openrouter_url": OPENROUTER,
-                                          "figma_url": FIGMA})  # fmt: skip
+                                          "figma_url": FIGMA, "git_allow_private_hosts": True})  # fmt: skip
     with TestClient(create_app(settings), base_url="https://testserver") as client:
         client.app.state.inputs.git_resolver = _public  # type: ignore[attr-defined]
         yield client
@@ -1527,6 +1574,28 @@ async def test_identity_of_another_tenant_is_unreachable_and_the_client_secret_g
     assert kc["config"]["kc.org.domain"] == body["domains"][0]
     assert kc["config"]["clientSecret"] == "**********"  # Keycloak keeps it and never shows it
     assert api.delete(f"/api/v1/identity/providers/{provider['id']}", headers=headers).status_code == 204
+
+
+async def test_a_push_goes_to_a_new_branch_and_another_tenant_cannot_push_nor_read_its_releases(
+    api: TestClient, app_engine: AsyncEngine, owner_engine: AsyncEngine, fga: OpenFga, world: World, root: uuid.UUID
+) -> None:
+    await reconcile(app_engine, fga)
+    ctx = Ctx(world, root, owner_engine, app_engine, fga)
+    project_id = await ctx.pushable_project()
+    pushed = api.post(f"/api/v1/projects/{project_id}/code:push", headers=act_as(api, "member", ctx))
+    assert pushed.status_code == 201, pushed.text
+    release = pushed.json()
+    assert (release["kind"], release["status"]) == ("push", "pushed")
+    assert release["branch"].startswith("nexti/push-")
+    assert len(release["commitSha"]) == 40
+    assert [r["id"] for r in api.get(f"/api/v1/projects/{project_id}/releases").json()] == [release["id"]]
+    async with owner_engine.connect() as conn:
+        rows = (await conn.execute(select(Release.status).where(Release.project_id == project_id))).scalars().all()
+    assert list(rows) == ["pushed"]
+
+    outsider = act_as(api, "outsider", ctx)
+    assert api.post(f"/api/v1/projects/{project_id}/code:push", headers=outsider).status_code in (403, 404)
+    assert api.get(f"/api/v1/projects/{project_id}/releases").status_code in (403, 404)
 
 
 async def test_a_jira_integration_is_checked_and_a_project_cannot_link_another_tenant_s(
