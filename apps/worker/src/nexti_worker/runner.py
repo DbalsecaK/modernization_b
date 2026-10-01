@@ -31,6 +31,7 @@ from nexti_ingest.figma import FigmaReader
 from nexti_model_gateway.service import GatewayService
 from nexti_orchestration import Executor, compile_graph, executors_for, pending_interrupts, thread_config
 from nexti_sandbox import Sandbox
+from nexti_worker.backlog import TrackerFactory
 from nexti_worker.loading import load_run
 from nexti_worker.probe import ServicesProbe
 from nexti_worker.project import LiveFigma, WorkerProjectPort
@@ -56,6 +57,7 @@ class Runtime:
     sandboxes: Callable[[str], Sandbox] | None = None  # the sandbox of a pack, by image (M4)
     legacy: Callable[[], LegacyRunner] | None = None  # the engine that runs the legacy for the golden master (M4)
     figma: FigmaReader | None = None  # Figma answers (tests and demo); by default the tenant's integration (M7)
+    trackers: TrackerFactory | None = None  # Jira / Azure DevOps clients (tests and demo); by default the real ones
 
 
 async def _resume_value(

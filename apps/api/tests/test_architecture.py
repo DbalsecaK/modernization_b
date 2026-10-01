@@ -21,6 +21,8 @@ SECRETS_USERS = {
     # The tenant integrations (Figma, M7, ADR-0018): the API writes their token; the worker reads it to read Figma.
     ROOT / "apps" / "api" / "src" / "nexti_api" / "admin" / "integrations.py",
     ROOT / "apps" / "worker" / "src" / "nexti_worker" / "project.py",
+    # The backlog sync (M7b, ADR-0019) reads the Jira / Azure DevOps credential for the job.
+    ROOT / "apps" / "worker" / "src" / "nexti_worker" / "backlog.py",
     # The worker's preflight resolves the repository token (read only) to check the repository (spec 11.1).
     ROOT / "apps" / "worker" / "src" / "nexti_worker" / "probe.py",
     ROOT / "apps" / "worker" / "src" / "nexti_worker" / "runner.py",
