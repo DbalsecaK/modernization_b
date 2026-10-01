@@ -44,7 +44,7 @@
     "tenant": "Cliente",
     "allTenants": "Todos los clientes",
     "search": "Buscar",
-    "searchPlaceholder": "Buscar proyectos, reglas, programas…",
+    "searchPlaceholder": "Busca proyectos, reglas, agentes, skills…",
     "language": "Idioma",
     "notifications": "Notificaciones",
     "switchTheme": "Cambiar a tema {{theme}}",
@@ -1740,7 +1740,8 @@
       "rule": "Regla",
       "agent": "Agente",
       "skill": "Skill"
-    }
+    },
+    "searching": "Buscando…"
   },
   "notifications": {
     "markAllRead": "Marcar todas como leídas",
@@ -1749,7 +1750,19 @@
       "escalation": "Escalamiento",
       "budget": "Presupuesto",
       "verdict": "Veredicto",
-      "connection": "Conexión"
+      "question": "Pregunta",
+      "runFinished": "Ejecución",
+      "runFailed": "Ejecución"
+    },
+    "empty": "Nada nuevo en los últimos siete días.",
+    "text": {
+      "question": "{{project}} pregunta: {{title}}",
+      "gate": "{{project}}: {{title}} espera tu aprobación",
+      "escalation": "{{project}} escaló a una persona en {{title}}",
+      "runFinished": "La ejecución de {{project}} terminó",
+      "runFailed": "La ejecución de {{project}} falló en {{title}}",
+      "verdict": "Nuevo veredicto en {{project}}: {{title}}",
+      "budget": "{{project}} superó el {{title}} de su presupuesto"
     }
   },
   "tools": {

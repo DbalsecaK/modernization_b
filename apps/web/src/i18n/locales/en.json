@@ -44,7 +44,7 @@
     "tenant": "Customer",
     "allTenants": "All customers",
     "search": "Search",
-    "searchPlaceholder": "Search projects, rules, programs…",
+    "searchPlaceholder": "Search projects, rules, agents, skills…",
     "language": "Language",
     "notifications": "Notifications",
     "switchTheme": "Switch to {{theme}} theme",
@@ -1740,7 +1740,8 @@
       "rule": "Rule",
       "agent": "Agent",
       "skill": "Skill"
-    }
+    },
+    "searching": "Searching…"
   },
   "notifications": {
     "markAllRead": "Mark all as read",
@@ -1749,7 +1750,19 @@
       "escalation": "Escalation",
       "budget": "Budget",
       "verdict": "Verdict",
-      "connection": "Connection"
+      "question": "Question",
+      "runFinished": "Run",
+      "runFailed": "Run"
+    },
+    "empty": "Nothing new in the last seven days.",
+    "text": {
+      "question": "{{project}} asks: {{title}}",
+      "gate": "{{project}}: {{title}} waits for your approval",
+      "escalation": "{{project}} escalated to a person in {{title}}",
+      "runFinished": "The run of {{project}} finished",
+      "runFailed": "The run of {{project}} failed in {{title}}",
+      "verdict": "New verdict in {{project}}: {{title}}",
+      "budget": "{{project}} crossed {{title}} of its budget"
     }
   },
   "tools": {

@@ -608,6 +608,23 @@ export interface paths {
         patch: operations["update_me_api_v1_me_patch"];
         trace?: never;
     };
+    "/api/v1/notifications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Notifications */
+        get: operations["notifications_api_v1_notifications_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/permissions": {
         parameters: {
             query?: never;
@@ -1811,6 +1828,23 @@ export interface paths {
          * @description Replace the bundle of a role (one column of the matrix). Takes effect for all its members.
          */
         put: operations["set_role_permissions_api_v1_roles__role_id__permissions_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Search */
+        get: operations["search_api_v1_search_get"];
+        put?: never;
         post?: never;
         delete?: never;
         options?: never;
@@ -3586,6 +3620,29 @@ export interface components {
             /** Usd */
             usd: string;
         };
+        /** NotificationOut */
+        NotificationOut: {
+            /** Id */
+            id: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "question" | "gate" | "escalation" | "runFinished" | "runFailed" | "verdict" | "budget";
+            /**
+             * Occurredat
+             * Format: date-time
+             */
+            occurredAt: string;
+            /** Projectid */
+            projectId: string | null;
+            /** Projectname */
+            projectName: string | null;
+            /** Tab */
+            tab: string | null;
+            /** Title */
+            title: string;
+        };
         /** OfferingOut */
         OfferingOut: {
             /** Allowedbypolicy */
@@ -4431,6 +4488,25 @@ export interface components {
             status: "queued" | "running" | "waiting" | "succeeded" | "failed" | "cancelled";
             /** Waitingreason */
             waitingReason: string | null;
+        };
+        /** SearchHit */
+        SearchHit: {
+            /** Hint */
+            hint: string;
+            /** Id */
+            id: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "project" | "rule";
+            /** Label */
+            label: string;
+            /**
+             * Projectid
+             * Format: uuid
+             */
+            projectId: string;
         };
         /** SessionTenantOut */
         SessionTenantOut: {
@@ -6299,6 +6375,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    notifications_api_v1_notifications_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NotificationOut"][];
                 };
             };
         };
@@ -8824,6 +8920,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RoleOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    search_api_v1_search_get: {
+        parameters: {
+            query: {
+                q: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SearchHit"][];
                 };
             };
             /** @description Validation Error */
