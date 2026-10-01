@@ -35,6 +35,12 @@ class Limits:
     timeout_seconds: float = 120
     work_mb: int = 64
     max_output_bytes: int = 1024 * 1024
+    # More writable tmpfs mounts, (path, size in MB): for an engine that must write where it was installed (SQL
+    # Server in /var/opt/mssql). The root filesystem stays read-only.
+    scratch: tuple[tuple[str, int], ...] = ()
+    # Whether native executables may run from /work (tmpfs mounts are noexec by default). Only for a toolchain that
+    # must launch the programs it builds (xUnit v3 test hosts); the container stays without network or privileges.
+    work_exec: bool = False
 
 
 @dataclass(frozen=True)
@@ -95,8 +101,9 @@ class DockerSandbox:
             "--memory", f"{limits.memory_mb}m",
             "--memory-swap", f"{limits.memory_mb}m",
             "--cpus", str(limits.cpus),
-            "--tmpfs", f"/work:rw,size={limits.work_mb}m,mode=1777",
+            "--tmpfs", f"/work:rw,{'exec,' if limits.work_exec else ''}size={limits.work_mb}m,mode=1777",
             "--tmpfs", "/tmp:rw,size=16m,mode=1777",  # noqa: S108 - a path inside the container
+            *[arg for path, size in limits.scratch for arg in ("--tmpfs", f"{path}:rw,size={size}m,mode=1777")],
             "--env", "HOME=/work",
             "--env", "PYTHONDONTWRITEBYTECODE=1",
             "--volume", f"{input_dir}:/input:ro",

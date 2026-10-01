@@ -19,6 +19,7 @@ members = [
     "nexti-ingest",
     "nexti-model-gateway",
     "nexti-orchestration",
+    "nexti-pack-dotnet",
     "nexti-pack-frontend",
     "nexti-pack-spring-boot",
     "nexti-sandbox",
@@ -1388,6 +1389,7 @@ dependencies = [
     { name = "nexti-adapter-sybase" },
     { name = "nexti-agents" },
     { name = "nexti-core" },
+    { name = "nexti-pack-dotnet" },
     { name = "nexti-pack-frontend" },
     { name = "nexti-pack-spring-boot" },
     { name = "nexti-sandbox" },
@@ -1405,12 +1407,30 @@ requires-dist = [
     { name = "nexti-adapter-sybase", editable = "packages/adapters/source/sybase" },
     { name = "nexti-agents", editable = "packages/agents" },
     { name = "nexti-core", editable = "packages/core" },
+    { name = "nexti-pack-dotnet", editable = "packages/packs/target/dotnet" },
     { name = "nexti-pack-frontend", editable = "packages/packs/target/frontend" },
     { name = "nexti-pack-spring-boot", editable = "packages/packs/target/spring_boot" },
     { name = "nexti-sandbox", editable = "packages/sandbox" },
     { name = "nexti-ui", editable = "packages/ui" },
     { name = "nexti-verification", editable = "packages/verification" },
     { name = "psycopg", extras = ["binary"], specifier = ">=3.2" },
+]
+
+[[package]]
+name = "nexti-pack-dotnet"
+version = "0.1.0"
+source = { editable = "packages/packs/target/dotnet" }
+dependencies = [
+    { name = "nexti-core" },
+    { name = "nexti-sandbox" },
+    { name = "pydantic" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "nexti-core", editable = "packages/core" },
+    { name = "nexti-sandbox", editable = "packages/sandbox" },
+    { name = "pydantic", specifier = ">=2.11" },
 ]
 
 [[package]]

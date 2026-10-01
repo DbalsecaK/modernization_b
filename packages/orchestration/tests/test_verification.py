@@ -146,6 +146,6 @@ async def test_a_golden_master_from_traces_cannot_observe_fresh_inputs() -> None
 
     master = GoldenMaster(program="PAGOORD", source_sha256="0" * 64, engine=TRACE_ENGINE, schema_=Schema(), results=[])
     phases = VerificationPhases(None)  # type: ignore[arg-type]
-    fresh, reason = await phases._fresh(None, [], master, None, None, {}, None, {})  # type: ignore[arg-type]
+    fresh, reason = await phases._fresh(None, None, [], master, None, None, {}, None, {})  # type: ignore[arg-type]
     assert fresh is None
     assert "recorded traces" in reason

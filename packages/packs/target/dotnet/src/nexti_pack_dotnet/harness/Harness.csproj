@@ -1,0 +1,16 @@
+<!-- The equivalence harness of the .NET pack (spec 11.3 check 3), written by the platform: built in the sandbox
+     against the generated application. -->
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <UseAppHost>false</UseAppHost>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>Harness</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <ProjectReference Include="/work/p/src/App/App.csproj" />
+  </ItemGroup>
+</Project>

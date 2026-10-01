@@ -1,9 +1,9 @@
-"""Design (C3) and generation by layers (spec 6.1 phases 8 and 10) with the Java Spring Boot pack.
+"""Design (C3) and generation by layers (spec 6.1 phases 8 and 10) with the project's backend pack (ADR-0017).
 
 - Design: the solution architect proposes the design from the approved rules and the inventory; code validates it
   (structure, neutral types, references, every rule in a use case) and sends the problems back.
 - Generation: the pack writes the skeleton; per use case the test engineer writes the tests from the rule scenarios
-  first (the oracle), then the backend developer writes the service until those tests pass in the Java sandbox
+  first (the oracle), then the backend developer writes the service until those tests pass in the pack's sandbox
   (do -> verify -> correct, 11.1); then the adapters, which must compile; the wiring is generated. Each layer
   compiles before the next. The generated files go to the object store; only references stay in the graph state.
 
@@ -24,27 +24,20 @@ from nexti_orchestration import frontend
 from nexti_orchestration.context import Attempt, PhaseContext, Verification
 from nexti_orchestration.extraction import ModelCaller, ReplyError, parse_json
 from nexti_orchestration.model import PhaseFailedError, PhaseResult, PhaseUnavailableError
+from nexti_orchestration.packs import BackendPack, backend_pack
 from nexti_orchestration.store import Usage
 from nexti_orchestration.usage import total as _total
-from nexti_pack_spring_boot import (
-    IMAGE,
-    NAME,
-    BuildResult,
-    Design,
-    UseCase,
-    adapter_path,
-    compile_and_test,
-    junit_path,
-    layer_of,
-    service_path,
-    skeleton,
-)
+from nexti_pack_spring_boot import Design, UseCase
+from nexti_pack_spring_boot.pack import PACK as SPRING_BOOT
+from nexti_pack_spring_boot.pack import wiring
 from nexti_sandbox import Sandbox
+from nexti_sandbox.build import BuildResult
 
 ARCHITECT = "solution-architect"
 DEVELOPER = "backend-dev"
 TESTER = "test-engineer"
-PACKS = {NAME: IMAGE}
+
+__all__ = ["GenerationPhases", "design_problems", "java_block", "legacy_names", "propose_design", "wiring"]
 
 
 class GenerationPort(Protocol):
@@ -75,12 +68,16 @@ class GenerationPort(Protocol):
     def sandbox(self, image: str) -> Sandbox: ...
 
 
+def code_block(pack: BackendPack, content: str) -> str:
+    """The code of an agent's answer in the pack's language; a ReplyError when there is none."""
+    try:
+        return pack.code_block(content)
+    except ValueError as exc:
+        raise ReplyError(str(exc)) from exc
+
+
 def java_block(content: str) -> str:
-    match = re.search(r"```(?:java)?\s*\n(.*?)```", content, re.DOTALL)
-    code = (match.group(1) if match else content).strip()
-    if "class " not in code and "interface " not in code:
-        raise ReplyError("the answer has no Java class in a ```java block")
-    return code + "\n"
+    return code_block(SPRING_BOOT, content)
 
 
 _NAME = re.compile(r"[@#]?[A-Za-z_][A-Za-z0-9_$#@]*")
@@ -186,34 +183,6 @@ async def propose_design(
     raise ReplyError(f"no valid design after {max_iterations} attempts: {last}")
 
 
-def wiring(design: Design) -> tuple[str, str]:
-    """The orchestration layer: one bean per use case service, built from the port beans (the adapters)."""
-    package = f"{design.base_package}.config"
-    beans = []
-    for use_case in design.use_cases:
-        params = ", ".join(f"{design.base_package}.domain.port.{p} {p[:1].lower() + p[1:]}" for p in use_case.ports)
-        args = ", ".join(p[:1].lower() + p[1:] for p in use_case.ports)
-        service = f"{design.base_package}.application.{use_case.name}Service"
-        name = use_case.name[:1].lower() + use_case.name[1:] + "Service"
-        beans.append(
-            f"    @Bean\n    public {service} {name}({params}) {{\n        return new {service}({args});\n    }}"
-        )
-    path = f"src/main/java/{package.replace('.', '/')}/Wiring.java"
-    body = "\n\n".join(beans)
-    return path, (
-        f"package {package};\n\nimport org.springframework.context.annotation.Bean;\n"
-        "import org.springframework.context.annotation.Configuration;\n\n"
-        "/** The application services as beans (the domain classes have no framework annotations). */\n"
-        f"@Configuration\npublic class Wiring {{\n\n{body}\n}}\n"
-    )
-
-
-def _existing(files: dict[str, str], design: Design) -> str:
-    wanted = [p for p in files if "/domain/" in p or ("/adapters/in/rest/" in p and p.endswith(("Request.java",
-              "Response.java")))]  # fmt: skip
-    return "\n\n".join(f"// {p}\n{files[p]}" for p in sorted(wanted))
-
-
 class GenerationPhases:
     def __init__(self, port: GenerationPort) -> None:
         self.port = port
@@ -242,21 +211,20 @@ class GenerationPhases:
         return PhaseResult(summary=attempt.summary)
 
     async def generation(self, ctx: PhaseContext) -> PhaseResult:
-        backend = ctx.run.target.get("backend")
-        if backend and backend not in PACKS:
+        pack = backend_pack(ctx.run.target)
+        if pack is None:
+            backend = ctx.run.target.get("backend")
             raise PhaseUnavailableError(f"The {backend} pack is not available yet: generation waits for it")
         flavour = frontend.flavour_of(ctx.run.target) if hasattr(self.port, "load_screens") else None
         design = await self.port.load_design()
         if design is None:
             raise PhaseFailedError("There is no approved design to generate from")
         rules = {r.id: r for r in await self.port.load_rules()}
-        sandbox = self.port.sandbox(PACKS[NAME])
-        files = skeleton(design)
-        path, content = wiring(design)
-        files[path] = content
+        sandbox = self.port.sandbox(pack.image)
+        files = pack.skeleton(design)
         # The REST controllers and the wiring use the services, so they join once every service exists.
-        held = {p: files.pop(p) for p in list(files) if p.endswith("Controller.java") or p == path}
-        build = await compile_and_test(sandbox, files, run_tests=False)
+        held = {p: files.pop(p) for p in list(files) if pack.held_back(p)}
+        build = await pack.compile_and_test(sandbox, files, run_tests=False)
         if not build.compiled:
             raise PhaseFailedError(f"The generated skeleton does not compile: {build.compile_errors[:1500]}")
         await ctx.store.event("info", "succeeded", "Layers contracts and domain model compile", phase=ctx.phase.key)
@@ -264,19 +232,21 @@ class GenerationPhases:
         for use_case in design.use_cases:
             # One shard per piece: its invocations and journal entries never mix with another piece's.
             piece = ctx.for_shard(f"use-case:{use_case.name}")
-            files[junit_path(design, use_case)] = await self._tests(piece, design, use_case, rules, files)
-            files[service_path(design, use_case)] = await self._service(piece, design, use_case, rules, files, sandbox)
+            files[pack.test_path(design, use_case)] = await self._tests(piece, pack, design, use_case, rules, files)
+            files[pack.service_path(design, use_case)] = await self._service(piece, pack, design, use_case, rules,
+                                                                             files, sandbox)  # fmt: skip
         files.update(held)
         for port_spec in design.ports:
             piece = ctx.for_shard(f"adapter:{port_spec.name}")
-            files[adapter_path(design, port_spec)] = await self._adapter(piece, design, port_spec.name, files, sandbox)
-        final = await compile_and_test(sandbox, files)
+            files[pack.adapter_path(design, port_spec)] = await self._adapter(piece, pack, design, port_spec.name,
+                                                                              files, sandbox)  # fmt: skip
+        final = await pack.compile_and_test(sandbox, files)
         if not final.ok:
             raise PhaseFailedError(f"The complete project does not pass: {final.diagnostic(1500)}")
         tests_run = final.passed
-        layers = {p: layer_of(p, design) for p in files}
-        traced = {service_path(design, u): u.rules for u in design.use_cases}
-        traced.update({junit_path(design, u): u.rules for u in design.use_cases})
+        layers = {p: pack.layer_of(p, design) for p in files}
+        traced = {pack.service_path(design, u): u.rules for u in design.use_cases}
+        traced.update({pack.test_path(design, u): u.rules for u in design.use_cases})
         await self.port.save_artifacts(files, layers, traced)
         summary = f"{len(files)} files in {len(set(layers.values()))} layers; {tests_run} tests pass in the sandbox"
         if flavour is not None:
@@ -290,50 +260,51 @@ class GenerationPhases:
         return PhaseResult(summary=summary)
 
     async def _tests(
-        self, ctx: PhaseContext, design: Design, use_case: UseCase, rules: dict[str, Rule], files: dict[str, str]
-    ) -> str:
+        self, ctx: PhaseContext, pack: BackendPack, design: Design, use_case: UseCase, rules: dict[str, Rule],
+        files: dict[str, str],
+    ) -> str:  # fmt: skip
         async def work() -> Attempt:
             messages = [
-                {"role": "system", "content": prompt(TESTER)},
+                {"role": "system", "content": prompt(pack.tester_prompt)},
                 {"role": "user", "content": (
                     f"Design:\n{design.model_dump_json(indent=1)}\n\nUse case: {use_case.name}\n\n"
                     f"Rules:\n{_rules_text([rules[r] for r in use_case.rules if r in rules])}\n\n"
-                    f"Existing files:\n{_existing(files, design)}")},
+                    f"Existing files:\n{pack.existing(files, design)}")},
             ]  # fmt: skip
             reply = await self.port.models.complete(TESTER, "generation", messages)
-            code = java_block(reply.content)
-            reference = await self.port.save_file(junit_path(design, use_case), code)
+            code = code_block(pack, reply.content)
+            reference = await self.port.save_file(pack.test_path(design, use_case), code)
             return Attempt({"file": reference}, f"tests of {use_case.name}", reply.usage)
 
         attempt = await ctx.invoke(TESTER, work, what=f"Tests of {use_case.name} from the rule scenarios")
         return await self.port.load_file(attempt.artifact["file"])
 
     async def _service(
-        self, ctx: PhaseContext, design: Design, use_case: UseCase, rules: dict[str, Rule], files: dict[str, str],
-        sandbox: Sandbox,
+        self, ctx: PhaseContext, pack: BackendPack, design: Design, use_case: UseCase, rules: dict[str, Rule],
+        files: dict[str, str], sandbox: Sandbox,
     ) -> str:  # fmt: skip
         base = [
-            {"role": "system", "content": prompt(DEVELOPER)},
+            {"role": "system", "content": prompt(pack.developer_prompt)},
             {"role": "user", "content": (
                 f"Write the application service of {use_case.name}.\n\nDesign:\n{design.model_dump_json(indent=1)}\n\n"
                 f"Rules:\n{_rules_text([rules[r] for r in use_case.rules if r in rules])}\n\n"
-                f"Existing files:\n{_existing(files, design)}\n\nThe tests it must pass:\n"
-                f"{files[junit_path(design, use_case)]}")},
+                f"Existing files:\n{pack.existing(files, design)}\n\nThe tests it must pass:\n"
+                f"{files[pack.test_path(design, use_case)]}")},
         ]  # fmt: skip
-        target = service_path(design, use_case)
+        target = pack.service_path(design, use_case)
 
         async def work(iteration: int, feedback: str | None) -> Attempt:
             messages = list(base)
             if feedback:
                 messages.append({"role": "user", "content": f"The previous version failed:\n{feedback}\nFix it."})
             reply = await self.port.models.complete(DEVELOPER, "generation", messages, iteration=iteration)
-            code = java_block(reply.content)
+            code = code_block(pack, reply.content)
             return Attempt({"file": await self.port.save_file(target, code)}, f"{use_case.name}Service", reply.usage)
 
         async def verify(artifact: dict[str, Any]) -> Verification:
             candidate = dict(files)
             candidate[target] = await self.port.load_file(artifact["file"])
-            build: BuildResult = await compile_and_test(sandbox, candidate)
+            build: BuildResult = await pack.compile_and_test(sandbox, candidate)
             if build.ok and build.passed:
                 return Verification(True)
             if build.compiled and not build.tests:
@@ -344,31 +315,30 @@ class GenerationPhases:
         return await self.port.load_file(attempt.artifact["file"])
 
     async def _adapter(
-        self, ctx: PhaseContext, design: Design, port_name: str, files: dict[str, str], sandbox: Sandbox
-    ) -> str:
+        self, ctx: PhaseContext, pack: BackendPack, design: Design, port_name: str, files: dict[str, str],
+        sandbox: Sandbox,
+    ) -> str:  # fmt: skip
         port_spec = next(p for p in design.ports if p.name == port_name)
-        target = adapter_path(design, port_spec)
+        target = pack.adapter_path(design, port_spec)
+        adapter = pack.adapter_name(port_name)
         base = [
-            {"role": "system", "content": prompt(DEVELOPER)},
-            {"role": "user", "content": (
-                f"Write the JDBC adapter Jdbc{port_name} of the port {port_name}.\n\n"
-                f"Design:\n{design.model_dump_json(indent=1)}\n\nExisting files:\n{_existing(files, design)}\n\n"
-                f"Target schema:\n{files['src/main/resources/db/schema.sql']}")},
-        ]  # fmt: skip
+            {"role": "system", "content": prompt(pack.developer_prompt)},
+            {"role": "user", "content": pack.adapter_request(design, port_name, files)},
+        ]
 
         async def work(iteration: int, feedback: str | None) -> Attempt:
             messages = list(base)
             if feedback:
                 messages.append({"role": "user", "content": f"The previous version failed:\n{feedback}\nFix it."})
             reply = await self.port.models.complete(DEVELOPER, "generation", messages, iteration=iteration)
-            code = java_block(reply.content)
-            return Attempt({"file": await self.port.save_file(target, code)}, f"Jdbc{port_name}", reply.usage)
+            code = code_block(pack, reply.content)
+            return Attempt({"file": await self.port.save_file(target, code)}, adapter, reply.usage)
 
         async def verify(artifact: dict[str, Any]) -> Verification:
             candidate = dict(files)
             candidate[target] = await self.port.load_file(artifact["file"])
-            build = await compile_and_test(sandbox, candidate, run_tests=False)
+            build = await pack.compile_and_test(sandbox, candidate, run_tests=False)
             return Verification(build.compiled, build.compile_errors[:4000])
 
-        attempt = await ctx.do_verify_correct(DEVELOPER, work, verify, what=f"Adapter Jdbc{port_name}")
+        attempt = await ctx.do_verify_correct(DEVELOPER, work, verify, what=f"Adapter {adapter}")
         return await self.port.load_file(attempt.artifact["file"])

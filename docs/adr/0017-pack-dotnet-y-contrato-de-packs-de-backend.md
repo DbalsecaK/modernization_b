@@ -25,15 +25,16 @@ El modelo de diseño y las vistas de equivalencia viven dentro del pack de Java,
   La generación y la verificación eligen el pack por `target.backend`. Spring Boot implementa el contrato con
   exactamente los mismos pedidos al modelo, así las grabaciones de M4 y M6 siguen valiendo.
 - **Piezas neutrales en paquetes comunes:**
-  - el diseño (`Design`) pasa a `nexti_core.spec.design`; sus nombres rechazan las palabras reservadas de Java y de
-    C#;
+  - el diseño (`Design`) pasa a `nexti_core.spec.design`, sin cambios: sigue rechazando las palabras reservadas de
+    Java, y el pack .NET escapa con `@` las de C# al emitir código (así los diseños ya grabados siguen siendo
+    válidos);
   - el resultado de un build y la lectura del reporte JUnit pasan a `nexti_sandbox.build`;
   - las vistas de equivalencia (máscaras, vista esperada y vista real) pasan a `nexti_core.spec.equivalence`.
 - **Pack .NET 10 (`nexti_pack_dotnet`):**
   - ASP.NET Core con controladores y la misma arquitectura hexagonal que Spring Boot;
   - persistencia con ADO.NET (`Microsoft.Data.SqlClient`), sin Entity Framework;
   - los adaptadores reciben una sesión de base de datos (`Db`) con una conexión y su transacción, así cada caso del
-    golden master corre en una transacción local que una rechazo deshace, como en el legado;
+    golden master corre en una transacción local que un rechazo deshace, como en el legado;
   - tests con xUnit v3 y reporte JUnit;
   - un harness de equivalencia en C# escrito por la plataforma, con fakes de los programas externos
     (`DispatchProxy`);
