@@ -283,6 +283,7 @@ services:
       GRAPH_USER: neo4j
       GRAPH_PASSWORD: ${NEO4J_PASSWORD}
       SESSION_COOKIE_SECURE: "true"
+      NEXTI_PROFILE: compose-platform
     depends_on:
       postgres:
         condition: service_healthy

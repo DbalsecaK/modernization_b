@@ -18,8 +18,8 @@ import {
 } from '@/components/ui/primitives'
 
 // Platform operations (spec 18.4, NexTI only), connected to the API: the workers with their heartbeat and jobs, the
-// queues, the runs in progress across tenants and the jobs that failed in the last day. Versions per deployed instance
-// come with the deployment profiles (M9). Same look as the prototype.
+// queues, the runs in progress across tenants, the jobs that failed in the last day and every API and worker instance
+// with its version and deployment profile (ADR-0024). Same look as the prototype.
 export function PlatformPage() {
   const { t } = useTranslation()
   const status = usePlatformStatus()
@@ -171,12 +171,44 @@ function PlatformView({ status }: { status: NonNullable<ReturnType<typeof usePla
         )}
       </Card>
       <Card>
-        <CardHeader title={t('platform.deployments')} subtitle={t('platform.deploymentsHint')} />
-        <CardBody className="flex flex-wrap items-center gap-3 text-sm">
-          <span className="text-text-2">{t('platform.apiVersion')}</span>
-          <Badge tone="brand">{status.apiVersion}</Badge>
-          <span className="text-xs text-muted">{t('platform.instancesLater')}</span>
-        </CardBody>
+        <CardHeader
+          title={t('platform.deployments')}
+          subtitle={t('platform.deploymentsHint')}
+          action={<Badge tone="brand">{t('platform.apiVersionIs', { version: status.apiVersion })}</Badge>}
+        />
+        {status.instances.length === 0 ? (
+          <CardBody>
+            <p className="text-sm text-muted">{t('platform.noInstances')}</p>
+          </CardBody>
+        ) : (
+          <Table>
+            <thead>
+              <tr>
+                <Th>{t('platform.instance')}</Th>
+                <Th>{t('platform.component')}</Th>
+                <Th>{t('platform.version')}</Th>
+                <Th>{t('platform.profile')}</Th>
+                <Th>{t('platform.lastSeen')}</Th>
+              </tr>
+            </thead>
+            <tbody>
+              {status.instances.map((i) => (
+                <tr key={i.name}>
+                  <Td className="font-mono text-xs">{i.name}</Td>
+                  <Td>{t(`platform.components.${i.component}`)}</Td>
+                  <Td className="font-mono text-xs">{i.version}</Td>
+                  <Td>{i.profile}</Td>
+                  <Td className="text-xs">
+                    <Badge tone={i.alive ? 'good' : 'warning'}>
+                      {i.alive ? t('platform.instanceAlive') : t('platform.instanceSilent')}
+                    </Badge>{' '}
+                    {formatDateTime(i.lastSeenAt)}
+                  </Td>
+                </tr>
+              ))}
+            </tbody>
+          </Table>
+        )}
       </Card>
     </div>
   )

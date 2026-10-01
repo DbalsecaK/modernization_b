@@ -4052,6 +4052,51 @@
         "title": "InputOut",
         "type": "object"
       },
+      "InstanceOut": {
+        "properties": {
+          "alive": {
+            "title": "Alive",
+            "type": "boolean"
+          },
+          "component": {
+            "title": "Component",
+            "type": "string"
+          },
+          "lastSeenAt": {
+            "format": "date-time",
+            "title": "Lastseenat",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "profile": {
+            "title": "Profile",
+            "type": "string"
+          },
+          "startedAt": {
+            "format": "date-time",
+            "title": "Startedat",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "component",
+          "version",
+          "profile",
+          "startedAt",
+          "lastSeenAt",
+          "alive"
+        ],
+        "title": "InstanceOut",
+        "type": "object"
+      },
       "IntegrationCreate": {
         "properties": {
           "config": {
@@ -5554,6 +5599,13 @@
             "title": "Failedlastday",
             "type": "integer"
           },
+          "instances": {
+            "items": {
+              "$ref": "#/components/schemas/InstanceOut"
+            },
+            "title": "Instances",
+            "type": "array"
+          },
           "queues": {
             "items": {
               "$ref": "#/components/schemas/QueueOut"
@@ -5582,6 +5634,7 @@
         },
         "required": [
           "apiVersion",
+          "instances",
           "workers",
           "queues",
           "activeRuns",

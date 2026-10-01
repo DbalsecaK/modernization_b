@@ -45,8 +45,8 @@ jobs:
           r="$R"; t="$T"
           build() { docker build -q -t "$r/$1:$t" "${@:2}" && docker push -q "$r/$1:$t"; }
           build nexti-migrate -f infra/images/api/Dockerfile --target migrate .
-          build nexti-api -f infra/images/api/Dockerfile --target api .
-          build nexti-worker -f infra/images/worker/Dockerfile .
+          build nexti-api -f infra/images/api/Dockerfile --target api --build-arg NEXTI_VERSION="$t" .
+          build nexti-worker -f infra/images/worker/Dockerfile --build-arg NEXTI_VERSION="$t" .
           build nexti-web -f infra/images/web/Dockerfile .
           build nexti-keycloak infra/keycloak
           # The sandboxes the worker pulls into its daemon (infra/helm/nexti, worker.sandbox.images).

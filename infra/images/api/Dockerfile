@@ -34,6 +34,8 @@ COPY infra/openfga/model.json /app/infra/openfga/model.json
 ENV PATH=/app/.venv/bin:$PATH PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 APP_ENV=production \
     OPENFGA_MODEL_FILE=/app/infra/openfga/model.json
 WORKDIR /app
+ARG NEXTI_VERSION=dev
+ENV NEXTI_VERSION=$NEXTI_VERSION
 USER 10001:10001
 EXPOSE 8100
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s CMD ["python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8100/api/v1/health/live', timeout=4).status == 200 else 1)"]

@@ -1,4 +1,5 @@
 # Dedicated SaaS (14.3): one installation per customer, run by NexTI.
+profile: dedicated-saas
 controlPlane: {enabled: true}
 dataPlane: {enabled: true}
 api: {replicas: 2}

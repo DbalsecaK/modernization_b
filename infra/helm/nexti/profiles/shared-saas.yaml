@@ -1,4 +1,5 @@
 # Shared SaaS (14.3): NexTI runs both planes for many customers; managed data services of the cloud.
+profile: shared-saas
 controlPlane: {enabled: true}
 dataPlane: {enabled: true}
 api: {replicas: 3}

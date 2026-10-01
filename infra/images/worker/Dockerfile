@@ -21,5 +21,7 @@ COPY --from=build /app/.venv /app/.venv
 COPY --from=docker /usr/local/bin/docker /usr/local/bin/docker
 ENV PATH=/app/.venv/bin:$PATH PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 APP_ENV=production TMPDIR=/sandbox-io
 WORKDIR /app
+ARG NEXTI_VERSION=dev
+ENV NEXTI_VERSION=$NEXTI_VERSION
 USER 10001:10001
 CMD ["python", "-m", "nexti_worker"]

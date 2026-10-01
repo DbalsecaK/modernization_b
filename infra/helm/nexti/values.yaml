@@ -14,6 +14,8 @@ dataPlane:
   enabled: true
 
 appEnv: production
+# The deployment profile, shown with each instance in Operación de plataforma (set by profiles/*.yaml).
+profile: custom
 # Public URLs: the web (and the BFF behind it on the same origin) and Keycloak's page.
 webOrigin: https://nexti.example.com
 keycloakPublicUrl: https://auth.nexti.example.com

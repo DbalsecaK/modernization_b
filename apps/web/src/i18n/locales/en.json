@@ -1769,7 +1769,7 @@
       "offline": "Offline"
     },
     "deployments": "Deployments",
-    "deploymentsHint": "The version this API runs.",
+    "deploymentsHint": "Every API and worker instance, with its version and deployment profile.",
     "loading": "Loading the platform status…",
     "loadError": "The platform status could not be loaded",
     "runs": "Runs in progress",
@@ -1789,9 +1789,20 @@
     "job": "Job",
     "attempts": "Attempts",
     "failedAt": "Failed at",
-    "apiVersion": "API",
-    "instancesLater": "Versions per deployed instance come with the deployment profiles (M9).",
-    "refresh": "Refresh"
+    "refresh": "Refresh",
+    "apiVersionIs": "This API: {{version}}",
+    "noInstances": "No instance has registered yet.",
+    "instance": "Instance",
+    "component": "Component",
+    "version": "Version",
+    "profile": "Profile",
+    "lastSeen": "Last seen",
+    "instanceAlive": "Live",
+    "instanceSilent": "Silent",
+    "components": {
+      "api": "API",
+      "worker": "Worker"
+    }
   },
   "notFound": {
     "title": "Page not found",

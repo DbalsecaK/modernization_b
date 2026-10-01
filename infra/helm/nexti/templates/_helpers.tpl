@@ -59,4 +59,6 @@ capabilities:
   value: {{ .Values.services.osvUrl | quote }}
 - name: SESSION_COOKIE_SECURE
   value: "true"
+- name: NEXTI_PROFILE
+  value: {{ .Values.profile | quote }}
 {{- end -}}
