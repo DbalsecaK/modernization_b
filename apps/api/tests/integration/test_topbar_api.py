@@ -41,12 +41,17 @@ async def test_the_search_finds_projects_and_rules_the_user_may_see(
     headers = sign_in(api, world.a_user)
     by_name = api.get("/api/v1/search", params={"q": name[-8:]}, headers=headers).json()
     assert [(h["kind"], h["id"]) for h in by_name] == [("project", str(project_id))]
-    rules = [h for h in api.get("/api/v1/search", params={"q": "RULE-00"}, headers=headers).json()
-             if h["projectId"] == str(project_id)]  # fmt: skip
-    assert [(h["id"], h["label"], h["hint"]) for h in rules] == [
-        ("RULE-001", "RULE-001 · Rule 1", name), ("RULE-002", "RULE-002 · Rule 2", name),
-        ("RULE-003", "RULE-003 · Rule 3", name),
-    ]  # fmt: skip
+    # A rule by key and by name (other tests' projects have the same keys, so this one gets a name of its own).
+    unique = f"Debit limit {uuid.uuid4().hex[:8]}"
+    async with owner_engine.begin() as conn:
+        await conn.execute(
+            text("UPDATE spec_element SET data = jsonb_set(data, '{name}', to_jsonb(CAST(:n AS text))) "
+                 "WHERE project_id = :p AND key = 'RULE-002'"),
+            {"n": unique, "p": project_id},
+        )  # fmt: skip
+    (rule,) = api.get("/api/v1/search", params={"q": unique}, headers=headers).json()
+    assert (rule["kind"], rule["id"], rule["label"], rule["hint"]) == ("rule", "RULE-002", f"RULE-002 · {unique}", name)
+    assert rule["projectId"] == str(project_id)
     # Wildcards are literal text, and the query needs two characters.
     assert api.get("/api/v1/search", params={"q": "%_"}, headers=headers).json() == []
     assert api.get("/api/v1/search", params={"q": "R"}, headers=headers).status_code == 422

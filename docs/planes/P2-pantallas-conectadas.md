@@ -1,6 +1,6 @@
 # Plan P2 — Pantallas conectadas: cero maquetas con backend existente
 
-- **Estado:** en curso (desde 2026-09-30).
+- **Estado:** cerrado (2026-10-01), ver la sección 4. Sigue P1 (arranque local y guía de prueba).
 - **Fuente:** `docs/ESPECIFICACION_PLATAFORMA.md` secciones 18.1 a 18.5 (mapa de la aplicación), 13.5 (vistas de
   consumo) y 18.7 (prototipo navegable: se reemplazan los mocks por la API real sin reescribir las pantallas).
 - **Rama:** `p2-pantallas-conectadas`, sobre `main`. Un commit por paso y PR al terminar.
@@ -59,3 +59,50 @@ de aislamiento entre tenants. Cada pantalla conectada lleva su prueba E2E con ax
 | El Dashboard muestra datos reales por perfil | API y E2E |
 | Buscador y notificaciones respetan permisos y tenant | API y E2E |
 | Operación de plataforma muestra workers y colas reales, solo para NexTI | API y E2E |
+
+## 4. Cierre de P2 (2026-10-01)
+
+Los criterios de la sección 3 se cumplen con tests automatizados. Ninguna pantalla con backend existente lee datos de
+ejemplo; solo la pestaña Backlog (M7b) y los proveedores de identidad de Administración (M0b) siguen con maqueta, y
+un test de arquitectura de la web (`src/architecture.test.ts`) falla si otra pantalla vuelve a importarla.
+
+| Criterio | Evidencia (tests) | Estado |
+|---|---|---|
+| Ninguna pantalla con backend existente importa `@/mocks/data` | `apps/web/src/architecture.test.ts` | ✅ |
+| Código: archivos generados y zip solo con permiso | `test_code_api.py`, casos de `test_endpoints_authz.py`, `e2e/code.spec.ts` | ✅ |
+| Arquitectura y Contratos muestran el diseño y el OpenAPI | `test_architecture_api.py`, `e2e/architecture.spec.ts` | ✅ |
+| Costos cuadra con el libro de consumo; sin `cost.view`, sin dinero | `test_project_usage_api.py`, `test_tokens_without_cost_view_come_without_money`, `e2e/costs.spec.ts` | ✅ |
+| Dashboard con datos reales por perfil | `test_dashboard_api.py`, `e2e/dashboard.spec.ts` | ✅ |
+| Buscador y notificaciones respetan permisos y tenant | `test_topbar_api.py`, `e2e/topbar.spec.ts` | ✅ |
+| Operación de plataforma real, solo NexTI | `test_platform_operations_show_workers_queues_and_failures`, `e2e/platform.spec.ts` | ✅ |
+
+Cada endpoint nuevo tiene su caso de autorización (permitido y denegado) y su prueba de aislamiento entre tenants.
+Capturas en `docs/p2/`.
+
+**Suites al cierre.** Backend completo: 735 pasadas, 2 omitidas y 1 fallida, un test del buscador que dependía de que
+ningún otro proyecto tuviera reglas con la misma clave; se corrigió (busca una regla con nombre único) y pasa. E2E de
+Playwright: 28 de 29; la del Dashboard falló porque los riesgos de otros proyectos llenaban la lista antes que los del
+proyecto nuevo; ahora los riesgos van por proyecto, del más reciente al más antiguo, y la prueba pasa.
+
+**Endpoints nuevos:** `GET /projects/{id}/code`, `/code/file`, `/code:download` (auditado), `/design`, `/contracts`,
+`/usage`; `GET /dashboard`, `/search`, `/notifications`, `/platform/status`.
+
+**Cambios respecto del plan**
+
+- Los pasos 3 y 4 se hicieron juntos: Arquitectura, Contratos y Pantallas comparten datos.
+- El contador de Mis tareas, el Dashboard y las notificaciones reutilizan `GET /tasks`.
+- `require_platform` acepta varios roles: Operación de plataforma es para superadministradores y operadores de
+  soporte.
+- La lista de permisos del proyecto incluye `usage.view` (pestaña Costos).
+- Se quitó el distintivo "Prototype · sample data" de la barra superior: las pantallas que siguen con maqueta muestran
+  su propio aviso del hito que las conecta.
+- Correcciones de accesibilidad heredadas del prototipo que axe detectó al conectar: combobox del buscador con
+  `aria-controls`, bloque de código desplazable alcanzable con teclado, barra de presupuesto con nombre accesible y
+  contraste de los enlaces "Ver todo".
+
+**Limitaciones conocidas**
+
+- Las notificaciones se derivan de datos existentes (últimos siete días); "leídas" se recuerda por navegador.
+- El Dashboard de administrador muestra el cliente activo; el consumo cruzado entre clientes queda para M9.
+- Operación de plataforma no muestra versiones por instancia desplegada (M9) ni el detalle de cada sandbox.
+- El push a Git es la fase de entrega del pipeline; el botón de la pestaña Código solo lo explica.

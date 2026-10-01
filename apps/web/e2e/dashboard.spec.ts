@@ -106,6 +106,7 @@ test('the dashboard shows progress, risks, delivery and administration from real
   await expect(row).toContainText('PARTLY PROVEN')
   await expect(page.getByText(`${name} escalated to a person: the agents ran out of attempts.`)).toBeVisible()
   await expect(page.getByText(`${name} has used 90% of its budget.`)).toBeVisible()
+  await expect(page.getByText(`${name} is PARTLY PROVEN: rules without a passing test.`)).toBeVisible()
   await expect(page.getByText('Monthly AI spend')).toBeVisible()
   await expectAccessible(page, 'main')
   await capture(page, 'dashboard-executive')

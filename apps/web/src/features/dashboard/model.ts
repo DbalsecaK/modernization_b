@@ -48,20 +48,20 @@ export type Risk =
   | { kind: 'gates'; count: number }
   | { kind: 'partly'; project: string; verdict: string }
 
-/** What needs attention, most serious first: escalations, budgets at 80% or more, unproven verdicts, waiting gates. */
+/**
+ * What needs attention, project by project in the order the API sends them (most recently active first): an
+ * escalation, a budget at 80% or more, an unproven verdict; then the gates waiting across projects.
+ */
 export function risks(board: Dashboard): Risk[] {
   const out: Risk[] = []
-  for (const p of board.projects)
-    if (p.waitingReason === 'escalation') out.push({ kind: 'escalation', project: p.name })
   for (const p of board.projects) {
+    if (p.waitingReason === 'escalation') out.push({ kind: 'escalation', project: p.name })
     const spent = amount(p.spentUsd)
     const budget = amount(p.budgetUsd)
     if (spent != null && budget) {
       const pct = Math.round((spent / budget) * 100)
       if (pct >= 80) out.push({ kind: 'budget', project: p.name, pct })
     }
-  }
-  for (const p of board.projects) {
     const verdict = toVerdict(p.verdict)
     if (verdict === 'PARTLY_PROVEN' || verdict === 'NOT_PROVEN') out.push({ kind: 'partly', project: p.name, verdict })
   }

@@ -1,8 +1,7 @@
 {
   "app": {
     "productShort": "Modernization",
-    "version": "Version {{version}}",
-    "sampleData": "Prototype · sample data"
+    "version": "Version {{version}}"
   },
   "common": {
     "active": "Active",

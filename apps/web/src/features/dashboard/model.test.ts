@@ -56,7 +56,7 @@ describe('dashboard model', () => {
     expect(totals(board(projects, { costVisible: false })).spent).toBeNull()
   })
 
-  it('lists escalations, budgets at 80% or more, unproven verdicts and waiting gates', () => {
+  it('lists, project by project, escalations, budgets at 80% or more and unproven verdicts; then waiting gates', () => {
     const found = risks(
       board(
         [
@@ -68,8 +68,8 @@ describe('dashboard model', () => {
       ),
     )
     expect(found).toEqual([
-      { kind: 'escalation', project: 'B' },
       { kind: 'budget', project: 'A', pct: 90 },
+      { kind: 'escalation', project: 'B' },
       { kind: 'partly', project: 'B', verdict: 'PARTLY_PROVEN' },
       { kind: 'gates', count: 2 },
     ])

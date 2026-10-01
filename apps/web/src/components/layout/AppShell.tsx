@@ -238,9 +238,6 @@ export function AppShell() {
           <TenantSwitcher />
           <GlobalSearch />
           <div className="ml-auto flex items-center gap-2">
-            <span className="hidden rounded-full border border-warning/50 px-2 py-0.5 text-xs text-warning-ink xl:inline">
-              {t('app.sampleData')}
-            </span>
             <LanguageSwitcher />
             <ThemeToggle />
             <NotificationsMenu />
