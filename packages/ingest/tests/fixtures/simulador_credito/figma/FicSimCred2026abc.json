@@ -1,0 +1,175 @@
+{
+ "name": "Simulador de crédito (ejemplo ficticio)",
+ "lastModified": "2026-09-15T10:00:00Z",
+ "version": "1001",
+ "document": {
+  "id": "0:0",
+  "name": "Document",
+  "type": "DOCUMENT",
+  "children": [
+   {
+    "id": "0:1",
+    "name": "Simulador de crédito",
+    "type": "CANVAS",
+    "children": [
+     {
+      "id": "1:2",
+      "name": "Simulador",
+      "type": "FRAME",
+      "children": [
+       {
+        "id": "1:3",
+        "name": "Título",
+        "type": "TEXT",
+        "characters": "Simula tu crédito de consumo"
+       },
+       {
+        "id": "1:4",
+        "name": "Campo Monto",
+        "type": "FRAME",
+        "children": [
+         {
+          "id": "1:4l",
+          "name": "Campo Monto etiqueta",
+          "type": "TEXT",
+          "characters": "Monto (USD)"
+         },
+         {
+          "id": "1:4i",
+          "name": "Campo Monto entrada",
+          "type": "RECTANGLE"
+         },
+         {
+          "id": "1:4p",
+          "name": "Campo Monto ayuda",
+          "type": "TEXT",
+          "characters": "Entre 1.000 y 50.000"
+         }
+        ]
+       },
+       {
+        "id": "1:5",
+        "name": "Campo Plazo",
+        "type": "FRAME",
+        "children": [
+         {
+          "id": "1:5l",
+          "name": "Campo Plazo etiqueta",
+          "type": "TEXT",
+          "characters": "Plazo (meses)"
+         },
+         {
+          "id": "1:5i",
+          "name": "Campo Plazo entrada",
+          "type": "RECTANGLE"
+         },
+         {
+          "id": "1:5p",
+          "name": "Campo Plazo ayuda",
+          "type": "TEXT",
+          "characters": "Entre 6 y 60 meses"
+         }
+        ]
+       },
+       {
+        "id": "1:6",
+        "name": "Mensaje de error",
+        "type": "TEXT",
+        "characters": "El monto debe estar entre 1.000 y 50.000"
+       },
+       {
+        "id": "1:7",
+        "name": "Botón Calcular",
+        "type": "INSTANCE",
+        "children": [
+         {
+          "id": "1:7t",
+          "name": "Botón Calcular texto",
+          "type": "TEXT",
+          "characters": "Calcular"
+         }
+        ],
+        "transitionNodeID": "2:2"
+       }
+      ]
+     },
+     {
+      "id": "2:2",
+      "name": "Resultado",
+      "type": "FRAME",
+      "children": [
+       {
+        "id": "2:3",
+        "name": "Título",
+        "type": "TEXT",
+        "characters": "Resultado de tu simulación"
+       },
+       {
+        "id": "2:4",
+        "name": "Tasa anual",
+        "type": "TEXT",
+        "characters": "Tasa anual: 12.00 %"
+       },
+       {
+        "id": "2:5",
+        "name": "Cuota mensual",
+        "type": "TEXT",
+        "characters": "Cuota mensual: 888.49 USD"
+       },
+       {
+        "id": "2:6",
+        "name": "Total a pagar",
+        "type": "TEXT",
+        "characters": "Total a pagar: 10661.88 USD"
+       },
+       {
+        "id": "2:7",
+        "name": "Botón Nueva simulación",
+        "type": "INSTANCE",
+        "children": [
+         {
+          "id": "2:7t",
+          "name": "Botón Nueva simulación texto",
+          "type": "TEXT",
+          "characters": "Nueva simulación"
+         }
+        ],
+        "transitionNodeID": "1:2"
+       },
+       {
+        "id": "2:8",
+        "name": "Botón Descargar PDF",
+        "type": "INSTANCE",
+        "children": [
+         {
+          "id": "2:8t",
+          "name": "Botón Descargar PDF texto",
+          "type": "TEXT",
+          "characters": "Descargar PDF"
+         }
+        ]
+       }
+      ]
+     },
+     {
+      "id": "3:1",
+      "name": "Notas del diseñador",
+      "type": "FRAME",
+      "visible": false,
+      "children": [
+       {
+        "id": "3:2",
+        "name": "Nota",
+        "type": "TEXT",
+        "characters": "borrador"
+       }
+      ]
+     }
+    ]
+   }
+  ]
+ },
+ "components": {},
+ "styles": {},
+ "schemaVersion": 0
+}
