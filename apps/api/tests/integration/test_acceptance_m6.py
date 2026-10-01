@@ -189,7 +189,8 @@ async def test_the_fictitious_cics_application_reaches_a_verdict_capped_at_partl
     assert master
     (verdict,) = await fetch(
         owner_engine,
-        "SELECT module, verdict, checks, not_proven, proof_pack_key FROM verdict WHERE run_id = :r",
+        "SELECT module, verdict, checks, not_proven, proof_pack_key FROM verdict WHERE run_id = :r "
+        "AND module NOT LIKE 'iac-%'",
         r=run_id,
     )
     checks = {c["key"]: c["status"] for c in verdict["checks"]}

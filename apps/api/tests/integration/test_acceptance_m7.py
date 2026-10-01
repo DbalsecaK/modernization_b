@@ -183,7 +183,7 @@ async def test_a_functionality_from_stories_and_figma_is_built_and_validated_end
     assert {"C1", "C2", "C3", "C4"} <= set(decided)
     verdicts = {v["module"]: v for v in await fetch(owner_engine, "SELECT module, verdict, checks, proof_pack_key "
                                                     "FROM verdict WHERE run_id = :r", r=run_id)}  # fmt: skip
-    feature = next(v for m, v in verdicts.items() if not m.startswith("frontend-"))
+    feature = next(v for m, v in verdicts.items() if not m.startswith(("frontend-", "iac-")))
     frontend = verdicts.get("frontend-react")
     stories = await fetch(owner_engine, "SELECT DISTINCT ON (s.key) s.key, v.origin, v.links FROM user_story s JOIN "
                           "user_story_version v ON v.story_id = s.id WHERE s.project_id = :p ORDER BY s.key, v.version "

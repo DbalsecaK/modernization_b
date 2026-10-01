@@ -35,7 +35,19 @@ export const FEATURE_CHECK_KEYS = [
   'traced_to_inputs',
 ] as const
 
+/** The checks of the infrastructure's verdict (ADR-0021); its module is `iac-<cloud>`. */
+export const IAC_CHECK_KEYS = [
+  'validates',
+  'encryption_at_rest',
+  'db_not_public',
+  'no_secrets_in_code',
+  'tags',
+  'logs',
+] as const
+
 export const isFrontendModule = (module: string) => module.startsWith('frontend-')
+
+export const isIacModule = (module: string) => module.startsWith('iac-')
 
 /** A Flow 2 verdict reports the checks only Flow 2 has. */
 export const isFeatureVerdict = (checks: CheckOut[]) =>
@@ -64,9 +76,11 @@ export const checkTone = (status: CheckStatus): Tone =>
 export function allChecks(checks: CheckOut[], module = ''): CheckView[] {
   const keys: readonly string[] = isFrontendModule(module)
     ? FRONTEND_CHECK_KEYS
-    : isFeatureVerdict(checks)
-      ? FEATURE_CHECK_KEYS
-      : CHECK_KEYS
+    : isIacModule(module)
+      ? IAC_CHECK_KEYS
+      : isFeatureVerdict(checks)
+        ? FEATURE_CHECK_KEYS
+        : CHECK_KEYS
   const byKey = new Map(checks.map((c) => [c.key, c]))
   const known = keys.map((key): CheckView =>
     byKey.has(key)

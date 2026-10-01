@@ -112,7 +112,9 @@ try {
       @('nexti-sandbox-web:1', @('build', '-q', '-f', 'infra/sandbox/web/Dockerfile', '-t', 'nexti-sandbox-web:1', '.')),
       @('nexti-sandbox-frontend:1', @('build', '-q', '-f', 'infra/sandbox/frontend/Dockerfile', '-t', 'nexti-sandbox-frontend:1', '.')),
       @('nexti-sandbox-dotnet:1', @('build', '-q', '-t', 'nexti-sandbox-dotnet:1', 'infra/sandbox/dotnet')),
-      @('nexti-sandbox-docs:1', @('build', '-q', '-t', 'nexti-sandbox-docs:1', 'infra/sandbox/docs'))
+      @('nexti-sandbox-docs:1', @('build', '-q', '-t', 'nexti-sandbox-docs:1', 'infra/sandbox/docs')),
+      @('nexti-sandbox-java-oracle:1', @('build', '-q', '-t', 'nexti-sandbox-java-oracle:1', 'infra/sandbox/java-oracle')),
+      @('nexti-sandbox-iac:1', @('build', '-q', '-t', 'nexti-sandbox-iac:1', 'infra/sandbox/iac'))
     )
     foreach ($image in $images) {
       docker image inspect $image[0] *> $null

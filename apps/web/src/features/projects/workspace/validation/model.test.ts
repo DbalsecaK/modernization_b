@@ -202,3 +202,18 @@ describe('frontend verdicts', () => {
     expect(checks.filter((c) => c.missing)).toHaveLength(5)
   })
 })
+
+describe('infrastructure verdicts', () => {
+  it('complete the IaC checks of ADR-0021', () => {
+    const checks = allChecks([{ key: 'tags', title: 'Tags', status: 'passed', detail: 'ok' }], 'iac-aws')
+    expect(checks.map((c) => c.key)).toEqual([
+      'validates',
+      'encryption_at_rest',
+      'db_not_public',
+      'no_secrets_in_code',
+      'tags',
+      'logs',
+    ])
+    expect(checks.filter((c) => c.missing)).toHaveLength(5)
+  })
+})
