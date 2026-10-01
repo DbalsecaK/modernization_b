@@ -42,6 +42,22 @@ def _forbidden(address: str) -> bool:
     )
 
 
+async def ensure_public_host(url: str, resolver: Resolver = resolve, allow_private_hosts: bool = False) -> None:
+    """A tool the platform calls on behalf of a tenant (Jira, Azure DevOps) must be https on a public host: never an
+    internal address (SSRF). Raises Rejection otherwise."""
+    parts = urlsplit(url)
+    if parts.scheme != "https" or not parts.hostname or parts.username or parts.password:
+        raise Rejection("invalid_url", "Only https URLs without credentials are accepted.")
+    try:
+        addresses = await resolver(parts.hostname, parts.port or 443)
+    except OSError:
+        raise Rejection("host_unresolved", "The host cannot be resolved.") from None
+    if not addresses:
+        raise Rejection("host_unresolved", "The host cannot be resolved.")
+    if not allow_private_hosts and any(_forbidden(a) for a in addresses):
+        raise Rejection("host_not_allowed", "The host resolves to a private or internal address.")
+
+
 def validate_repository_url(url: str) -> str:
     url = url.strip()
     parts = urlsplit(url)

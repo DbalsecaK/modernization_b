@@ -18,6 +18,7 @@ import { ProjectInventory } from './workspace/ProjectInventory'
 import { ProjectCode } from './workspace/ProjectCode'
 import { ProjectArchitecture } from './workspace/ProjectArchitecture'
 import { ProjectCosts } from './workspace/ProjectCosts'
+import { ProjectBacklog } from './workspace/ProjectBacklog'
 
 const TABS = [
   'overview',
@@ -37,7 +38,7 @@ const TABS = [
 ] as const
 export type ProjectTab = (typeof TABS)[number]
 // Connected so far (M2: overview, inputs, settings; M3: runs, activity; M4: specification, traceability, validation;
-// M5: uiDesign; M6: inventory; P2: architecture, code, costs);
+// M5: uiDesign; M6: inventory; P2: architecture, code, costs; M7b: backlog);
 // the others fill in as the pipeline produces their content.
 const CONNECTED: ProjectTab[] = [
   'overview',
@@ -49,6 +50,7 @@ const CONNECTED: ProjectTab[] = [
   'code',
   'traceability',
   'validation',
+  'backlog',
   'runs',
   'costs',
   'activity',
@@ -121,6 +123,7 @@ export function ProjectWorkspace() {
       {tab === 'costs' && <ProjectCosts project={p} onOpenRuns={() => setTab('runs')} />}
       {tab === 'activity' && <ProjectActivity project={p} />}
       {tab === 'settings' && <ProjectSettings project={p} />}
+      {tab === 'backlog' && <ProjectBacklog project={p} />}
       {!CONNECTED.includes(tab) && (
         <EmptyState title={t(`project.later.${tab}`)} description={t('project.laterHint')} />
       )}

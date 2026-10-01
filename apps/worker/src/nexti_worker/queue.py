@@ -7,7 +7,8 @@ import uuid
 import structlog
 from procrastinate import App, Blueprint, JobContext, PsycopgConnector, RetryStrategy
 
-from nexti_core.jobs import EXECUTE_RUN_TASK, RUNS_QUEUE, UI_CHANGE_TASK
+from nexti_core.jobs import BACKLOG_SYNC_TASK, EXECUTE_RUN_TASK, RUNS_QUEUE, UI_CHANGE_TASK
+from nexti_worker.backlog import bug_fixer, sync_backlog, tracker_for
 from nexti_worker.runner import Runtime, execute_run, fail_run
 from nexti_worker.ui_chat import apply_ui_change
 
@@ -58,6 +59,18 @@ async def apply_ui_change_task(context: JobContext, message_id: str, tenant_id: 
     outcome = await apply_ui_change(runtime.engine, runtime.gateway, runtime.objects, runtime.sandboxes,
                                     uuid.UUID(message_id), uuid.UUID(tenant_id))  # fmt: skip
     log.info("ui_change.job_done", outcome=outcome)
+
+
+@tasks.task(name=BACKLOG_SYNC_TASK.partition(":")[2], queue=RUNS_QUEUE, pass_context=True,
+            retry=RetryStrategy(max_attempts=3, exponential_wait=5))  # fmt: skip
+async def sync_backlog_task(context: JobContext, project_id: str, tenant_id: str, reason: str = "manual") -> None:
+    """The project's backlog in Jira or Azure DevOps (spec 7.6, ADR-0019): after C1, after a verdict, on request."""
+    runtime = _runtime(context)
+    summary = await sync_backlog(runtime.engine, runtime.objects, runtime.secrets,
+                                 runtime.trackers or tracker_for(runtime.http), uuid.UUID(tenant_id),
+                                 uuid.UUID(project_id), reason, bug_fixer(runtime, uuid.UUID(tenant_id),
+                                                                          uuid.UUID(project_id)))  # fmt: skip
+    log.info("backlog.job_done", project_id=project_id, reason=reason, summary=summary)
 
 
 @tasks.periodic(cron="* * * * * */5")

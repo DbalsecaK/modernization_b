@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncEngine
 from nexti_adapter_cobol import TraceRunner, is_trace
 from nexti_core.adapters import Edge, Inventory, LegacyRunner, LegacyUnavailableError, Node, SourceFile
 from nexti_core.db.session import DbScope, scoped_connection
+from nexti_core.jobs import defer_backlog_sync
 from nexti_core.object_store import ObjectStore
 from nexti_core.secrets import SecretStore
 from nexti_core.spec.characterization import GoldenMaster, Suite
@@ -578,6 +579,13 @@ class WorkerProjectPort:
                 {"t": self.run.tenant_id, "p": self.run.project_id, "r": self.run.run_id, "m": verdict.module,
                  "v": verdict.verdict, "c": json.dumps(checks), "n": json.dumps(verdict.not_proven), "k": key},
             )  # fmt: skip
+            # The linked backlog follows the verdict (7.6): verified items to Done, a failed check opens a bug.
+            linked = (
+                await conn.execute(text("SELECT 1 FROM project_backlog WHERE project_id = :p"),
+                                   {"p": self.run.project_id})
+            ).first()  # fmt: skip
+            if linked is not None:
+                await defer_backlog_sync(conn, self.run.project_id, self.run.tenant_id, f"verdict {verdict.module}")
         return key
 
     # -- evaluation against a reference (M4) ---------------------------------------------------------------------

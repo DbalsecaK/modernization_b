@@ -17,9 +17,16 @@ import { Notice } from '@/features/projects/NewProjectWizard'
 import { errorMessage } from './AdminForms'
 
 const TONE = { ok: 'good', failed: 'critical', untested: 'neutral' } as const
-// Figma is available now; the others arrive with M7b (the API refuses them until then).
-const AVAILABLE: IntegrationKind[] = ['figma']
-const LATER: IntegrationKind[] = ['jira', 'azure_devops', 'github', 'gitlab']
+// Figma (M7), Jira and Azure DevOps (M7b); Git arrives with the delivery milestone (the API refuses it until then).
+const AVAILABLE: IntegrationKind[] = ['figma', 'jira', 'azure_devops']
+const LATER: IntegrationKind[] = ['github', 'gitlab']
+// Where each tool is (never a credential): the API checks the URLs are public https hosts.
+const CONFIG: Record<string, string[]> = { figma: [], jira: ['site', 'email'], azure_devops: ['organization'] }
+const PLACEHOLDER: Record<string, string> = {
+  site: 'https://andesbank.atlassian.net',
+  email: 'integraciones@andesbank.example',
+  organization: 'https://dev.azure.com/andesbank',
+}
 
 /** A new integration of the tenant, or a rename / token rotation. The token is sent once and never shown again. */
 function IntegrationForm({ open, onClose, initial }: { open: boolean; onClose: () => void; initial?: Integration }) {
@@ -29,9 +36,14 @@ function IntegrationForm({ open, onClose, initial }: { open: boolean; onClose: (
   const [kind, setKind] = useState<IntegrationKind>(initial?.kind ?? 'figma')
   const [name, setName] = useState(initial?.name ?? '')
   const [token, setToken] = useState('')
+  const [config, setConfig] = useState<Record<string, string>>(initial?.config ?? {})
+  const fields = CONFIG[kind] ?? []
   const editing = !!initial
   const busy = create.isPending || update.isPending
-  const valid = name.trim().length > 0 && (editing ? token === '' || token.length >= 8 : token.length >= 8)
+  const valid =
+    name.trim().length > 0 &&
+    (editing ? token === '' || token.length >= 8 : token.length >= 8) &&
+    (editing || fields.every((f) => (config[f] ?? '').trim().length > 0))
 
   async function save() {
     try {
@@ -42,7 +54,7 @@ function IntegrationForm({ open, onClose, initial }: { open: boolean; onClose: (
           token: token || undefined,
         })
       } else {
-        await create.mutateAsync({ kind, name: name.trim(), token })
+        await create.mutateAsync({ kind, name: name.trim(), token, config })
       }
       setToken('')
       toast(t('integrations.saved', { name }))
@@ -78,18 +90,28 @@ function IntegrationForm({ open, onClose, initial }: { open: boolean; onClose: (
           ))}
         </Select>
       </Field>
+      {fields.map((f) => (
+        <Field key={f} label={t(`integrations.config.${f}`)}>
+          <Input
+            value={config[f] ?? ''}
+            disabled={editing}
+            onChange={(e) => setConfig({ ...config, [f]: e.target.value })}
+            placeholder={PLACEHOLDER[f]}
+          />
+        </Field>
+      ))}
       <Field label={t('integrations.name')}>
         <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Andes — Figma" />
       </Field>
       <Field
         label={editing ? t('integrations.newToken') : t('integrations.token')}
-        hint={editing ? t('integrations.rotateHint') : t('integrations.tokenHint')}
+        hint={editing ? t('integrations.rotateHint') : t(`integrations.tokenHints.${kind}`)}
       >
         <Input
           type="password"
           value={token}
           onChange={(e) => setToken(e.target.value)}
-          placeholder="figd_…"
+          placeholder={kind === 'figma' ? 'figd_…' : '••••••••'}
           autoComplete="off"
         />
       </Field>
@@ -160,6 +182,12 @@ export function Integrations() {
                     <dt className="text-muted">{t('integrations.account')}</dt>
                     <dd className="text-text">{i.account || '—'}</dd>
                   </div>
+                  {Object.entries(i.config ?? {}).map(([k, v]) => (
+                    <div key={k} className="col-span-2">
+                      <dt className="text-muted">{t(`integrations.config.${k}`)}</dt>
+                      <dd className="break-all text-text">{v}</dd>
+                    </div>
+                  ))}
                   <div className="col-span-2">
                     <dt className="text-muted">{t('integrations.lastCheck')}</dt>
                     <dd className="text-text">

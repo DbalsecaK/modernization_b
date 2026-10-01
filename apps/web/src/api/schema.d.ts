@@ -757,6 +757,45 @@ export interface paths {
         patch: operations["update_project_api_v1_projects__project_id__patch"];
         trace?: never;
     };
+    "/api/v1/projects/{project_id}/backlog": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Backlog */
+        get: operations["get_backlog_api_v1_projects__project_id__backlog_get"];
+        /** Set Backlog */
+        put: operations["set_backlog_api_v1_projects__project_id__backlog_put"];
+        post?: never;
+        /** Delete Backlog */
+        delete: operations["delete_backlog_api_v1_projects__project_id__backlog_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/projects/{project_id}/backlog:sync": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Sync Backlog
+         * @description Ask the worker to sync now (approved stories, verified items, bugs). Every external write it makes is audited.
+         */
+        post: operations["sync_backlog_api_v1_projects__project_id__backlog_sync_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/projects/{project_id}/c1-check": {
         parameters: {
             query?: never;
@@ -2408,6 +2447,65 @@ export interface components {
             /** Nextbefore */
             nextBefore: number | null;
         };
+        /** BacklogIn */
+        BacklogIn: {
+            /** Externalproject */
+            externalProject: string;
+            /**
+             * Integrationid
+             * Format: uuid
+             */
+            integrationId: string;
+            rules?: components["schemas"]["Rules"];
+            /** States */
+            states?: {
+                [key: string]: string;
+            };
+            /** Types */
+            types?: {
+                [key: string]: string;
+            };
+        };
+        /** BacklogLinkOut */
+        BacklogLinkOut: {
+            /** Externalproject */
+            externalProject: string;
+            /**
+             * Integrationid
+             * Format: uuid
+             */
+            integrationId: string;
+            /** Integrationname */
+            integrationName: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "jira" | "azure_devops";
+            /** Lastsyncdetail */
+            lastSyncDetail: string | null;
+            /** Lastsyncedat */
+            lastSyncedAt: string | null;
+            rules: components["schemas"]["Rules"];
+            /** States */
+            states: {
+                [key: string]: string;
+            };
+            /** Types */
+            types: {
+                [key: string]: string;
+            };
+        };
+        /** BacklogOut */
+        BacklogOut: {
+            /** Connections */
+            connections: components["schemas"]["ConnectionOption"][];
+            /** Fixes */
+            fixes: components["schemas"]["BugFixOut"][];
+            /** Items */
+            items: components["schemas"]["WorkItemOut"][];
+            link: components["schemas"]["BacklogLinkOut"] | null;
+        };
         /** Body_upload_input_api_v1_projects__project_id__inputs_post */
         Body_upload_input_api_v1_projects__project_id__inputs_post: {
             /** File */
@@ -2483,6 +2581,25 @@ export interface components {
             projectName: string | null;
             /** Spentusd */
             spentUsd: string;
+        };
+        /** BugFixOut */
+        BugFixOut: {
+            /**
+             * Createdat
+             * Format: date-time
+             */
+            createdAt: string;
+            /** Detail */
+            detail: string;
+            /** Element */
+            element: string;
+            /** Iteration */
+            iteration: number;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "proposed" | "failed" | "escalated";
         };
         /** BusinessFlowOut */
         BusinessFlowOut: {
@@ -2834,6 +2951,26 @@ export interface components {
             provider: string;
             /** Status */
             status: string;
+        };
+        /** ConnectionOption */
+        ConnectionOption: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "jira" | "azure_devops";
+            /** Name */
+            name: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "untested" | "ok" | "failed";
         };
         /** ConnectionOut */
         ConnectionOut: {
@@ -3426,6 +3563,10 @@ export interface components {
         };
         /** IntegrationCreate */
         IntegrationCreate: {
+            /** Config */
+            config?: {
+                [key: string]: string;
+            };
             /**
              * Kind
              * @enum {string}
@@ -3440,6 +3581,10 @@ export interface components {
         IntegrationOut: {
             /** Account */
             account: string | null;
+            /** Config */
+            config?: {
+                [key: string]: string;
+            };
             /** Hastoken */
             hasToken: boolean;
             /**
@@ -4527,6 +4672,29 @@ export interface components {
             /** Name */
             name: string;
         };
+        /** Rules */
+        Rules: {
+            /**
+             * Autofix
+             * @default true
+             */
+            autoFix: boolean;
+            /**
+             * Bugonfailure
+             * @default true
+             */
+            bugOnFailure: boolean;
+            /**
+             * Createfromspec
+             * @default true
+             */
+            createFromSpec: boolean;
+            /**
+             * Markdone
+             * @default true
+             */
+            markDone: boolean;
+        };
         /** RunDetail */
         RunDetail: {
             /** Autonomy */
@@ -4854,13 +5022,6 @@ export interface components {
             traced: boolean;
             /** Version */
             version: number;
-        };
-        /** SyncOut */
-        SyncOut: {
-            /** Families */
-            families: number;
-            /** Versions */
-            versions: number;
         };
         /** TargetIn */
         TargetIn: {
@@ -5225,6 +5386,32 @@ export interface components {
              */
             status: "available" | "deprecated";
         };
+        /** WorkItemOut */
+        WorkItemOut: {
+            /** Element */
+            element: string;
+            /** Externalkey */
+            externalKey: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "feature" | "story" | "task" | "bug";
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "open" | "review" | "done" | "discarded";
+            /** Title */
+            title: string;
+            /**
+             * Updatedat
+             * Format: date-time
+             */
+            updatedAt: string;
+            /** Url */
+            url: string;
+        };
         /** WorkerOut */
         WorkerOut: {
             /** Alive */
@@ -5238,6 +5425,18 @@ export interface components {
             lastHeartbeat: string;
             /** Runningjobs */
             runningJobs: number;
+        };
+        /** SyncOut */
+        nexti_api__ai__catalog__SyncOut: {
+            /** Families */
+            families: number;
+            /** Versions */
+            versions: number;
+        };
+        /** SyncOut */
+        nexti_api__projects__backlog__SyncOut: {
+            /** Queued */
+            queued: boolean;
         };
         /** RuleOut */
         nexti_api__projects__catalog_api__RuleOut: {
@@ -5536,7 +5735,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["SyncOut"];
+                    "application/json": components["schemas"]["nexti_api__ai__catalog__SyncOut"];
                 };
             };
         };
@@ -6869,6 +7068,132 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ProjectDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_backlog_api_v1_projects__project_id__backlog_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BacklogOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    set_backlog_api_v1_projects__project_id__backlog_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BacklogIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BacklogOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_backlog_api_v1_projects__project_id__backlog_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    sync_backlog_api_v1_projects__project_id__backlog_sync_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["nexti_api__projects__backlog__SyncOut"];
                 };
             };
             /** @description Validation Error */

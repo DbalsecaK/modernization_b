@@ -664,7 +664,11 @@ class ProjectRepository(Base):
 # Integrations of the tenant (migration 0011, ADR-0018): Figma now, Jira / Azure DevOps / Git in M7b.
 class TenantIntegration(Base):
     __tablename__ = "tenant_integration"
-    __table_args__ = (UniqueConstraint("tenant_id", "name"), Index("tenant_integration_kind", "tenant_id", "kind"))
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "name"),
+        UniqueConstraint("id", "tenant_id", name="tenant_integration_id_tenant"),
+        Index("tenant_integration_kind", "tenant_id", "kind"),
+    )
     id: Mapped[uuid.UUID] = _uuid_pk()
     tenant_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("tenant.id", ondelete="CASCADE"), nullable=False)
     kind: Mapped[str] = mapped_column(Text, nullable=False)
@@ -675,9 +679,74 @@ class TenantIntegration(Base):
     status: Mapped[str] = mapped_column(Text, nullable=False, server_default="untested")
     last_tested_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     last_test_detail: Mapped[str | None] = mapped_column(Text)
+    # Where the tool is (Jira site and e-mail, Azure DevOps organization URL; migration 0012). Never a credential.
+    config: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))
     created_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("app_user.id"))
     created_at: Mapped[datetime] = _now()
     updated_at: Mapped[datetime] = _now()
+
+
+# The backlog of a project in Jira or Azure DevOps (migration 0012, ADR-0019).
+class ProjectBacklog(Base):
+    __tablename__ = "project_backlog"
+    __table_args__ = (
+        ForeignKeyConstraint(["project_id", "tenant_id"], ["project.id", "project.tenant_id"], ondelete="CASCADE"),
+        ForeignKeyConstraint(["integration_id", "tenant_id"], ["tenant_integration.id", "tenant_integration.tenant_id"],
+                             ondelete="RESTRICT"),
+    )  # fmt: skip
+    tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    project_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
+    integration_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    external_project: Mapped[str] = mapped_column(Text, nullable=False)
+    types: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))
+    states: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))
+    rules: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))
+    last_synced_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    last_sync_detail: Mapped[str | None] = mapped_column(Text)
+    created_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("app_user.id"))
+    created_at: Mapped[datetime] = _now()
+    updated_at: Mapped[datetime] = _now()
+
+
+class WorkItemLink(Base):
+    __tablename__ = "work_item_link"
+    __table_args__ = (
+        UniqueConstraint("project_id", "integration_id", "element"),
+        ForeignKeyConstraint(["project_id", "tenant_id"], ["project.id", "project.tenant_id"], ondelete="CASCADE"),
+        ForeignKeyConstraint(["integration_id", "tenant_id"], ["tenant_integration.id", "tenant_integration.tenant_id"],
+                             ondelete="CASCADE"),
+    )  # fmt: skip
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    project_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    integration_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    element: Mapped[str] = mapped_column(Text, nullable=False)
+    kind: Mapped[str] = mapped_column(Text, nullable=False)
+    title: Mapped[str] = mapped_column(Text, nullable=False, server_default="")
+    external_id: Mapped[str] = mapped_column(Text, nullable=False)
+    external_key: Mapped[str] = mapped_column(Text, nullable=False)
+    url: Mapped[str] = mapped_column(Text, nullable=False, server_default="")
+    digest: Mapped[str] = mapped_column(Text, nullable=False)
+    state: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = _now()
+    updated_at: Mapped[datetime] = _now()
+
+
+class BugFix(Base):
+    __tablename__ = "bug_fix"
+    __table_args__ = (
+        UniqueConstraint("project_id", "element", "iteration"),
+        ForeignKeyConstraint(["project_id", "tenant_id"], ["project.id", "project.tenant_id"], ondelete="CASCADE"),
+    )
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    project_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    element: Mapped[str] = mapped_column(Text, nullable=False)
+    iteration: Mapped[int] = mapped_column(Integer, nullable=False)
+    status: Mapped[str] = mapped_column(Text, nullable=False)
+    detail: Mapped[str] = mapped_column(Text, nullable=False, server_default="")
+    files_key: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = _now()
 
 
 # Runs of the project pipeline (migration 0007). The queue (procrastinate_*) and the LangGraph checkpointer

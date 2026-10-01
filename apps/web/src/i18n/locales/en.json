@@ -2146,82 +2146,74 @@
     "openBugsHint": "Found by tester or validator agents",
     "done": "Done",
     "connection": "Connection",
-    "connectionHint": "Items are created and updated by the agents and kept in sync both ways.",
-    "provider": "Tool",
-    "site": "Jira site",
-    "organization": "Organization",
-    "project": "Project",
+    "connectionHint": "The project's Jira or Azure DevOps project. The agents create and update its items; the credential is the tenant's.",
     "lastSync": "Last sync",
-    "mapping": "Type mapping",
-    "mapTo": {
-      "jira": {
-        "feature": "Epic",
-        "story": "Story",
-        "task": "Sub-task",
-        "bug": "Bug"
-      },
-      "azureDevOps": {
-        "feature": "Feature",
-        "story": "User Story",
-        "task": "Task",
-        "bug": "Bug"
-      }
-    },
     "syncNow": "Sync now",
-    "synced": "Backlog synced.",
-    "generate": "Generate backlog from the spec",
-    "generated": "The functional analyst created 3 features, 9 stories and 14 tasks.",
     "automation": "Automation rules",
     "automationHint": "What agents do in the tracker without being asked.",
     "rules": {
       "createFromSpec": {
         "name": "Create the backlog from the approved spec",
-        "hint": "Features from bounded contexts, stories from capabilities and rules, tasks per layer."
+        "hint": "At C1: a feature per feature, the approved stories with their Gherkin and a task per linked element, by wave."
       },
       "markDone": {
-        "name": "Mark items as done when their tests pass",
-        "hint": "Only with evidence: the tests that name the rule ran and passed."
+        "name": "Mark items as done with evidence",
+        "hint": "When the verification of their rules passes; the verdict goes as a comment."
       },
       "bugOnFailure": {
-        "name": "Open a bug when a test or an equivalence check fails",
-        "hint": "The tester or the validator attaches the failing test, the rule and the case."
+        "name": "Open a bug when a check fails",
+        "hint": "Steps, expected and obtained, the rules and the trace, from the verdict."
       },
       "autoFix": {
         "name": "Start the developer agent on new bugs",
-        "hint": "It proposes a fix within the self-correction limit."
-      },
-      "retestAndClose": {
-        "name": "Re-test and close fixed bugs",
-        "hint": "Closes after the re-run passes and the code reviewer approves (per the autonomy level)."
-      },
-      "syncComments": {
-        "name": "Sync comments both ways",
-        "hint": "Comments in Jira or Azure DevOps reach the agents as context."
+        "hint": "It proposes a correction in the sandbox; a person reviews it."
       }
     },
-    "limitsNote": "Automations respect the project's autonomy level and stop after {{max}} failed fixes; then the bug is escalated to a person.",
+    "limitsNote": "The developer agent stops after the project's maximum of iterations; then the bug is escalated to a person. Closing a bug in the tool does not change a verdict.",
     "items": "Work items",
     "itemsHint": "Hierarchy for {{project}}.",
     "filterType": "Filter by type",
     "allTypes": "All types",
-    "status": {
-      "todo": "To do",
-      "inProgress": "In progress",
-      "inReview": "In review",
+    "connectionLabel": "Connection",
+    "jiraProject": "Jira project key",
+    "jiraProjectHint": "For example CARDS.",
+    "adoProject": "Azure DevOps project",
+    "adoProjectHint": "The project name in the organization.",
+    "noConnections": "The tenant has no Jira or Azure DevOps connection yet: an administrator adds it in Administration → Integrations.",
+    "notLinked": "Not linked",
+    "askOwner": "The project owner links the backlog.",
+    "link": "Link",
+    "saveLink": "Save",
+    "linked": "Backlog linked",
+    "unlink": "Unlink",
+    "confirmUnlink": "Unlink the backlog? The items already created stay in the tool.",
+    "unlinked": "Backlog unlinked",
+    "failed": "The backlog could not be saved: {{message}}",
+    "syncTitle": "Sync",
+    "syncHint": "It runs after C1, after each verdict and when you ask for it.",
+    "lastResult": "Last result",
+    "syncQueued": "Sync queued: the items appear in a moment.",
+    "syncWaiting": "A sync is already waiting: it will include the latest changes.",
+    "noItems": "No items yet",
+    "noItemsHint": "They are created when C1 is approved (or with Sync now).",
+    "item": "Item",
+    "externalKey": "Key",
+    "state": "State",
+    "updated": "Updated",
+    "states": {
+      "open": "Open",
+      "review": "In review",
       "done": "Done",
-      "failed": "Failed"
+      "discarded": "Discarded"
     },
-    "pendingSync": "Pending sync",
-    "viewLoop": "View fix loop",
-    "bugLoop": "Automatic fix loop · {{key}}",
-    "bugLoopHint": "Tester → bug → developer → re-test → review → close.",
-    "loopSteps": {
-      "detected": "detected a failure",
-      "bugCreated": "opened the bug",
-      "developerTriggered": "started the developer agent",
-      "fixProposed": "proposed a fix",
-      "retested": "re-ran the tests",
-      "waitingReview": "waiting for review"
+    "fixes": "Bug fixes",
+    "fixesHint": "Corrections the developer agent proposed in the sandbox: drafts a person reviews.",
+    "iteration": "Iteration",
+    "detail": "Detail",
+    "fixStatus": {
+      "proposed": "Proposed",
+      "failed": "Failed",
+      "escalated": "Escalated"
     }
   },
   "stories": {
@@ -2603,12 +2595,11 @@
     "name": "Name",
     "token": "Token",
     "newToken": "New token (optional)",
-    "tokenHint": "A Figma personal access token with read access to the files.",
     "rotateHint": "Leave it empty to keep the current token.",
     "saved": "Integration {{name}} saved",
     "failed": "The integration could not be saved: {{message}}",
     "none": "No integrations yet",
-    "noneHint": "Connect Figma so the projects of New Feature can read their design files.",
+    "noneHint": "Connect Figma for New Feature projects, and Jira or Azure DevOps for the backlog.",
     "stored": "Stored in the secrets store",
     "missing": "Missing",
     "account": "Account",
@@ -2618,7 +2609,7 @@
     "delete": "Delete {{name}}",
     "confirmDelete": "Delete the integration {{name}}? Its token is removed from the secrets store.",
     "deleted": "Integration {{name}} deleted",
-    "later": "Available with the backlog integration (M7b)",
+    "later": "Available with the delivery milestone",
     "soon": "Coming soon",
     "note": "Tokens live only in the secrets store (OpenBao); the database keeps their path. Every change is audited.",
     "kinds": {
@@ -2632,6 +2623,16 @@
       "ok": "Connected",
       "failed": "Failed",
       "untested": "Not tested"
+    },
+    "config": {
+      "site": "Jira site",
+      "email": "Account e-mail",
+      "organization": "Organization URL"
+    },
+    "tokenHints": {
+      "figma": "A Figma personal access token with read access to the files.",
+      "jira": "A Jira API token of the account (basic authentication with its e-mail).",
+      "azure_devops": "A personal access token with Work Items read and write."
     }
   }
 }

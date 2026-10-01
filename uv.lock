@@ -17,6 +17,7 @@ members = [
     "nexti-core",
     "nexti-graph",
     "nexti-ingest",
+    "nexti-integrations",
     "nexti-model-gateway",
     "nexti-orchestration",
     "nexti-pack-dotnet",
@@ -1270,6 +1271,7 @@ dependencies = [
     { name = "nexti-core" },
     { name = "nexti-graph" },
     { name = "nexti-ingest" },
+    { name = "nexti-integrations" },
     { name = "nexti-model-gateway" },
     { name = "nexti-skills" },
     { name = "psycopg", extra = ["binary"] },
@@ -1294,6 +1296,7 @@ requires-dist = [
     { name = "nexti-core", editable = "packages/core" },
     { name = "nexti-graph", editable = "packages/graph" },
     { name = "nexti-ingest", editable = "packages/ingest" },
+    { name = "nexti-integrations", editable = "packages/integrations" },
     { name = "nexti-model-gateway", editable = "packages/model_gateway" },
     { name = "nexti-skills", editable = "packages/skills" },
     { name = "psycopg", extras = ["binary"], specifier = ">=3.2" },
@@ -1363,6 +1366,17 @@ requires-dist = [
     { name = "nexti-sandbox", editable = "packages/sandbox" },
     { name = "pillow", specifier = ">=11.0" },
 ]
+
+[[package]]
+name = "nexti-integrations"
+version = "0.1.0"
+source = { editable = "packages/integrations" }
+dependencies = [
+    { name = "httpx" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "httpx", specifier = ">=0.28" }]
 
 [[package]]
 name = "nexti-model-gateway"
@@ -1519,6 +1533,7 @@ dependencies = [
     { name = "nexti-core" },
     { name = "nexti-graph" },
     { name = "nexti-ingest" },
+    { name = "nexti-integrations" },
     { name = "nexti-model-gateway" },
     { name = "nexti-orchestration" },
     { name = "nexti-pack-frontend" },
@@ -1541,6 +1556,7 @@ requires-dist = [
     { name = "nexti-core", editable = "packages/core" },
     { name = "nexti-graph", editable = "packages/graph" },
     { name = "nexti-ingest", editable = "packages/ingest" },
+    { name = "nexti-integrations", editable = "packages/integrations" },
     { name = "nexti-model-gateway", editable = "packages/model_gateway" },
     { name = "nexti-orchestration", editable = "packages/orchestration" },
     { name = "nexti-pack-frontend", editable = "packages/packs/target/frontend" },

@@ -55,3 +55,22 @@ async def defer_ui_change(
     await conn.execute(
         _DEFER, {"queue": RUNS_QUEUE, "task": UI_CHANGE_TASK, "lock": lock, "queueing_lock": None, "args": args}
     )
+
+
+BACKLOG_SYNC_TASK = "nexti:sync_backlog"
+
+
+async def defer_backlog_sync(conn: AsyncConnection, project_id: uuid.UUID, tenant_id: uuid.UUID, reason: str) -> bool:
+    """Enqueue the sync of the project's backlog with Jira or Azure DevOps (spec 7.6, ADR-0019) in the caller's
+    transaction. One sync per project at a time and at most one waiting (it reads the latest state when it starts)."""
+    args = json.dumps({"project_id": str(project_id), "tenant_id": str(tenant_id), "reason": reason})
+    lock = f"backlog:{project_id}"
+    try:
+        async with conn.begin_nested():
+            await conn.execute(
+                _DEFER, {"queue": RUNS_QUEUE, "task": BACKLOG_SYNC_TASK, "lock": lock, "queueing_lock": lock,
+                         "args": args},
+            )  # fmt: skip
+    except IntegrityError:
+        return False
+    return True
