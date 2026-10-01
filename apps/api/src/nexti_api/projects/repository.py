@@ -52,6 +52,13 @@ def _secrets(request: Request) -> SecretStore:
     return SecretStore(config, request.app.state.resources.http)
 
 
+async def repository_token(request: Request, vault_path: str | None) -> str | None:
+    """The token of the project's repository, for a push of the delivery (ADR-0023); never returned to a client."""
+    if not vault_path or not request.app.state.settings.secrets_url:
+        return None
+    return await _secrets(request).get(vault_path)
+
+
 async def _row(request: Request, auth: Authorized, project_id: uuid.UUID) -> Any:
     async with transaction(request, auth) as conn:
         if (await conn.execute(select(Project.id).where(Project.id == project_id))).first() is None:

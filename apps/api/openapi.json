@@ -3641,6 +3641,128 @@
         "title": "HTTPValidationError",
         "type": "object"
       },
+      "HardeningCheckOut": {
+        "properties": {
+          "detail": {
+            "title": "Detail",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "checked",
+              "not_checked"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "status",
+          "detail"
+        ],
+        "title": "HardeningCheckOut",
+        "type": "object"
+      },
+      "HardeningFindingOut": {
+        "properties": {
+          "file": {
+            "title": "File",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "line": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Line"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "rule": {
+            "title": "Rule",
+            "type": "string"
+          },
+          "severity": {
+            "enum": [
+              "critical",
+              "high",
+              "medium",
+              "low"
+            ],
+            "title": "Severity",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "severity",
+          "rule",
+          "file",
+          "line",
+          "message"
+        ],
+        "title": "HardeningFindingOut",
+        "type": "object"
+      },
+      "HardeningOut": {
+        "properties": {
+          "checks": {
+            "items": {
+              "$ref": "#/components/schemas/HardeningCheckOut"
+            },
+            "title": "Checks",
+            "type": "array"
+          },
+          "counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Counts",
+            "type": "object"
+          },
+          "findings": {
+            "items": {
+              "$ref": "#/components/schemas/HardeningFindingOut"
+            },
+            "title": "Findings",
+            "type": "array"
+          },
+          "generatedAt": {
+            "format": "date-time",
+            "title": "Generatedat",
+            "type": "string"
+          },
+          "runId": {
+            "format": "uuid",
+            "title": "Runid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "runId",
+          "generatedAt",
+          "counts",
+          "checks",
+          "findings"
+        ],
+        "title": "HardeningOut",
+        "type": "object"
+      },
       "IdentityOut": {
         "properties": {
           "domains": {
@@ -7157,6 +7279,119 @@
           "reason"
         ],
         "title": "RecommendationOut",
+        "type": "object"
+      },
+      "ReleaseOut": {
+        "properties": {
+          "branch": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Branch"
+          },
+          "commitSha": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Commitsha"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "title": "Createdat",
+            "type": "string"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "files": {
+            "title": "Files",
+            "type": "integer"
+          },
+          "findings": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Findings",
+            "type": "object"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "push",
+              "zip"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "repositoryUrl": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Repositoryurl"
+          },
+          "runId": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Runid"
+          },
+          "status": {
+            "enum": [
+              "pushed",
+              "failed",
+              "ready"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "runId",
+          "kind",
+          "status",
+          "repositoryUrl",
+          "branch",
+          "commitSha",
+          "files",
+          "findings",
+          "error",
+          "createdAt"
+        ],
+        "title": "ReleaseOut",
         "type": "object"
       },
       "RepositoryIn": {
@@ -12484,6 +12719,50 @@
         ]
       }
     },
+    "/api/v1/projects/{project_id}/code:push": {
+      "post": {
+        "description": "The files of the Code tab to a new `nexti/` branch of the project's repository.",
+        "operationId": "push_code_api_v1_projects__project_id__code_push_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReleaseOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Push Code",
+        "tags": [
+          "code"
+        ]
+      }
+    },
     "/api/v1/projects/{project_id}/config": {
       "put": {
         "description": "A new configuration version. Changing the team needs agents.select; changing skills needs skills.select.",
@@ -12883,6 +13162,57 @@
         "summary": "Impact",
         "tags": [
           "graph"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/hardening": {
+      "get": {
+        "operationId": "hardening_report_api_v1_projects__project_id__hardening_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/HardeningOut"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "title": "Response Hardening Report Api V1 Projects  Project Id  Hardening Get"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Hardening Report",
+        "tags": [
+          "code"
         ]
       }
     },
@@ -13459,6 +13789,53 @@
         "summary": "Accept Recommended",
         "tags": [
           "questions"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/releases": {
+      "get": {
+        "operationId": "releases_api_v1_projects__project_id__releases_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ReleaseOut"
+                  },
+                  "title": "Response Releases Api V1 Projects  Project Id  Releases Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Releases",
+        "tags": [
+          "code"
         ]
       }
     },

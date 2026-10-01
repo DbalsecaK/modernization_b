@@ -34,7 +34,7 @@ from nexti_sandbox import Sandbox
 from nexti_worker.backlog import TrackerFactory
 from nexti_worker.loading import load_run
 from nexti_worker.probe import ServicesProbe
-from nexti_worker.project import LiveFigma, WorkerProjectPort
+from nexti_worker.project import DeliveryServices, LiveFigma, WorkerProjectPort
 from nexti_worker.store import DbRunStore
 
 log = structlog.get_logger("nexti_worker")
@@ -58,6 +58,7 @@ class Runtime:
     legacy: Callable[[], LegacyRunner] | None = None  # the engine that runs the legacy for the golden master (M4)
     figma: FigmaReader | None = None  # Figma answers (tests and demo); by default the tenant's integration (M7)
     trackers: TrackerFactory | None = None  # Jira / Azure DevOps clients (tests and demo); by default the real ones
+    osv_url: str | None = None  # dependencies of the generated code in OSV (M9a); None: not checked (tests)
 
 
 async def _resume_value(
@@ -127,6 +128,7 @@ async def execute_run(runtime: Runtime, run_id: uuid.UUID, tenant_id: uuid.UUID)
             runtime.sandboxes,
             runtime.legacy,
             runtime.figma or LiveFigma(runtime.engine, tenant_id, runtime.secrets, runtime.http),
+            DeliveryServices(runtime.http, runtime.secrets, runtime.osv_url, runtime.allow_private_hosts),
         )
         if runtime.gateway is not None
         else None

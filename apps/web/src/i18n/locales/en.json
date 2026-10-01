@@ -784,7 +784,6 @@
     "generatedAt_other": "Newest generation, {{date}} · {{count}} files",
     "files": "Generated files",
     "downloadNeedsPermission": "Downloading needs the code.download permission",
-    "pushInDelivery": "Pushing to Git is done by the delivery phase of the pipeline",
     "implements": "implements",
     "loading": "Loading the generated code…",
     "loadingFile": "Loading the file…",
@@ -792,7 +791,11 @@
     "fileError": "The file could not be loaded.",
     "emptyHint": "Run the pipeline: the generation phase writes the backend and the frontend here.",
     "noCodeView": "Seeing code needs the code.view permission",
-    "noCodeViewHint": "Ask a project administrator for the developer or reviewer role."
+    "noCodeViewHint": "Ask a project administrator for the developer or reviewer role.",
+    "pushHint": "Push the generated code to a new nexti/ branch of the project's repository",
+    "pushNeedsPermission": "Pushing needs the code.push permission in this project",
+    "pushed": "Pushed to {{branch}}",
+    "pushFailed": "The push failed: {{message}}"
   },
   "traceability": {
     "hint": "Every link is verified: the legacy line exists, the target method exists and a passing test names the rule.",
@@ -2675,6 +2678,48 @@
       "figma": "A Figma personal access token with read access to the files.",
       "jira": "A Jira API token of the account (basic authentication with its e-mail).",
       "azure_devops": "A personal access token with Work Items read and write."
+    }
+  },
+  "delivery": {
+    "loading": "Loading…",
+    "hardening": "Hardening report",
+    "hardeningHint": "Secrets, vulnerable dependencies, insecure patterns and slow tests of the generated code.",
+    "hardeningAt": "Computed by code on {{date}}",
+    "noHardening": "The pipeline writes it after the verification (C4).",
+    "noFindings": "No findings",
+    "severityLabel": "Severity",
+    "rule": "Rule",
+    "where": "Where",
+    "what": "What",
+    "severity": {
+      "critical": "Critical",
+      "high": "High",
+      "medium": "Medium",
+      "low": "Low"
+    },
+    "kind": {
+      "secrets": "Secrets",
+      "dependencies": "Dependencies",
+      "patterns": "Insecure patterns",
+      "performance": "Test times"
+    },
+    "status": {
+      "checked": "Checked",
+      "not_checked": "Not checked"
+    },
+    "releases": "Releases",
+    "releasesHint": "Each delivery: pushed to a new branch of your repository, or ready as a ZIP.",
+    "noReleases": "No release yet",
+    "noReleasesHint": "The delivery phase of the pipeline, or a push from this tab, creates one.",
+    "when": "When",
+    "how": "Delivery",
+    "branch": "Branch",
+    "files": "Files",
+    "findings": "Findings",
+    "release": {
+      "pushed": "Pushed",
+      "failed": "Push failed",
+      "ready": "ZIP"
     }
   }
 }

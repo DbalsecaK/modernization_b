@@ -12,6 +12,9 @@ dependencies = [
   "nexti-adapter-cobol",
   "nexti-pack-frontend",
   "nexti-pack-iac",
+  "nexti-hardening",
+  "nexti-delivery",
+  "nexti-ingest",
   "nexti-adapter-sybase",
   "nexti-agents",
   "nexti-core",
@@ -28,6 +31,9 @@ nexti-adapter-bms = { workspace = true }
 nexti-adapter-cobol = { workspace = true }
 nexti-pack-frontend = { workspace = true }
 nexti-pack-iac = { workspace = true }
+nexti-hardening = { workspace = true }
+nexti-delivery = { workspace = true }
+nexti-ingest = { workspace = true }
 nexti-adapter-sybase = { workspace = true }
 nexti-agents = { workspace = true }
 nexti-core = { workspace = true }

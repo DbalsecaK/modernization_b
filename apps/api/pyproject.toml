@@ -21,6 +21,7 @@ dependencies = [
   "uvicorn[standard]>=0.37",
   "nexti-agents",
   "nexti-core",
+  "nexti-delivery",
   "nexti-graph",
   "nexti-ingest",
   "nexti-model-gateway",
@@ -31,6 +32,7 @@ dependencies = [
 nexti-integrations = { workspace = true }
 nexti-agents = { workspace = true }
 nexti-core = { workspace = true }
+nexti-delivery = { workspace = true }
 nexti-graph = { workspace = true }
 nexti-ingest = { workspace = true }
 nexti-model-gateway = { workspace = true }

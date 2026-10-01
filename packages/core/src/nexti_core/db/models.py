@@ -1148,3 +1148,27 @@ class TenantIdentityProvider(Base):
     created_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("app_user.id"))
     created_at: Mapped[datetime] = _now()
     updated_at: Mapped[datetime] = _now()
+
+
+# A delivery of a project (migration 0014, ADR-0023): pushed to a branch of the customer's repository, or a ZIP.
+class Release(Base):
+    __tablename__ = "release"
+    __table_args__ = (
+        ForeignKeyConstraint(["project_id", "tenant_id"], ["project.id", "project.tenant_id"], ondelete="CASCADE"),
+        Index("release_project", "project_id", text("created_at DESC")),
+    )
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    project_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    run_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
+    kind: Mapped[str] = mapped_column(Text, nullable=False)
+    status: Mapped[str] = mapped_column(Text, nullable=False)
+    repository_url: Mapped[str | None] = mapped_column(Text)
+    branch: Mapped[str | None] = mapped_column(Text)
+    commit_sha: Mapped[str | None] = mapped_column(Text)
+    base_sha: Mapped[str | None] = mapped_column(Text)
+    files: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
+    findings: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))
+    error: Mapped[str | None] = mapped_column(Text)
+    created_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("app_user.id"))
+    created_at: Mapped[datetime] = _now()

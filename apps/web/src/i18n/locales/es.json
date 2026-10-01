@@ -784,7 +784,6 @@
     "generatedAt_other": "Última generación, {{date}} · {{count}} archivos",
     "files": "Archivos generados",
     "downloadNeedsPermission": "Descargar requiere el permiso code.download",
-    "pushInDelivery": "El push a Git lo hace la fase de entrega del pipeline",
     "implements": "implementa",
     "loading": "Cargando el código generado…",
     "loadingFile": "Cargando el archivo…",
@@ -792,7 +791,11 @@
     "fileError": "No se pudo cargar el archivo.",
     "emptyHint": "Ejecuta el pipeline: la fase de generación escribe aquí el backend y el frontend.",
     "noCodeView": "Ver código requiere el permiso code.view",
-    "noCodeViewHint": "Pide a un administrador del proyecto el rol de developer o revisor."
+    "noCodeViewHint": "Pide a un administrador del proyecto el rol de developer o revisor.",
+    "pushHint": "Subir el código generado a una rama nexti/ nueva del repositorio del proyecto",
+    "pushNeedsPermission": "Subir el código requiere el permiso code.push en este proyecto",
+    "pushed": "Subido a {{branch}}",
+    "pushFailed": "El push falló: {{message}}"
   },
   "traceability": {
     "hint": "Cada vínculo está verificado: la línea legacy existe, el método destino existe y un test que pasó nombra la regla.",
@@ -2675,6 +2678,48 @@
       "figma": "Un token personal de Figma con permiso de lectura de los archivos.",
       "jira": "Un token de API de Jira de la cuenta (autenticación básica con su correo).",
       "azure_devops": "Un token personal (PAT) con lectura y escritura de Work Items."
+    }
+  },
+  "delivery": {
+    "loading": "Cargando…",
+    "hardening": "Informe de endurecimiento",
+    "hardeningHint": "Secretos, dependencias vulnerables, patrones inseguros y tests lentos del código generado.",
+    "hardeningAt": "Calculado por código el {{date}}",
+    "noHardening": "El pipeline lo escribe después de la verificación (C4).",
+    "noFindings": "Sin hallazgos",
+    "severityLabel": "Severidad",
+    "rule": "Regla",
+    "where": "Dónde",
+    "what": "Qué",
+    "severity": {
+      "critical": "Crítica",
+      "high": "Alta",
+      "medium": "Media",
+      "low": "Baja"
+    },
+    "kind": {
+      "secrets": "Secretos",
+      "dependencies": "Dependencias",
+      "patterns": "Patrones inseguros",
+      "performance": "Tiempos de tests"
+    },
+    "status": {
+      "checked": "Comprobado",
+      "not_checked": "No comprobado"
+    },
+    "releases": "Releases",
+    "releasesHint": "Cada entrega: subida a una rama nueva de su repositorio, o lista como ZIP.",
+    "noReleases": "Todavía no hay releases",
+    "noReleasesHint": "La fase de entrega del pipeline, o un push desde esta pestaña, crea uno.",
+    "when": "Cuándo",
+    "how": "Entrega",
+    "branch": "Rama",
+    "files": "Archivos",
+    "findings": "Hallazgos",
+    "release": {
+      "pushed": "Subido",
+      "failed": "Push fallido",
+      "ready": "ZIP"
     }
   }
 }
