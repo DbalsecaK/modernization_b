@@ -88,10 +88,10 @@ def keycloak_form(page: str, form_id: str) -> tuple[str, dict[str, str]]:
         fields = {m.group(1): html.unescape(m.group(2))
                   for m in re.finditer(r'<input[^>]*name="([^"]+)"[^>]*value="([^"]*)"', found.group(0))}  # fmt: skip
         return action, fields
-    action = kc_value(page, "loginAction")
-    assert action, f"no form {form_id} and no kcContext in Keycloak's page (pageId {kc_value(page, 'pageId')})"
+    login_action = kc_value(page, "loginAction")
+    assert login_action, f"no form {form_id} and no kcContext in Keycloak's page (pageId {kc_value(page, 'pageId')})"
     hidden = {name: value for name in _KC_HIDDEN.get(form_id, ()) if (value := kc_value(page, name)) is not None}
-    return action, hidden
+    return login_action, hidden
 
 
 def totp_secret(page: str) -> str:
