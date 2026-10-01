@@ -154,6 +154,8 @@ class RoleAssignment(Base):
     role_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
     scope: Mapped[str] = mapped_column(Text, nullable=False)
     project_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
+    # `idp`: given by the groups of an identity provider and recalculated at each sign-in (migration 0013).
+    source: Mapped[str] = mapped_column(Text, nullable=False, server_default="manual")
     created_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("app_user.id"))
     created_at: Mapped[datetime] = _now()
 
@@ -1108,3 +1110,38 @@ class UiChatMessage(Base):
     question_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
     created_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("app_user.id"))
     created_at: Mapped[datetime] = _now()
+
+
+# How a tenant signs in (migration 0013, ADR-0022).
+class TenantIdentity(Base):
+    __tablename__ = "tenant_identity"
+    tenant_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("tenant.id", ondelete="CASCADE"), primary_key=True)
+    local_accounts: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
+    sso: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
+    mfa_required: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
+    domains: Mapped[list[str]] = mapped_column(ARRAY(Text), nullable=False, server_default=text("'{}'"))
+    organization_id: Mapped[str | None] = mapped_column(Text)
+    updated_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("app_user.id"))
+    updated_at: Mapped[datetime] = _now()
+
+
+# An identity provider of a tenant, a Keycloak identity provider linked to its Organization. No secret is stored.
+class TenantIdentityProvider(Base):
+    __tablename__ = "tenant_identity_provider"
+    __table_args__ = (UniqueConstraint("tenant_id", "display_name"),)
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    tenant_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("tenant.id", ondelete="CASCADE"), nullable=False)
+    alias: Mapped[str] = mapped_column(Text, nullable=False, unique=True)
+    display_name: Mapped[str] = mapped_column(Text, nullable=False)
+    protocol: Mapped[str] = mapped_column(Text, nullable=False)
+    settings: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))
+    domains: Mapped[list[str]] = mapped_column(ARRAY(Text), nullable=False, server_default=text("'{}'"))
+    sso_only: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
+    jit: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
+    group_roles: Mapped[dict[str, str]] = mapped_column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))
+    default_role: Mapped[str | None] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(Text, nullable=False, server_default="pending")
+    last_error: Mapped[str | None] = mapped_column(Text)
+    created_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("app_user.id"))
+    created_at: Mapped[datetime] = _now()
+    updated_at: Mapped[datetime] = _now()

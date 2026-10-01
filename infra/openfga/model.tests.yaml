@@ -87,7 +87,7 @@ tests:
           { project_configure: true, gate_c1_approve: true, gate_c3_approve: true, code_push: true, viewer: true, signoff_sign: false }
       - user: user:maria
         object: tenant:andes
-        assertions: { users_manage: true, audit_view: true, cost_view: true, project_create: true, integrations_manage: true }
+        assertions: { users_manage: true, audit_view: true, cost_view: true, project_create: true, integrations_manage: true, identity_manage: true }
     list_objects:
       - user: user:maria
         type: project
@@ -100,7 +100,7 @@ tests:
         assertions: { viewer: false, project_configure: false, code_view: false }
       - user: user:maria
         object: tenant:pacific
-        assertions: { viewer: false, users_manage: false, integrations_manage: false }
+        assertions: { viewer: false, users_manage: false, integrations_manage: false, identity_manage: false }
       - user: user:ana
         object: project:p1
         assertions: { viewer: false, code_view: false }
@@ -112,7 +112,7 @@ tests:
     check:
       - user: user:jorge
         object: tenant:andes
-        assertions: { audit_view: true, usage_view: true, users_manage: false, cost_view: false, integrations_manage: false }
+        assertions: { audit_view: true, usage_view: true, users_manage: false, cost_view: false, integrations_manage: false, identity_manage: false }
       - user: user:jorge
         object: project:p2
         assertions: { viewer: true, code_view: true, usage_view: true, code_download: false, gate_c1_approve: false }
@@ -121,7 +121,7 @@ tests:
     check:
       - user: user:carlos
         object: tenant:andes
-        assertions: { viewer: true, users_manage: false, audit_view: false, code_view: false, integrations_manage: false }
+        assertions: { viewer: true, users_manage: false, audit_view: false, code_view: false, integrations_manage: false, identity_manage: false }
       - user: user:carlos
         object: project:p2
         assertions: { viewer: false, code_view: false }

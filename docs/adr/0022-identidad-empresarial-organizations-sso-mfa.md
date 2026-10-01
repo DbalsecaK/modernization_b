@@ -85,6 +85,14 @@ Hay tres preguntas abiertas:
 - La prueba con un tenant real de Entra ID queda pendiente hasta tener uno de prueba. Entra ID es un proveedor OIDC
   más, con su emisor `login.microsoftonline.com/<tenant>/v2.0`.
 
+**Cambios a la sección 15.1:**
+
+- **El secreto del cliente de un proveedor vive en Keycloak, no en Vault.** Keycloak lo necesita para cada login y
+  no se integra con OpenBao. Una copia en OpenBao no la usaría nadie.
+- **"Cuentas propias siempre con MFA" pasa a ser una política del tenant** ("MFA obligatoria"), desactivada por
+  defecto. Así los entornos locales y de prueba siguen entrando con contraseña. Al dar de alta un tenant
+  productivo, la política se activa desde Administración → Autenticación.
+
 ## Alternativas consideradas
 
 - **Un realm por tenant en el SaaS.** Da políticas por tenant, pero multiplica la operación y rompe la cuenta única
