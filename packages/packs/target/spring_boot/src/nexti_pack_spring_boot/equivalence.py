@@ -109,7 +109,7 @@ async def run_equivalence(
     build = await compile_and_test(sandbox, files, extra_inputs=extra, after=SCRIPT)
     found = masks(design, use_case, master)
     if not build.compiled:
-        return EquivalenceRun(build, [], found, "the project does not compile")
+        return EquivalenceRun(build, [], found, f"the project does not compile: {build.compile_errors[:300]}")
     if "===HARNESS-FAILED===" in build.after_output:
         return EquivalenceRun(build, [], found, build.after_output.split("===HARNESS-FAILED===", 1)[1][:3000])
     raw = {}
