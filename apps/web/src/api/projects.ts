@@ -1,5 +1,5 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { api, toApiError, type Schemas } from './client'
+import { ApiError, api, toApiError, type Schemas } from './client'
 
 // Projects, their composition and their inputs (spec 18.3, 9, 7.1). The team and skills are proposed and validated
 // by the server's deterministic engine; the web only shows the result and sends the user's choices.
@@ -92,7 +92,8 @@ export const useProject = (id: string) =>
   useQuery({
     queryKey: keys.project(id),
     queryFn: () => unwrap(api.GET('/api/v1/projects/{project_id}', { params: { path: { project_id: id } } })),
-    retry: false,
+    // A refused or missing project is final (it shows "not found"); a network hiccup is tried again.
+    retry: (failures, error) => !(error instanceof ApiError && error.status < 500) && failures < 2,
   })
 
 export const useCreateProject = () =>

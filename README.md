@@ -21,6 +21,8 @@ El producto es **nativamente en inglés**, con cambio completo a español.
 - [Plan del hito M1](docs/planes/M1-configuracion-ia.md): configuración IA, gateway de modelos y consumo.
 - [Plan del hito M2](docs/planes/M2-proyectos-insumos.md): proyectos, catálogo de agentes y skills, insumos.
 - [Plan del hito M3](docs/planes/M3-motor-orquestacion.md): motor de orquestación, worker, compuertas y preguntas.
+- Planes de los hitos siguientes en [docs/planes/](docs/planes/) (M4 a M6b, P1 y P2).
+- [Guía de prueba local](docs/GUIA_PRUEBA_LOCAL.md): levantar la plataforma y recorrerla de punta a punta.
 - [CLAUDE.md](CLAUDE.md): instrucciones para trabajar con Claude Code.
 
 ## Estado
@@ -60,23 +62,36 @@ El producto es **nativamente en inglés**, con cambio completo a español.
   real y pipeline de demostración; en la web, pestaña Ejecuciones en vivo, Mis tareas, tarjetas de decisión y panel de
   actividad por SSE. Criterios y evidencia:
   [docs/planes/M3-motor-orquestacion.md](docs/planes/M3-motor-orquestacion.md) (sección 7); capturas en `docs/m3/`.
-- Siguiente: **M4 — primera vertical**.
+- **Hitos M4 a M6b terminados**: vertical Sybase → Spring Boot con veredicto calculado por código (M4), pantallas
+  BMS y prototipos (M5), COBOL/CICS con trazas y grafo (M6) y packs de frontend React y Angular (M6b). Cierres en
+  `docs/planes/`.
+- **P2 — Pantallas conectadas** y **P1 — Arranque local y guía de prueba**: todas las pantallas con backend existente
+  usan la API real, y la plataforma se levanta con un comando, con proyectos de demo sin costo.
+- Siguiente: **M6c — .NET 10 con SQL Server**.
 
 ## Probar la aplicación
 
-Con el entorno local levantado (ver Desarrollo):
+En Windows, un comando levanta todo (servicios, base de datos, sandboxes, API, worker y web) y, con `-Demo`, tres
+proyectos completos reproducidos desde las grabaciones, sin costo de modelos:
+
+```powershell
+.\scripts\start-local.ps1 -Demo     # la primera vez, unos 20 minutos; luego, uno o dos
+.\scripts\status-local.ps1
+.\scripts\stop-local.ps1
+```
+
+La [guía de prueba local](docs/GUIA_PRUEBA_LOCAL.md) tiene los requisitos, los usuarios ficticios y los escenarios
+paso a paso. Todas las pantallas usan la API real, salvo las de hitos posteriores: la pestaña Backlog (M7b) y, en
+Administración, autenticación, seguridad e integraciones del cliente (M0b, M7, M7b).
+
+Para desarrollar, cada proceso también se puede levantar por separado:
 
 ```bash
 pnpm api:dev      # API en http://localhost:8100
 pnpm worker:dev   # worker de ejecuciones (cola Procrastinate, sandbox con el Docker local)
 pnpm web:dev      # web en http://localhost:5173 (proxy de /api y /auth hacia la API)
+pnpm demo:seed    # proyectos de demo desde las grabaciones (sin costo)
 ```
-
-El inicio de sesión va a Keycloak con los usuarios ficticios del realm (contraseña `KC_DEV_USER_PASSWORD` del
-`.env`), o en desarrollo con `dev-auth` eligiendo un usuario sembrado. Todas las pantallas usan la API real (plan
-P2), salvo las de hitos posteriores: la pestaña Backlog (M7b) y, en Administración, autenticación, seguridad e
-integraciones del cliente (M0b, M7, M7b). En desarrollo, la pestaña Ejecuciones ofrece además el pipeline
-de demostración, que ejercita el motor completo con el worker en marcha.
 
 ## Desarrollo
 
