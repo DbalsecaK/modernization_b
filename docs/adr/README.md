@@ -23,5 +23,6 @@ reemplaza y se marca el anterior como "Reemplazado por ADR-NNNN".
 | [0015](0015-cobol-cics-parser-y-trazas.md) | COBOL/CICS: parser determinista de un subconjunto y trazas como golden master | Aceptada |
 | [0016](0016-packs-de-frontend-react-y-angular.md) | Packs de frontend React y Angular: contrato OpenAPI, cliente tipado y arnés de pantallas | Aceptada |
 | [0017](0017-pack-dotnet-y-contrato-de-packs-de-backend.md) | Pack .NET 10 con SQL Server y un contrato común de packs de backend | Aceptada |
+| [0018](0018-flujo-2-insumos-citables-y-veredicto.md) | Flujo 2: insumos citables, integraciones del tenant y veredicto por criterios | Aceptada |
 
 Plantilla: contexto, decisión, alternativas consideradas, consecuencias y cómo se valida.
