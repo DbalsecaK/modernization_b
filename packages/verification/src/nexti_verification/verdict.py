@@ -48,7 +48,16 @@ FEATURE_CHECKS: tuple[tuple[str, str], ...] = (
     ("questions_closed", "Questions closed"),
     ("traced_to_inputs", "Traced to inputs"),
 )
-_TITLES = dict(CHECKS) | dict(FRONTEND_CHECKS) | dict(FEATURE_CHECKS)
+# The checks of a generated IaC (ADR-0021): it validates and meets the fitness functions of the deployment pack.
+IAC_CHECKS: tuple[tuple[str, str], ...] = (
+    ("validates", "Validates"),
+    ("encryption_at_rest", "Encryption at rest"),
+    ("db_not_public", "Database not public"),
+    ("no_secrets_in_code", "No secrets in code"),
+    ("tags", "Tags"),
+    ("logs", "Logs"),
+)
+_TITLES = dict(CHECKS) | dict(FRONTEND_CHECKS) | dict(FEATURE_CHECKS) | dict(IAC_CHECKS)
 _CRITERION = re.compile(r"(?i)ac_?us-?_?0*(\d{1,4})_(\d{1,3})(?![0-9])")
 
 

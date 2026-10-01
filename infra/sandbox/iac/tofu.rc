@@ -1,0 +1,10 @@
+# OpenTofu installs providers only from the mirror baked into the image (the sandbox has no network).
+provider_installation {
+  filesystem_mirror {
+    path    = "/opt/tofu-cache"
+    include = ["registry.opentofu.org/*/*"]
+  }
+  direct {
+    exclude = ["registry.opentofu.org/*/*"]
+  }
+}

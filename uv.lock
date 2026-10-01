@@ -23,6 +23,7 @@ members = [
     "nexti-orchestration",
     "nexti-pack-dotnet",
     "nexti-pack-frontend",
+    "nexti-pack-iac",
     "nexti-pack-spring-boot",
     "nexti-sandbox",
     "nexti-skills",
@@ -1424,6 +1425,7 @@ dependencies = [
     { name = "nexti-core" },
     { name = "nexti-pack-dotnet" },
     { name = "nexti-pack-frontend" },
+    { name = "nexti-pack-iac" },
     { name = "nexti-pack-spring-boot" },
     { name = "nexti-sandbox" },
     { name = "nexti-ui" },
@@ -1443,6 +1445,7 @@ requires-dist = [
     { name = "nexti-core", editable = "packages/core" },
     { name = "nexti-pack-dotnet", editable = "packages/packs/target/dotnet" },
     { name = "nexti-pack-frontend", editable = "packages/packs/target/frontend" },
+    { name = "nexti-pack-iac", editable = "packages/packs/deploy/opentofu" },
     { name = "nexti-pack-spring-boot", editable = "packages/packs/target/spring_boot" },
     { name = "nexti-sandbox", editable = "packages/sandbox" },
     { name = "nexti-ui", editable = "packages/ui" },
@@ -1482,6 +1485,23 @@ requires-dist = [
     { name = "nexti-core", editable = "packages/core" },
     { name = "nexti-pack-spring-boot", editable = "packages/packs/target/spring_boot" },
     { name = "nexti-sandbox", editable = "packages/sandbox" },
+]
+
+[[package]]
+name = "nexti-pack-iac"
+version = "0.1.0"
+source = { editable = "packages/packs/deploy/opentofu" }
+dependencies = [
+    { name = "nexti-core" },
+    { name = "nexti-sandbox" },
+    { name = "nexti-verification" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "nexti-core", editable = "packages/core" },
+    { name = "nexti-sandbox", editable = "packages/sandbox" },
+    { name = "nexti-verification", editable = "packages/verification" },
 ]
 
 [[package]]

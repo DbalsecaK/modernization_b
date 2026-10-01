@@ -43,7 +43,8 @@ async def _project(engine: AsyncEngine, objects: ObjectStore, tenant_id: uuid.UU
             await conn.execute(
                 text("SELECT DISTINCT ON (path) path, object_key FROM generated_artifact WHERE project_id = :p "
                      "AND path NOT LIKE 'characterization/%' AND path NOT LIKE 'frontend/%' "
-                     "AND path NOT LIKE 'inputs/%' ORDER BY path, created_at DESC"), {"p": project_id})
+                     "AND path NOT LIKE 'inputs/%' AND path NOT LIKE 'infra/%' ORDER BY path, created_at DESC"),
+                {"p": project_id})
         ).mappings().all()  # fmt: skip
     files = {r["path"]: b"".join(await objects.read(r["object_key"])).decode("utf-8") for r in rows}
     design_json = files.pop("design/design.json", None)

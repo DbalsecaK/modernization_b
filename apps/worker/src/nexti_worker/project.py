@@ -522,7 +522,8 @@ class WorkerProjectPort:
                 await conn.execute(
                     text("SELECT DISTINCT ON (path) path, object_key, rules FROM generated_artifact "
                          "WHERE project_id = :p AND path NOT LIKE 'design/%' AND path NOT LIKE 'characterization/%' "
-                         "AND path NOT LIKE 'frontend/%' AND path NOT LIKE 'inputs/%' ORDER BY path, created_at DESC"),
+                         "AND path NOT LIKE 'frontend/%' AND path NOT LIKE 'inputs/%' AND path NOT LIKE 'infra/%' "
+                         "ORDER BY path, created_at DESC"),
                     {"p": self.run.project_id},
                 )
             ).all()  # fmt: skip
@@ -540,6 +541,18 @@ class WorkerProjectPort:
                 )
             ).all()  # fmt: skip
         return {row.path.removeprefix("frontend/"): await self._get(row.object_key) for row in rows}
+
+    async def load_infrastructure(self) -> dict[str, str]:
+        """The newest generated IaC files, paths under infra/<cloud>/ (ADR-0021)."""
+        async with self._db() as conn:
+            rows = (
+                await conn.execute(
+                    text("SELECT DISTINCT ON (path) path, object_key FROM generated_artifact WHERE project_id = :p "
+                         "AND path LIKE 'infra/%' ORDER BY path, created_at DESC"),
+                    {"p": self.run.project_id},
+                )
+            ).all()  # fmt: skip
+        return {row.path: await self._get(row.object_key) for row in rows}
 
     async def load_screens(self) -> list[ScreenSpec]:
         """The newest version of every screen spec of the project."""

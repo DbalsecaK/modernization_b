@@ -930,7 +930,13 @@
       "criteriaCovered": "Criteria covered",
       "contracts": "Contracts",
       "questionsClosed": "Questions closed",
-      "tracedToInputs": "Traced to inputs"
+      "tracedToInputs": "Traced to inputs",
+      "validates": "Validates",
+      "encryptionAtRest": "Encrypted at rest",
+      "dbNotPublic": "Database not public",
+      "noSecretsInCode": "No secrets in code",
+      "tags": "Tags",
+      "logs": "Logs"
     },
     "status": {
       "passed": "Passed",

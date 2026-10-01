@@ -11,6 +11,7 @@ dependencies = [
   "nexti-adapter-bms",
   "nexti-adapter-cobol",
   "nexti-pack-frontend",
+  "nexti-pack-iac",
   "nexti-adapter-sybase",
   "nexti-agents",
   "nexti-core",
@@ -26,6 +27,7 @@ nexti-adapter-aspx = { workspace = true }
 nexti-adapter-bms = { workspace = true }
 nexti-adapter-cobol = { workspace = true }
 nexti-pack-frontend = { workspace = true }
+nexti-pack-iac = { workspace = true }
 nexti-adapter-sybase = { workspace = true }
 nexti-agents = { workspace = true }
 nexti-core = { workspace = true }

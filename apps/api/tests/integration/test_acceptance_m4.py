@@ -363,7 +363,8 @@ async def test_the_fictitious_application_reaches_a_verdict_computed_by_code(
 
     (verdict,) = await fetch(
         owner_engine,
-        "SELECT module, verdict, checks, not_proven, proof_pack_key FROM verdict WHERE run_id = :r",
+        "SELECT module, verdict, checks, not_proven, proof_pack_key FROM verdict WHERE run_id = :r "
+        "AND module NOT LIKE 'iac-%'",
         r=run_id,
     )
     assert verdict["verdict"] in ("PROVEN", "PARTLY PROVEN", "NOT PROVEN")

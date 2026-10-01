@@ -202,6 +202,11 @@ class FeatureBuildPhases:
             front = await VerificationPhases(self.port)._frontend(ctx)  # type: ignore[arg-type]
             if front:
                 summary += f"; {front}"
+        from nexti_orchestration import infrastructure
+
+        iac = await infrastructure.verify(ctx, self.port)
+        if iac:
+            summary += f"; {iac}"
         return {"summary": summary, "verdict": verdict.verdict, "proof_pack": key}
 
     async def _canary(self, ctx: PhaseContext, pack: BackendPack, design: Design, files: dict[str, str],

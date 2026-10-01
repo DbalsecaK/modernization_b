@@ -137,7 +137,7 @@ async def test_the_fictitious_application_reaches_a_verdict_on_dotnet_and_sql_se
         run, [e for e in events if e["kind"] in ("failed", "escalated", "verificationFailed")][-5:])  # fmt: skip
     assert {"C1", "C4"} <= set(decided)
     (verdict,) = await fetch(owner_engine, "SELECT module, verdict, checks, proof_pack_key FROM verdict "
-                             "WHERE run_id = :r", r=run_id)  # fmt: skip
+                             "WHERE run_id = :r AND module NOT LIKE 'iac-%'", r=run_id)  # fmt: skip
     files = {f["path"] for f in await fetch(owner_engine, "SELECT path FROM generated_artifact WHERE run_id = :r",
                                             r=run_id)}  # fmt: skip
     (cost,) = await fetch(owner_engine, "SELECT COALESCE(sum(cost_usd), 0) AS usd, count(*) AS calls "

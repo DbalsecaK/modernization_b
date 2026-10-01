@@ -930,7 +930,13 @@
       "criteriaCovered": "Criterios cubiertos",
       "contracts": "Contratos",
       "questionsClosed": "Preguntas cerradas",
-      "tracedToInputs": "Trazado a insumos"
+      "tracedToInputs": "Trazado a insumos",
+      "validates": "Valida",
+      "encryptionAtRest": "Cifrado en reposo",
+      "dbNotPublic": "Base de datos no pública",
+      "noSecretsInCode": "Sin secretos en el código",
+      "tags": "Etiquetas",
+      "logs": "Registros"
     },
     "status": {
       "passed": "Pasa",

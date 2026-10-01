@@ -41,6 +41,14 @@ class Limits:
     # Whether native executables may run from /work (tmpfs mounts are noexec by default). Only for a toolchain that
     # must launch the programs it builds (xUnit v3 test hosts); the container stays without network or privileges.
     work_exec: bool = False
+    # Exceptions for database engines that need them (ADR-0021), off by default:
+    # - a Docker network of its own for the run, `--internal` (no route out, no other container), for an engine that
+    #   will not start with loopback only (Oracle);
+    # - the container's writable layer instead of a read-only root, for an engine that writes its data files in place;
+    # - the engine's own unprivileged user instead of nobody. Capabilities stay dropped and privileges cannot grow.
+    internal_network: bool = False
+    writable_root: bool = False
+    user: str | None = None
 
 
 @dataclass(frozen=True)
@@ -89,14 +97,14 @@ class DockerSandbox:
         self.docker = docker
         self.limits = limits or Limits()
 
-    def _args(self, name: str, input_dir: Path, limits: Limits) -> list[str]:
+    def _args(self, name: str, input_dir: Path, limits: Limits, network: str = "none") -> list[str]:
         return [
             self.docker, "run", "--rm", "--name", name,
-            "--network", "none",
-            "--read-only",
+            "--network", network,
+            *([] if limits.writable_root else ["--read-only"]),
             "--cap-drop", "ALL",
             "--security-opt", "no-new-privileges",
-            "--user", NOBODY,
+            "--user", limits.user or NOBODY,
             "--pids-limit", str(limits.pids),
             "--memory", f"{limits.memory_mb}m",
             "--memory-swap", f"{limits.memory_mb}m",
@@ -118,14 +126,17 @@ class DockerSandbox:
         name = f"nexti-sb-{uuid.uuid4().hex[:12]}"
         input_dir = Path(tempfile.mkdtemp(prefix="nexti-sandbox-"))
         started = time.monotonic()
+        network = f"{name}-net" if limits.internal_network else "none"
         try:
+            if limits.internal_network:
+                await self._network("create", "--internal", network)
             await asyncio.to_thread(_write_inputs, input_dir, files or {})
             timed_out = False
             try:
                 # The docker CLI runs in a thread: this works on any event loop (psycopg needs the selector loop on
                 # Windows, where asyncio subprocesses need the proactor loop).
                 process = await asyncio.to_thread(
-                    subprocess.run, [*self._args(name, input_dir, limits), *command], capture_output=True,
+                    subprocess.run, [*self._args(name, input_dir, limits, network), *command], capture_output=True,
                     timeout=limits.timeout_seconds, check=False,
                 )  # fmt: skip
                 returncode, stdout, stderr = process.returncode, process.stdout, process.stderr
@@ -149,6 +160,14 @@ class DockerSandbox:
             )
         finally:
             shutil.rmtree(input_dir, ignore_errors=True)
+            if limits.internal_network:
+                await self._network("rm", network)
+
+    async def _network(self, action: str, *args: str) -> None:
+        """Create or remove the run's own internal network (ADR-0021)."""
+        await asyncio.to_thread(
+            subprocess.run, [self.docker, "network", action, *args], capture_output=True, timeout=60, check=False
+        )
 
     async def _kill(self, name: str) -> None:
         await asyncio.to_thread(

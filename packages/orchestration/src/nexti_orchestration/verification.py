@@ -17,7 +17,7 @@ from nexti_core.spec.design import Design, UseCase
 from nexti_core.spec.equivalence import EquivalenceRun
 from nexti_core.spec.model import Rule
 from nexti_core.spec.screens import ScreenSpec
-from nexti_orchestration import frontend
+from nexti_orchestration import frontend, infrastructure
 from nexti_orchestration.context import Attempt, PhaseContext
 from nexti_orchestration.model import PhaseFailedError, PhaseResult
 from nexti_orchestration.packs import BackendPack, backend_pack
@@ -173,6 +173,9 @@ class VerificationPhases:
         front = await self._frontend(ctx)
         if front:
             summary += f"; {front}"
+        iac = await infrastructure.verify(ctx, self.port)
+        if iac:
+            summary += f"; {iac}"
         return {"summary": summary, "verdict": verdict.verdict, "proof_pack": key}
 
     async def _frontend(self, ctx: PhaseContext) -> str:

@@ -34,7 +34,7 @@ jobs:
       - run: uv sync --all-packages --locked
       - run: uv run ruff check .
       - run: uv run ruff format --check .
-      - run: uv run mypy apps/api/src apps/api/tests packages/core/src packages/core/tests packages/model_gateway/src packages/model_gateway/tests packages/agents/src packages/skills/src packages/ingest/src packages/ingest/tests packages/integrations/src packages/integrations/tests packages/sandbox/src packages/sandbox/tests packages/orchestration/src packages/orchestration/tests packages/adapters/source/sybase/src packages/adapters/source/sybase/tests packages/adapters/source/bms/src packages/adapters/source/bms/tests packages/adapters/source/cobol/src packages/adapters/source/cobol/tests packages/adapters/source/aspx/src packages/adapters/source/aspx/tests packages/graph/src packages/graph/tests packages/packs/target/spring_boot/src packages/packs/target/spring_boot/tests packages/packs/target/dotnet/src packages/packs/target/dotnet/tests packages/packs/target/frontend/src packages/packs/target/frontend/tests packages/verification/src packages/verification/tests packages/ui/src packages/ui/tests apps/worker/src apps/worker/tests
+      - run: uv run mypy apps/api/src apps/api/tests packages/core/src packages/core/tests packages/model_gateway/src packages/model_gateway/tests packages/agents/src packages/skills/src packages/ingest/src packages/ingest/tests packages/integrations/src packages/integrations/tests packages/sandbox/src packages/sandbox/tests packages/orchestration/src packages/orchestration/tests packages/adapters/source/sybase/src packages/adapters/source/sybase/tests packages/adapters/source/bms/src packages/adapters/source/bms/tests packages/adapters/source/cobol/src packages/adapters/source/cobol/tests packages/adapters/source/aspx/src packages/adapters/source/aspx/tests packages/graph/src packages/graph/tests packages/packs/target/spring_boot/src packages/packs/target/spring_boot/tests packages/packs/target/dotnet/src packages/packs/target/dotnet/tests packages/packs/target/frontend/src packages/packs/target/frontend/tests packages/packs/deploy/opentofu/src packages/packs/deploy/opentofu/tests packages/verification/src packages/verification/tests packages/ui/src packages/ui/tests apps/worker/src apps/worker/tests
 
   web:
     name: Web · lint, types, tests, build, generated types
@@ -94,6 +94,10 @@ jobs:
           docker build -q -t nexti-sandbox-dotnet:1 infra/sandbox/dotnet
           # The document converter (M7, ADR-0018): Word and Excel with the standard library, PDF with pypdf.
           docker build -q -t nexti-sandbox-docs:1 infra/sandbox/docs
+          # The Spring Boot pack on Oracle (M8b, ADR-0021): Oracle Database Free 23ai with the JDK and ojdbc11.
+          docker build -q -t nexti-sandbox-java-oracle:1 infra/sandbox/java-oracle
+          # The deployment pack (M8b, ADR-0021): OpenTofu with the AWS, Azure and random providers mirrored offline.
+          docker build -q -t nexti-sandbox-iac:1 infra/sandbox/iac
       # Includes the M3 acceptance: worker processes (python -m nexti_worker) killed and replaced, and generated code
       # tested in the Docker sandbox.
       - run: uv run pytest

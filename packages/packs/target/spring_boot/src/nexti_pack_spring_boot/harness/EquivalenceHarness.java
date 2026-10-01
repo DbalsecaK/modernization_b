@@ -40,9 +40,16 @@ public final class EquivalenceHarness {
     public static void main(String[] args) throws Exception {
         JsonNode plan = JSON.readTree(new File(args[0]));
         JsonNode cases = JSON.readTree(new File(args[1]));
+        String password = plan.has("password") ? plan.get("password").asText() : "";
         SingleConnectionDataSource dataSource = new SingleConnectionDataSource(
-                plan.get("jdbc_url").asText(), plan.get("user").asText(), "", true);
+                plan.get("jdbc_url").asText(), plan.get("user").asText(), password, true);
         JdbcTemplate jdbc = new JdbcTemplate(dataSource);
+        // Session settings of the database (Oracle: the date and number formats the cases are written in).
+        if (plan.has("session")) {
+            for (JsonNode sql : plan.get("session")) {
+                jdbc.execute(sql.asText());
+            }
+        }
         TransactionTemplate transaction = new TransactionTemplate(new DataSourceTransactionManager(dataSource));
         for (JsonNode testCase : cases) {
             System.out.println("NXE " + JSON.writeValueAsString(run(plan, testCase, jdbc, transaction)));

@@ -20,7 +20,7 @@ from pydantic import ValidationError
 from nexti_agents import prompt
 from nexti_core.adapters import SourceFile
 from nexti_core.spec.model import Rule
-from nexti_orchestration import frontend
+from nexti_orchestration import frontend, infrastructure
 from nexti_orchestration.context import Attempt, PhaseContext, Verification
 from nexti_orchestration.extraction import ModelCaller, ReplyError, parse_json
 from nexti_orchestration.model import PhaseFailedError, PhaseResult, PhaseUnavailableError
@@ -293,6 +293,10 @@ class GenerationPhases:
                 await self.port.save_artifacts(pages, {p: "contracts" if p.endswith(contracts) else "adapters"
                                                        for p in pages}, {})  # fmt: skip
             summary += f"; {frontend_summary}"
+        iac, iac_summary = infrastructure.generate(design, ctx.run.target)
+        if iac:
+            await self.port.save_artifacts(iac, dict.fromkeys(iac, "orchestration"), {})
+            summary += f"; {iac_summary}"
         return PhaseResult(summary=summary)
 
     async def _tests(
