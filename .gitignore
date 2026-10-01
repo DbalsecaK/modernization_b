@@ -14,3 +14,6 @@ __pycache__/
 .pytest_cache/
 test-results/
 playwright-report/
+
+# Local run (scripts/start-local.ps1): logs, process ids and demo inputs
+.local/
