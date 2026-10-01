@@ -6,6 +6,7 @@ import type { ProjectDetail } from '@/api/projects'
 import { CODE_VIEW, proofPackUrl, useVerdicts, type VerdictOut } from '@/api/validation'
 import { Badge, Button, Card, CardBody, CardHeader, EmptyState, Table, Td, Th } from '@/components/ui/primitives'
 import { VerdictBadge } from '@/components/ui/status'
+import { HardeningCard } from './delivery/DeliveryCards'
 import {
   allChecks,
   byModule,
@@ -80,6 +81,8 @@ export function ProjectValidation({ project, onOpenRuns }: { project: ProjectDet
       {modules.map((m) => (
         <ModuleVerdict key={m.module} group={m} projectId={project.id} canViewCode={canViewCode} />
       ))}
+
+      <HardeningCard projectId={project.id} />
 
       <Card>
         <CardHeader title={t('validation.signoff')} subtitle={t('validation.signoffHint')} />
