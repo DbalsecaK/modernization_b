@@ -1,6 +1,6 @@
 # Plan del hito M0b — Identidad empresarial (SSO, MFA, Organizations)
 
-- **Estado:** en curso (desde 2026-10-01).
+- **Estado:** cerrado (2026-10-01).
 - **Fuente:** `docs/ESPECIFICACION_PLATAFORMA.md`, secciones:
   - 15.1: autenticación e implantación por etapas;
   - 16: roles y permisos;
@@ -117,3 +117,71 @@ Se toma la opción recomendada en cada punto, porque el aprobador pidió avanzar
 | Un usuario en dos Organizations solo ve el tenant activo | `test_acceptance_m0b.py` y `test_rls.py` |
 | Los grupos del IdP se traducen a los roles esperados | `test_acceptance_m0b.py` |
 | La configuración solo la cambia quien tiene el permiso, en su tenant, y queda auditada | `test_endpoints_authz.py` (casos de `/api/v1/identity` y aislamiento) |
+
+## 4. Cierre
+
+**Lo que se entrega**
+
+- **Organization de Keycloak por tenant.** La plataforma la reconcilia por la Admin REST API: alias, dominios y
+  miembros. La cuenta `nexti-admin` suma solo los permisos de realm y de proveedores de identidad.
+- **Proveedores OIDC y SAML 2.0 por tenant** (Entra ID, Okta, Google o cualquier otro), vinculados a su Organization.
+  - Si se da el emisor, los endpoints se descubren solos.
+  - Las URLs tienen que ser https y públicas; localhost solo se acepta en local.
+  - Cada dominio pertenece a un solo proveedor en toda la plataforma.
+  - El secreto va solo a Keycloak: no queda en la base, no vuelve en la API ni pasa por la auditoría. La prueba de
+    aislamiento lo comprueba.
+- **Login.**
+  - **Email first y home-realm discovery en el BFF.** El dominio del correo decide adónde va el login: al
+    proveedor del dominio (`kc_idp_hint`) o, si el tenant exige MFA, a Keycloak con `acr=mfa`.
+  - **Reglas en el callback**, sobre el token validado:
+    - un dominio "solo SSO" no entra con contraseña;
+    - un tenant sin cuentas propias solo deja entrar a usuarios de sus proveedores;
+    - con MFA obligatoria, un login con solo contraseña vuelve a Keycloak, que pide solo el segundo factor;
+    - en el primer login por un proveedor con JIT se crean la cuenta y la membresía;
+    - en cada login, los grupos del IdP se convierten en roles del tenant (las asignaciones con origen `idp` se
+      recalculan y las manuales no se tocan);
+    - la Organization del token elige el tenant de la sesión.
+- **MFA por nivel de autenticación.** El flujo `browser` del realm tiene dos niveles. El segundo acepta TOTP,
+  passkey o código de recuperación, y quien no tiene ningún factor configura el TOTP en ese momento.
+- **Administración → Autenticación conectada**, en inglés y español:
+  - métodos, dominios y MFA obligatoria;
+  - proveedores con su estado en Keycloak y la URL de retorno para registrar en el IdP;
+  - mapeo de grupos a roles y rol por defecto;
+  - las políticas del realm, en solo lectura.
+
+  Se retiraron el mock de proveedores y su formulario.
+- **Tema Keycloakify** con el diseño del login del prototipo (panel de marca, colores y textos en/es) y las páginas
+  propias de Keycloak dentro. Va en la imagen `nexti-keycloak:1`, que el Compose construye.
+- **Realm `idp-test`** como IdP externo de prueba, con usuarios en grupos.
+
+**Aceptación** (`test_acceptance_m0b.py`), contra el Keycloak real del Compose y recorriendo sus páginas:
+
+- **SSO desde el correo con JIT:** dos usuarios de `idp-test` reciben los roles de sus grupos (`it-admins` y
+  `auditors` dan administrador del tenant y auditor; `finance` da finanzas), y el login queda auditado con el
+  proveedor.
+- **"Solo SSO":** una cuenta propia de `corp.example` es rechazada con `sso_required`.
+- **Organization:** una persona de dos tenants, miembro solo de la Organization de Pacific, entra en Pacific (no en
+  Andes, que va primero por nombre) y solo ve los proyectos de Pacific.
+- **MFA:** con la MFA obligatoria, una cuenta propia configura su TOTP y entra con `acr=mfa`. Sin el correo primero,
+  la contraseña sola no alcanza y Keycloak pide solo el código.
+
+**Cambios respecto del plan**
+
+- **Dos cambios a la sección 15.1**, registrados en el ADR-0022:
+  - el secreto del proveedor vive en Keycloak, no en Vault;
+  - "cuentas propias siempre con MFA" pasa a ser la política "MFA obligatoria" del tenant, desactivada por
+    defecto.
+- **Organization con varios tenants.** Con el scope `organization`, Keycloak no manda el claim si el usuario está en
+  varias Organizations, y el flujo no pide elegir una. La sesión arranca entonces en el primer tenant y la persona
+  cambia de tenant en la plataforma.
+- **El tema dibuja los formularios en el navegador.** Las pruebas que recorren Keycloak con httpx leen la acción y
+  los campos ocultos del `kcContext`. El realm `idp-test` sigue con el tema de Keycloak.
+
+**Limitaciones conocidas**
+
+- La prueba con un tenant real de Entra ID queda pendiente de un tenant de prueba. Entra ID es un proveedor OIDC
+  más.
+- SCIM no está incluido.
+- Las políticas de contraseña, bloqueo y sesión son del realm compartido. Un tenant que necesite otras pasa a un
+  realm dedicado.
+- Un entorno local creado antes de M0b recrea la base de Keycloak al arrancar con `start-local`.
