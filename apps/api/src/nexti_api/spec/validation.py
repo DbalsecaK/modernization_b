@@ -82,8 +82,9 @@ async def _evidence(request: Request, conn: AsyncConnection, project_id: uuid.UU
         return {}
     data = b"".join(await services.store(request).read(latest["proof_pack_key"]))
     with zipfile.ZipFile(io.BytesIO(data)) as archive:
-        trace = json.loads(archive.read("TRACE.json"))
-        equivalence = json.loads(archive.read("EQUIVALENCE.json"))
+        names = set(archive.namelist())
+        trace = json.loads(archive.read("TRACE.json")) if "TRACE.json" in names else []
+        equivalence = json.loads(archive.read("EQUIVALENCE.json")) if "EQUIVALENCE.json" in names else {}
     cases = list(equivalence.get("golden_master") or []) + list(equivalence.get("fresh_inputs") or [])
     return {"verdict": latest, "trace": {t["rule"]: t for t in trace}, "cases": cases}
 

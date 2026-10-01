@@ -23,6 +23,7 @@ def test_every_permission_of_spec_16_2_is_in_the_catalog() -> None:
         "question.answer",  # added with the questions of the agents (M3, 16.2 "pregunta.responder")
         "story.edit", "plan.edit",  # user stories and the plan by waves (M4, 16.2)
         "prototype.comment", "prototype.edit",  # prototypes: comments and change requests (M5, 16.2)
+        "integrations.manage",  # the tenant's external tools: Figma, Jira, Azure DevOps (M7, 16.2, ADR-0018)
     }  # fmt: skip
     assert {p.key for p in PERMISSIONS} == spec
 

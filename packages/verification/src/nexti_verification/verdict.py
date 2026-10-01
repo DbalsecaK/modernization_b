@@ -214,11 +214,16 @@ def criterion_test(story: str, number: int) -> str:
     return f"ac_{story.replace('-', '')}_{number}_"
 
 
+def criteria_passed(passed_tests: Sequence[str]) -> set[tuple[int, int]]:
+    """(story number, criterion number) of every passing test that carries a criterion id (ac_US001_2_...)."""
+    return {(int(m.group(1)), int(m.group(2))) for name in passed_tests for m in _CRITERION.finditer(name)}
+
+
 def criteria_covered(criteria: Sequence[tuple[str, int, str]], passed_tests: Sequence[str]) -> Check:
     """Every criterion (story key, number, scenario name) has a test that carries its id and passed (7.5)."""
     if not criteria:
         return Check("criteria_covered", "not_checked", "no story has criteria that tests can cover")
-    found = {(int(m.group(1)), int(m.group(2))) for name in passed_tests for m in _CRITERION.finditer(name)}
+    found = criteria_passed(passed_tests)
     missing = [f"{story} #{n} ({name})" for story, n, name in criteria
                if (int(story.split("-")[-1]), n) not in found]  # fmt: skip
     evidence = {"criteria": len(criteria), "missing": missing}

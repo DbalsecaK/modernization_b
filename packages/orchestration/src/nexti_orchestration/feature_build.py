@@ -91,6 +91,21 @@ def endpoint_missing(design: Design, files: dict[str, str]) -> tuple[list[str], 
     return operations, missing
 
 
+def rule_traces(rules: Sequence[Rule], stories: Sequence[FeatureStory], passed: Sequence[str],
+                files_of_rules: dict[str, list[str]]) -> list[dict[str, Any]]:  # fmt: skip
+    """Each rule with its sources, the files that implement it and the criterion tests of the stories that link it
+    (the traceability of Flow 2: rule -> input lines -> code -> passing tests)."""
+    found = checks.criteria_passed(passed)
+    traces = []
+    for rule in rules:
+        cases = [(f"{s.key} #{n}", (int(s.key.split("-")[-1]), n) in found) for s in stories if rule.id in s.links
+                 for n in range(1, len(s.criteria) + 1)]  # fmt: skip
+        traces.append({"rule": rule.id, "priority": rule.priority, "sources": [str(r) for r in rule.sources],
+                       "target_files": sorted(files_of_rules.get(rule.id, [])), "cases": cases,
+                       "verified": bool(cases) and all(ok for _, ok in cases)})  # fmt: skip
+    return traces
+
+
 def proof_pack(verdict: Verdict, junit: str | None, extra: dict[str, Any]) -> bytes:
     buffer = io.BytesIO()
     with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as archive:
@@ -131,9 +146,13 @@ class FeatureBuildPhases:
 
     async def _validate(self, ctx: PhaseContext) -> dict[str, Any]:
         design = await self.port.load_design()
-        files, _ = await self.port.load_generated()
+        files, traced_files = await self.port.load_generated()
         if design is None or not files:
             raise PhaseFailedError("Validation needs the approved design and the generated code")
+        files_of_rules: dict[str, list[str]] = {}
+        for path, implemented in traced_files.items():
+            for rule_id in implemented:
+                files_of_rules.setdefault(rule_id, []).append(path)
         pack = backend_pack(ctx.run.target)
         if pack is None:
             raise PhaseFailedError(f"The {ctx.run.target.get('backend')} pack is not available to validate with")
@@ -172,6 +191,8 @@ class FeatureBuildPhases:
         key = await self.port.save_verdict(verdict, proof_pack(verdict, build.junit_xml, {
             "CRITERIA.json": [{"story": s, "criterion": n, "scenario": name} for s, n, name in by_tests],
             "CONTRACT.json": {"operations": operations, "missing": missing},
+            "TRACE.json": rule_traces(rules, stories, passed, files_of_rules),
+            "EQUIVALENCE.json": {"golden_master": [], "fresh_inputs": []},  # there is no legacy to compare with
         }))  # fmt: skip
         ok = sum(1 for c in verdict.checks if c.status == "passed")
         summary = f"{module}: {verdict.verdict} ({ok} of {len(verdict.checks)} checks passed)"

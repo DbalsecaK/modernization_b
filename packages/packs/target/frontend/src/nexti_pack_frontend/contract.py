@@ -67,9 +67,7 @@ def contract_of(screen: ScreenSpec) -> ScreenContract:
         for f in screen.fields if f.kind != "literal"
     )  # fmt: skip
     actions = tuple(ActionContract(a.key, a.label or a.key, a.target) for a in screen.actions)
-    if web and actions and not any(a.key == "ENTER" for a in actions) and any(
-        f.kind == "input" for f in fields
-    ):
+    if web and actions and not any(a.key == "ENTER" for a in actions) and any(f.kind == "input" for f in fields):
         # A web screen (Flow 2, from Figma or documents): its first button submits the form. It calls the backend and
         # may go on to the screen it names once the call succeeds, so it is not a plain navigation.
         first = actions[0]
