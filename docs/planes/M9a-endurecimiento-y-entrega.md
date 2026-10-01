@@ -43,7 +43,7 @@
 |---|---|
 | El informe encuentra el secreto, la dependencia vulnerable y el patrón inseguro; un proyecto limpio no tiene hallazgos | Pruebas de `nexti_hardening` |
 | El release llega a una rama nueva del repositorio y su commit tiene el código, el plan y el informe | Pruebas de entrega con el servidor Git de prueba |
-| Una corrida de modernización llega a `completed` con informe y release | Aceptaciones M4, M6c y M8b |
+| Una corrida de modernización llega a `succeeded` con informe y release | Aceptaciones M4, M6c y M8b |
 | `code:push` solo para quien tiene el permiso, en su tenant, y auditado | `test_endpoints_authz.py` |
 
 ## 4. Cierre

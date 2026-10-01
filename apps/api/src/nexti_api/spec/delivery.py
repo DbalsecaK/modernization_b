@@ -21,10 +21,10 @@ from nexti_api.admin.common import audit, not_found, transaction
 from nexti_api.authz.require import Authorized, require_project
 from nexti_api.errors import ProblemError
 from nexti_api.projects import services
+from nexti_api.projects.repository import repository_token
 from nexti_api.schemas import ApiModel
 from nexti_api.spec.code import _files
 from nexti_core.db.models import ProjectRepository, Release
-from nexti_core.secrets import SecretsConfig, SecretStore
 from nexti_core.spec.design import Design
 from nexti_ingest import Rejection
 from nexti_ingest.git import ensure_public_host
@@ -100,14 +100,6 @@ async def releases(request: Request, project_id: uuid.UUID, auth: ViewCode) -> l
         return [_release_out(r) for r in rows.all()]
 
 
-async def _token(request: Request, vault_path: str | None) -> str | None:
-    settings = request.app.state.settings
-    if not vault_path or not settings.secrets_url:
-        return None
-    config = SecretsConfig(settings.secrets_url, settings.secrets_token.get_secret_value(), settings.secrets_mount)
-    return await SecretStore(config, request.app.state.resources.http).get(vault_path)
-
-
 async def _design(request: Request, conn: AsyncConnection, project_id: uuid.UUID) -> Design | None:
     key = (
         await conn.execute(text("SELECT object_key FROM generated_artifact WHERE project_id = :p "
@@ -151,7 +143,7 @@ async def push_code(request: Request, project_id: uuid.UUID, auth: PushCode) -> 
     status, commit, base, error = "pushed", None, None, None
     try:
         pushed = await nexti_delivery.push_release(
-            repository.url, await _token(request, repository.vault_path), repository.branch or "main", branch,
+            repository.url, await repository_token(request, repository.vault_path), repository.branch or "main", branch,
             f"{nexti_delivery.RELEASE_PREFIX}/{context}", contents,
             f"NexTI release of {context}\n\nPushed from the Code tab of the NexTI platform.", ensure,
             loopback_http=settings.git_allow_private_hosts and settings.is_local,
