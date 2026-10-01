@@ -16,7 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 
 from nexti_api.admin.common import audit, not_found, transaction
 from nexti_api.authz import names
-from nexti_api.authz.require import Authorized, require_tenant
+from nexti_api.authz.require import Authorized, require_project, require_tenant
 from nexti_api.errors import ProblemError
 from nexti_api.schemas import ApiModel
 from nexti_core.db.models import Budget, BudgetAlert, Project, UsageLedger
@@ -24,6 +24,7 @@ from nexti_model_gateway.rules import period_key, period_start
 
 router = APIRouter(prefix="/api/v1", tags=["usage"])
 UsageView = Annotated[Authorized, Depends(require_tenant("usage.view"))]
+ProjectUsageView = Annotated[Authorized, Depends(require_project("usage.view"))]
 CostView = Annotated[Authorized, Depends(require_tenant("cost.view"))]
 ConfigureModels = Annotated[Authorized, Depends(require_tenant("models.configure"))]
 GroupBy = Literal["project", "model", "phase", "agentRole", "provider", "month", "day"]
@@ -106,16 +107,7 @@ async def summary(
         ),
     }
     key, label = key_columns[group_by]
-    measures = (
-        func.count().filter(UsageLedger.outcome == "success").label("calls"),
-        func.count().filter(UsageLedger.outcome != "success").label("failed_calls"),
-        func.coalesce(func.sum(UsageLedger.input_tokens), 0).label("input_tokens"),
-        func.coalesce(func.sum(UsageLedger.output_tokens), 0).label("output_tokens"),
-        func.coalesce(func.sum(UsageLedger.reasoning_tokens), 0).label("reasoning_tokens"),
-        func.coalesce(func.sum(UsageLedger.cache_read_tokens), 0).label("cache_read_tokens"),
-        func.coalesce(func.sum(UsageLedger.cost_usd), 0).label("cost_usd"),
-        func.sum(UsageLedger.provider_cost_usd).label("provider_cost_usd"),
-    )
+    measures = _measures()
     window = (UsageLedger.occurred_at >= start, UsageLedger.occurred_at < end)
     async with transaction(request, auth) as conn:
         grouped = (
@@ -132,27 +124,93 @@ async def summary(
             )
         ).one()
 
-    def out(r: Any) -> UsageRow:
-        return UsageRow(
-            key=r.key,
-            label=r.label,
-            calls=r.calls,
-            failed_calls=r.failed_calls,
-            input_tokens=r.input_tokens,
-            output_tokens=r.output_tokens,
-            reasoning_tokens=r.reasoning_tokens,
-            cache_read_tokens=r.cache_read_tokens,
-            cost_usd=r.cost_usd if show_cost else None,
-            provider_cost_usd=r.provider_cost_usd if show_cost else None,
-        )
-
     return UsageSummary(
         since=since,
         until=until,
         group_by=group_by,
         cost_visible=show_cost,
-        total=out(total),
-        rows=[out(r) for r in rows],
+        total=_row(total, show_cost),
+        rows=[_row(r, show_cost) for r in rows],
+    )
+
+
+def _measures() -> tuple[Any, ...]:
+    return (
+        func.count().filter(UsageLedger.outcome == "success").label("calls"),
+        func.count().filter(UsageLedger.outcome != "success").label("failed_calls"),
+        func.coalesce(func.sum(UsageLedger.input_tokens), 0).label("input_tokens"),
+        func.coalesce(func.sum(UsageLedger.output_tokens), 0).label("output_tokens"),
+        func.coalesce(func.sum(UsageLedger.reasoning_tokens), 0).label("reasoning_tokens"),
+        func.coalesce(func.sum(UsageLedger.cache_read_tokens), 0).label("cache_read_tokens"),
+        func.coalesce(func.sum(UsageLedger.cost_usd), 0).label("cost_usd"),
+        func.sum(UsageLedger.provider_cost_usd).label("provider_cost_usd"),
+    )
+
+
+def _row(r: Any, show_cost: bool) -> UsageRow:
+    return UsageRow(
+        key=r.key,
+        label=r.label,
+        calls=r.calls,
+        failed_calls=r.failed_calls,
+        input_tokens=r.input_tokens,
+        output_tokens=r.output_tokens,
+        reasoning_tokens=r.reasoning_tokens,
+        cache_read_tokens=r.cache_read_tokens,
+        cost_usd=r.cost_usd if show_cost else None,
+        provider_cost_usd=r.provider_cost_usd if show_cost else None,
+    )
+
+
+class ProjectUsage(ApiModel):
+    """The whole life of one project (spec 13.5 "Por proyecto"): by phase, agent and model, the self-correction
+    calls (iterations after the first) and the project budget. Money only with cost.view on the tenant."""
+
+    cost_visible: bool
+    budget_usd: Decimal | None
+    total: UsageRow
+    self_correction: UsageRow
+    by_phase: list[UsageRow]
+    by_agent: list[UsageRow]
+    by_model: list[UsageRow]
+
+
+@router.get("/projects/{project_id}/usage", response_model=ProjectUsage)
+async def project_usage(request: Request, project_id: uuid.UUID, auth: ProjectUsageView) -> ProjectUsage:
+    show_cost = await _cost_visible(request, auth)
+    mine = UsageLedger.project_id == project_id
+    measures = _measures()
+    async with transaction(request, auth) as conn:
+
+        async def grouped(column: Any) -> list[UsageRow]:
+            query = (
+                select(column.label("key"), func.coalesce(column, "—").label("label"), *measures)
+                .where(mine)
+                .group_by(column)
+                .order_by(func.sum(UsageLedger.cost_usd).desc(), func.coalesce(column, "—"))
+            )
+            return [_row(r, show_cost) for r in (await conn.execute(query)).all()]
+
+        async def one(label: str, *where: Any) -> UsageRow:
+            query = select(literal(None).label("key"), literal(label).label("label"), *measures).where(mine, *where)
+            return _row((await conn.execute(query)).one(), show_cost)
+
+        total = await one("total")
+        retries = await one("selfCorrection", UsageLedger.iteration > 1)
+        by_phase = await grouped(UsageLedger.phase)
+        by_agent = await grouped(UsageLedger.agent_role)
+        by_model = await grouped(UsageLedger.model)
+        budget = (
+            await conn.execute(select(func.sum(Budget.amount_usd)).where(Budget.project_id == project_id))
+        ).scalar_one_or_none()
+    return ProjectUsage(
+        cost_visible=show_cost,
+        budget_usd=budget if show_cost else None,
+        total=total,
+        self_correction=retries,
+        by_phase=by_phase,
+        by_agent=by_agent,
+        by_model=by_model,
     )
 
 

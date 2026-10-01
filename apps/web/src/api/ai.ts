@@ -214,6 +214,18 @@ export const useUsage = (groupBy: GroupBy, since: string, until: string) =>
     placeholderData: keepPreviousData,
   })
 
+/** The project permission the Costs tab needs (tokens); money also needs cost.view on the tenant, decided by the API. */
+export const USAGE_VIEW = 'usage.view'
+
+/** The whole life of one project by phase, agent and model (project usage.view; money with cost.view). */
+export const useProjectUsage = (projectId: string, enabled = true) =>
+  useQuery({
+    queryKey: [...keys.usage, 'project', projectId],
+    queryFn: () =>
+      unwrap(api.GET('/api/v1/projects/{project_id}/usage', { params: { path: { project_id: projectId } } })),
+    enabled,
+  })
+
 export const useBudgets = (enabled: boolean) =>
   useQuery({ queryKey: keys.budgets, queryFn: () => unwrap(api.GET('/api/v1/budgets')), enabled })
 

@@ -1003,6 +1003,10 @@ CASES = [
     ),
     Case("GET", "/api/v1/projects/{project_id}/code:download", "admin", "outsider", _verified("/code:download")),
     Case("GET", "/api/v1/projects/{project_id}/design", "admin", "outsider", _architecture("/design")),
+    Case(
+        "GET", "/api/v1/projects/{project_id}/usage", "admin", "outsider",
+        fixed("/api/v1/projects/{project_a}/usage"),
+    ),
     Case("GET", "/api/v1/projects/{project_id}/contracts", "admin", "outsider", _architecture("/contracts")),
 ]  # fmt: skip
 
@@ -1313,6 +1317,11 @@ async def test_tokens_without_cost_view_come_without_money(
     assert verification["inputTokens"] >= 100
     assert all(r["costUsd"] is None and r["providerCostUsd"] is None for r in [body["total"], *body["rows"]])
     assert api.get("/api/v1/budgets").status_code == 403
+    project = api.get(f"/api/v1/projects/{world.project_a}/usage")
+    assert project.status_code == 200
+    assert project.json()["costVisible"] is False
+    assert project.json()["budgetUsd"] is None
+    assert project.json()["total"]["costUsd"] is None
 
 
 async def test_the_catalog_shows_prices_and_the_tenant_policy(

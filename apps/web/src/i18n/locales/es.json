@@ -960,8 +960,6 @@
     "budget": "Presupuesto",
     "used": "{{pct}}% usado",
     "tokens": "Tokens",
-    "forecast": "Proyección al terminar",
-    "forecastHint": "Según el costo del trabajo ya hecho",
     "byPhase": "Costo por fase",
     "byAgent": "Costo por agente",
     "selfCorrectionShare": "Los reintentos de autocorrección costaron {{usd}} ({{pct}}% del total). Es la mejor señal de dónde le cuesta al pipeline."
@@ -2522,5 +2520,24 @@
       "missingInformation": "Falta información",
       "retriesExhausted": "Intentos agotados"
     }
+  },
+  "projectCosts": {
+    "loading": "Cargando el consumo del proyecto…",
+    "loadError": "No se pudo cargar el consumo del proyecto",
+    "emptyHint": "Todavía no hay consumo. Ejecuta el pipeline para ver en qué se va el presupuesto, por fase, agente y modelo.",
+    "noUsageView": "Ver el consumo requiere el permiso usage.view",
+    "noUsageViewHint": "Pide a un administrador del proyecto o del cliente un rol que lo incluya.",
+    "tokensOnly": "Ves solo tokens: el dinero requiere el permiso cost.view.",
+    "noBudget": "Este proyecto no tiene presupuesto",
+    "calls_one": "{{count}} llamada",
+    "calls_other": "{{count}} llamadas",
+    "selfCorrection": "Autocorrección",
+    "tokensByPhase": "Tokens por fase",
+    "tokensByAgent": "Tokens por agente",
+    "byModel": "Por modelo",
+    "model": "Modelo",
+    "inputTokens": "Tokens de entrada",
+    "outputTokens": "Tokens de salida",
+    "cost": "Costo"
   }
 }

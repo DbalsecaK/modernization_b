@@ -1636,6 +1636,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/projects/{project_id}/usage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Project Usage */
+        get: operations["project_usage_api_v1_projects__project_id__usage_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/projects/{project_id}/verdicts": {
         parameters: {
             query?: never;
@@ -3927,6 +3944,25 @@ export interface components {
             name?: string | null;
             /** Status */
             status?: ("active" | "archived") | null;
+        };
+        /**
+         * ProjectUsage
+         * @description The whole life of one project (spec 13.5 "Por proyecto"): by phase, agent and model, the self-correction
+         *     calls (iterations after the first) and the project budget. Money only with cost.view on the tenant.
+         */
+        ProjectUsage: {
+            /** Budgetusd */
+            budgetUsd: string | null;
+            /** Byagent */
+            byAgent: components["schemas"]["UsageRow"][];
+            /** Bymodel */
+            byModel: components["schemas"]["UsageRow"][];
+            /** Byphase */
+            byPhase: components["schemas"]["UsageRow"][];
+            /** Costvisible */
+            costVisible: boolean;
+            selfCorrection: components["schemas"]["UsageRow"];
+            total: components["schemas"]["UsageRow"];
         };
         /** PrototypeOut */
         PrototypeOut: {
@@ -8288,6 +8324,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TraceDetailOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    project_usage_api_v1_projects__project_id__usage_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectUsage"];
                 };
             };
             /** @description Validation Error */

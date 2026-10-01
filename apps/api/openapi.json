@@ -5491,6 +5491,65 @@
         "title": "ProjectUpdate",
         "type": "object"
       },
+      "ProjectUsage": {
+        "description": "The whole life of one project (spec 13.5 \"Por proyecto\"): by phase, agent and model, the self-correction\ncalls (iterations after the first) and the project budget. Money only with cost.view on the tenant.",
+        "properties": {
+          "budgetUsd": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Budgetusd"
+          },
+          "byAgent": {
+            "items": {
+              "$ref": "#/components/schemas/UsageRow"
+            },
+            "title": "Byagent",
+            "type": "array"
+          },
+          "byModel": {
+            "items": {
+              "$ref": "#/components/schemas/UsageRow"
+            },
+            "title": "Bymodel",
+            "type": "array"
+          },
+          "byPhase": {
+            "items": {
+              "$ref": "#/components/schemas/UsageRow"
+            },
+            "title": "Byphase",
+            "type": "array"
+          },
+          "costVisible": {
+            "title": "Costvisible",
+            "type": "boolean"
+          },
+          "selfCorrection": {
+            "$ref": "#/components/schemas/UsageRow"
+          },
+          "total": {
+            "$ref": "#/components/schemas/UsageRow"
+          }
+        },
+        "required": [
+          "costVisible",
+          "budgetUsd",
+          "total",
+          "selfCorrection",
+          "byPhase",
+          "byAgent",
+          "byModel"
+        ],
+        "title": "ProjectUsage",
+        "type": "object"
+      },
       "PrototypeOut": {
         "properties": {
           "createdAt": {
@@ -13467,6 +13526,49 @@
         "summary": "Rule Trace",
         "tags": [
           "validation"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/usage": {
+      "get": {
+        "operationId": "project_usage_api_v1_projects__project_id__usage_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectUsage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Project Usage",
+        "tags": [
+          "usage"
         ]
       }
     },

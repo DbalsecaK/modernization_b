@@ -960,8 +960,6 @@
     "budget": "Budget",
     "used": "{{pct}}% used",
     "tokens": "Tokens",
-    "forecast": "Forecast to finish",
-    "forecastHint": "Based on the cost of work already done",
     "byPhase": "Cost by phase",
     "byAgent": "Cost by agent",
     "selfCorrectionShare": "Self-correction retries cost {{usd}} ({{pct}}% of the total). This is the best signal of where the pipeline struggles."
@@ -2522,5 +2520,24 @@
       "missingInformation": "Missing information",
       "retriesExhausted": "Attempts exhausted"
     }
+  },
+  "projectCosts": {
+    "loading": "Loading the usage of the project…",
+    "loadError": "The usage of the project could not be loaded",
+    "emptyHint": "Nothing consumed yet. Run the pipeline to see where the budget goes, by phase, agent and model.",
+    "noUsageView": "Seeing usage needs the usage.view permission",
+    "noUsageViewHint": "Ask a project or tenant administrator for a role that includes it.",
+    "tokensOnly": "You see tokens only: money needs the cost.view permission.",
+    "noBudget": "No budget set for this project",
+    "calls_one": "{{count}} call",
+    "calls_other": "{{count}} calls",
+    "selfCorrection": "Self-correction",
+    "tokensByPhase": "Tokens by phase",
+    "tokensByAgent": "Tokens by agent",
+    "byModel": "By model",
+    "model": "Model",
+    "inputTokens": "Input tokens",
+    "outputTokens": "Output tokens",
+    "cost": "Cost"
   }
 }
