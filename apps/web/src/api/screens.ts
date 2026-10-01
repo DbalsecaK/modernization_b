@@ -20,6 +20,7 @@ export type ScreenField = {
   length: number
   attributes?: string[]
   required?: boolean
+  validation?: string
   format?: string
   message?: string
   initial?: string

@@ -66,6 +66,26 @@ describe('checks', () => {
     expect(checks.filter((c) => c.missing)).toHaveLength(4)
   })
 
+  it('shows the six checks of a Flow 2 verdict in their order', () => {
+    const checks = allChecks(
+      [
+        { key: 'traced_to_inputs', title: 'Traced to inputs', status: 'passed', detail: '9 element(s)' },
+        { key: 'criteria_covered', title: 'Criteria covered', status: 'passed', detail: '6 criteria' },
+      ],
+      'loans',
+    )
+    expect(checks.map((c) => c.key)).toEqual([
+      'tests_ran',
+      'criteria_covered',
+      'contracts',
+      'canary',
+      'questions_closed',
+      'traced_to_inputs',
+    ])
+    expect(checks.filter((c) => c.missing)).toHaveLength(4)
+    expect(checkTitleKey('traced_to_inputs')).toBe('validation.checkTitles.tracedToInputs')
+  })
+
   it('maps keys and statuses to i18n keys and tones', () => {
     expect(checkTitleKey('same_behaviour')).toBe('validation.checkTitles.sameBehaviour')
     expect(checkStatusKey('not_checked')).toBe('validation.status.notChecked')

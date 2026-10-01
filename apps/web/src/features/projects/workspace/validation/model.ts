@@ -25,7 +25,21 @@ export const FRONTEND_CHECK_KEYS = [
   'accessibility',
 ] as const
 
+/** The checks of a Flow 2 verdict (ADR-0018): the acceptance criteria are the oracle, there is no legacy. */
+export const FEATURE_CHECK_KEYS = [
+  'tests_ran',
+  'criteria_covered',
+  'contracts',
+  'canary',
+  'questions_closed',
+  'traced_to_inputs',
+] as const
+
 export const isFrontendModule = (module: string) => module.startsWith('frontend-')
+
+/** A Flow 2 verdict reports the checks only Flow 2 has. */
+export const isFeatureVerdict = (checks: CheckOut[]) =>
+  checks.some((c) => c.key === 'criteria_covered' || c.key === 'traced_to_inputs')
 
 export type CheckStatus = CheckOut['status']
 
@@ -48,7 +62,11 @@ export const checkTone = (status: CheckStatus): Tone =>
  * counts them as not run); unknown keys go last, as reported.
  */
 export function allChecks(checks: CheckOut[], module = ''): CheckView[] {
-  const keys: readonly string[] = isFrontendModule(module) ? FRONTEND_CHECK_KEYS : CHECK_KEYS
+  const keys: readonly string[] = isFrontendModule(module)
+    ? FRONTEND_CHECK_KEYS
+    : isFeatureVerdict(checks)
+      ? FEATURE_CHECK_KEYS
+      : CHECK_KEYS
   const byKey = new Map(checks.map((c) => [c.key, c]))
   const known = keys.map((key): CheckView =>
     byKey.has(key)

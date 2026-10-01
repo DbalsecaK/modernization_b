@@ -729,7 +729,11 @@
     "commentFailed": "No se pudo guardar el comentario.",
     "c2Title": "Aprobación de la UI (C2)",
     "c2Hint": "Una persona aprueba la UI; el chat nunca la aprueba",
-    "c2InRuns": "La compuerta C2 se aprueba en la corrida, en la pestaña Corridas."
+    "c2InRuns": "La compuerta C2 se aprueba en la corrida, en la pestaña Corridas.",
+    "specField": "Campo",
+    "specKind": "Tipo",
+    "specRule": "Validación",
+    "required": "obligatorio"
   },
   "architecture": {
     "contexts": "Bounded contexts",
@@ -922,7 +926,11 @@
       "fieldsCovered": "Campos cubiertos",
       "validations": "Validaciones",
       "actions": "Acciones",
-      "accessibility": "Accesibilidad"
+      "accessibility": "Accesibilidad",
+      "criteriaCovered": "Criterios cubiertos",
+      "contracts": "Contratos",
+      "questionsClosed": "Preguntas cerradas",
+      "tracedToInputs": "Trazado a insumos"
     },
     "status": {
       "passed": "Pasa",

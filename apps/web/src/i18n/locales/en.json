@@ -729,7 +729,11 @@
     "commentFailed": "The comment could not be saved.",
     "c2Title": "UI approval (C2)",
     "c2Hint": "A person approves the UI; the chat never does",
-    "c2InRuns": "Gate C2 is approved in the run, in the Runs tab."
+    "c2InRuns": "Gate C2 is approved in the run, in the Runs tab.",
+    "specField": "Field",
+    "specKind": "Kind",
+    "specRule": "Validation",
+    "required": "required"
   },
   "architecture": {
     "contexts": "Bounded contexts",
@@ -922,7 +926,11 @@
       "fieldsCovered": "Fields covered",
       "validations": "Validations",
       "actions": "Actions",
-      "accessibility": "Accessibility"
+      "accessibility": "Accessibility",
+      "criteriaCovered": "Criteria covered",
+      "contracts": "Contracts",
+      "questionsClosed": "Questions closed",
+      "tracedToInputs": "Traced to inputs"
     },
     "status": {
       "passed": "Passed",

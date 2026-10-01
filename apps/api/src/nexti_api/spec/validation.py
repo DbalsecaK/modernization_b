@@ -141,6 +141,15 @@ async def _legacy_files(request: Request, conn: AsyncConnection, project_id: uui
     for row in rows.mappings():
         data = b"".join(await services.store(request).read(row["object_key"]))
         files.update(read_text_files(data))
+    # Flow 2 (ADR-0018): the citable text of the documents and Figma files, as ingestion kept it.
+    inputs = await conn.execute(
+        text("SELECT DISTINCT ON (path) path, object_key FROM generated_artifact WHERE project_id = :p "
+             "AND path LIKE 'inputs/%' AND path NOT LIKE '%.json' ORDER BY path, created_at DESC"),
+        {"p": project_id},
+    )  # fmt: skip
+    for row in inputs.mappings():
+        content = b"".join(await services.store(request).read(row["object_key"])).decode("utf-8", "replace")
+        files[row["path"].removeprefix("inputs/")] = content
     return files
 
 
