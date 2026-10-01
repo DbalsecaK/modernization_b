@@ -8,6 +8,7 @@ from nexti_core.spec.characterization import GoldenMaster, Scalar
 from nexti_core.spec.design import Design, Port, UseCase
 from nexti_core.spec.equivalence import EquivalenceRun
 from nexti_pack_dotnet.pack import PACK as DOTNET
+from nexti_pack_spring_boot.pack import ORACLE_PACK as SPRING_BOOT_ORACLE
 from nexti_pack_spring_boot.pack import PACK as SPRING_BOOT
 from nexti_sandbox import Sandbox
 from nexti_sandbox.build import BuildResult
@@ -79,5 +80,9 @@ PACKS: dict[str, BackendPack] = {SPRING_BOOT.name: SPRING_BOOT, DOTNET.name: DOT
 
 
 def backend_pack(target: Mapping[str, Any]) -> BackendPack | None:
-    """The pack of a project's backend (Spring Boot when none is chosen); None when that backend has no pack yet."""
-    return PACKS.get(str(target.get("backend") or DEFAULT))
+    """The pack of a project's backend (Spring Boot when none is chosen), with its database when the pack has a
+    variant for it (Spring Boot with Oracle, ADR-0021); None when that backend has no pack yet."""
+    backend = str(target.get("backend") or DEFAULT)
+    if backend == SPRING_BOOT.name and str(target.get("database") or "").lower() == "oracle":
+        return SPRING_BOOT_ORACLE
+    return PACKS.get(backend)

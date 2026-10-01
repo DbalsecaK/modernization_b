@@ -8,6 +8,7 @@ from typing import Any
 
 from nexti_core.spec.characterization import GoldenMaster, Scalar
 from nexti_core.spec.equivalence import EquivalenceRun
+from nexti_pack_spring_boot import oracle
 from nexti_pack_spring_boot.build import IMAGE, compile_and_test
 from nexti_pack_spring_boot.canary import Mutation, mutations
 from nexti_pack_spring_boot.design import Design, Port, UseCase
@@ -118,4 +119,43 @@ class SpringBootPack:
         return {"name": self.name, "image": self.image}
 
 
+class SpringBootOraclePack(SpringBootPack):
+    """The same pack with Oracle as its persistence (ADR-0021): the Oracle schema, the adapters asked for Oracle SQL,
+    the Oracle JDBC driver in the project and the golden master run against Oracle in its sandbox."""
+
+    image = oracle.IMAGE
+    database = "oracle"
+
+    def skeleton(self, design: Design) -> dict[str, str]:
+        files = super().skeleton(design)
+        files[SCHEMA] = oracle.schema(design)
+        files["pom.xml"] = files["pom.xml"].replace(
+            "<dependency><groupId>org.postgresql</groupId><artifactId>postgresql</artifactId><scope>runtime</scope>"
+            "</dependency>",
+            "<dependency><groupId>com.oracle.database.jdbc</groupId><artifactId>ojdbc11</artifactId>"
+            "<scope>runtime</scope></dependency>",
+        )
+        return files
+
+    def adapter_request(self, design: Design, port: str, files: Mapping[str, str]) -> str:
+        return (
+            f"Write the JDBC adapter Jdbc{port} of the port {port}. The database is Oracle Database 23ai: use "
+            "Oracle SQL (no LIMIT: FETCH FIRST n ROWS ONLY; no RETURNING into the JdbcTemplate; booleans are BOOLEAN). "
+            "Write the identifiers exactly as the schema does: a column the schema quotes (a reserved word, e.g. "
+            '"NUMBER") is quoted the same way in every statement.\n\n'
+            f"Design:\n{design.model_dump_json(indent=1)}\n\nExisting files:\n{self.existing(files, design)}\n\n"
+            f"Target schema (Oracle):\n{files[SCHEMA]}"
+        )
+
+    async def run_equivalence(
+        self, sandbox: Sandbox, files: dict[str, str], design: Design, use_case: UseCase, master: GoldenMaster,
+        defaults: dict[str, Scalar] | None = None,
+    ) -> EquivalenceRun:  # fmt: skip
+        return await oracle.run_equivalence(sandbox, files, design, use_case, master, defaults)
+
+    def describe(self) -> dict[str, Any]:
+        return {"name": self.name, "image": self.image, "database": self.database}
+
+
 PACK = SpringBootPack()
+ORACLE_PACK = SpringBootOraclePack()
