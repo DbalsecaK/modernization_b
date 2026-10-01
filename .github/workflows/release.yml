@@ -62,6 +62,8 @@ jobs:
         env:
           R: ${{ steps.version.outputs.registry }}
           T: ${{ steps.version.outputs.tag }}
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ACTOR: ${{ github.actor }}
         run: |
           set -euo pipefail
           r="$R"; t="$T"
@@ -69,10 +71,11 @@ jobs:
           for image in nexti-migrate nexti-api nexti-worker nexti-web nexti-keycloak; do
             ref="$r/$image@$(docker inspect --format '{{index .RepoDigests 0}}' "$r/$image:$t" | cut -d@ -f2)"
             docker run --rm -v /var/run/docker.sock:/var/run/docker.sock "$SYFT" "$r/$image:$t" -o spdx-json -q > "sbom/$image.spdx.json"
-            docker run --rm -v "$HOME/.docker/config.json:/root/.docker/config.json:ro" -v "$PWD/sbom:/sbom:ro" \
-              -e ACTIONS_ID_TOKEN_REQUEST_URL -e ACTIONS_ID_TOKEN_REQUEST_TOKEN "$COSIGN" sign --yes "$ref"
-            docker run --rm -v "$HOME/.docker/config.json:/root/.docker/config.json:ro" -v "$PWD/sbom:/sbom:ro" \
-              -e ACTIONS_ID_TOKEN_REQUEST_URL -e ACTIONS_ID_TOKEN_REQUEST_TOKEN "$COSIGN" attest --yes \
+            # cosign's image runs without root and cannot read the runner's Docker credentials: flags.
+            docker run --rm -e ACTIONS_ID_TOKEN_REQUEST_URL -e ACTIONS_ID_TOKEN_REQUEST_TOKEN "$COSIGN" sign --yes \
+              --registry-username "$ACTOR" --registry-password "$TOKEN" "$ref"
+            docker run --rm -v "$PWD/sbom:/sbom:ro" -e ACTIONS_ID_TOKEN_REQUEST_URL -e ACTIONS_ID_TOKEN_REQUEST_TOKEN \
+              "$COSIGN" attest --yes --registry-username "$ACTOR" --registry-password "$TOKEN" \
               --type spdxjson --predicate "/sbom/$image.spdx.json" "$ref"
           done
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
