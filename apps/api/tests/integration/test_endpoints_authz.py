@@ -1004,6 +1004,7 @@ CASES = [
     Case("GET", "/api/v1/projects/{project_id}/code:download", "admin", "outsider", _verified("/code:download")),
     Case("GET", "/api/v1/projects/{project_id}/design", "admin", "outsider", _architecture("/design")),
     Case("GET", "/api/v1/dashboard", "member", "root", fixed("/api/v1/dashboard")),
+    Case("GET", "/api/v1/platform/status", "root", "admin", fixed("/api/v1/platform/status")),
     Case("GET", "/api/v1/search", "member", "root", fixed("/api/v1/search?q=payments")),
     Case("GET", "/api/v1/notifications", "member", "root", fixed("/api/v1/notifications")),
     Case(
@@ -1329,6 +1330,56 @@ async def test_tokens_without_cost_view_come_without_money(
     assert (board["costVisible"], board["admin"], board["monthlySpend"]) == (False, None, [])
     assert all(p["spentUsd"] is None and p["budgetUsd"] is None for p in board["projects"])
     assert all(n["kind"] != "budget" for n in api.get("/api/v1/notifications").json())
+
+
+async def test_platform_operations_show_workers_queues_and_failures(
+    api: TestClient, app_engine: AsyncEngine, owner_engine: AsyncEngine, fga: OpenFga, world: World, root: uuid.UUID
+) -> None:
+    """Spec 18.4: a live worker with its job, a stale one, the queue depth and a job that failed today."""
+    await reconcile(app_engine, fga)
+    queue = f"q-{uuid.uuid4().hex[:8]}"
+    async with owner_engine.begin() as conn:
+        alive: int = (
+            await conn.execute(text("INSERT INTO procrastinate_workers (last_heartbeat) VALUES (now()) RETURNING id"))
+        ).scalar_one()
+        stale: int = (
+            await conn.execute(
+                text(
+                    "INSERT INTO procrastinate_workers (last_heartbeat) VALUES (now() - interval '1 hour') RETURNING id"
+                )
+            )
+        ).scalar_one()
+        await conn.execute(
+            text(
+                "INSERT INTO procrastinate_jobs (queue_name, task_name, args, status, worker_id) VALUES "
+                "(:q, 'run_pipeline', '{}', 'doing', :w), (:q, 'run_pipeline', '{}', 'todo', NULL)"
+            ),
+            {"q": queue, "w": alive},
+        )
+        failed: int = (
+            await conn.execute(
+                text(
+                    "INSERT INTO procrastinate_jobs (queue_name, task_name, args, status, attempts) "
+                    "VALUES (:q, 'ui_change', '{}', 'failed', 3) RETURNING id"
+                ),
+                {"q": queue},
+            )
+        ).scalar_one()
+        await conn.execute(text("INSERT INTO procrastinate_events (job_id, type) VALUES (:j, 'failed')"), {"j": failed})
+    try:
+        act_as(api, "root", Ctx(world, root, owner_engine))
+        status = api.get("/api/v1/platform/status").json()
+        workers = {w["id"]: w for w in status["workers"]}
+        assert (workers[alive]["alive"], workers[alive]["runningJobs"]) == (True, 1)
+        assert workers[stale]["alive"] is False
+        assert {"queue": queue, "waiting": 1, "running": 1} in status["queues"]
+        assert any(f["id"] == failed and f["task"] == "ui_change" for f in status["recentFailures"])
+        assert status["failedLastDay"] >= 1
+        assert status["apiVersion"]
+    finally:
+        async with owner_engine.begin() as conn:
+            await conn.execute(text("DELETE FROM procrastinate_jobs WHERE queue_name = :q"), {"q": queue})
+            await conn.execute(text("DELETE FROM procrastinate_workers WHERE id IN (:a, :s)"), {"a": alive, "s": stale})
 
 
 async def test_the_catalog_shows_prices_and_the_tenant_policy(

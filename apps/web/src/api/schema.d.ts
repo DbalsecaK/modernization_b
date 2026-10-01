@@ -645,6 +645,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/platform/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Status */
+        get: operations["status_api_v1_platform_status_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/projects": {
         parameters: {
             query?: never;
@@ -3122,6 +3139,22 @@ export interface components {
                 };
             };
         };
+        /** FailedJobOut */
+        FailedJobOut: {
+            /** Attempts */
+            attempts: number;
+            /**
+             * Failedat
+             * Format: date-time
+             */
+            failedAt: string;
+            /** Id */
+            id: number;
+            /** Queue */
+            queue: string;
+            /** Task */
+            task: string;
+        };
         /** FlowOut */
         FlowOut: {
             /**
@@ -3761,6 +3794,23 @@ export interface components {
             /** Story */
             story: string;
         };
+        /** PlatformStatus */
+        PlatformStatus: {
+            /** Activeruns */
+            activeRuns: number;
+            /** Apiversion */
+            apiVersion: string;
+            /** Failedlastday */
+            failedLastDay: number;
+            /** Queues */
+            queues: components["schemas"]["QueueOut"][];
+            /** Recentfailures */
+            recentFailures: components["schemas"]["FailedJobOut"][];
+            /** Waitingruns */
+            waitingRuns: number;
+            /** Workers */
+            workers: components["schemas"]["WorkerOut"][];
+        };
         /** PolicyIn */
         PolicyIn: {
             /** Allowedupstreamproviders */
@@ -4224,6 +4274,15 @@ export interface components {
             status: "open" | "answered" | "cancelled";
             /** Wasrecommended */
             wasRecommended: boolean | null;
+        };
+        /** QueueOut */
+        QueueOut: {
+            /** Queue */
+            queue: string;
+            /** Running */
+            running: number;
+            /** Waiting */
+            waiting: number;
         };
         /** Readiness */
         Readiness: {
@@ -5062,6 +5121,20 @@ export interface components {
              * @enum {string}
              */
             status: "available" | "deprecated";
+        };
+        /** WorkerOut */
+        WorkerOut: {
+            /** Alive */
+            alive: boolean;
+            /** Id */
+            id: number;
+            /**
+             * Lastheartbeat
+             * Format: date-time
+             */
+            lastHeartbeat: string;
+            /** Runningjobs */
+            runningJobs: number;
         };
         /** RuleOut */
         nexti_api__projects__catalog_api__RuleOut: {
@@ -6415,6 +6488,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PermissionOut"][];
+                };
+            };
+        };
+    };
+    status_api_v1_platform_status_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlatformStatus"];
                 };
             };
         };

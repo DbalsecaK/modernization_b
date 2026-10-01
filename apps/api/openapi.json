@@ -2892,6 +2892,40 @@
         "title": "EffortMappingIn",
         "type": "object"
       },
+      "FailedJobOut": {
+        "properties": {
+          "attempts": {
+            "title": "Attempts",
+            "type": "integer"
+          },
+          "failedAt": {
+            "format": "date-time",
+            "title": "Failedat",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "queue": {
+            "title": "Queue",
+            "type": "string"
+          },
+          "task": {
+            "title": "Task",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "task",
+          "queue",
+          "attempts",
+          "failedAt"
+        ],
+        "title": "FailedJobOut",
+        "type": "object"
+      },
       "FlowOut": {
         "properties": {
           "key": {
@@ -4887,6 +4921,58 @@
         "title": "PlanProblemOut",
         "type": "object"
       },
+      "PlatformStatus": {
+        "properties": {
+          "activeRuns": {
+            "title": "Activeruns",
+            "type": "integer"
+          },
+          "apiVersion": {
+            "title": "Apiversion",
+            "type": "string"
+          },
+          "failedLastDay": {
+            "title": "Failedlastday",
+            "type": "integer"
+          },
+          "queues": {
+            "items": {
+              "$ref": "#/components/schemas/QueueOut"
+            },
+            "title": "Queues",
+            "type": "array"
+          },
+          "recentFailures": {
+            "items": {
+              "$ref": "#/components/schemas/FailedJobOut"
+            },
+            "title": "Recentfailures",
+            "type": "array"
+          },
+          "waitingRuns": {
+            "title": "Waitingruns",
+            "type": "integer"
+          },
+          "workers": {
+            "items": {
+              "$ref": "#/components/schemas/WorkerOut"
+            },
+            "title": "Workers",
+            "type": "array"
+          }
+        },
+        "required": [
+          "apiVersion",
+          "workers",
+          "queues",
+          "activeRuns",
+          "waitingRuns",
+          "failedLastDay",
+          "recentFailures"
+        ],
+        "title": "PlatformStatus",
+        "type": "object"
+      },
       "PolicyIn": {
         "properties": {
           "allowedUpstreamProviders": {
@@ -6164,6 +6250,29 @@
           "createdAt"
         ],
         "title": "QuestionOut",
+        "type": "object"
+      },
+      "QueueOut": {
+        "properties": {
+          "queue": {
+            "title": "Queue",
+            "type": "string"
+          },
+          "running": {
+            "title": "Running",
+            "type": "integer"
+          },
+          "waiting": {
+            "title": "Waiting",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "queue",
+          "waiting",
+          "running"
+        ],
+        "title": "QueueOut",
         "type": "object"
       },
       "Readiness": {
@@ -8416,6 +8525,35 @@
         "title": "VersionOut",
         "type": "object"
       },
+      "WorkerOut": {
+        "properties": {
+          "alive": {
+            "title": "Alive",
+            "type": "boolean"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "lastHeartbeat": {
+            "format": "date-time",
+            "title": "Lastheartbeat",
+            "type": "string"
+          },
+          "runningJobs": {
+            "title": "Runningjobs",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "lastHeartbeat",
+          "alive",
+          "runningJobs"
+        ],
+        "title": "WorkerOut",
+        "type": "object"
+      },
       "nexti_api__projects__catalog_api__RuleOut": {
         "properties": {
           "key": {
@@ -10439,6 +10577,27 @@
         "tags": [
           "roles",
           "roles"
+        ]
+      }
+    },
+    "/api/v1/platform/status": {
+      "get": {
+        "operationId": "status_api_v1_platform_status_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlatformStatus"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Status",
+        "tags": [
+          "platform"
         ]
       }
     },
