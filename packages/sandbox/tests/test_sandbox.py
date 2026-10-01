@@ -91,3 +91,24 @@ async def test_unsafe_input_names_are_refused(sandbox: DockerSandbox) -> None:
 async def test_without_a_runtime_the_job_does_not_run() -> None:
     with pytest.raises(SandboxUnavailableError):
         await DockerSandbox(docker="docker-that-does-not-exist").run(python("print(1)"))
+
+
+async def test_a_database_engine_gets_an_internal_network_and_still_no_way_out(sandbox: DockerSandbox) -> None:
+    """ADR-0021: an engine that needs a private interface gets a network of its own, internal: no route out."""
+    code = (
+        "import socket\n"
+        "addresses = socket.getaddrinfo(socket.gethostname(), None)\n"
+        "print(any(not a[4][0].startswith('127.') for a in addresses))\n"
+        "try:\n"
+        "    socket.create_connection(('1.1.1.1', 53), timeout=3)\n"
+        "    print('connected')\n"
+        "except OSError:\n"
+        "    print('no way out')\n"
+        "open('/var/tmp/scratch', 'w').write('x')\n"
+        "import os\n"
+        "print(os.getuid())\n"
+    )
+    limits = Limits(timeout_seconds=60, memory_mb=128, internal_network=True, writable_root=True, user="1000:1000")
+    result = await sandbox.run(python(code), limits=limits)
+    assert result.ok, result.stderr
+    assert result.stdout.split() == ["True", "no", "way", "out", "1000"]
