@@ -3,6 +3,7 @@ CLAUDE.md), every route declares its authorization, and every sensitive action l
 
 import hashlib
 import io
+import json
 import uuid
 from collections.abc import Awaitable, Callable, Iterator
 from dataclasses import dataclass
@@ -41,6 +42,7 @@ from nexti_core.db.models import (
     PlatformRoleAssignment,
     PriceVersion,
     Project,
+    ProjectBacklog,
     ProjectRepository,
     ProviderConnection,
     Role,
@@ -50,6 +52,7 @@ from nexti_core.db.models import (
 )
 from nexti_core.object_store import ObjectStore, ObjectStoreConfig, input_key
 from nexti_core.secrets import integration_path
+from nexti_integrations.simulated import FakeJira
 from nexti_model_gateway.secrets import SecretsConfig, SecretStore, connection_path
 
 from .conftest import SETTINGS, World
@@ -82,6 +85,7 @@ NOT_AUDITED = {("PATCH", "/api/v1/me"), ("POST", "/api/v1/projects:compose"), ("
 # OpenRouter is simulated in these tests (shapes recorded from the real API, packages/model_gateway/tests).
 OPENROUTER = "https://openrouter.test/api/v1"
 FIGMA = "https://figma.test/v1"  # the Figma API, simulated
+JIRA_SITE = "https://andesbank.atlassian.net"  # Jira Cloud, simulated with state (nexti_integrations.simulated)
 MODEL = "openai/gpt-4o-mini"
 MODEL_INFO: dict[str, Any] = {
     "id": MODEL,
@@ -340,6 +344,28 @@ class Ctx:
             )  # fmt: skip
         return input_id
 
+    async def tracker(self, tenant_id: uuid.UUID | None = None) -> uuid.UUID:
+        """A Jira integration of the tenant (its token in OpenBao, its site in the config)."""
+        integration_id = await self.integration(tenant_id)
+        async with self.owner.begin() as conn:
+            await conn.execute(
+                text("UPDATE tenant_integration SET kind = 'jira', config = CAST(:c AS jsonb) WHERE id = :i"),
+                {"i": integration_id, "c": json.dumps({"site": JIRA_SITE, "email": "ops@andesbank.example"})},
+            )
+        return integration_id
+
+    async def backlog(self) -> uuid.UUID:
+        """Project A linked to a Jira project."""
+        integration_id = await self.tracker()
+        async with self.owner.begin() as conn:
+            await conn.execute(
+                pg_insert(ProjectBacklog)
+                .values(tenant_id=self.world.tenant_a, project_id=self.world.project_a, integration_id=integration_id,
+                        external_project="CARDS")
+                .on_conflict_do_update(index_elements=["project_id"], set_={"integration_id": integration_id})
+            )  # fmt: skip
+        return self.world.project_a
+
     async def repository(self) -> uuid.UUID:
         """Project A with a repository configured (no token)."""
         async with self.owner.begin() as conn:
@@ -570,6 +596,11 @@ async def _offering_path(ctx: Ctx, suffix: str) -> str:
 
 async def _new_connection(ctx: Ctx) -> Request:
     return "/api/v1/ai/connections", {"name": f"OR {uuid.uuid4().hex[:8]}", "apiKey": "sk-or-v1-test-new"}
+
+
+async def _link_backlog(ctx: Ctx) -> Request:
+    body = {"integrationId": str(await ctx.tracker()), "externalProject": "CARDS"}
+    return f"/api/v1/projects/{ctx.world.project_a}/backlog", body
 
 
 async def _new_integration(ctx: Ctx) -> Request:
@@ -926,6 +957,20 @@ CASES = [
         "DELETE", "/api/v1/projects/{project_id}/repository", "admin", "member",
         _with("repository", "/api/v1/projects/{id}/repository"),
     ),
+    # The backlog in Jira / Azure DevOps (M7b): project.view to see it, project.configure to link and sync.
+    Case(
+        "GET", "/api/v1/projects/{project_id}/backlog", "member", "outsider",
+        fixed("/api/v1/projects/{project_a}/backlog"),
+    ),
+    Case("PUT", "/api/v1/projects/{project_id}/backlog", "admin", "member", _link_backlog),
+    Case(
+        "DELETE", "/api/v1/projects/{project_id}/backlog", "admin", "member",
+        _with("backlog", "/api/v1/projects/{id}/backlog"),
+    ),
+    Case(
+        "POST", "/api/v1/projects/{project_id}/backlog:sync", "admin", "member",
+        _with("backlog", "/api/v1/projects/{id}/backlog:sync"),
+    ),
     # Runs, gates, questions, tasks and activity (M3). Fresh projects: only the tenant admin sees them.
     Case("GET", "/api/v1/projects/{project_id}/runs", "admin", "outsider", _runs),
     Case("POST", "/api/v1/projects/{project_id}/runs", "admin", "member", _new_run),
@@ -1083,6 +1128,7 @@ def api(api_settings: Settings) -> Iterator[TestClient]:
     settings = api_settings.model_copy(update={"dev_auth_enabled": True, "openrouter_url": OPENROUTER,
                                           "figma_url": FIGMA})  # fmt: skip
     with TestClient(create_app(settings), base_url="https://testserver") as client:
+        client.app.state.inputs.git_resolver = _public  # type: ignore[attr-defined]
         yield client
 
 
@@ -1098,8 +1144,16 @@ def openrouter() -> Iterator[respx.MockRouter]:
         )
         router.post(f"{OPENROUTER}/chat/completions").respond(json=CHAT)
         router.get(f"{FIGMA}/me").respond(json={"id": "1", "handle": "disenador.ficticio", "email": "d@example.com"})
+        router.route(host="andesbank.atlassian.net").mock(
+            side_effect=FakeJira("ops@andesbank.example", "jira-token-1").handle
+        )
         router.route().pass_through()
         yield router
+
+
+async def _public(host: str, port: int) -> list[str]:
+    """The simulated external hosts (Jira, Git) resolve to a public address."""
+    return ["93.184.216.34"]
 
 
 def act_as(api: TestClient, who: str, ctx: Ctx) -> dict[str, str]:
@@ -1363,7 +1417,7 @@ async def test_integrations_of_another_tenant_are_unreachable_and_their_token_st
     for res in (created, patched, tested, listed):
         assert canary not in res.text
         assert rotated not in res.text
-    later = api.post("/api/v1/integrations", json={"kind": "jira", "name": "Jira", "token": "jira-token-1"},
+    later = api.post("/api/v1/integrations", json={"kind": "github", "name": "GitHub", "token": "gh-token-12"},
                      headers=headers)  # fmt: skip
     assert (later.status_code, later.json()["code"]) == (422, "integration_not_available")
     async with owner_engine.connect() as conn:
@@ -1386,6 +1440,40 @@ async def test_integrations_of_another_tenant_are_unreachable_and_their_token_st
         assert await store.get(path) == rotated
         assert api.delete(f"/api/v1/integrations/{integration_id}", headers=headers).status_code == 204
         assert await store.get(path) is None
+
+
+async def test_a_jira_integration_is_checked_and_a_project_cannot_link_another_tenant_s(
+    api: TestClient, app_engine: AsyncEngine, owner_engine: AsyncEngine, fga: OpenFga, world: World, root: uuid.UUID
+) -> None:
+    await reconcile(app_engine, fga)
+    ctx = Ctx(world, root, owner_engine)
+    headers = act_as(api, "admin", ctx)
+    no_site = api.post("/api/v1/integrations", json={"kind": "jira", "name": "Jira sin sitio", "token": "jira-token-1"},
+                       headers=headers)  # fmt: skip
+    assert (no_site.status_code, no_site.json()["code"]) == (422, "integration_config_missing")
+    created = api.post("/api/v1/integrations", json={
+        "kind": "jira", "name": f"Jira {uuid.uuid4().hex[:6]}", "token": "jira-token-1",
+        "config": {"site": JIRA_SITE, "email": "ops@andesbank.example"}}, headers=headers)  # fmt: skip
+    assert created.status_code == 201, created.text
+    tested = api.post(f"/api/v1/integrations/{created.json()['id']}:test", headers=headers)
+    assert (tested.json()["status"], tested.json()["account"]) == ("ok", "Integración NexTI")
+    assert "jira-token-1" not in tested.text
+
+    b_tracker = await ctx.tracker(world.tenant_b)
+    foreign = api.put(f"/api/v1/projects/{world.project_a}/backlog",
+                      json={"integrationId": str(b_tracker), "externalProject": "CARDS"}, headers=headers)  # fmt: skip
+    assert foreign.status_code == 404
+    body = {"integrationId": created.json()["id"], "externalProject": "CARDS"}
+    linked = api.put(f"/api/v1/projects/{world.project_a}/backlog", json=body, headers=headers)
+    assert linked.status_code == 200, linked.text
+    backlog = linked.json()
+    assert backlog["link"]["kind"] == "jira"
+    assert str(b_tracker) not in {c["id"] for c in backlog["connections"]}
+    async with owner_engine.connect() as conn:
+        rows = await conn.execute(text("SELECT action FROM audit_log WHERE target = :t"),
+                                  {"t": f"project:{world.project_a}"})  # fmt: skip
+        actions: set[str] = set(rows.scalars())
+    assert "backlog.link" in actions
 
 
 async def test_tokens_without_cost_view_come_without_money(

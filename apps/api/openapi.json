@@ -675,6 +675,167 @@
         "title": "AuditPage",
         "type": "object"
       },
+      "BacklogIn": {
+        "properties": {
+          "externalProject": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Externalproject",
+            "type": "string"
+          },
+          "integrationId": {
+            "format": "uuid",
+            "title": "Integrationid",
+            "type": "string"
+          },
+          "rules": {
+            "$ref": "#/components/schemas/Rules"
+          },
+          "states": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "maxProperties": 4,
+            "title": "States",
+            "type": "object"
+          },
+          "types": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "maxProperties": 4,
+            "title": "Types",
+            "type": "object"
+          }
+        },
+        "required": [
+          "integrationId",
+          "externalProject"
+        ],
+        "title": "BacklogIn",
+        "type": "object"
+      },
+      "BacklogLinkOut": {
+        "properties": {
+          "externalProject": {
+            "title": "Externalproject",
+            "type": "string"
+          },
+          "integrationId": {
+            "format": "uuid",
+            "title": "Integrationid",
+            "type": "string"
+          },
+          "integrationName": {
+            "title": "Integrationname",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "jira",
+              "azure_devops"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "lastSyncDetail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lastsyncdetail"
+          },
+          "lastSyncedAt": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lastsyncedat"
+          },
+          "rules": {
+            "$ref": "#/components/schemas/Rules"
+          },
+          "states": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "States",
+            "type": "object"
+          },
+          "types": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Types",
+            "type": "object"
+          }
+        },
+        "required": [
+          "integrationId",
+          "integrationName",
+          "kind",
+          "externalProject",
+          "rules",
+          "types",
+          "states",
+          "lastSyncedAt",
+          "lastSyncDetail"
+        ],
+        "title": "BacklogLinkOut",
+        "type": "object"
+      },
+      "BacklogOut": {
+        "properties": {
+          "connections": {
+            "items": {
+              "$ref": "#/components/schemas/ConnectionOption"
+            },
+            "title": "Connections",
+            "type": "array"
+          },
+          "fixes": {
+            "items": {
+              "$ref": "#/components/schemas/BugFixOut"
+            },
+            "title": "Fixes",
+            "type": "array"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/WorkItemOut"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "link": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BacklogLinkOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "link",
+          "items",
+          "fixes",
+          "connections"
+        ],
+        "title": "BacklogOut",
+        "type": "object"
+      },
       "Body_upload_input_api_v1_projects__project_id__inputs_post": {
         "properties": {
           "file": {
@@ -872,6 +1033,45 @@
           "alerts"
         ],
         "title": "BudgetOut",
+        "type": "object"
+      },
+      "BugFixOut": {
+        "properties": {
+          "createdAt": {
+            "format": "date-time",
+            "title": "Createdat",
+            "type": "string"
+          },
+          "detail": {
+            "title": "Detail",
+            "type": "string"
+          },
+          "element": {
+            "title": "Element",
+            "type": "string"
+          },
+          "iteration": {
+            "title": "Iteration",
+            "type": "integer"
+          },
+          "status": {
+            "enum": [
+              "proposed",
+              "failed",
+              "escalated"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "element",
+          "iteration",
+          "status",
+          "detail",
+          "createdAt"
+        ],
+        "title": "BugFixOut",
         "type": "object"
       },
       "BusinessFlowOut": {
@@ -1912,6 +2112,44 @@
           "status"
         ],
         "title": "ConnectionHealth",
+        "type": "object"
+      },
+      "ConnectionOption": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "jira",
+              "azure_devops"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "untested",
+              "ok",
+              "failed"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "name",
+          "status"
+        ],
+        "title": "ConnectionOption",
         "type": "object"
       },
       "ConnectionOut": {
@@ -3599,6 +3837,14 @@
       },
       "IntegrationCreate": {
         "properties": {
+          "config": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "maxProperties": 5,
+            "title": "Config",
+            "type": "object"
+          },
           "kind": {
             "enum": [
               "figma",
@@ -3643,6 +3889,13 @@
               }
             ],
             "title": "Account"
+          },
+          "config": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Config",
+            "type": "object"
           },
           "hasToken": {
             "title": "Hastoken",
@@ -6783,6 +7036,32 @@
         "title": "RoleUpdate",
         "type": "object"
       },
+      "Rules": {
+        "properties": {
+          "autoFix": {
+            "default": true,
+            "title": "Autofix",
+            "type": "boolean"
+          },
+          "bugOnFailure": {
+            "default": true,
+            "title": "Bugonfailure",
+            "type": "boolean"
+          },
+          "createFromSpec": {
+            "default": true,
+            "title": "Createfromspec",
+            "type": "boolean"
+          },
+          "markDone": {
+            "default": true,
+            "title": "Markdone",
+            "type": "boolean"
+          }
+        },
+        "title": "Rules",
+        "type": "object"
+      },
       "RunDetail": {
         "properties": {
           "autonomy": {
@@ -7698,24 +7977,6 @@
           "dependsOn"
         ],
         "title": "StoryOut",
-        "type": "object"
-      },
-      "SyncOut": {
-        "properties": {
-          "families": {
-            "title": "Families",
-            "type": "integer"
-          },
-          "versions": {
-            "title": "Versions",
-            "type": "integer"
-          }
-        },
-        "required": [
-          "families",
-          "versions"
-        ],
-        "title": "SyncOut",
         "type": "object"
       },
       "TargetIn": {
@@ -8674,6 +8935,62 @@
         "title": "VersionOut",
         "type": "object"
       },
+      "WorkItemOut": {
+        "properties": {
+          "element": {
+            "title": "Element",
+            "type": "string"
+          },
+          "externalKey": {
+            "title": "Externalkey",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "feature",
+              "story",
+              "task",
+              "bug"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "open",
+              "review",
+              "done",
+              "discarded"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "title": "Updatedat",
+            "type": "string"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "element",
+          "kind",
+          "title",
+          "externalKey",
+          "url",
+          "state",
+          "updatedAt"
+        ],
+        "title": "WorkItemOut",
+        "type": "object"
+      },
       "WorkerOut": {
         "properties": {
           "alive": {
@@ -8701,6 +9018,37 @@
           "runningJobs"
         ],
         "title": "WorkerOut",
+        "type": "object"
+      },
+      "nexti_api__ai__catalog__SyncOut": {
+        "properties": {
+          "families": {
+            "title": "Families",
+            "type": "integer"
+          },
+          "versions": {
+            "title": "Versions",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "families",
+          "versions"
+        ],
+        "title": "SyncOut",
+        "type": "object"
+      },
+      "nexti_api__projects__backlog__SyncOut": {
+        "properties": {
+          "queued": {
+            "title": "Queued",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "queued"
+        ],
+        "title": "SyncOut",
         "type": "object"
       },
       "nexti_api__projects__catalog_api__RuleOut": {
@@ -9221,7 +9569,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/SyncOut"
+                  "$ref": "#/components/schemas/nexti_api__ai__catalog__SyncOut"
                 }
               }
             },
@@ -11101,6 +11449,178 @@
         "summary": "Update Project",
         "tags": [
           "projects"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/backlog": {
+      "delete": {
+        "operationId": "delete_backlog_api_v1_projects__project_id__backlog_delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Backlog",
+        "tags": [
+          "backlog"
+        ]
+      },
+      "get": {
+        "operationId": "get_backlog_api_v1_projects__project_id__backlog_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BacklogOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Backlog",
+        "tags": [
+          "backlog"
+        ]
+      },
+      "put": {
+        "operationId": "set_backlog_api_v1_projects__project_id__backlog_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BacklogIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BacklogOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Set Backlog",
+        "tags": [
+          "backlog"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/backlog:sync": {
+      "post": {
+        "description": "Ask the worker to sync now (approved stories, verified items, bugs). Every external write it makes is audited.",
+        "operationId": "sync_backlog_api_v1_projects__project_id__backlog_sync_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/nexti_api__projects__backlog__SyncOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Sync Backlog",
+        "tags": [
+          "backlog"
         ]
       }
     },

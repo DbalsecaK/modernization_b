@@ -27,7 +27,7 @@ from nexti_api.runs.schemas import (
 )
 from nexti_api.spec import common as spec_common
 from nexti_core.db.models import AgentInvocation, AppUser, Gate, PhaseRun, Project, ProjectConfig, Question, Run
-from nexti_core.jobs import defer_run
+from nexti_core.jobs import defer_backlog_sync, defer_run
 
 router = APIRouter(prefix="/api/v1/projects/{project_id}/runs", tags=["runs"])
 ViewProject = Annotated[Authorized, Depends(require_project("project.view"))]
@@ -236,6 +236,12 @@ async def _decide(
             if blockers:
                 raise ProblemError(409, "c1_blocked", "C1 cannot be approved yet.", blockers=blockers)
             await approve_stories(conn, auth, project_id)
+            # Rule "create from the spec" (7.6): the approved stories go to the linked Jira / Azure DevOps project.
+            linked = (
+                await conn.execute(text("SELECT rules FROM project_backlog WHERE project_id = :p"), {"p": project_id})
+            ).scalar_one_or_none()  # fmt: skip
+            if linked is not None and linked.get("createFromSpec", True):
+                await defer_backlog_sync(conn, project_id, auth.tenant_id, "C1")
         await conn.execute(
             update(Gate)
             .where(Gate.run_id == run_id, Gate.gate == gate)
