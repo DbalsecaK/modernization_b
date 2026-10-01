@@ -15,6 +15,7 @@ from nexti_pack_dotnet.generate import (
     adapter_name,
     adapter_path,
     layer_of,
+    namespace,
     service_path,
     skeleton,
     test_path,
@@ -65,9 +66,24 @@ class DotnetPack:
         ]
         return "\n\n".join(f"// {p}\n{files[p]}" for p in sorted(wanted))
 
+    def probe(self, design: Design, path: str) -> dict[str, str]:
+        """C# does not tie a class to its file: a probe names the service or adapter as the wiring and the
+        controllers will, so a wrong namespace or class is a compiler error the agent sees."""
+        ns = namespace(design)
+        named = {service_path(design, u): f"{ns}.Application.{u.name}Service" for u in design.use_cases}
+        named |= {adapter_path(design, p): f"{ns}.Adapters.Out.Sql.{adapter_name(p.name)}" for p in design.ports}
+        if path not in named:
+            return {}
+        probe = (
+            f"internal static class Probe\n{{\n    internal static readonly Type Named = typeof({named[path]});\n}}\n"
+        )
+        return {f"{APP}/Probe.cs": probe}
+
     def adapter_request(self, design: Design, port: str, files: Mapping[str, str]) -> str:
         return (
-            f"Write the ADO.NET adapter {adapter_name(port)} of the port {port}.\n\n"
+            f"Write the ADO.NET adapter {adapter_name(port)} of the port {port}: the class "
+            f"`{namespace(design)}.Adapters.Out.Sql.{adapter_name(port)}`, in exactly that namespace (the wiring "
+            "uses it).\n\n"
             f"Design:\n{design.model_dump_json(indent=1)}\n\nExisting files:\n{self.existing(files, design)}\n\n"
             f"Target schema (SQL Server):\n{files[SCHEMA]}"
         )

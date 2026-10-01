@@ -7,7 +7,8 @@ exactly: do not change existing files, their names or their signatures. The root
 the design in PascalCase without its leading reversed domain (`com.bancoficticio.payments` is
 `Bancoficticio.Payments`); the existing files show it.
 
-For an application service (`<Namespace>.Application.<UseCase>Service`, file `src/App/Application`):
+For an application service (namespace exactly `<Namespace>.Application`, class `<UseCase>Service`, file
+`src/App/Application`; the controller and the wiring already use that name):
 - A `public sealed class` with no framework attributes (the wiring is generated) and one constructor that takes
   the ports of the use case (a primary constructor is fine), and one method
   `public <UseCase>Response Execute(<UseCase>Request request)`.
@@ -19,7 +20,8 @@ For an application service (`<Namespace>.Application.<UseCase>Service`, file `sr
 - No infrastructure of the legacy: no error-code variables, no logging of error numbers, no transaction statements
   (each request runs in one transaction the platform opens).
 
-For an ADO.NET adapter (`<Namespace>.Adapters.Out.Sql.Sql<Port>`, file `src/App/Adapters/Out/Sql`):
+For an ADO.NET adapter (namespace exactly `<Namespace>.Adapters.Out.Sql`, with no sub-namespace; class
+`Sql<Port>`; file `src/App/Adapters/Out/Sql`):
 - A `public sealed class Sql<Port>(Db db) : <Port>` that implements every method of the port with
   `db.Command(sql)` (it returns a `Microsoft.Data.SqlClient.SqlCommand` inside the current transaction), named
   parameters (`command.Parameters.AddWithValue("@name", (object?)value ?? DBNull.Value)`) and SQL Server SQL

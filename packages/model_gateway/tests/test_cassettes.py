@@ -68,3 +68,22 @@ async def test_replay_without_a_recording_fails_and_calls_nothing(tmp_path: Path
             with pytest.raises(MissingRecordingError):
                 await player.chat("key", BODY, 30)
             assert route.call_count == 0
+
+
+async def test_shared_recordings_are_read_and_never_written(tmp_path: Path) -> None:
+    """A run that repeats another one's calls (M6c repeats M4 up to generation) reads them from the other folder; what
+    is new is recorded in its own folder only."""
+    shared, own = tmp_path / "m4", tmp_path / "m6c"
+    async with httpx.AsyncClient() as http:
+        with respx.mock(assert_all_called=True) as router:
+            router.post(f"{URL}/chat/completions").respond(json=REPLY)
+            await RecordingClient(OpenRouterClient(http, URL), shared, "record").chat("key", BODY, 30)
+        with respx.mock(assert_all_called=False) as router:
+            route = router.post(f"{URL}/chat/completions").respond(json=REPLY)
+            client = RecordingClient(OpenRouterClient(http, URL), own, "record", shared=(shared,))
+            reused = await client.chat("key", BODY, 30)
+            assert (route.call_count, reused.content) == (0, '{"rules": []}')
+            await client.chat("key", {**BODY, "max_tokens": 1024}, 30)
+            assert route.call_count == 1
+    assert len(list(shared.glob("*.json"))) == 1
+    assert len(list(own.glob("*.json"))) == 1

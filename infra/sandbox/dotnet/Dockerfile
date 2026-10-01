@@ -2,10 +2,10 @@
 # sandbox runs without network, as nobody, with a read-only root: the NuGet packages the generated projects use are
 # restored here, at build time, with the exact versions of nexti_pack_dotnet; SQL Server's system databases are
 # prepared here once and copied to a tmpfs by each run, which starts SQL Server only for the equivalence harness.
-# The SDK is copied from the official SDK image (no apt mirrors needed).
-FROM mcr.microsoft.com/dotnet/sdk:10.0 AS sdk
+# The SDK is copied from the official SDK image (no apt mirrors needed). Base images pinned by digest.
+FROM mcr.microsoft.com/dotnet/sdk:10.0@sha256:35d40304542c8689331f8cab17c65926cdf48fe711e289321d71924b230a7d29 AS sdk
 
-FROM mcr.microsoft.com/mssql/server:2025-RTM-ubuntu-22.04
+FROM mcr.microsoft.com/mssql/server:2025-RTM-ubuntu-22.04@sha256:54b23ca766287dab5f6f55162923325f07cdec6ccb42108f37c55c87e7688ebd
 USER root
 COPY --from=sdk /usr/share/dotnet /usr/share/dotnet
 # The SA password only exists inside a sandbox without network; it protects nothing outside it.

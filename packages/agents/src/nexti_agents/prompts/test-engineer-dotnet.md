@@ -7,6 +7,10 @@ You receive the C# files that already exist (entities, ports, the request/respon
 rules of the use case. Write one test class:
 - Namespace `<Namespace>.Tests` (the root namespace of the existing files plus `.Tests`), class
   `public sealed class <UseCase>ServiceTests`, file `tests/App.Tests/<UseCase>ServiceTests.cs`.
+- The service under test is `<Namespace>.Application.<UseCase>Service` (it does not exist yet; write
+  `using <Namespace>.Application;`). The ports are in `<Namespace>.Domain.Port`, the entities in
+  `<Namespace>.Domain.Model`, the records in `<Namespace>.Adapters.In.Rest` and `BusinessError` in
+  `<Namespace>.Domain.Error`.
 - Build the service with `new <UseCase>Service(<the ports of the use case>)`, using in-memory fakes of the ports
   written in the test (nested classes that implement the port interfaces and record what they receive). No mocking
   library, no ASP.NET host, no database.

@@ -54,6 +54,11 @@ class BackendPack(Protocol):
         """The files the agents see as context."""
         ...
 
+    def probe(self, design: Design, path: str) -> dict[str, str]:
+        """Files compiled with a piece under verification that name it as the rest of the project will (its
+        namespace and class), so a wrong name is a compiler error the agent sees; empty when nothing needs it."""
+        ...
+
     def adapter_request(self, design: Design, port: str, files: Mapping[str, str]) -> str:
         """What the developer is asked for to write the adapter of a port."""
         ...

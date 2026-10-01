@@ -272,6 +272,8 @@ def app_project(design: Design) -> tuple[str, str]:
         '<Project Sdk="Microsoft.NET.Sdk.Web">\n  <PropertyGroup>\n'
         f"    <TargetFramework>{TARGET_FRAMEWORK}</TargetFramework>\n    <RootNamespace>{namespace(design)}</RootNamespace>\n"
         "    <AssemblyName>App</AssemblyName>\n    <Nullable>enable</Nullable>\n    <ImplicitUsings>enable</ImplicitUsings>\n"
+        # Before the host exists (it joins with the services), the application builds as a library.
+        "    <OutputType Condition=\"!Exists('Program.cs')\">Library</OutputType>\n"
         "  </PropertyGroup>\n"
         f"  <ItemGroup>\n{_package('Microsoft.Data.SqlClient')}\n  </ItemGroup>\n"
         '  <ItemGroup>\n    <None Include="Db/schema.sql" CopyToOutputDirectory="PreserveNewest" />\n  </ItemGroup>\n'

@@ -235,11 +235,12 @@ class GenerationPhases:
             files[pack.test_path(design, use_case)] = await self._tests(piece, pack, design, use_case, rules, files)
             files[pack.service_path(design, use_case)] = await self._service(piece, pack, design, use_case, rules,
                                                                              files, sandbox)  # fmt: skip
-        files.update(held)
         for port_spec in design.ports:
             piece = ctx.for_shard(f"adapter:{port_spec.name}")
             files[pack.adapter_path(design, port_spec)] = await self._adapter(piece, pack, design, port_spec.name,
                                                                               files, sandbox)  # fmt: skip
+        # The wiring may name every adapter (the .NET pack does), so the held files join once all of them exist.
+        files.update(held)
         final = await pack.compile_and_test(sandbox, files)
         if not final.ok:
             raise PhaseFailedError(f"The complete project does not pass: {final.diagnostic(1500)}")
@@ -304,6 +305,7 @@ class GenerationPhases:
         async def verify(artifact: dict[str, Any]) -> Verification:
             candidate = dict(files)
             candidate[target] = await self.port.load_file(artifact["file"])
+            candidate.update(pack.probe(design, target))
             build: BuildResult = await pack.compile_and_test(sandbox, candidate)
             if build.ok and build.passed:
                 return Verification(True)
@@ -337,6 +339,7 @@ class GenerationPhases:
         async def verify(artifact: dict[str, Any]) -> Verification:
             candidate = dict(files)
             candidate[target] = await self.port.load_file(artifact["file"])
+            candidate.update(pack.probe(design, target))
             build = await pack.compile_and_test(sandbox, candidate, run_tests=False)
             return Verification(build.compiled, build.compile_errors[:4000])
 

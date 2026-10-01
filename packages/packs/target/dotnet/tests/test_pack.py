@@ -126,6 +126,14 @@ def test_the_skeleton_alone_compiles(dotnet_sandbox: DockerSandbox) -> None:
     assert build.compiled, build.compile_errors
 
 
+def test_the_service_and_its_tests_pass_before_the_host_joins(dotnet_sandbox: DockerSandbox) -> None:
+    """The generation's middle step: the service and its tests, while the host, wiring and controllers wait."""
+    files = {p: c for p, c in reference_project(DESIGN).items() if not PACK.held_back(p) and "/Adapters/Out/" not in p}
+    build = asyncio.run(PACK.compile_and_test(dotnet_sandbox, files))
+    assert build.compiled, build.compile_errors
+    assert (build.passed, build.failed) == (7, 0)
+
+
 def test_a_compile_error_is_reported(dotnet_sandbox: DockerSandbox) -> None:
     files = reference_project(DESIGN)
     files[PACK.service_path(DESIGN, PAY)] += "\nthis is not C#\n"
@@ -151,3 +159,23 @@ def test_without_the_declared_mask_the_real_difference_shows(dotnet_sandbox: Doc
     case = different["failed_commission_undoes_the_payment"]
     assert case.expected.outputs["@o_movimiento"] == "900001"
     assert case.actual.outputs["@o_movimiento"] is None
+
+
+def test_a_probe_names_each_service_and_adapter_as_the_wiring_does() -> None:
+    probe = PACK.probe(DESIGN, PACK.adapter_path(DESIGN, DESIGN.ports[0]))
+    assert "typeof(Bancoficticio.Payments.Adapters.Out.Sql.SqlOrderRepository)" in probe["src/App/Probe.cs"]
+    assert "Bancoficticio.Payments.Application.PayOrderService" in PACK.probe(DESIGN, PACK.service_path(DESIGN, PAY))[
+        "src/App/Probe.cs"]  # fmt: skip
+    assert PACK.probe(DESIGN, "src/App/Db/schema.sql") == {}
+
+
+def test_an_adapter_in_another_namespace_does_not_compile(dotnet_sandbox: DockerSandbox) -> None:
+    files = reference_project(DESIGN)
+    port = DESIGN.ports[0]
+    target = PACK.adapter_path(DESIGN, port)
+    files[target] = files[target].replace("namespace Bancoficticio.Payments.Adapters.Out.Sql;",
+                                          "namespace Bancoficticio.Payments.Adapters.Out.Sql.Wrong;")  # fmt: skip
+    files = {p: c for p, c in files.items() if not PACK.held_back(p)} | PACK.probe(DESIGN, target)
+    build = asyncio.run(PACK.compile_and_test(dotnet_sandbox, files, run_tests=False))
+    assert not build.compiled
+    assert "Probe.cs" in build.compile_errors

@@ -24,8 +24,6 @@ cd /work/p
 # The compiler errors once each, or the whole log when there is none to pick.
 errors() {{ grep -E "error [A-Z]+[0-9]+" "$1" | sort -u | grep . || cat "$1"; }}
 OPTS="--nologo -v q -c Release -p:UseSharedCompilation=false -p:TreatWarningsAsErrors=false"
-# Before the host exists (it joins with the services), the application compiles as a library.
-[ -f {APP}/Program.cs ] || OPTS="$OPTS -p:OutputType=Library"
 if ! dotnet restore {APP}/App.csproj --source /opt/nuget -v q > /work/restore.txt 2>&1; then
   echo "===COMPILE-FAILED==="; cat /work/restore.txt; exit 2
 fi

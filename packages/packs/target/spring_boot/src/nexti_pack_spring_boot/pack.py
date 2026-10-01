@@ -89,6 +89,10 @@ class SpringBootPack:
                   "Response.java")))]  # fmt: skip
         return "\n\n".join(f"// {p}\n{files[p]}" for p in sorted(wanted))
 
+    def probe(self, design: Design, path: str) -> dict[str, str]:
+        """Java names a class by its file: the path already pins the package and the name."""
+        return {}
+
     def adapter_request(self, design: Design, port: str, files: Mapping[str, str]) -> str:
         return (
             f"Write the JDBC adapter Jdbc{port} of the port {port}.\n\n"

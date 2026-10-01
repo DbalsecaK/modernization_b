@@ -1,0 +1,30 @@
+{
+  "model": "anthropic/claude-sonnet-5.5",
+  "mode": "record",
+  "verdict": "PROVEN",
+  "checks": {
+    "tests_ran": "passed",
+    "rules_traced": "passed",
+    "same_behaviour": "passed",
+    "fresh_inputs": "passed",
+    "canary": "passed",
+    "source_intact": "passed"
+  },
+  "details": {
+    "tests_ran": "34 test(s) passed in a clean build (JUnit XML)",
+    "rules_traced": "11 of 11 rule(s) verified by golden cases",
+    "same_behaviour": "28 golden case(s) reproduced",
+    "fresh_inputs": "12 fresh input(s) matched on both sides",
+    "canary": "line 19 changed (if (request.TipoCuenta is not (\"CTE\" or \"AHO\" or \"VIRX\"))) turned test VirAccountWithExactBalanceIsAccepted red",
+    "source_intact": "the legacy is the code that was characterized (SHA-256)"
+  },
+  "model_calls": 51,
+  "cost_usd": "1.52631400",
+  "decisions": [
+    "questions",
+    "C1",
+    "C2",
+    "C3",
+    "C4"
+  ]
+}
