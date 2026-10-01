@@ -1,6 +1,6 @@
 # Plan del hito M7b — Integración con Jira y Azure DevOps
 
-- **Estado:** en curso (desde 2026-10-01).
+- **Estado:** cerrado (2026-10-01).
 - **Fuente:** `docs/ESPECIFICACION_PLATAFORMA.md` secciones 7.6 (backlog y ciclo de bugs), 7.7 (historias y plan), 17
   (Administración), 18.3 (asistente) y 20 (M7b); ADR-0019.
 - **Rama:** `m7b-jira-azure-devops`. Un commit por paso y PR al terminar.
@@ -50,3 +50,42 @@
 | Un test fallido crea un bug y el ciclo termina en revisión humana | `test_acceptance_m7b.py` (developer grabado) |
 | Un usuario de otro tenant no ve ni usa la conexión | Pruebas de API de aislamiento |
 | Toda escritura externa queda auditada | `test_acceptance_m7b.py` y pruebas de API |
+
+## 4. Cierre
+
+**Aceptación.** `test_acceptance_m7b.py` corre contra un Jira y un Azure DevOps simulados con estado, que responden las
+APIs REST públicas que usan los clientes reales.
+
+- **C1 en los dos sistemas.** La aprobación de C1 por la API encola la sincronización. El trabajo del worker crea la
+  jerarquía esperada:
+  - la feature;
+  - las 3 historias aprobadas, con su Gherkin y su etiqueta de ola;
+  - una tarea por regla vinculada.
+
+  Repetir la sincronización no escribe nada. Cada escritura externa queda en la auditoría (`backlog.create`).
+- **Ciclo del bug:**
+  1. El veredicto de un proyecto generado con una línea de su servicio rota tiene el chequeo de tests en rojo.
+  2. La sincronización abre el bug, con pasos, esperado contra obtenido, regla y traza.
+  3. El developer propone la corrección en el sandbox de Java en 1 iteración y los 7 tests pasan.
+  4. El bug queda *en revisión*, con la corrección como borrador en `bug_fix`, a la espera de una persona.
+- **Aislamiento.** Las pruebas de API confirman que otro tenant no ve ni usa la conexión, y que un proyecto no puede
+  vincular la integración de otro tenant.
+
+El developer hizo 1 llamada grabada por 0,04 USD. El gasto real de M7b fue de 0,04 USD. De los 10 USD de M7 y M7b se
+usaron cerca de 0,85.
+
+**Cambios respecto del plan**
+
+- La aceptación se hizo antes que las pantallas (paso 7 antes del 6), como en M7.
+- La configuración de la integración (sitio y correo de Jira, URL de la organización de Azure DevOps) se verifica
+  como host https público, igual que los repositorios, para evitar SSRF.
+- Un bug cuyo chequeo vuelve a pasar en un veredicto nuevo se marca terminado, con ese veredicto como evidencia.
+
+**Limitaciones conocidas**
+
+- No hay proyectos reales de Jira ni de Azure DevOps. El comportamiento contra las APIs reales queda por probar con
+  una cuenta de prueba del cliente; el cliente y la URL base son los de producción.
+- El texto de los ítems está en inglés. Seguir el idioma de artefactos del proyecto (18.6) queda pendiente.
+- No se sincronizan los comentarios en los dos sentidos. OAuth y la visión sobre capturas pasan a hitos siguientes.
+- La corrección propuesta queda como borrador: aplicarla al código generado es una decisión de la persona que revisa.
+  En esta versión se descarga desde el almacén de objetos; no hay todavía un botón para aplicarla.
