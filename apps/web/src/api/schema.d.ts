@@ -2244,7 +2244,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Start sign-in with Keycloak (authorization code + PKCE) */
+        /** Start sign-in with Keycloak (authorization code + PKCE, home-realm discovery) */
         get: operations["login_auth_login_get"];
         put?: never;
         post?: never;
@@ -4621,6 +4621,8 @@ export interface components {
              * @enum {string}
              */
             protocol: "oidc" | "saml";
+            /** Redirecturi */
+            redirectUri: string;
             /** Settings */
             settings: {
                 [key: string]: string;
@@ -10440,6 +10442,7 @@ export interface operations {
         parameters: {
             query?: {
                 returnTo?: string | null;
+                email?: string | null;
             };
             header?: never;
             path?: never;

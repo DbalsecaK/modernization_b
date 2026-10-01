@@ -11,16 +11,13 @@ import {
   type Role,
 } from '@/api/admin'
 import { ApiError } from '@/api/client'
-import { Button, Field, Input, Select, Toggle } from '@/components/ui/primitives'
+import { Button, Field, Input, Select } from '@/components/ui/primitives'
 import { CheckboxGroup, Drawer, toast } from '@/components/ui/overlay'
 import { Notice } from '@/features/projects/NewProjectWizard'
 
 const DEPLOYMENTS = ['sharedSaas', 'dedicatedSaas', 'customerCloud', 'onPrem'] as const
 type Deployment = (typeof DEPLOYMENTS)[number]
 const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/
-// Only used by the M0b identity provider design below.
-const PROJECT_ROLES = ['projectOwner', 'architect', 'analyst', 'businessReviewer', 'developer', 'observer'] as const
-const TENANT_ROLES = ['tenantAdmin', 'auditor', 'finance'] as const
 
 export function errorMessage(error: unknown): string {
   return error instanceof ApiError ? error.message : String(error)
@@ -334,130 +331,6 @@ export function RoleForm({
         />
       </Field>
       <Notice tone="info">{t('admin.segregation')}</Notice>
-    </Drawer>
-  )
-}
-
-export function IdentityProviderForm({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { t } = useTranslation()
-  const [protocol, setProtocol] = useState<'oidc' | 'saml'>('oidc')
-  const [preset, setPreset] = useState('entra')
-  const [domains, setDomains] = useState('')
-  const [ssoOnly, setSsoOnly] = useState(false)
-  const [jit, setJit] = useState(true)
-  const [scim, setScim] = useState(false)
-  const [mappings, setMappings] = useState([{ group: 'SG-Modernization-Architects', role: 'architect' }])
-
-  return (
-    <Drawer
-      open={open}
-      onClose={onClose}
-      wide
-      title={t('admin.auth.addProvider')}
-      description={t('adminForms.idpHint')}
-      footer={
-        <>
-          <Button variant="ghost" onClick={onClose}>
-            {t('common.cancel')}
-          </Button>
-          <Button
-            variant="primary"
-            disabled={!domains.trim()}
-            onClick={() => {
-              toast(t('adminForms.idpSaved'))
-              onClose()
-            }}
-          >
-            {t('common.save')}
-          </Button>
-        </>
-      }
-    >
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Field label={t('adminForms.preset')}>
-          <Select value={preset} onChange={(e) => setPreset(e.target.value)}>
-            <option value="entra">Microsoft Entra ID</option>
-            <option value="okta">Okta</option>
-            <option value="google">Google Workspace</option>
-            <option value="keycloak">Keycloak</option>
-            <option value="other">{t('adminForms.otherProvider')}</option>
-          </Select>
-        </Field>
-        <Field label={t('admin.auth.protocol')}>
-          <Select value={protocol} onChange={(e) => setProtocol(e.target.value as 'oidc' | 'saml')}>
-            <option value="oidc">OpenID Connect</option>
-            <option value="saml">SAML 2.0</option>
-          </Select>
-        </Field>
-      </div>
-      {protocol === 'oidc' ? (
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Field label={t('admin.auth.issuer')} hint={t('admin.auth.issuerHint')}>
-            <Input placeholder="https://login.microsoftonline.com/<tenant>/v2.0" />
-          </Field>
-          <Field label={t('admin.auth.clientId')}>
-            <Input placeholder="00000000-0000-0000-0000-000000000000" />
-          </Field>
-          <Field label={t('admin.auth.clientSecret')} hint={t('admin.auth.secretHint')}>
-            <Input type="password" placeholder="••••••••" />
-          </Field>
-        </div>
-      ) : (
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Field label={t('adminForms.metadataUrl')}>
-            <Input placeholder="https://idp.example/metadata.xml" />
-          </Field>
-          <Field label={t('adminForms.entityId')}>
-            <Input placeholder="https://idp.example/entity" />
-          </Field>
-        </div>
-      )}
-      <div className="rounded-md bg-surface-2 p-3 text-xs text-text-2">
-        <div className="font-medium text-text">{t('adminForms.redirectUri')}</div>
-        <code className="mt-1 block font-mono">
-          https://auth.nexti-platform.example/realms/platform/broker/{preset}/endpoint
-        </code>
-      </div>
-      <Field label={t('admin.auth.domains')} hint={t('adminForms.domainsHint')}>
-        <Input
-          value={domains}
-          onChange={(e) => setDomains(e.target.value)}
-          placeholder="andesbank.example, andes.example"
-        />
-      </Field>
-      <div className="space-y-3">
-        <Toggle checked={ssoOnly} onChange={setSsoOnly} label={t('adminForms.enforceSso')} />
-        <Toggle checked={jit} onChange={setJit} label={t('admin.auth.jit')} />
-        <Toggle checked={scim} onChange={setScim} label={t('admin.auth.scim')} />
-      </div>
-      <Field label={t('admin.auth.groupMapping')} hint={t('admin.auth.groupMappingHint')}>
-        <div className="space-y-2">
-          {mappings.map((m, i) => (
-            <div key={i} className="flex gap-2">
-              <Input
-                value={m.group}
-                onChange={(e) => setMappings(mappings.map((x, j) => (j === i ? { ...x, group: e.target.value } : x)))}
-                aria-label={t('adminForms.idpGroup')}
-              />
-              <Select
-                value={m.role}
-                onChange={(e) => setMappings(mappings.map((x, j) => (j === i ? { ...x, role: e.target.value } : x)))}
-                aria-label={t('admin.role')}
-              >
-                {[...TENANT_ROLES, ...PROJECT_ROLES].map((r) => (
-                  <option key={r} value={r}>
-                    {t(`roles.${r}`)}
-                  </option>
-                ))}
-              </Select>
-            </div>
-          ))}
-          <Button size="sm" variant="ghost" onClick={() => setMappings([...mappings, { group: '', role: 'observer' }])}>
-            {t('adminForms.addMapping')}
-          </Button>
-        </div>
-      </Field>
-      <Notice tone="info">{t('adminForms.keycloakNote')}</Notice>
     </Drawer>
   )
 }

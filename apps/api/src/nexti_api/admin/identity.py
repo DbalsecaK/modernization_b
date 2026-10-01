@@ -55,6 +55,8 @@ class ProviderOut(ApiModel):
     status: Literal["pending", "active", "failed"]
     last_error: str | None
     created_at: datetime
+    # What the customer registers in their provider as the redirect (reply) URL.
+    redirect_uri: str
 
 
 class RealmPolicy(ApiModel):
@@ -115,12 +117,12 @@ def _admin(request: Request) -> KeycloakAdmin:
     return admin
 
 
-def _provider_out(row: Any) -> ProviderOut:
+def _provider_out(row: Any, issuer: str) -> ProviderOut:
     return ProviderOut(
         id=row.id, alias=row.alias, display_name=row.display_name, protocol=row.protocol,
         settings=dict(row.settings or {}), domains=list(row.domains), sso_only=row.sso_only, jit=row.jit,
         group_roles=dict(row.group_roles or {}), default_role=row.default_role, status=row.status,
-        last_error=row.last_error, created_at=row.created_at,
+        last_error=row.last_error, created_at=row.created_at, redirect_uri=f"{issuer}/broker/{row.alias}/endpoint",
     )  # fmt: skip
 
 
@@ -215,9 +217,10 @@ async def _realm(request: Request) -> RealmPolicy | None:
 async def _out(request: Request, conn: AsyncConnection, tenant_id: uuid.UUID) -> IdentityOut:
     identity = await service.identity_of(conn, tenant_id)
     rows = (await conn.execute(select(TenantIdentityProvider).order_by(TenantIdentityProvider.display_name))).all()
+    issuer = request.app.state.settings.keycloak_public_issuer
     return IdentityOut(local_accounts=identity.local_accounts, sso=identity.sso, mfa_required=identity.mfa_required,
                        domains=list(identity.domains), organization=identity.organization_id,
-                       providers=[_provider_out(r) for r in rows], realm=await _realm(request))  # fmt: skip
+                       providers=[_provider_out(r, issuer) for r in rows], realm=await _realm(request))  # fmt: skip
 
 
 async def _load(conn: AsyncConnection, provider_id: uuid.UUID) -> Any:
@@ -294,7 +297,7 @@ async def create_provider(request: Request, body: ProviderCreate, auth: ManageId
                         {"alias": row.alias, "protocol": body.protocol, "domains": domains, "sso_only": body.sso_only,
                          "jit": body.jit, "status": row.status},
                         outcome="success" if row.status == "active" else "failure")  # fmt: skip
-            return _provider_out(row)
+            return _provider_out(row, request.app.state.settings.keycloak_public_issuer)
     except IntegrityError as exc:
         taken = "domain_taken" in str(exc.orig)
         raise ProblemError(409, "domain_taken" if taken else "identity_provider_taken",
@@ -335,7 +338,7 @@ async def update_provider(
             await audit(conn, auth, "identity.provider_update", f"identity_provider:{provider_id}",
                         {"changed": sorted(changes), "access_rotated": body.client_secret is not None,
                          "status": row.status}, outcome="success" if row.status == "active" else "failure")  # fmt: skip
-            return _provider_out(row)
+            return _provider_out(row, request.app.state.settings.keycloak_public_issuer)
     except IntegrityError as exc:
         raise ProblemError(409, "domain_taken", "One of the domains already has a provider.") from exc
 
@@ -351,7 +354,7 @@ async def apply_provider(request: Request, provider_id: uuid.UUID, auth: ManageI
         row = await _load(conn, provider_id)
         await audit(conn, auth, "identity.provider_apply", f"identity_provider:{provider_id}", {"status": row.status},
                     outcome="success" if row.status == "active" else "failure")  # fmt: skip
-        return _provider_out(row)
+        return _provider_out(row, request.app.state.settings.keycloak_public_issuer)
 
 
 @router.delete("/providers/{provider_id}", status_code=204)

@@ -4,12 +4,12 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { FlaskConical, KeyRound, Loader2 } from 'lucide-react'
 import { devSignIn, fetchDevUsers, startSignIn, useMe } from '@/api/session'
-import { Button } from '@/components/ui/primitives'
+import { Button, Field, Input } from '@/components/ui/primitives'
 import { AuthLayout } from './AuthLayout'
 
-// Sign-in in M0 (D-27): the button goes to Keycloak through the BFF, which comes back with the session cookie.
-// The email-first, SSO and MFA screens of the prototype become the Keycloak theme in M0b.
-// In development and test only, dev-auth lists the seeded users to sign in as without a password.
+// Sign-in (D-27, ADR-0022): the work e-mail first; the BFF sends the person to their organization's identity provider
+// (home-realm discovery) or to Keycloak's page, which asks for the password and, when the tenant requires it, a second
+// factor. The session comes back as a cookie. In development and test only, dev-auth lists the seeded users.
 export function LoginPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
@@ -18,21 +18,23 @@ export function LoginPage() {
   const search = useSearch({ strict: false }) as { redirect?: string; error?: string }
   const returnTo = safePath(search.redirect)
   const [pending, setPending] = useState<string | null>(null)
+  const [email, setEmail] = useState('')
+  const validEmail = /^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/.test(email.trim())
   const devUsers = useQuery({ queryKey: ['dev-users'], queryFn: fetchDevUsers })
 
   useEffect(() => {
     if (me) void navigate({ href: returnTo })
   }, [me, navigate, returnTo])
 
-  const error =
-    search.error === 'no_platform_access'
-      ? t('auth.errors.noPlatformAccess')
-      : search.error
-        ? t('auth.errors.signInFailed')
-        : null
+  const messages: Record<string, string> = {
+    no_platform_access: t('auth.errors.noPlatformAccess'),
+    sso_required: t('auth.ssoEnforced'),
+    mfa_required: t('auth.errors.mfaRequired'),
+  }
+  const error = search.error ? (messages[search.error] ?? t('auth.errors.signInFailed')) : null
 
   return (
-    <AuthLayout title={t('auth.signInTitle')} subtitle={t('auth.signInWithPlatformHint')}>
+    <AuthLayout title={t('auth.signInTitle')} subtitle={t('auth.signInSubtitle')}>
       <div className="space-y-4">
         {error && (
           <p
@@ -42,18 +44,34 @@ export function LoginPage() {
             {error}
           </p>
         )}
-        <Button
-          variant="primary"
-          className="w-full justify-center"
-          onClick={() => {
+        <form
+          className="space-y-3"
+          onSubmit={(e) => {
+            e.preventDefault()
+            if (!validEmail) return
             setPending('keycloak')
-            startSignIn(returnTo)
+            startSignIn(returnTo, email)
           }}
-          disabled={pending !== null}
         >
-          {pending === 'keycloak' ? <Loader2 className="animate-spin" size={16} /> : <KeyRound size={16} />}
-          {t('auth.signInWithPlatform')}
-        </Button>
+          <Field label={t('auth.workEmail')} hint={t('auth.realmHint')}>
+            <Input
+              type="email"
+              autoComplete="username"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="name@company.com"
+            />
+          </Field>
+          <Button
+            type="submit"
+            variant="primary"
+            className="w-full justify-center"
+            disabled={pending !== null || !validEmail}
+          >
+            {pending === 'keycloak' ? <Loader2 className="animate-spin" size={16} /> : <KeyRound size={16} />}
+            {t('common.continue')}
+          </Button>
+        </form>
 
         {devUsers.data && devUsers.data.length > 0 && (
           <section className="rounded-lg border border-dashed border-warning/60 p-3" aria-labelledby="dev-auth-title">

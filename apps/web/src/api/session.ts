@@ -31,8 +31,12 @@ registerLanguagePersister(async (locale) => {
 })
 
 /** Redirect to Keycloak through the BFF; it comes back to `returnTo` with the session cookie set. */
-export function startSignIn(returnTo = '/') {
-  window.location.assign(`/auth/login?returnTo=${encodeURIComponent(returnTo)}`)
+/** Starts the sign-in at the BFF. With the e-mail, the BFF sends the person to their organization's identity
+ * provider (home-realm discovery, M0b) or asks for the second factor their tenant requires. */
+export function startSignIn(returnTo = '/', email?: string) {
+  const query = new URLSearchParams({ returnTo })
+  if (email) query.set('email', email.trim())
+  window.location.assign(`/auth/login?${query.toString()}`)
 }
 
 export async function signOut(client: QueryClient) {

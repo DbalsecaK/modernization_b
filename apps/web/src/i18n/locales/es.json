@@ -90,7 +90,8 @@
       "invalidEmail": "Ingresa un correo válido.",
       "invalidCredentials": "El correo o la contraseña no son correctos.",
       "signInFailed": "El inicio de sesión no se completó. Vuelve a intentarlo.",
-      "noPlatformAccess": "Tu cuenta todavía no tiene acceso a la plataforma. Pide una invitación a tu administrador."
+      "noPlatformAccess": "Tu cuenta todavía no tiene acceso a la plataforma. Pide una invitación a tu administrador.",
+      "mfaRequired": "Su organización exige un segundo factor (TOTP o passkey) y no se completó. Vuelva a iniciar sesión."
     },
     "mfa": {
       "title": "Verificación en dos pasos",
@@ -1607,7 +1608,6 @@
     "permission": "Permiso",
     "segregation": "Se aplica la segregación de funciones: quien lanzó una generación no puede aprobar su propia compuerta.",
     "auth": {
-      "perTenant": "La autenticación se configura por cliente.",
       "methods": "Métodos de inicio de sesión",
       "methodsHint": "Habilita el inicio de sesión único, las cuentas propias de la plataforma o ambos.",
       "sso": "Inicio de sesión único (SSO)",
@@ -1660,7 +1660,43 @@
       "failedAttempts": "Intentos fallidos antes del bloqueo",
       "lockoutMinutes": "Duración del bloqueo (minutos)",
       "save": "Guardar configuración de autenticación",
-      "availableInM0b": "El inicio de sesión único, el MFA y las políticas de inicio de sesión por cliente llegan con el hito M0b. Esta pestaña muestra su diseño; en M0 las cuentas usan correo y contraseña en el proveedor de identidad de la plataforma."
+      "actions": "Acciones",
+      "tenantDomains": "Dominios de correo del cliente",
+      "tenantDomainsHint": "Las personas con estos dominios entran a este cliente. Un dominio con un proveedor de solo SSO nunca usa contraseña.",
+      "noProviders": "Todavía no hay proveedores de identidad",
+      "noProvidersHint": "Agregue Microsoft Entra ID, Okta, Google o cualquier proveedor OIDC o SAML 2.0.",
+      "status": {
+        "active": "Activo",
+        "pending": "Pendiente",
+        "failed": "Con error"
+      },
+      "applyAgain": "Aplicar de nuevo",
+      "applied": {
+        "active": "Guardado: Keycloak tomó el proveedor",
+        "pending": "Guardado: pendiente en Keycloak",
+        "failed": "Guardado, pero Keycloak no lo tomó: vea el error"
+      },
+      "providerDeleted": "Proveedor eliminado",
+      "mfaSsoNote": "Quienes entran por un proveedor de identidad usan el segundo factor de ese proveedor.",
+      "realmPolicy": "Contraseñas, bloqueo y sesiones",
+      "realmPolicyHint": "Se definen para todo el realm de la plataforma; un cliente que necesite otras pasa a un realm dedicado.",
+      "realmUnavailable": "No se pudieron leer las políticas de Keycloak.",
+      "editProvider": "Editar proveedor de identidad",
+      "providerName": "Nombre",
+      "keepSecret": "Déjelo vacío para conservar el secreto actual (nunca se muestra).",
+      "groupsClaim": "Claim de grupos",
+      "groupsAttribute": "Atributo de grupos",
+      "endpoints": "Endpoints (opcional)",
+      "endpointsHint": "Si se dejan vacíos, se toman de la configuración OpenID del emisor.",
+      "endpoint": {
+        "authorization_url": "URL de autorización",
+        "token_url": "URL de tokens",
+        "jwks_url": "URL de JWKS",
+        "userinfo_url": "URL de información del usuario"
+      },
+      "defaultRole": "Rol sin grupo mapeado",
+      "defaultRoleHint": "Se da a quien no tiene ningún grupo con rol.",
+      "noDefaultRole": "Ninguno"
     },
     "securityData": "Datos",
     "retention": "Retención de datos de proyectos",

@@ -6720,6 +6720,10 @@
             "title": "Protocol",
             "type": "string"
           },
+          "redirectUri": {
+            "title": "Redirecturi",
+            "type": "string"
+          },
           "settings": {
             "additionalProperties": {
               "type": "string"
@@ -6754,7 +6758,8 @@
           "defaultRole",
           "status",
           "lastError",
-          "createdAt"
+          "createdAt",
+          "redirectUri"
         ],
         "title": "ProviderOut",
         "type": "object"
@@ -16890,6 +16895,23 @@
               ],
               "title": "Returnto"
             }
+          },
+          {
+            "in": "query",
+            "name": "email",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 254,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Email"
+            }
           }
         ],
         "responses": {
@@ -16912,7 +16934,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Start sign-in with Keycloak (authorization code + PKCE)",
+        "summary": "Start sign-in with Keycloak (authorization code + PKCE, home-realm discovery)",
         "tags": [
           "auth"
         ]
