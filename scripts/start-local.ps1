@@ -123,7 +123,8 @@ try {
       @('nexti-sandbox-dotnet:1', @('build', '-q', '-t', 'nexti-sandbox-dotnet:1', 'infra/sandbox/dotnet')),
       @('nexti-sandbox-docs:1', @('build', '-q', '-t', 'nexti-sandbox-docs:1', 'infra/sandbox/docs')),
       @('nexti-sandbox-java-oracle:1', @('build', '-q', '-t', 'nexti-sandbox-java-oracle:1', 'infra/sandbox/java-oracle')),
-      @('nexti-sandbox-iac:1', @('build', '-q', '-t', 'nexti-sandbox-iac:1', 'infra/sandbox/iac'))
+      @('nexti-sandbox-iac:1', @('build', '-q', '-t', 'nexti-sandbox-iac:1', 'infra/sandbox/iac')),
+      @('nexti-sandbox-hardening:1', @('build', '-q', '-t', 'nexti-sandbox-hardening:1', 'infra/sandbox/hardening'))
     )
     foreach ($image in $images) {
       docker image inspect $image[0] *> $null

@@ -17,6 +17,7 @@ members = [
     "nexti-api",
     "nexti-core",
     "nexti-graph",
+    "nexti-hardening",
     "nexti-ingest",
     "nexti-integrations",
     "nexti-model-gateway",
@@ -1365,6 +1366,21 @@ dependencies = [
 requires-dist = [
     { name = "neo4j", specifier = ">=5.28" },
     { name = "nexti-core", editable = "packages/core" },
+]
+
+[[package]]
+name = "nexti-hardening"
+version = "0.1.0"
+source = { editable = "packages/hardening" }
+dependencies = [
+    { name = "httpx" },
+    { name = "nexti-sandbox" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "httpx", specifier = ">=0.28" },
+    { name = "nexti-sandbox", editable = "packages/sandbox" },
 ]
 
 [[package]]
