@@ -309,7 +309,35 @@ async def test_the_catalog_endpoint_serves_the_synced_catalog(api: TestClient, w
     skill = api.get("/api/v1/catalog/skills/bms-parsing").json()
     assert skill["content"].startswith("# BMS map parsing")
     assert api.get("/api/v1/catalog/skills/nope").status_code == 404
-    assert [f["key"] for f in catalog["flows"]] == ["modernization", "newFeature", "independentValidation"]
+    keys = ["modernization", "newFeature", "independentValidation", "extendExisting"]
+    assert [f["key"] for f in catalog["flows"]] == keys
     flows = {s["key"]: s["flows"] for s in catalog["sources"]}
     assert flows["sybase-sp"] == ["modernization", "independentValidation"]  # Flow 4 validates legacy migrations
     assert flows["figma"] == ["newFeature"]
+    assert flows["user-stories"] == ["newFeature", "extendExisting"]  # Flow 3 brings the documents of Flow 2
+    assert flows["spring-boot-app"] == ["extendExisting"]
+    extend = next(f for f in catalog["flows"] if f["key"] == "extendExisting")
+    assert [p["gate"] for p in extend["phases"] if p["gate"]] == ["C1", "C3", "C4"]
+
+
+async def test_a_project_can_extend_an_existing_application(
+    api: TestClient, fga: OpenFga, app_engine: AsyncEngine, world: World
+) -> None:
+    # Flow 3 (ADR-0026): the existing Spring Boot application and the stories of the request; backend only.
+    await reconcile(app_engine, fga)
+    headers = sign_in(api, world.a_user)
+    request = {"flow": "extendExisting", "sources": ["spring-boot-app", "user-stories"],
+               "target": {**TARGET, "frontend": "none"}}  # fmt: skip
+    proposal = api.post("/api/v1/projects:compose", json=request, headers=headers)
+    assert proposal.status_code == 200, proposal.text
+    assert (proposal.json()["problems"], proposal.json()["uncoveredPhases"]) == ([], [])
+    assert {"functional-analyst", "solution-architect", "backend-dev", "test-engineer"} <= set(
+        proposal.json()["agents"]
+    )
+    res = api.post(
+        "/api/v1/projects", json=new_project(**request, name=f"Extend {uuid.uuid4().hex[:8]}"), headers=headers
+    )
+    assert res.status_code == 201, res.text
+    assert res.json()["flow"] == "extendExisting"
+    figma = api.post("/api/v1/projects:compose", json={**request, "sources": ["figma"]}, headers=headers)
+    assert {"code": "unknown_source", "subject": "figma"} in figma.json()["problems"]

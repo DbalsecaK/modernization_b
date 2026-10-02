@@ -50,7 +50,7 @@ def test_the_catalog_references_only_what_exists(catalog: Catalog) -> None:
         assert compat.when.referenced_options() <= options, compat.key
     assert {t.axis for t in catalog.targets} == set(AXES)
     gates = {"modernization": ["C1", "C2", "C3", "C4"], "newFeature": ["C1", "C2", "C3", "C4"],
-             "independentValidation": ["C1", "C2", "C4"]}  # fmt: skip
+             "independentValidation": ["C1", "C2", "C4"], "extendExisting": ["C1", "C3", "C4"]}  # fmt: skip
     assert [f.key for f in catalog.flows] == list(gates)
     for flow in catalog.flows:
         assert {p.key for p in flow.phases} <= set(PHASES)
@@ -156,6 +156,27 @@ def test_independent_validation_offers_the_legacy_sources_and_needs_the_analysis
     without = evaluate(catalog, request, agents=["rules-extractor", *catalog.mandatory_agents])
     assert without.uncovered_phases == ("inventory",)
     figma = evaluate(catalog, Request("independentValidation", ("figma",), request.target), agents=agents)
+    assert ("unknown_source", "figma") in [(p.code, p.subject) for p in figma.problems]
+
+
+def test_extend_existing_brings_the_application_and_the_documents_and_covers_every_phase(catalog: Catalog) -> None:
+    # Flow 3 (ADR-0026): the existing Spring Boot application plus the documentary inputs of Flow 2, backend only.
+    request = Request(
+        "extendExisting",
+        ("spring-boot-app", "user-stories"),
+        Target("modular-monolith", "spring-boot", "none", "postgresql", "aws"),
+    )
+    offered = {s.key for s in catalog.sources if "extendExisting" in s.flows}
+    assert offered == {"spring-boot-app", "user-stories", "functional-document", "user-manual"}
+    proposed = evaluate(catalog, request)  # the proposal of the wizard
+    assert (proposed.ok, proposed.uncovered_phases) == (True, ())
+    reasons = {r.agent: r.reason for r in proposed.recommended_agents}
+    assert reasons["functional-analyst"] == "documents"
+    assert {"solution-architect", "backend-dev", "test-engineer"} <= set(proposed.agents)
+    assert not {"legacy-analyst", "rules-extractor"} & set(proposed.agents)  # no rules mined from the code
+    without = evaluate(catalog, request, agents=[a for a in proposed.agents if a != "functional-analyst"])
+    assert without.uncovered_phases == ("normalization",)
+    figma = evaluate(catalog, Request("extendExisting", ("figma",), request.target))
     assert ("unknown_source", "figma") in [(p.code, p.subject) for p in figma.problems]
 
 

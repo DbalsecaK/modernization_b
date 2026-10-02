@@ -80,10 +80,14 @@ export function ProjectWorkspace() {
   }
   if (!project.data) return null
   const p = project.data
-  // The inventory tab only applies to the flows that start from legacy code (the legacy map): Flow 1 and Flow 4.
+  // The inventory tab only applies to the flows that start from code: Flow 1 and Flow 4 (the legacy map) and Flow 3
+  // (the AS-IS inventory of the application it extends, ADR-0026). Flow 3 has no UI delta, so no UI design tab.
   // The IV&V tab (the third party's target, its mapping and report) only exists in Flow 4.
   const visibleTabs = TABS.filter(
-    (id) => (p.flow !== 'newFeature' || id !== 'inventory') && (p.flow === 'independentValidation' || id !== 'ivv'),
+    (id) =>
+      (p.flow !== 'newFeature' || id !== 'inventory') &&
+      (p.flow !== 'extendExisting' || id !== 'uiDesign') &&
+      (p.flow === 'independentValidation' || id !== 'ivv'),
   )
   // A link to a tab this flow does not have opens the overview.
   const tab = visibleTabs.includes(requested) ? requested : 'overview'

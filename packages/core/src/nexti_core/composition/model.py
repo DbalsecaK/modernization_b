@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 AXES: tuple[str, ...] = ("architecture", "backend", "frontend", "database", "cloud")
-FLOWS: tuple[str, ...] = ("modernization", "newFeature", "independentValidation")
+FLOWS: tuple[str, ...] = ("modernization", "newFeature", "independentValidation", "extendExisting")
 NO_FRONTEND = "none"
 _CONDITION_KEYS = {"flow", "sources_any", "sources_none", "target", "target_not"}
 

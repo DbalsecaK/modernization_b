@@ -178,6 +178,20 @@ class WorkerProjectPort:
                 self._target |= read_all_files(data)
         return self._target
 
+    async def application_files(self) -> dict[str, str]:
+        """Flow 3 (ADR-0026): every text file of the existing application (its Java, resources and build file), not
+        only the legacy suffixes `source_files` reads."""
+        found: dict[str, str] = {}
+        for data in await self._archives("source_archive"):
+            for path, raw in read_all_files(data).items():
+                if b"\x00" in raw[:4096]:
+                    continue  # binary (jars, images): not part of the code a delta reads or writes
+                try:
+                    found[path] = raw.decode("utf-8").replace("\r\n", "\n")
+                except UnicodeDecodeError:
+                    found[path] = raw.decode("latin-1").replace("\r\n", "\n")
+        return found
+
     async def _archive_files(self, kind: str) -> list[SourceFile]:
         files: list[SourceFile] = []
         for data in await self._archives(kind):
@@ -633,7 +647,7 @@ class WorkerProjectPort:
                     text("SELECT DISTINCT ON (path) path, object_key, rules FROM generated_artifact "
                          "WHERE project_id = :p AND path NOT LIKE 'design/%' AND path NOT LIKE 'characterization/%' "
                          "AND path NOT LIKE 'frontend/%' AND path NOT LIKE 'inputs/%' AND path NOT LIKE 'infra/%' "
-                         "AND path NOT LIKE 'ivv/%' "
+                         "AND path NOT LIKE 'ivv/%' AND path NOT LIKE 'delta/%' "
                          "ORDER BY path, created_at DESC"),
                     {"p": self.run.project_id},
                 )

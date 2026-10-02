@@ -54,8 +54,9 @@ const DEFAULT_SOURCES: Record<Flow, string[]> = {
   modernization: ['cobol-cics', 'bms'],
   newFeature: ['user-stories', 'figma'],
   independentValidation: ['sybase-sp'],
+  extendExisting: ['spring-boot-app', 'user-stories'],
 }
-const FLOWS = ['modernization', 'newFeature', 'independentValidation'] as const
+const FLOWS = ['modernization', 'newFeature', 'extendExisting', 'independentValidation'] as const
 const DEFAULT_TARGET: Target = {
   architecture: 'microservices-hexagonal',
   backend: 'spring-boot',
@@ -124,8 +125,12 @@ function Wizard({ catalog }: { catalog: Catalog }) {
   const optionName = (axis: string, key: string) =>
     catalog.targets.find((o) => o.axis === axis && o.key === key)?.name ?? key
   const index = STEPS.indexOf(step)
-  // Flow 1 and Flow 4 (ADR-0025) start from the legacy code; Flow 4 also brings the third party's target.
+  // Flow 1, Flow 3 and Flow 4 start from code: the legacy code, or the existing application Flow 3 extends
+  // (ADR-0026); Flow 4 (ADR-0025) also brings the third party's target.
   const legacyCode = flow !== 'newFeature'
+  const extending = flow === 'extendExisting'
+  // Flow 2 and Flow 3 bring the documents of the request; Flow 3 has no UI delta, so no UI references (ADR-0026).
+  const withDocuments = flow === 'newFeature' || extending
   const resetComposition = () => {
     setAgentOverride(null)
     setSkillOverride(null)
@@ -191,12 +196,12 @@ function Wizard({ catalog }: { catalog: Catalog }) {
             clearToken: false,
           }),
       })
-    for (const f of flow === 'newFeature' ? documents : [])
+    for (const f of withDocuments ? documents : [])
       items.push({ label: f.name, run: (id) => uploadInput(id, f, 'document') })
-    for (const s of uiRefs.screens)
-      items.push({ label: s.file.name, run: (id) => uploadInput(id, s.file, 'screenshot') })
-    for (const l of uiRefs.figma) items.push({ label: l, run: (id) => addLink(id, 'figma_link', l) })
-    for (const l of uiRefs.prototypes) items.push({ label: l, run: (id) => addLink(id, 'prototype_link', l) })
+    const refs = extending ? EMPTY_UI_REFERENCES : uiRefs
+    for (const s of refs.screens) items.push({ label: s.file.name, run: (id) => uploadInput(id, s.file, 'screenshot') })
+    for (const l of refs.figma) items.push({ label: l, run: (id) => addLink(id, 'figma_link', l) })
+    for (const l of refs.prototypes) items.push({ label: l, run: (id) => addLink(id, 'prototype_link', l) })
 
     try {
       const project = await create.mutateAsync({
@@ -293,7 +298,7 @@ function Wizard({ catalog }: { catalog: Catalog }) {
                 </Field>
                 <div>
                   <div className="mb-2 text-sm font-medium text-text">{t('wizard.flow')}</div>
-                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  <div className="grid gap-3 sm:grid-cols-2">
                     {FLOWS.map((f) => (
                       <ChoiceCard
                         key={f}
@@ -301,6 +306,8 @@ function Wizard({ catalog }: { catalog: Catalog }) {
                         onClick={() => {
                           setFlow(f)
                           setSources(DEFAULT_SOURCES[f])
+                          // Flow 3 extends a Spring Boot backend; the UI delta is out of scope (ADR-0026).
+                          if (f === 'extendExisting') setTarget({ ...target, backend: 'spring-boot', frontend: 'none' })
                           resetComposition()
                         }}
                         title={t(`flows.${f}`)}
@@ -321,8 +328,10 @@ function Wizard({ catalog }: { catalog: Catalog }) {
             {step === 'source' && (
               <>
                 <StepTitle
-                  title={t(legacyCode ? 'wizard.sourceTitle' : 'wizard.inputsTitle')}
-                  hint={t(legacyCode ? 'wizard.sourceHint' : 'wizard.inputsHint')}
+                  title={t(
+                    extending ? 'wizard.existingTitle' : legacyCode ? 'wizard.sourceTitle' : 'wizard.inputsTitle',
+                  )}
+                  hint={t(extending ? 'wizard.existingHint' : legacyCode ? 'wizard.sourceHint' : 'wizard.inputsHint')}
                 />
                 <div className="flex flex-wrap gap-2">
                   {catalog.sources
@@ -359,7 +368,11 @@ function Wizard({ catalog }: { catalog: Catalog }) {
                     {delivery === 'git' ? (
                       <GitSection value={git} onChange={setGit} />
                     ) : (
-                      <ArchiveSection value={archive} onChange={setArchive} />
+                      <ArchiveSection
+                        value={archive}
+                        onChange={setArchive}
+                        prompt={extending ? t('setup.dropExistingArchive') : undefined}
+                      />
                     )}
                     {flow === 'independentValidation' && (
                       <div>
@@ -372,11 +385,12 @@ function Wizard({ catalog }: { catalog: Catalog }) {
                         />
                       </div>
                     )}
+                    {extending && <DocumentsSection value={documents} onChange={setDocuments} />}
                   </>
                 ) : (
                   <DocumentsSection value={documents} onChange={setDocuments} />
                 )}
-                <UiReferencesSection value={uiRefs} onChange={setUiRefs} />
+                {!extending && <UiReferencesSection value={uiRefs} onChange={setUiRefs} />}
                 <WorkTrackingSection />
                 <Notice tone="info">{t('wizard.untrustedNotice')}</Notice>
               </>

@@ -1661,7 +1661,8 @@
             "enum": [
               "modernization",
               "newFeature",
-              "independentValidation"
+              "independentValidation",
+              "extendExisting"
             ],
             "title": "Flow",
             "type": "string"
@@ -2541,6 +2542,86 @@
         "title": "Delivery",
         "type": "object"
       },
+      "DeltaOut": {
+        "properties": {
+          "added": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Added",
+            "type": "array"
+          },
+          "baseline": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Baseline"
+          },
+          "changed": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Changed",
+            "type": "array"
+          },
+          "design": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Design"
+          },
+          "inventory": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Inventory"
+          },
+          "report": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Report"
+          }
+        },
+        "required": [
+          "inventory",
+          "baseline",
+          "design",
+          "added",
+          "changed",
+          "report"
+        ],
+        "title": "DeltaOut",
+        "type": "object"
+      },
       "DemoOptionsIn": {
         "description": "Behaviour of the demonstration pipeline (development and test only).",
         "properties": {
@@ -3172,7 +3253,8 @@
             "enum": [
               "modernization",
               "newFeature",
-              "independentValidation"
+              "independentValidation",
+              "extendExisting"
             ],
             "title": "Key",
             "type": "string"
@@ -6318,7 +6400,8 @@
             "enum": [
               "modernization",
               "newFeature",
-              "independentValidation"
+              "independentValidation",
+              "extendExisting"
             ],
             "title": "Flow",
             "type": "string"
@@ -6470,7 +6553,8 @@
             "enum": [
               "modernization",
               "newFeature",
-              "independentValidation"
+              "independentValidation",
+              "extendExisting"
             ],
             "title": "Flow",
             "type": "string"
@@ -6592,7 +6676,8 @@
             "enum": [
               "modernization",
               "newFeature",
-              "independentValidation"
+              "independentValidation",
+              "extendExisting"
             ],
             "title": "Flow",
             "type": "string"
@@ -8546,7 +8631,8 @@
               "enum": [
                 "modernization",
                 "newFeature",
-                "independentValidation"
+                "independentValidation",
+                "extendExisting"
               ],
               "type": "string"
             },
@@ -13121,6 +13207,50 @@
         "summary": "Get Coverage",
         "tags": [
           "spec"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/delta": {
+      "get": {
+        "description": "Everything Flow 3 produced so far (empty before the inventory).",
+        "operationId": "get_delta_api_v1_projects__project_id__delta_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeltaOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Delta",
+        "tags": [
+          "validation"
         ]
       }
     },

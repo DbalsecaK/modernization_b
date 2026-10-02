@@ -8,6 +8,7 @@ from typing import Protocol, cast
 
 from nexti_orchestration.characterization import CharacterizationPhases, CharacterizationPort
 from nexti_orchestration.demo import demo_executors
+from nexti_orchestration.extension import ExtensionPhases, ExtensionPort
 from nexti_orchestration.feature import FeaturePhases, FeaturePort
 from nexti_orchestration.feature_build import FeatureBuildPhases, FeatureBuildPort
 from nexti_orchestration.generation import GenerationPhases, GenerationPort
@@ -71,6 +72,20 @@ def executors_for(
         })  # fmt: skip
         if hasattr(port, "save_release"):
             executors["delivery"] = ReleasePhases(cast(ReleasePort, port)).delivery
+    if port is not None and run.flow == "extendExisting" and hasattr(port, "application_files"):  # Flow 3 (M11)
+        feature = FeaturePhases(cast(FeaturePort, port))
+        extension = ExtensionPhases(cast(ExtensionPort, port))
+        executors.update({
+            "inventory": extension.inventory,
+            "ingestion": feature.ingestion,
+            "normalization": feature.normalization,
+            "consolidation": feature.consolidation,
+            "specReview": FeatureBuildPhases(cast(FeatureBuildPort, port)).spec_review,
+            "design": extension.design,
+            "generation": extension.generation,
+            "validation": extension.validation,
+            "delivery": extension.delivery,
+        })  # fmt: skip
     if port is not None and run.flow == "independentValidation":  # Flow 4 (M10, ADR-0025)
         phases = ModernizationPhases(port)
         executors.update({"inventory": phases.inventory, "ruleExtraction": phases.rule_extraction,

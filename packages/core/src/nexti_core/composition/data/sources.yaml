@@ -1,6 +1,8 @@
 # Source adapters (spec 8.2, 8.3, 8.6) and the source options a project picks.
 # Flow 1 picks legacy technologies; flow 2 picks the kinds of documentary inputs it brings (7.1). Flow 4 validates a
-# third party's migration of the same legacy technologies (3.3, ADR-0025): `flow` takes one flow or a list.
+# third party's migration of the same legacy technologies (3.3, ADR-0025): `flow` takes one flow or a list. Flow 3
+# (ADR-0026) picks the existing application (Spring Boot only in this version) and the documentary inputs of flow 2
+# that describe the delta; the visual ones (Figma, screenshots) stay in flow 2, since the UI delta is out of scope.
 # `required_skills`: a composition with this source and without these skills gets a "missing skill" warning (9.7).
 
 adapters:
@@ -18,8 +20,9 @@ options:
   - {key: sybase-sp, name: "Sybase ASE stored procedures", flow: [modernization, independentValidation], adapter: sybase-sp, required_skills: [sybase-tsql]}
   - {key: aspx-webforms, name: "ASP.NET WebForms", flow: [modernization, independentValidation], adapter: aspx-dotnet, required_skills: [webforms]}
   - {key: dotnet-framework, name: "C# .NET Framework 4.8", flow: [modernization, independentValidation], adapter: aspx-dotnet}
-  - {key: user-stories, name: "User stories (Jira)", flow: newFeature}
-  - {key: functional-document, name: "Functional document (Word)", flow: newFeature}
-  - {key: user-manual, name: "User manual (PDF)", flow: newFeature}
+  - {key: user-stories, name: "User stories (Jira)", flow: [newFeature, extendExisting]}
+  - {key: functional-document, name: "Functional document (Word)", flow: [newFeature, extendExisting]}
+  - {key: user-manual, name: "User manual (PDF)", flow: [newFeature, extendExisting]}
   - {key: figma, name: "Figma", flow: newFeature}
   - {key: screenshots, name: "Screenshots", flow: newFeature}
+  - {key: spring-boot-app, name: "Spring Boot application", flow: extendExisting}

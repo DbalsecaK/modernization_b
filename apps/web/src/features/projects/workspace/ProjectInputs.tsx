@@ -56,12 +56,13 @@ const KIND_ICON = {
   prototype_link: Link2,
 } as const
 const ARCHIVES: readonly string[] = ['source_archive', 'target_archive']
-// The files each flow uploads here; the first is the default. Flow 4 (ADR-0025) brings the legacy code and the
-// third party's target.
+// The files each flow uploads here; the first is the default. Flow 3 (ADR-0026) brings the code of the application it
+// extends and the documents of the request; Flow 4 (ADR-0025) brings the legacy code and the third party's target.
 const FILE_KINDS: Record<ProjectDetail['flow'], FileKind[]> = {
   modernization: ['source_archive', 'document'],
   newFeature: ['document'],
   independentValidation: ['source_archive', 'target_archive'],
+  extendExisting: ['source_archive', 'document'],
 }
 
 function useErrorText() {

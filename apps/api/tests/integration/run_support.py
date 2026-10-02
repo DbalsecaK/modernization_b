@@ -469,3 +469,53 @@ async def seed_ivv(owner: AsyncEngine, store: Any, tenant_id: uuid.UUID, project
             t=tenant_id, p=project_id, r=run_id, path=path, k=key, h=hashlib.sha256(data).hexdigest(), s=len(data),
         )  # fmt: skip
     return run_id
+
+
+async def seed_delta(owner: AsyncEngine, store: Any, tenant_id: uuid.UUID, project_id: uuid.UUID) -> uuid.UUID:
+    """What Flow 3 stores for BillPay as an existing application (ADR-0026): its AS-IS inventory, the baseline of
+    its tests, a delta design, the index of the delta and DELTA.md. Returns the run id."""
+    import hashlib
+    import io
+
+    version = await make_config(owner, tenant_id, project_id)
+    run_id = await make_run(owner, tenant_id, project_id, version, kind="pipeline")
+    service = "src/main/java/com/contoso/billpay/domain/PaymentStatusService.java"
+    artifacts = {
+        "delta/as-is-inventory.json": json.dumps(
+            {
+                "stack": "spring-boot",
+                "endpoints": [
+                    {
+                        "method": "POST",
+                        "path": "/api/v1/payments",
+                        "handler": "PaymentController.pay",
+                        "file": "x",
+                        "line": 1,
+                        "request": [],
+                        "response": [],
+                    }
+                ],
+                "tables": [],
+                "slices": [],
+            }
+        ),
+        "delta/baseline.json": json.dumps(
+            {"passed": ["PaymentServiceTest.a_prepaid_account_cannot_pay()"], "failed": []}
+        ),
+        "delta/design.json": json.dumps(
+            {"changes": [{"name": "PaymentStatusQuery", "stories": ["US-001"]}], "decisions": []}
+        ),
+        "delta/index.json": json.dumps({"added": [service], "changed": []}),
+        "delta/DELTA.md": "# Delta\n\nVerdict: **PROVEN**\n",
+    }
+    for path, content in artifacts.items():
+        data = content.encode("utf-8")
+        key = f"tenants/{tenant_id}/projects/{project_id}/runs/{run_id}/files/{path}"
+        await store.put(key, io.BytesIO(data), len(data), "text/plain; charset=utf-8")
+        await execute(
+            owner,
+            "INSERT INTO generated_artifact (tenant_id, project_id, run_id, layer, path, object_key, sha256, "
+            "size_bytes) VALUES (:t, :p, :r, 'docs', :path, :k, :h, :s)",
+            t=tenant_id, p=project_id, r=run_id, path=path, k=key, h=hashlib.sha256(data).hexdigest(), s=len(data),
+        )  # fmt: skip
+    return run_id

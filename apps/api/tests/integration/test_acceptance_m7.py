@@ -55,7 +55,7 @@ MODEL = "anthropic/claude-sonnet-5.5"  # the model of test_acceptance_m4.model_f
 BUDGET_USD = Decimal("5.00")  # of the 10 USD proposed for M7 and M7b
 TARGET_FEATURE = {**TARGET, "backend": "spring-boot", "frontend": "react", "database": "postgresql"}
 TEAM = {
-    "functional-analyst": "0.9.0",
+    "functional-analyst": "0.10.0",
     "rules-verifier": "1.3.0",
     "ux-designer": "0.8.0",
     "solution-architect": "1.3.0",

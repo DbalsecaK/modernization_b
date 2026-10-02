@@ -243,7 +243,8 @@
   "flows": {
     "modernization": "Modernization",
     "newFeature": "New feature",
-    "independentValidation": "Independent validation"
+    "independentValidation": "Independent validation",
+    "extendExisting": "Add to an existing application"
   },
   "verdict": {
     "PROVEN": "PROVEN",
@@ -1099,10 +1100,13 @@
     "flowHint": {
       "modernization": "Extract the rules from legacy code and rebuild it on a modern stack, with proof of equivalence.",
       "newFeature": "Build a new feature from user stories, documents, Figma files or screenshots.",
-      "independentValidation": "Validate a migration made by a third party: the platform characterizes the legacy and checks their target against it, with a verdict computed by code."
+      "independentValidation": "Validate a migration made by a third party: the platform characterizes the legacy and checks their target against it, with a verdict computed by code.",
+      "extendExisting": "Add a feature to a Spring Boot application that already works: the platform inventories it, generates only the delta from user stories or documents, and proves nothing that worked before breaks."
     },
     "artifactLanguage": "Artifact language",
     "artifactLanguageHint": "Language of the specification, documentation and reports. Code identifiers are always in English.",
+    "existingTitle": "Existing application",
+    "existingHint": "Select what you will provide: the code of the application to extend and the documents that describe the new feature.",
     "sourceTitle": "Legacy source",
     "sourceHint": "Select the technologies in the code you will provide.",
     "inputsTitle": "Inputs",
@@ -2194,6 +2198,7 @@
     "summaryUi": "{{screens}} screenshots · {{figma}} Figma · {{prototypes}} prototypes",
     "dropDocuments": "Choose documents and user stories",
     "dropArchive": "Choose the zip with the legacy code",
+    "dropExistingArchive": "Choose the zip with the application's code",
     "archiveHint": "Validated (paths, links, size, malware, secrets) before anything reads it.",
     "gitUrl": "Repository URL (https)",
     "gitUrlHint": "The platform checks it can read the branch; the clone happens in the preflight.",
@@ -2534,7 +2539,8 @@
     "functional-document": "Functional document (Word)",
     "user-manual": "User manual (PDF)",
     "figma": "Figma",
-    "screenshots": "Screenshots"
+    "screenshots": "Screenshots",
+    "spring-boot-app": "Spring Boot application"
   },
   "runsPage": {
     "runPipeline": "Run pipeline",
