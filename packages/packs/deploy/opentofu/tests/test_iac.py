@@ -23,7 +23,8 @@ DESIGN = Design.model_validate_json(
 TARGETS = [("aws", "oracle", ""), ("aws", "postgresql", ""), ("aws", "mysql", ""), ("azure", "oracle", ""),
            ("azure", "postgresql", ""), ("azure", "sqlserver", ""), ("azure", "mysql", ""), ("gcp", "postgresql", ""),
            ("gcp", "mysql", ""), ("gcp", "sqlserver", ""), ("aws", "postgresql", "serverless"),
-           ("azure", "mysql", "serverless"), ("gcp", "postgresql", "serverless")]  # fmt: skip
+           ("azure", "mysql", "serverless"), ("gcp", "postgresql", "serverless"), ("aws", "mongodb", ""),
+           ("azure", "mongodb", "")]  # fmt: skip
 FUNCTIONS = ("encryption_at_rest", "db_not_public", "no_secrets_in_code", "tags", "logs")
 
 
@@ -95,6 +96,72 @@ def test_azure_mysql_is_a_flexible_server_with_private_access() -> None:
     assert 'name = "Microsoft.DBforMySQL/flexibleServers"' in main
     assert ".mysql.database.azure.com" in main
     assert "delegated_subnet_id    = azurerm_subnet.db.id" in main
+
+
+def test_mongodb_is_documentdb_on_aws_and_cosmos_db_on_azure() -> None:
+    files = generate(DESIGN, target("aws", "mongodb"))
+    main = files["infra/aws/main.tf"]
+    assert 'resource "aws_docdb_cluster" "main"' in main
+    assert 'resource "aws_docdb_cluster_instance" "main"' in main
+    assert "aws_db_instance" not in main
+    assert "storage_encrypted               = true" in main
+    assert "db_subnet_group_name            = aws_docdb_subnet_group.main.name" in main
+    assert "master_password                 = random_password.db.result" in main
+    assert 'enabled_cloudwatch_logs_exports = ["audit", "profiler"]' in main
+    assert "from_port       = 27017" in main
+    assert 'DB_HOST", value = aws_docdb_cluster.main.endpoint' in main
+    assert "value = aws_docdb_cluster.main.endpoint" in files["infra/aws/outputs.tf"]
+    readme = files["infra/aws/README.md"]
+    assert "| Table db_pagos..pg_orden | Collection payment_order in Amazon DocumentDB (mongodb) |" in readme
+    azure = generate(DESIGN, target("azure", "mongodb"))
+    main = azure["infra/azure/main.tf"]
+    assert 'kind                          = "MongoDB"' in main
+    assert "public_network_access_enabled = false" in main
+    assert 'subresource_names              = ["MongoDB"]' in main
+    assert 'resource "azurerm_cosmosdb_mongo_database" "main"' in main
+    assert "value        = azurerm_cosmosdb_account.main.primary_mongodb_connection_string" in main
+    assert "random_password" not in main
+    assert "target_resource_id         = azurerm_cosmosdb_account.main.id" in main
+    assert "Collection payment_order in Azure Cosmos DB for MongoDB (mongodb)" in azure["infra/azure/README.md"]
+
+
+def test_gcp_has_no_mongodb_iac_and_says_why() -> None:
+    assert generate(DESIGN, target("gcp", "mongodb")) == {}
+    reason = unsupported({"cloud": "gcp", "database": "mongodb"})
+    assert reason.startswith("No IaC: the mongodb database is not supported on GCP by the deployment pack: ")
+    assert "no managed MongoDB-compatible service" in reason
+    assert (
+        unsupported({"cloud": "aws", "database": "mongodb"})
+        == unsupported({"cloud": "azure", "database": "mongodb"})
+        == ""
+    )
+
+
+def test_each_fitness_function_catches_its_break_on_documentdb_and_cosmos_db() -> None:
+    docdb = hcl("aws", "mongodb")
+    assert status(docdb.replace("storage_encrypted               = true", "storage_encrypted               = false")
+                  )["encryption_at_rest"] == "failed"  # fmt: skip
+    private = "  db_subnet_group_name            = aws_docdb_subnet_group.main.name\n"
+    assert status(docdb.replace(private, ""))["db_not_public"] == "failed"
+    literal = docdb.replace("master_password                 = random_password.db.result",
+                            'master_password                 = "P4ssw0rd!"')  # fmt: skip
+    assert status(literal)["no_secrets_in_code"] == "failed"
+    no_exports = {c.key: c for c in checks(docdb.replace("  enabled_cloudwatch_logs_exports", "  other_exports"))}
+    assert no_exports["logs"].status == "failed"
+    assert "aws_docdb_cluster.main" in no_exports["logs"].detail
+    cosmos = hcl("azure", "mongodb")
+    public = cosmos.replace("public_network_access_enabled = false", "public_network_access_enabled = true")
+    assert status(public)["db_not_public"] == "failed"
+    undiagnosed = {c.key: c for c in checks(cosmos.replace("target_resource_id         = azurerm_cosmosdb_account",
+                                                           "target_resource_id         = azurerm_other"))}  # fmt: skip
+    assert undiagnosed["logs"].status == "failed"
+    assert "azurerm_cosmosdb_account.main has no diagnostic setting" in undiagnosed["logs"].detail
+    untagged = {c.key: c for c in checks(cosmos.replace('  tags                          = local.tags\n  capabilities {',
+                                                        "  capabilities {"))}  # fmt: skip
+    assert untagged["tags"].status == "failed"
+    assert "azurerm_cosmosdb_account.main" in untagged["tags"].detail
+    found = {c.key: c for c in checks(cosmos)}
+    assert "Azure encrypts its managed databases" in found["encryption_at_rest"].detail
 
 
 @pytest.mark.parametrize(("cloud", "database", "architecture"), TARGETS)

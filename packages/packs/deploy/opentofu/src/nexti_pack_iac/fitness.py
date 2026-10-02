@@ -1,6 +1,7 @@
-"""The fitness functions of the deployment pack (spec 8.4, ADR-0021, ADR-0027), computed by code over the generated
-HCL: the database encrypted at rest and not public, no secret written in the code, the mandatory tags (labels on GCP)
-and the logs, for AWS, Azure and GCP, containers or serverless. A check fails with the resources that break it."""
+"""The fitness functions of the deployment pack (spec 8.4, ADR-0021, ADR-0027, ADR-0029), computed by code over the
+generated HCL: the database (MongoDB: DocumentDB or Cosmos DB) encrypted at rest and not public, no secret written in
+the code, the mandatory tags (labels on GCP) and the logs, for AWS, Azure and GCP, containers or serverless. A check
+fails with the resources that break it."""
 
 import re
 from dataclasses import dataclass
@@ -9,14 +10,20 @@ from nexti_verification.verdict import Check
 
 _RESOURCE = re.compile(r'^resource\s+"([\w-]+)"\s+"([\w-]+)"\s*\{', re.MULTILINE)
 _LITERAL_SECRET = re.compile(r'^\s*(password|admin_password|administrator_password|administrator_login_password|'
-                             r'root_password|secret_string|secret_data)\s*=\s*"[^"$]{4,}"', re.MULTILINE)  # fmt: skip
+                             r'root_password|master_password|secret_string|secret_data)\s*=\s*"[^"$]{4,}"',
+                             re.MULTILINE)  # fmt: skip
 _LITERAL_VALUE = re.compile(r'^\s*value\s*=\s*"[^"$]{4,}"', re.MULTILINE)
 SECRET_RESOURCES = {"azurerm_key_vault_secret", "aws_secretsmanager_secret_version", "aws_ssm_parameter",
                     "google_secret_manager_secret_version"}  # fmt: skip
 TAGS = ("project", "environment", "managed-by")
 DATABASES = {"aws_db_instance", "azurerm_postgresql_flexible_server", "azurerm_mysql_flexible_server",
-             "azurerm_mssql_server", "azurerm_oracle_autonomous_database", "google_sql_database_instance"}  # fmt: skip
-UNTAGGED = {"azurerm_subnet", "azurerm_role_assignment", "azurerm_mysql_flexible_database"}  # no tags in the provider
+             "azurerm_mssql_server", "azurerm_oracle_autonomous_database", "google_sql_database_instance",
+             "aws_docdb_cluster", "azurerm_cosmosdb_account"}  # fmt: skip
+# The databases whose own body must say they are encrypted at rest (the others are encrypted by their cloud).
+ENCRYPTED_BY_FLAG = {"aws_db_instance", "aws_docdb_cluster"}
+# No tags in the provider.
+UNTAGGED = {"azurerm_subnet", "azurerm_role_assignment", "azurerm_mysql_flexible_database",
+            "azurerm_cosmosdb_mongo_database", "azurerm_monitor_diagnostic_setting"}  # fmt: skip
 # Encrypted at rest by the cloud, always (the note of the check says so).
 ENCRYPTED_BY_THE_CLOUD = {"azurerm": "Azure encrypts its managed databases", "google": "GCP encrypts Cloud SQL"}
 # How a workload sends its logs: ECS (awslogs), Lambda (logging_config), EKS control plane, Container Apps and AKS
@@ -24,8 +31,11 @@ ENCRYPTED_BY_THE_CLOUD = {"azurerm": "Azure encrypts its managed databases", "go
 LOG_SENDERS = ("awslogs", "logging_config", "enabled_cluster_log_types", "log_analytics_workspace_id",
                'resource "google_logging_project_sink"')  # fmt: skip
 LOG_STORES = ("aws_cloudwatch_log_group", "azurerm_log_analytics_workspace", "google_logging_project_bucket_config")
-# Each workload type and what in its own body says where its logs go.
-WORKLOAD_LOGS = {"aws_lambda_function": "logging_config"}
+# Each workload type and what in its own body says where its logs go (a DocumentDB cluster exports its audit and
+# profiler logs to CloudWatch).
+WORKLOAD_LOGS = {"aws_lambda_function": "logging_config", "aws_docdb_cluster": "enabled_cloudwatch_logs_exports"}
+# Each resource type whose logs go through a diagnostic setting (Cosmos DB to Log Analytics).
+DIAGNOSED = {"azurerm_cosmosdb_account"}
 
 
 @dataclass(frozen=True)
@@ -63,7 +73,7 @@ def checks(hcl: str) -> list[Check]:
     found: list[Check] = []
 
     unencrypted = [
-        r.address for r in databases if r.type == "aws_db_instance" and not r.has("storage_encrypted", "true")
+        r.address for r in databases if r.type in ENCRYPTED_BY_FLAG and not r.has("storage_encrypted", "true")
     ]
     notes = sorted({note for prefix, note in ENCRYPTED_BY_THE_CLOUD.items() for r in databases
                     if r.type.startswith(f"{prefix}_")})  # fmt: skip
@@ -104,15 +114,21 @@ def checks(hcl: str) -> list[Check]:
         without.append("the service does not send its logs")
     without += [f"{r.address} does not send its logs" for r in all_resources
                 if r.type in WORKLOAD_LOGS and WORKLOAD_LOGS[r.type] not in r.body]  # fmt: skip
+    settings = [r.body for r in all_resources if r.type == "azurerm_monitor_diagnostic_setting"]
+    without += [f"{r.address} has no diagnostic setting" for r in all_resources if r.type in DIAGNOSED
+                and not any(f"{r.address}.id" in body for body in settings)]  # fmt: skip
     found.append(_check("logs", without, "the service sends its logs to a group with retention"))
     return found
 
 
 def _private(database: Resource) -> bool:
     """Reachable only from the private network: Cloud SQL without a public IPv4 and on the VPC; the others not publicly
-    accessible, without public network access, or placed in a subnet."""
+    accessible, without public network access, or placed in a subnet (a DocumentDB cluster: in its subnet group, it has
+    no public endpoint)."""
     if database.type == "google_sql_database_instance":
         return database.has("ipv4_enabled", "false") and "private_network" in database.body
+    if database.type == "aws_docdb_cluster":
+        return "db_subnet_group_name" in database.body
     return (database.has("publicly_accessible", "false") or database.has("public_network_access_enabled", "false")
             or "subnet_id" in database.body)  # fmt: skip
 

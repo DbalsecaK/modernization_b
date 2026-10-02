@@ -1,8 +1,9 @@
 # ruff: noqa: E501 - the HCL templates keep the lines OpenTofu formats
 """The Azure IaC of a target (spec 8.4, ADR-0021, ADR-0027), deterministic: a resource group and a virtual network, the
 service on Container Apps (scaling to zero when the architecture is serverless), the database managed and private
-(PostgreSQL or MySQL Flexible Server, Azure SQL or Oracle Database@Azure), its password generated and kept in Key
-Vault, and the logs in Log Analytics. Everything is tagged."""
+(PostgreSQL or MySQL Flexible Server, Azure SQL, Oracle Database@Azure or, for MongoDB, ADR-0029, Azure Cosmos DB for
+MongoDB behind a private endpoint), its password (Cosmos DB: its connection string) kept in Key Vault, and the logs in
+Log Analytics. Everything is tagged."""
 
 from nexti_pack_iac.common import Target
 
@@ -48,6 +49,84 @@ POSTGRESQL_SERVER = """resource "azurerm_postgresql_flexible_server" "main" {
   administrator_password        = random_password.db.result
   tags                          = local.tags
   depends_on                    = [azurerm_private_dns_zone_virtual_network_link.db]
+}
+"""
+
+
+# MongoDB (ADR-0029): a Cosmos DB account with the API for MongoDB, without public network access, reached through a
+# private endpoint in the database subnet; its diagnostic logs go to Log Analytics. Cosmos DB has no password: the
+# application reads the account's connection string from Key Vault.
+COSMOSDB = """resource "azurerm_cosmosdb_account" "main" {
+  name                          = "cosmos-${local.name}"
+  resource_group_name           = azurerm_resource_group.main.name
+  location                      = azurerm_resource_group.main.location
+  offer_type                    = "Standard"
+  kind                          = "MongoDB"
+  mongo_server_version          = "7.0"
+  public_network_access_enabled = false
+  minimal_tls_version           = "Tls12"
+  tags                          = local.tags
+  capabilities {
+    name = "EnableMongo"
+  }
+  consistency_policy {
+    consistency_level = "Session"
+  }
+  geo_location {
+    location          = azurerm_resource_group.main.location
+    failover_priority = 0
+  }
+  backup {
+    type = "Continuous"
+    tier = "Continuous7Days"
+  }
+}
+
+resource "azurerm_cosmosdb_mongo_database" "main" {
+  name                = local.name
+  resource_group_name = azurerm_resource_group.main.name
+  account_name        = azurerm_cosmosdb_account.main.name
+}
+
+resource "azurerm_private_dns_zone" "db" {
+  name                = "privatelink.mongo.cosmos.azure.com"
+  resource_group_name = azurerm_resource_group.main.name
+  tags                = local.tags
+}
+
+resource "azurerm_private_dns_zone_virtual_network_link" "db" {
+  name                  = "${local.name}-db"
+  resource_group_name   = azurerm_resource_group.main.name
+  private_dns_zone_name = azurerm_private_dns_zone.db.name
+  virtual_network_id    = azurerm_virtual_network.main.id
+  tags                  = local.tags
+}
+
+resource "azurerm_private_endpoint" "db" {
+  name                = "pe-${local.name}-db"
+  resource_group_name = azurerm_resource_group.main.name
+  location            = azurerm_resource_group.main.location
+  subnet_id           = azurerm_subnet.db.id
+  tags                = local.tags
+  private_service_connection {
+    name                           = "${local.name}-db"
+    private_connection_resource_id = azurerm_cosmosdb_account.main.id
+    subresource_names              = ["MongoDB"]
+    is_manual_connection           = false
+  }
+  private_dns_zone_group {
+    name                 = "db"
+    private_dns_zone_ids = [azurerm_private_dns_zone.db.id]
+  }
+}
+
+resource "azurerm_monitor_diagnostic_setting" "db" {
+  name                       = "${local.name}-db"
+  target_resource_id         = azurerm_cosmosdb_account.main.id
+  log_analytics_workspace_id = azurerm_log_analytics_workspace.main.id
+  enabled_log {
+    category_group = "allLogs"
+  }
 }
 """
 
@@ -118,16 +197,25 @@ resource "azurerm_mssql_database" "main" {
 """
     if database == "mysql":
         return _private_dns("mysql") + MYSQL_SERVER
+    if database == "mongodb":
+        return COSMOSDB
     return _private_dns("postgres") + POSTGRESQL_SERVER
 
 
 def files(target: Target) -> dict[str, str]:
     name = target.name
-    delegation = {"sqlserver": "", "oracle": "Oracle.Database/networkAttachments",
+    delegation = {"sqlserver": "", "mongodb": "", "oracle": "Oracle.Database/networkAttachments",
                   "mysql": "Microsoft.DBforMySQL/flexibleServers"}.get(target.database,
                                                                      "Microsoft.DBforPostgreSQL/flexibleServers")  # fmt: skip
     db_sku = "GP_Standard_D2ds_v4" if target.database == "mysql" else "GP_Standard_D2s_v3"
     min_replicas = 0 if target.serverless else 1
+    document = target.database == "mongodb"
+    password = "" if document else 'resource "random_password" "db" {\n  length  = 32\n  special = false\n}\n\n'
+    secret = "db-connection-string" if document else "db-password"
+    secret_value = (
+        "azurerm_cosmosdb_account.main.primary_mongodb_connection_string" if document else "random_password.db.result"
+    )
+    secret_env = "MONGODB_URI" if document else "DB_PASSWORD"
     db_subnet_delegation = (
         f'''  delegation {{
     name = "db"
@@ -192,12 +280,7 @@ resource "azurerm_subnet" "db" {{
 {db_subnet_delegation}}}
 
 # -- secrets and logs --------------------------------------------------------------------------------------------
-resource "random_password" "db" {{
-  length  = 32
-  special = false
-}}
-
-resource "azurerm_key_vault" "main" {{
+{password}resource "azurerm_key_vault" "main" {{
   name                       = "kv-${{local.name}}"
   resource_group_name        = azurerm_resource_group.main.name
   location                   = azurerm_resource_group.main.location
@@ -210,8 +293,8 @@ resource "azurerm_key_vault" "main" {{
 }}
 
 resource "azurerm_key_vault_secret" "db" {{
-  name         = "db-password"
-  value        = random_password.db.result
+  name         = "{secret}"
+  value        = {secret_value}
   key_vault_id = azurerm_key_vault.main.id
   tags         = local.tags
 }}
@@ -260,7 +343,7 @@ resource "azurerm_container_app" "main" {{
     identity_ids = [azurerm_user_assigned_identity.app.id]
   }}
   secret {{
-    name                = "db-password"
+    name                = "{secret}"
     key_vault_secret_id = azurerm_key_vault_secret.db.id
     identity            = azurerm_user_assigned_identity.app.id
   }}
@@ -281,8 +364,8 @@ resource "azurerm_container_app" "main" {{
       cpu    = 0.5
       memory = "1Gi"
       env {{
-        name        = "DB_PASSWORD"
-        secret_name = "db-password"
+        name        = "{secret_env}"
+        secret_name = "{secret}"
       }}
     }}
   }}

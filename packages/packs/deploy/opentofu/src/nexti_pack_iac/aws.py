@@ -1,7 +1,8 @@
 # ruff: noqa: E501 - the HCL templates keep the lines OpenTofu formats
 """The AWS IaC of a target (spec 8.4, ADR-0021), deterministic: a VPC with private subnets, the service on ECS Fargate
-behind an Application Load Balancer, the database on RDS (PostgreSQL, Oracle or SQL Server), encrypted and private,
-its password generated and kept in Secrets Manager, and the logs in CloudWatch. Everything is tagged."""
+behind an Application Load Balancer, the database on RDS (PostgreSQL, Oracle, SQL Server or MySQL) or, for MongoDB
+(ADR-0029), on Amazon DocumentDB, encrypted and private, its password generated and kept in Secrets Manager, and the
+logs in CloudWatch. Everything is tagged."""
 
 from nexti_pack_iac.common import Target
 
@@ -11,6 +12,92 @@ ENGINES = {
     "sqlserver": ("sqlserver-ex", "16.00", 1433, '  license_model             = "license-included"\n'),
     "mysql": ("mysql", "8.4", 3306, ""),
 }
+DOCUMENTDB_PORT = 27017
+RDS_ENDPOINT = "aws_db_instance.main.address"
+DOCUMENTDB_ENDPOINT = "aws_docdb_cluster.main.endpoint"
+
+RDS = """resource "aws_db_subnet_group" "main" {
+  name       = "${local.name}-db"
+  subnet_ids = aws_subnet.private[*].id
+}
+
+resource "aws_db_instance" "main" {
+  identifier                = "${local.name}-db"
+  engine                    = "__ENGINE__"
+  engine_version            = "__VERSION__"
+  instance_class            = var.db_instance_class
+  allocated_storage         = 20
+  storage_encrypted         = true
+  publicly_accessible       = false
+  deletion_protection       = true
+  backup_retention_period   = 7
+  db_subnet_group_name      = aws_db_subnet_group.main.name
+  vpc_security_group_ids    = [aws_security_group.db.id]
+  username                  = "app"
+  password                  = random_password.db.result
+  final_snapshot_identifier = "${local.name}-final"
+__LICENSE__}
+"""
+
+# MongoDB (ADR-0029): an Amazon DocumentDB cluster (MongoDB-compatible) in the private subnets, encrypted, TLS required
+# by its parameter group, its audit and profiler logs exported to CloudWatch with retention.
+DOCUMENTDB = """resource "aws_docdb_subnet_group" "main" {
+  name       = "${local.name}-docdb"
+  subnet_ids = aws_subnet.private[*].id
+}
+
+resource "aws_docdb_cluster_parameter_group" "main" {
+  name   = "${local.name}-docdb"
+  family = "docdb5.0"
+  parameter {
+    name  = "tls"
+    value = "enabled"
+  }
+  parameter {
+    name  = "audit_logs"
+    value = "enabled"
+  }
+}
+
+resource "aws_cloudwatch_log_group" "docdb" {
+  for_each          = toset(["audit", "profiler"])
+  name              = "/aws/docdb/${local.name}-db/${each.key}"
+  retention_in_days = 30
+}
+
+resource "aws_docdb_cluster" "main" {
+  cluster_identifier              = "${local.name}-db"
+  engine                          = "docdb"
+  engine_version                  = "5.0.0"
+  master_username                 = "app"
+  master_password                 = random_password.db.result
+  storage_encrypted               = true
+  deletion_protection             = true
+  backup_retention_period         = 7
+  db_subnet_group_name            = aws_docdb_subnet_group.main.name
+  db_cluster_parameter_group_name = aws_docdb_cluster_parameter_group.main.name
+  vpc_security_group_ids          = [aws_security_group.db.id]
+  enabled_cloudwatch_logs_exports = ["audit", "profiler"]
+  final_snapshot_identifier       = "${local.name}-final"
+  depends_on                      = [aws_cloudwatch_log_group.docdb]
+}
+
+resource "aws_docdb_cluster_instance" "main" {
+  count              = 2
+  identifier         = "${local.name}-db-${count.index}"
+  cluster_identifier = aws_docdb_cluster.main.id
+  instance_class     = var.db_instance_class
+}
+"""
+
+
+def _database(target: Target) -> tuple[str, int, str]:
+    """The database resources, their port and the expression of their endpoint."""
+    if target.database == "mongodb":
+        return DOCUMENTDB, DOCUMENTDB_PORT, DOCUMENTDB_ENDPOINT
+    engine, version, port, license_model = ENGINES.get(target.database, ENGINES["postgresql"])
+    rds = RDS.replace("__ENGINE__", engine).replace("__VERSION__", version).replace("__LICENSE__", license_model)
+    return rds, port, RDS_ENDPOINT
 
 
 # The service on ECS Fargate behind an Application Load Balancer.
@@ -274,10 +361,10 @@ resource "aws_lambda_permission" "api" {
 
 
 def files(target: Target) -> dict[str, str]:
-    engine, version, port, license_model = ENGINES.get(target.database, ENGINES["postgresql"])
+    database, port, endpoint = _database(target)
     name = target.name
     security_groups = SERVERLESS_SECURITY_GROUPS if target.serverless else CONTAINER_SECURITY_GROUPS
-    service = SERVERLESS_SERVICE if target.serverless else CONTAINER_SERVICE
+    service = (SERVERLESS_SERVICE if target.serverless else CONTAINER_SERVICE).replace(RDS_ENDPOINT, endpoint)
     main = f'''terraform {{
   required_version = ">= 1.8"
   required_providers {{
@@ -396,28 +483,7 @@ resource "aws_secretsmanager_secret_version" "db" {{
   secret_string = jsonencode({{ username = "app", password = random_password.db.result }})
 }}
 
-resource "aws_db_subnet_group" "main" {{
-  name       = "${{local.name}}-db"
-  subnet_ids = aws_subnet.private[*].id
-}}
-
-resource "aws_db_instance" "main" {{
-  identifier                = "${{local.name}}-db"
-  engine                    = "{engine}"
-  engine_version            = "{version}"
-  instance_class            = var.db_instance_class
-  allocated_storage         = 20
-  storage_encrypted         = true
-  publicly_accessible       = false
-  deletion_protection       = true
-  backup_retention_period   = 7
-  db_subnet_group_name      = aws_db_subnet_group.main.name
-  vpc_security_group_ids    = [aws_security_group.db.id]
-  username                  = "app"
-  password                  = random_password.db.result
-  final_snapshot_identifier = "${{local.name}}-final"
-{license_model}}}
-
+{database}
 {service}'''
     variables = """variable "region" {
   type    = string
@@ -452,7 +518,7 @@ variable "certificate_arn" {
 }}
 
 output "database_endpoint" {{
-  value = aws_db_instance.main.address
+  value = {endpoint}
 }}
 """
     return {"main.tf": main, "variables.tf": variables, "outputs.tf": outputs}
