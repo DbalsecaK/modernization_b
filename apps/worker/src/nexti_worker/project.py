@@ -604,7 +604,20 @@ class WorkerProjectPort:
         return key
 
     async def load_artifact(self, path: str) -> str | None:
-        """The newest version of one generated file (the IV&V inventory, mapping and comparison, ADR-0025)."""
+        """The newest version of one generated file (the IV&V inventory, mapping and comparison, ADR-0025); for the
+        mapping, a person's correction before C2 when it is newer than the intake's."""
+        if path == "ivv/mapping.yaml":
+            async with self._db() as conn:
+                row = (
+                    await conn.execute(
+                        text("SELECT v.object_key FROM ivv_mapping_version v WHERE v.project_id = :p "
+                             "AND v.created_at >= (SELECT max(created_at) FROM generated_artifact "
+                             "WHERE project_id = :p AND path = :path) ORDER BY v.version DESC LIMIT 1"),
+                        {"p": self.run.project_id, "path": path},
+                    )
+                ).scalar_one_or_none()  # fmt: skip
+            if row is not None:
+                return await self._get(row)
         key = await self._artifact_key(path)
         return await self._get(key) if key else None
 

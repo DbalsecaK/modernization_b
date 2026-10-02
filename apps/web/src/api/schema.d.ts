@@ -1214,6 +1214,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/projects/{project_id}/ivv": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Ivv
+         * @description Everything the independent validation produced so far (empty before the target intake).
+         */
+        get: operations["get_ivv_api_v1_projects__project_id__ivv_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/projects/{project_id}/ivv/mapping": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Change Mapping
+         * @description A person corrects the mapping before approving C2; it must be valid YAML of the mapping's shape.
+         */
+        put: operations["change_mapping_api_v1_projects__project_id__ivv_mapping_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/projects/{project_id}/plan": {
         parameters: {
             query?: never;
@@ -3970,6 +4010,32 @@ export interface components {
             status: string;
             /** Summary */
             summary: string | null;
+        };
+        /** IvvMappingIn */
+        IvvMappingIn: {
+            /** Mapping */
+            mapping: string;
+        };
+        /** IvvOut */
+        IvvOut: {
+            /** Comparison */
+            comparison: {
+                [key: string]: unknown;
+            } | null;
+            /** Gaps */
+            gaps: string[];
+            /** Inventory */
+            inventory: {
+                [key: string]: unknown;
+            } | null;
+            /** Mapping */
+            mapping: string | null;
+            /** Mappingupdatedat */
+            mappingUpdatedAt: string | null;
+            /** Problems */
+            problems: string[];
+            /** Report */
+            report: string | null;
         };
         /** LinkIn */
         LinkIn: {
@@ -8367,6 +8433,72 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["InputOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_ivv_api_v1_projects__project_id__ivv_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IvvOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    change_mapping_api_v1_projects__project_id__ivv_mapping_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IvvMappingIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IvvOut"];
                 };
             };
             /** @description Validation Error */

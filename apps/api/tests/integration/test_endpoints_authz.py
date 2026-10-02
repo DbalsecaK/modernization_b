@@ -59,6 +59,7 @@ from nexti_model_gateway.secrets import SecretsConfig, SecretStore, connection_p
 
 from .conftest import SETTINGS, World, keycloak_admin_headers
 from .run_support import (
+    IVV_TARGET,
     VALID_CRITERION,
     execute,
     make_config,
@@ -66,6 +67,7 @@ from .run_support import (
     make_run,
     seed_architecture,
     seed_graph,
+    seed_ivv,
     seed_proposal,
     seed_screens,
     seed_spec,
@@ -514,6 +516,13 @@ class Ctx:
         await self.sync_authz()
         return project_id
 
+    async def ivv_project(self) -> uuid.UUID:
+        """A fresh project of tenant A after the target intake of Flow 4 (BillPay and the vendor's mapping)."""
+        project_id = await make_project(self.owner, self.world.tenant_a)
+        await seed_ivv(self.owner, object_store(), self.world.tenant_a, project_id)
+        await self.sync_authz()
+        return project_id
+
     async def spec_project(self) -> uuid.UUID:
         """A fresh project of tenant A with rules, stories (US-003 discarded), dependencies and a plan."""
         project_id = await make_project(self.owner, self.world.tenant_a)
@@ -832,6 +841,13 @@ def git_server() -> str:
     threading.Thread(target=httpd.serve_forever, daemon=True).start()
     # Repository URLs are https (the platform refuses others); locally, loopback is served without TLS.
     return f"https://127.0.0.1:{httpd.server_port}/customer.git"
+
+
+def _ivv(suffix: str, body: dict[str, Any] | None = None) -> Callable[[Ctx], Awaitable[Request]]:
+    async def make(ctx: Ctx) -> Request:
+        return f"/api/v1/projects/{await ctx.ivv_project()}{suffix}", body
+
+    return make
 
 
 def _pushable(suffix: str) -> Callable[[Ctx], Awaitable[Request]]:
@@ -1180,6 +1196,11 @@ CASES = [
     Case("GET", "/api/v1/projects/{project_id}/hardening", "admin", "outsider", _verified("/hardening")),
     Case("GET", "/api/v1/projects/{project_id}/releases", "admin", "outsider", _verified("/releases")),
     Case("POST", "/api/v1/projects/{project_id}/code:push", "member", "outsider", _pushable("/code:push")),
+    Case("GET", "/api/v1/projects/{project_id}/ivv", "admin", "outsider", _ivv("/ivv")),
+    Case(
+        "PUT", "/api/v1/projects/{project_id}/ivv/mapping", "admin", "member",
+        _ivv("/ivv/mapping", {"mapping": (IVV_TARGET / "ivv-mapping.yaml").read_text(encoding="utf-8")}),
+    ),
     Case("GET", "/api/v1/projects/{project_id}/design", "admin", "outsider", _architecture("/design")),
     Case("GET", "/api/v1/dashboard", "member", "root", fixed("/api/v1/dashboard")),
     Case("GET", "/api/v1/platform/status", "root", "admin", fixed("/api/v1/platform/status")),

@@ -985,6 +985,24 @@ class MigrationPlan(Base):
     created_at: Mapped[datetime] = _now()
 
 
+class IvvMappingVersion(Base):
+    """The mapping of an independent validation as a person corrected it before C2 (ADR-0025)."""
+
+    __tablename__ = "ivv_mapping_version"
+    __table_args__ = (
+        ForeignKeyConstraint(["project_id", "tenant_id"], ["project.id", "project.tenant_id"], ondelete="CASCADE"),
+    )
+    tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    project_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
+    version: Mapped[int] = mapped_column(Integer, primary_key=True)
+    object_key: Mapped[str] = mapped_column(Text, nullable=False)
+    sha256: Mapped[str] = mapped_column(Text, nullable=False)
+    size_bytes: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    problems: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
+    created_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("app_user.id"))
+    created_at: Mapped[datetime] = _now()
+
+
 class GeneratedArtifact(Base):
     __tablename__ = "generated_artifact"
     __table_args__ = (

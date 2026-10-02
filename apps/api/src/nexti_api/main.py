@@ -37,6 +37,7 @@ from nexti_api.settings import Settings, get_settings
 from nexti_api.spec import architecture as spec_architecture
 from nexti_api.spec import code as spec_code
 from nexti_api.spec import delivery as spec_delivery
+from nexti_api.spec import ivv as spec_ivv
 from nexti_api.spec import plan as spec_plan
 from nexti_api.spec import screens as spec_screens
 from nexti_api.spec import stories as spec_stories
@@ -182,6 +183,7 @@ def create_app(settings: Settings | None = None, health_checks: dict[str, health
         spec_code.router,
         spec_delivery.router,
         spec_architecture.router,
+        spec_ivv.router,
         spec_screens.router,
         graph_router.router,
         dashboard.router,

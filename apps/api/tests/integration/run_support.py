@@ -428,3 +428,44 @@ async def seed_graph(owner: AsyncEngine, settings: Any, tenant_id: uuid.UUID, pr
                      "VALUES (:t, :p, 'rule', :k, 1, 'review', CAST(:d AS jsonb))"),
                 {"t": tenant_id, "p": project_id, "k": rule["id"], "d": json.dumps(rule)},
             )  # fmt: skip
+
+
+IVV_TARGET = Path(__file__).resolve().parents[4] / "packages/ivv/tests/fixtures/billpay"
+IVV_GOLDEN = Path(__file__).resolve().parents[4] / "packages/adapters/source/sybase/tests/fixtures/pago_orden/golden"
+
+
+async def seed_ivv(owner: AsyncEngine, store: Any, tenant_id: uuid.UUID, project_id: uuid.UUID) -> uuid.UUID:
+    """What the target intake of Flow 4 stores for BillPay (the fictitious third-party target, ADR-0025): its
+    inventory and the vendor's mapping, with the golden master recorded on Sybase. Returns the run id."""
+    import hashlib
+    import io
+    from dataclasses import asdict
+
+    from nexti_core.adapters import SourceFile
+    from nexti_ivv.target import inventory
+
+    files = [p for p in IVV_TARGET.rglob("*") if p.is_file()]
+    found = inventory([SourceFile(p.relative_to(IVV_TARGET).as_posix(), p.read_text(encoding="utf-8")) for p in files])
+    golden = next(
+        text_ for p in sorted(IVV_GOLDEN.glob("*.json"))
+        if "web_order_pays_half_the_service_tariff" in (text_ := p.read_text(encoding="utf-8"))
+    )  # fmt: skip
+    version = await make_config(owner, tenant_id, project_id)
+    run_id = await make_run(owner, tenant_id, project_id, version, kind="pipeline")
+    artifacts = {
+        "ivv/target-inventory.json": json.dumps(asdict(found), indent=2, default=list),
+        "ivv/mapping.yaml": (IVV_TARGET / "ivv-mapping.yaml").read_text(encoding="utf-8"),
+        "ivv/mapping-gaps.json": "[]",
+        "characterization/golden_master.json": golden,
+    }
+    for path, content in artifacts.items():
+        data = content.encode("utf-8")
+        key = f"tenants/{tenant_id}/projects/{project_id}/runs/{run_id}/files/{path}"
+        await store.put(key, io.BytesIO(data), len(data), "text/plain; charset=utf-8")
+        await execute(
+            owner,
+            "INSERT INTO generated_artifact (tenant_id, project_id, run_id, layer, path, object_key, sha256, "
+            "size_bytes) VALUES (:t, :p, :r, 'docs', :path, :k, :h, :s)",
+            t=tenant_id, p=project_id, r=run_id, path=path, k=key, h=hashlib.sha256(data).hexdigest(), s=len(data),
+        )  # fmt: skip
+    return run_id

@@ -131,3 +131,11 @@ def test_a_target_with_a_changed_rule_fails_its_cases(java_sandbox: DockerSandbo
     failed = {c.name for c in result.cases if not c.matched}
     assert "current_account_overdraws_up_to_100" in failed
     assert result.matched < len(master.results)
+
+
+def test_the_stored_inventory_reads_back_the_same() -> None:
+    import json
+    from dataclasses import asdict
+
+    found = target_inventory(archive())
+    assert TargetInventory.from_dict(json.loads(json.dumps(asdict(found), default=list))) == found

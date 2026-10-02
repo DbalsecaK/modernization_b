@@ -4,7 +4,7 @@ slices for the rule extractors. Spring Boot is read in full; ASP.NET Core for th
 
 import re
 from dataclasses import dataclass, field
-from typing import Literal
+from typing import Any, Literal
 
 from nexti_core.adapters import SourceFile
 
@@ -64,6 +64,25 @@ class TargetInventory:
 
     def table(self, name: str) -> TableInfo | None:
         return next((t for t in self.tables if t.name.lower() == name.lower()), None)
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "TargetInventory":
+        """The inventory stored as JSON by the intake phase (dataclasses.asdict)."""
+
+        def fields(items: list[dict[str, str]]) -> tuple[FieldInfo, ...]:
+            return tuple(FieldInfo(**f) for f in items)
+
+        endpoints = tuple(
+            Endpoint(**{**e, "request": fields(e.get("request", [])), "response": fields(e.get("response", []))})
+            for e in data.get("endpoints", [])
+        )
+        tables = tuple(
+            TableInfo(t["name"], tuple(t["columns"]), tuple(t.get("key", ()))) for t in data.get("tables", [])
+        )
+        return cls(stack=data.get("stack", "unknown"), endpoints=endpoints, tables=tables,
+                   main_class=data.get("main_class"), artifact=data.get("artifact"), schema=data.get("schema"),
+                   properties=dict(data.get("properties", {})),
+                   slices=tuple(Slice(**s) for s in data.get("slices", [])))  # fmt: skip
 
 
 def detect(files: list[SourceFile]) -> Stack:
