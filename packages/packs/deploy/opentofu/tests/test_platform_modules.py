@@ -1,6 +1,6 @@
 """The platform's own modules (infra/terraform, ADR-0024) meet the same fitness functions as the IaC the platform
 generates for its customers, and validate in the sandbox without credentials. Sandbox tests skip without Docker or the
-image nexti-sandbox-iac:1."""
+image nexti-sandbox-iac:2."""
 
 import asyncio
 import subprocess

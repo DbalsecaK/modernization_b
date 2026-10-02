@@ -13,9 +13,271 @@ ENGINES = {
 }
 
 
+# The service on ECS Fargate behind an Application Load Balancer.
+CONTAINER_SECURITY_GROUPS = """resource "aws_security_group" "alb" {
+  name   = "${local.name}-alb"
+  vpc_id = aws_vpc.main.id
+  ingress {
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
+resource "aws_security_group" "app" {
+  name   = "${local.name}-app"
+  vpc_id = aws_vpc.main.id
+  ingress {
+    from_port       = 8080
+    to_port         = 8080
+    protocol        = "tcp"
+    security_groups = [aws_security_group.alb.id]
+  }
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
+"""
+
+CONTAINER_SERVICE = """# -- service: the generated application in a container, behind the load balancer -----------------------------------
+resource "aws_cloudwatch_log_group" "app" {
+  name              = "/ecs/${local.name}"
+  retention_in_days = 30
+}
+
+resource "aws_ecs_cluster" "main" {
+  name = local.name
+  setting {
+    name  = "containerInsights"
+    value = "enabled"
+  }
+}
+
+resource "aws_iam_role" "execution" {
+  name = "${local.name}-execution"
+  assume_role_policy = jsonencode({
+    Version   = "2012-10-17"
+    Statement = [{ Effect = "Allow", Principal = { Service = "ecs-tasks.amazonaws.com" }, Action = "sts:AssumeRole" }]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "execution" {
+  role       = aws_iam_role.execution.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+}
+
+resource "aws_iam_role_policy" "secrets" {
+  name = "${local.name}-secrets"
+  role = aws_iam_role.execution.id
+  policy = jsonencode({
+    Version   = "2012-10-17"
+    Statement = [{ Effect = "Allow", Action = ["secretsmanager:GetSecretValue"], Resource = [aws_secretsmanager_secret.db.arn] }]
+  })
+}
+
+resource "aws_ecs_task_definition" "app" {
+  family                   = local.name
+  requires_compatibilities = ["FARGATE"]
+  network_mode             = "awsvpc"
+  cpu                      = 512
+  memory                   = 1024
+  execution_role_arn       = aws_iam_role.execution.arn
+  container_definitions = jsonencode([{
+    name         = local.name
+    image        = var.container_image
+    essential    = true
+    portMappings = [{ containerPort = 8080, protocol = "tcp" }]
+    environment  = [{ name = "DB_HOST", value = aws_db_instance.main.address }]
+    secrets      = [{ name = "DB_CREDENTIALS", valueFrom = aws_secretsmanager_secret.db.arn }]
+    logConfiguration = {
+      logDriver = "awslogs"
+      options = {
+        awslogs-group         = aws_cloudwatch_log_group.app.name
+        awslogs-region        = var.region
+        awslogs-stream-prefix = "app"
+      }
+    }
+  }])
+}
+
+resource "aws_lb" "main" {
+  name                       = local.name
+  load_balancer_type         = "application"
+  subnets                    = aws_subnet.public[*].id
+  security_groups            = [aws_security_group.alb.id]
+  drop_invalid_header_fields = true
+}
+
+resource "aws_lb_target_group" "app" {
+  name        = local.name
+  port        = 8080
+  protocol    = "HTTP"
+  target_type = "ip"
+  vpc_id      = aws_vpc.main.id
+  health_check {
+    path = "/actuator/health"
+  }
+}
+
+resource "aws_lb_listener" "https" {
+  load_balancer_arn = aws_lb.main.arn
+  port              = 443
+  protocol          = "HTTPS"
+  ssl_policy        = "ELBSecurityPolicy-TLS13-1-2-2021-06"
+  certificate_arn   = var.certificate_arn
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.app.arn
+  }
+}
+
+resource "aws_ecs_service" "app" {
+  name            = local.name
+  cluster         = aws_ecs_cluster.main.id
+  task_definition = aws_ecs_task_definition.app.arn
+  desired_count   = 2
+  launch_type     = "FARGATE"
+  network_configuration {
+    subnets          = aws_subnet.private[*].id
+    security_groups  = [aws_security_group.app.id]
+    assign_public_ip = false
+  }
+  load_balancer {
+    target_group_arn = aws_lb_target_group.app.arn
+    container_name   = local.name
+    container_port   = 8080
+  }
+}
+"""
+
+# Serverless (ADR-0027): the same image as a Lambda function in the private subnets, behind an API Gateway HTTP API.
+SERVERLESS_SECURITY_GROUPS = """resource "aws_security_group" "app" {
+  name   = "${local.name}-app"
+  vpc_id = aws_vpc.main.id
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
+"""
+
+SERVERLESS_SERVICE = """# -- service: the generated application as a Lambda function in the private subnets, behind an HTTP API -----------
+resource "aws_cloudwatch_log_group" "app" {
+  name              = "/aws/lambda/${local.name}"
+  retention_in_days = 30
+}
+
+resource "aws_cloudwatch_log_group" "api" {
+  name              = "/aws/apigateway/${local.name}"
+  retention_in_days = 30
+}
+
+resource "aws_iam_role" "lambda" {
+  name = "${local.name}-lambda"
+  assume_role_policy = jsonencode({
+    Version   = "2012-10-17"
+    Statement = [{ Effect = "Allow", Principal = { Service = "lambda.amazonaws.com" }, Action = "sts:AssumeRole" }]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "lambda_vpc" {
+  role       = aws_iam_role.lambda.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
+}
+
+resource "aws_iam_role_policy" "secrets" {
+  name = "${local.name}-secrets"
+  role = aws_iam_role.lambda.id
+  policy = jsonencode({
+    Version   = "2012-10-17"
+    Statement = [{ Effect = "Allow", Action = ["secretsmanager:GetSecretValue"], Resource = [aws_secretsmanager_secret.db.arn] }]
+  })
+}
+
+resource "aws_lambda_function" "app" {
+  function_name = local.name
+  role          = aws_iam_role.lambda.arn
+  package_type  = "Image"
+  image_uri     = var.container_image
+  memory_size   = 2048
+  timeout       = 30
+  vpc_config {
+    subnet_ids         = aws_subnet.private[*].id
+    security_group_ids = [aws_security_group.app.id]
+  }
+  environment {
+    variables = {
+      DB_HOST           = aws_db_instance.main.address
+      DB_CREDENTIALS_ID = aws_secretsmanager_secret.db.arn
+    }
+  }
+  logging_config {
+    log_format = "JSON"
+    log_group  = aws_cloudwatch_log_group.app.name
+  }
+  tracing_config {
+    mode = "Active"
+  }
+  depends_on = [aws_iam_role_policy_attachment.lambda_vpc, aws_iam_role_policy.secrets]
+}
+
+resource "aws_apigatewayv2_api" "main" {
+  name          = local.name
+  protocol_type = "HTTP"
+}
+
+resource "aws_apigatewayv2_integration" "app" {
+  api_id                 = aws_apigatewayv2_api.main.id
+  integration_type       = "AWS_PROXY"
+  integration_uri        = aws_lambda_function.app.invoke_arn
+  payload_format_version = "2.0"
+}
+
+resource "aws_apigatewayv2_route" "app" {
+  api_id    = aws_apigatewayv2_api.main.id
+  route_key = "$default"
+  target    = "integrations/${aws_apigatewayv2_integration.app.id}"
+}
+
+resource "aws_apigatewayv2_stage" "default" {
+  api_id      = aws_apigatewayv2_api.main.id
+  name        = "$default"
+  auto_deploy = true
+  access_log_settings {
+    destination_arn = aws_cloudwatch_log_group.api.arn
+    format          = jsonencode({ requestId = "$context.requestId", routeKey = "$context.routeKey", status = "$context.status" })
+  }
+}
+
+resource "aws_lambda_permission" "api" {
+  statement_id  = "AllowHttpApi"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.app.function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_apigatewayv2_api.main.execution_arn}/*/*"
+}
+"""
+
+
 def files(target: Target) -> dict[str, str]:
     engine, version, port, license_model = ENGINES.get(target.database, ENGINES["postgresql"])
     name = target.name
+    security_groups = SERVERLESS_SECURITY_GROUPS if target.serverless else CONTAINER_SECURITY_GROUPS
+    service = SERVERLESS_SERVICE if target.serverless else CONTAINER_SERVICE
     main = f'''terraform {{
   required_version = ">= 1.8"
   required_providers {{
@@ -107,41 +369,7 @@ resource "aws_route_table_association" "private" {{
   route_table_id = aws_route_table.private.id
 }}
 
-resource "aws_security_group" "alb" {{
-  name   = "${{local.name}}-alb"
-  vpc_id = aws_vpc.main.id
-  ingress {{
-    from_port   = 443
-    to_port     = 443
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }}
-  egress {{
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }}
-}}
-
-resource "aws_security_group" "app" {{
-  name   = "${{local.name}}-app"
-  vpc_id = aws_vpc.main.id
-  ingress {{
-    from_port       = 8080
-    to_port         = 8080
-    protocol        = "tcp"
-    security_groups = [aws_security_group.alb.id]
-  }}
-  egress {{
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }}
-}}
-
-resource "aws_security_group" "db" {{
+{security_groups}resource "aws_security_group" "db" {{
   name   = "${{local.name}}-db"
   vpc_id = aws_vpc.main.id
   ingress {{
@@ -190,116 +418,7 @@ resource "aws_db_instance" "main" {{
   final_snapshot_identifier = "${{local.name}}-final"
 {license_model}}}
 
-# -- service: the generated application in a container, behind the load balancer -----------------------------------
-resource "aws_cloudwatch_log_group" "app" {{
-  name              = "/ecs/${{local.name}}"
-  retention_in_days = 30
-}}
-
-resource "aws_ecs_cluster" "main" {{
-  name = local.name
-  setting {{
-    name  = "containerInsights"
-    value = "enabled"
-  }}
-}}
-
-resource "aws_iam_role" "execution" {{
-  name = "${{local.name}}-execution"
-  assume_role_policy = jsonencode({{
-    Version   = "2012-10-17"
-    Statement = [{{ Effect = "Allow", Principal = {{ Service = "ecs-tasks.amazonaws.com" }}, Action = "sts:AssumeRole" }}]
-  }})
-}}
-
-resource "aws_iam_role_policy_attachment" "execution" {{
-  role       = aws_iam_role.execution.name
-  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
-}}
-
-resource "aws_iam_role_policy" "secrets" {{
-  name = "${{local.name}}-secrets"
-  role = aws_iam_role.execution.id
-  policy = jsonencode({{
-    Version   = "2012-10-17"
-    Statement = [{{ Effect = "Allow", Action = ["secretsmanager:GetSecretValue"], Resource = [aws_secretsmanager_secret.db.arn] }}]
-  }})
-}}
-
-resource "aws_ecs_task_definition" "app" {{
-  family                   = local.name
-  requires_compatibilities = ["FARGATE"]
-  network_mode             = "awsvpc"
-  cpu                      = 512
-  memory                   = 1024
-  execution_role_arn       = aws_iam_role.execution.arn
-  container_definitions = jsonencode([{{
-    name         = local.name
-    image        = var.container_image
-    essential    = true
-    portMappings = [{{ containerPort = 8080, protocol = "tcp" }}]
-    environment  = [{{ name = "DB_HOST", value = aws_db_instance.main.address }}]
-    secrets      = [{{ name = "DB_CREDENTIALS", valueFrom = aws_secretsmanager_secret.db.arn }}]
-    logConfiguration = {{
-      logDriver = "awslogs"
-      options = {{
-        awslogs-group         = aws_cloudwatch_log_group.app.name
-        awslogs-region        = var.region
-        awslogs-stream-prefix = "app"
-      }}
-    }}
-  }}])
-}}
-
-resource "aws_lb" "main" {{
-  name                       = local.name
-  load_balancer_type         = "application"
-  subnets                    = aws_subnet.public[*].id
-  security_groups            = [aws_security_group.alb.id]
-  drop_invalid_header_fields = true
-}}
-
-resource "aws_lb_target_group" "app" {{
-  name        = local.name
-  port        = 8080
-  protocol    = "HTTP"
-  target_type = "ip"
-  vpc_id      = aws_vpc.main.id
-  health_check {{
-    path = "/actuator/health"
-  }}
-}}
-
-resource "aws_lb_listener" "https" {{
-  load_balancer_arn = aws_lb.main.arn
-  port              = 443
-  protocol          = "HTTPS"
-  ssl_policy        = "ELBSecurityPolicy-TLS13-1-2-2021-06"
-  certificate_arn   = var.certificate_arn
-  default_action {{
-    type             = "forward"
-    target_group_arn = aws_lb_target_group.app.arn
-  }}
-}}
-
-resource "aws_ecs_service" "app" {{
-  name            = local.name
-  cluster         = aws_ecs_cluster.main.id
-  task_definition = aws_ecs_task_definition.app.arn
-  desired_count   = 2
-  launch_type     = "FARGATE"
-  network_configuration {{
-    subnets          = aws_subnet.private[*].id
-    security_groups  = [aws_security_group.app.id]
-    assign_public_ip = false
-  }}
-  load_balancer {{
-    target_group_arn = aws_lb_target_group.app.arn
-    container_name   = local.name
-    container_port   = 8080
-  }}
-}}
-'''
+{service}'''
     variables = """variable "region" {
   type    = string
   default = "us-east-1"
@@ -319,18 +438,21 @@ variable "db_instance_class" {
   type    = string
   default = "db.t4g.medium"
 }
-
+"""
+    if not target.serverless:
+        variables += """
 variable "certificate_arn" {
   type        = string
   description = "The ACM certificate of the service's domain (TLS at the load balancer)"
 }
 """
-    outputs = """output "url" {
-  value = "https://${aws_lb.main.dns_name}"
-}
+    url = "aws_apigatewayv2_api.main.api_endpoint" if target.serverless else '"https://${aws_lb.main.dns_name}"'
+    outputs = f"""output "url" {{
+  value = {url}
+}}
 
-output "database_endpoint" {
+output "database_endpoint" {{
   value = aws_db_instance.main.address
-}
+}}
 """
     return {"main.tf": main, "variables.tf": variables, "outputs.tf": outputs}

@@ -296,6 +296,7 @@ class GenerationPhases:
         iac, iac_summary = infrastructure.generate(design, ctx.run.target)
         if iac:
             await self.port.save_artifacts(iac, dict.fromkeys(iac, "orchestration"), {})
+        if iac_summary:
             summary += f"; {iac_summary}"
         return PhaseResult(summary=summary)
 

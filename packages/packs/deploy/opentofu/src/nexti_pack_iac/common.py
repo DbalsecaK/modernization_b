@@ -1,5 +1,6 @@
-"""What the IaC is generated from (spec 8.4, ADR-0021): the bounded context of the design, the target's cloud and
-database, and the legacy concepts mapped to managed services (written in the README of the IaC)."""
+"""What the IaC is generated from (spec 8.4, ADR-0021, ADR-0027): the bounded context of the design, the target's
+cloud, database and architecture, and the legacy concepts mapped to managed services (written in the README of the
+IaC)."""
 
 import re
 from collections.abc import Mapping
@@ -8,12 +9,36 @@ from typing import Any
 
 from nexti_core.spec.design import Design
 
-CLOUDS = ("aws", "azure")
+CLOUDS = ("aws", "azure", "gcp")
+# The databases each cloud's generator writes; any other one is not supported there (the generator says so).
+DATABASES = {
+    "aws": ("postgresql", "oracle", "sqlserver", "mysql"),
+    "azure": ("postgresql", "oracle", "sqlserver", "mysql"),
+    "gcp": ("postgresql", "mysql", "sqlserver"),
+}
 SERVICES = {
     "aws": {"database": "Amazon RDS", "service": "Amazon ECS on Fargate behind an Application Load Balancer",
+            "serverless": "AWS Lambda (container image with the Spring Cloud Function adapter) behind an Amazon API "
+                          "Gateway HTTP API",
             "secrets": "AWS Secrets Manager", "logs": "Amazon CloudWatch Logs"},
     "azure": {"database": "Azure managed database", "service": "Azure Container Apps",
+              "serverless": "Azure Container Apps scaling to zero replicas",
               "secrets": "Azure Key Vault", "logs": "Azure Log Analytics"},
+    "gcp": {"database": "Cloud SQL", "service": "Cloud Run with direct VPC egress",
+            "serverless": "Cloud Run with direct VPC egress, scaling to zero instances",
+            "secrets": "Secret Manager", "logs": "Cloud Logging (a log bucket with retention)"},
+}  # fmt: skip
+# What the serverless architecture means on each cloud (README of the IaC).
+SERVERLESS = {
+    "aws": "The service runs as an AWS Lambda function from the container image (the image carries the Spring Cloud "
+           "Function adapter for AWS), inside the private subnets, behind an API Gateway HTTP API. It costs nothing "
+           "while idle; a cold start adds latency to the first request. Long batch jobs do not fit the 15-minute limit "
+           "of a function.",
+    "azure": "The service runs on Azure Container Apps with min_replicas = 0: it scales to zero when idle and starts "
+             "on the first request. Azure Functions would need a rewrite of the Spring Boot service, so it is not "
+             "used.",
+    "gcp": "The service runs on Cloud Run with min_instance_count = 0: it scales to zero when idle and starts on the "
+           "first request.",
 }  # fmt: skip
 
 
@@ -24,28 +49,53 @@ class Target:
     database: str
     tables: tuple[tuple[str, str], ...] = field(default=())  # (target table, legacy table)
     programs: tuple[str, ...] = field(default=())  # the legacy programs the service replaces
+    architecture: str = ""
+
+    @property
+    def serverless(self) -> bool:
+        return self.architecture == "serverless"
+
+
+def _cloud_and_database(target: Mapping[str, Any]) -> tuple[str, str]:
+    return str(target.get("cloud") or "").lower(), str(target.get("database") or "postgresql").lower()
+
+
+def unsupported(target: Mapping[str, Any]) -> str:
+    """Why the target's cloud and database have no IaC generator; empty when they have one or there is no cloud."""
+    cloud, database = _cloud_and_database(target)
+    if not cloud or cloud not in CLOUDS:
+        return ""
+    if database not in DATABASES[cloud]:
+        return f"No IaC: the {database} database is not supported on {cloud.upper()} by the deployment pack"
+    return ""
 
 
 def target_of(design: Design, target: Mapping[str, Any]) -> Target | None:
-    """The IaC target of a project, None when its cloud has no generator (GCP and generic Kubernetes come later)."""
-    cloud = str(target.get("cloud") or "").lower()
-    if cloud not in CLOUDS:
+    """The IaC target of a project, None when its cloud has no generator (generic Kubernetes comes later) or the
+    cloud does not support its database (see `unsupported`)."""
+    cloud, database = _cloud_and_database(target)
+    if cloud not in CLOUDS or unsupported(target):
         return None
     name = re.sub(r"[^a-z0-9]+", "-", design.context.lower()).strip("-")[:20] or "app"
-    database = str(target.get("database") or "postgresql").lower()
     tables = tuple((e.table, e.legacy_table or "") for e in design.entities if e.table)
     programs = tuple(sorted({u.legacy_program for u in design.use_cases if u.legacy_program}))
-    return Target(name, cloud, database, tables, programs)
+    architecture = str(target.get("architecture") or "").lower()
+    return Target(name, cloud, database, tables, programs, architecture)
 
 
 def readme(target: Target) -> str:
     services = SERVICES[target.cloud]
+    runtime = services["serverless" if target.serverless else "service"]
     lines = [
         f"# Infrastructure of {target.name} on {target.cloud.upper()}",
         "",
         "Generated by the NexTI platform from the approved design (ADR-0021). Validated without cloud credentials:",
         "`tofu validate` and the fitness functions of the pack. Deploying it is a decision of the customer.",
         "",
+    ]
+    if target.serverless:
+        lines += ["## Serverless", "", SERVERLESS[target.cloud], ""]
+    lines += [
         "## Legacy concepts and the managed services that replace them",
         "",
         "| Legacy | Target |",
@@ -54,7 +104,8 @@ def readme(target: Target) -> str:
     for table, legacy in target.tables:
         lines.append(f"| Table {legacy or '(new)'} | Table {table} in {services['database']} ({target.database}) |")
     for program in target.programs:
-        lines.append(f"| Program {program} | The generated service on {services['service']} |")
+        lines.append(f"| Program {program} | The generated service on {runtime} |")
+    variables = "-var project=<project id> " if target.cloud == "gcp" else ""
     lines += [
         f"| Credentials in the legacy configuration | {services['secrets']} (generated, never in the code) |",
         f"| Logs of the legacy | {services['logs']} |",
@@ -63,7 +114,7 @@ def readme(target: Target) -> str:
         "",
         "```",
         "tofu init",
-        "tofu plan -var container_image=<image of the service>",
+        f"tofu plan {variables}-var container_image=<image of the service>",
         "```",
     ]
     return "\n".join(lines) + "\n"
