@@ -56,7 +56,12 @@ class Settings(BaseSettings):
     secrets_mount: str = "secret"
     # OpenRouter API base; empty uses the gateway default (tests point it to a simulated server).
     openrouter_url: str | None = None
-    # Figma REST API base (M7, ADR-0018); tests point it to a simulated server.
+    # False in the air-gapped profile (ADR-0030): no OpenRouter catalog sync, connection or call.
+    openrouter_enabled: bool = True
+    # openai-compatible model servers (ADR-0030) on private or loopback hosts, and over http only there. Off: https
+    # on a public host only (SSRF). The air-gapped and on-prem profiles turn it on for the customer's own servers.
+    model_servers_allow_private_hosts: bool = False
+    # Figma REST API base (M7, ADR-0018); tests point it to a simulated server. Empty: Figma is not read (air-gapped).
     figma_url: str = "https://api.figma.com/v1"
     # Inputs of the projects (M2): object storage (S3 API, MinIO locally) and malware scanning (ClamAV, ADR-0008).
     object_store_url: str = ""
@@ -87,6 +92,11 @@ class Settings(BaseSettings):
     graph_uri: str = ""
     graph_user: str = "neo4j"
     graph_password: SecretStr = SecretStr("")
+    # Offline license (14.4, ADR-0030). Empty file = no license required (SaaS, development). The public key (PEM or
+    # base64 of the raw Ed25519 key) ships with the image; the signature defaults to `<license_file>.sig`.
+    license_file: str = ""
+    license_signature_file: str = ""
+    license_public_key: str = ""
 
     @property
     def is_local(self) -> bool:

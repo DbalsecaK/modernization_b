@@ -2,7 +2,10 @@
 as versions, the design system, prototype versions served for an isolated frame with a strict CSP, their source only
 with code.view, and comments anchored to a field, audited and resolvable."""
 
+import io
+import json
 import uuid
+import zipfile
 from collections.abc import Iterator
 
 import pytest
@@ -170,3 +173,31 @@ async def test_a_proposal_to_change_the_spec_is_accepted_or_rejected_by_a_person
     audits = await fetch(owner_engine, "SELECT action FROM audit_log WHERE target = :t ORDER BY occurred_at",
                          t=f"project:{project_id}")  # fmt: skip
     assert [a["action"] for a in audits] == ["prototype.accept_proposal", "prototype.reject_proposal"]
+
+
+async def test_the_screens_are_exported_as_a_figma_plugin_audited_and_only_to_the_tenant(
+    api: TestClient, app_engine: AsyncEngine, owner_engine: AsyncEngine, fga: OpenFga, world: World
+) -> None:
+    project_id = await seeded(owner_engine, app_engine, fga, world)
+    path = f"/api/v1/projects/{project_id}/screens:figma-export"
+    exported = api.get(path, headers=sign_in(api, world.a_user))
+    assert exported.status_code == 200, exported.text
+    assert exported.headers["content-type"] == "application/zip"
+    assert f"figma-screens-{project_id}.zip" in exported.headers["content-disposition"]
+    with zipfile.ZipFile(io.BytesIO(exported.content)) as archive:
+        assert archive.namelist() == ["manifest.json", "code.js"]
+        assert json.loads(archive.read("manifest.json"))["main"] == "code.js"
+        code = archive.read("code.js").decode("utf-8")
+    for key in ("SCR-PAGOMEN", "SCR-PAGOORD", "SCR-PAGORES"):
+        assert f'"id":"{key}"' in code
+    audits = await fetch(owner_engine, "SELECT action, details FROM audit_log WHERE target = :t",
+                         t=f"project:{project_id}")  # fmt: skip
+    assert [(a["action"], a["details"]["screens"]) for a in audits] == [("screens.figma_export", 3)]
+
+    assert api.get(path, headers=sign_in(api, world.b_user)).status_code in (403, 404)
+
+    empty = await make_project(owner_engine, world.tenant_a)
+    await reconcile(app_engine, fga)
+    missing = api.get(f"/api/v1/projects/{empty}/screens:figma-export", headers=sign_in(api, world.a_user))
+    assert missing.status_code == 404
+    assert missing.json()["code"] == "screens_not_found"

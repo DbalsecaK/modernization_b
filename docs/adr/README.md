@@ -35,5 +35,6 @@ reemplaza y se marca el anterior como "Reemplazado por ADR-NNNN".
 | [0027](0027-ola-2-mysql-gcp-serverless.md) | Ola 2 (primera parte): MySQL, GCP y despliegue serverless | Aceptada |
 | [0028](0028-ola-2-quarkus-y-nextjs.md) | Ola 2 (segunda parte): Quarkus y Next.js | Aceptada |
 | [0029](0029-ola-3-go-y-mongodb.md) | Ola 3: Go y MongoDB | Aceptada |
+| [0030](0030-air-gapped-y-exportacion-a-figma.md) | Air-gapped y exportación a Figma | Aceptada |
 
 Plantilla: contexto, decisión, alternativas consideradas, consecuencias y cómo se valida.

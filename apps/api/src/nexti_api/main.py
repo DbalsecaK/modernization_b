@@ -7,7 +7,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
-from nexti_api import dashboard, health, me, operations, topbar, usage
+from nexti_api import dashboard, health, license_gate, me, operations, topbar, usage
 from nexti_api.admin import assignments, audit_log, identity, integrations, invitations, roles, tenants, users
 from nexti_api.ai import assignments as ai_assignments
 from nexti_api.ai import catalog as ai_catalog
@@ -115,6 +115,7 @@ def create_app(settings: Settings | None = None, health_checks: dict[str, health
                 resources.http,
                 SecretsConfig(settings.secrets_url, settings.secrets_token.get_secret_value(), settings.secrets_mount),
                 settings.openrouter_url,
+                openrouter_enabled=settings.openrouter_enabled,
             )
             if resources.engine is not None and settings.secrets_url
             else None
@@ -126,6 +127,7 @@ def create_app(settings: Settings | None = None, health_checks: dict[str, health
         app.state.relay = None
         stop = asyncio.Event()
         tasks: list[asyncio.Task[None]] = []
+        await license_gate.record_startup(resources.engine, app.state.license)
         if app.state.fga is not None and resources.relay_engine is not None:
             app.state.relay = OutboxRelay(resources.relay_engine, app.state.fga)
             tasks.append(asyncio.create_task(app.state.relay.run_forever(stop, settings.relay_poll_seconds)))
@@ -157,6 +159,7 @@ def create_app(settings: Settings | None = None, health_checks: dict[str, health
         lifespan=lifespan,
     )
     app.state.settings = settings
+    app.state.license = license_gate.load(settings)  # verified once, at startup (ADR-0030)
     app.add_middleware(RequestLogMiddleware)
     install_error_handlers(app)
     app.include_router(health.router)

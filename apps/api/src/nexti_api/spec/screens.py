@@ -2,7 +2,10 @@
 the design system, the prototype versions of each screen and the comments on them.
 
 A prototype page is code written by a model: it is served with a strict CSP for an iframe without the same origin
-(no cookies, storage, network or access to the page around it). Its TSX source is code and needs `code.view`."""
+(no cookies, storage, network or access to the page around it). Its TSX source is code and needs `code.view`.
+
+The screens can also leave as a generated Figma plugin (ADR-0030): the same specs any project viewer already reads,
+with the design tokens, so the export needs `project.view` and is audited."""
 
 import uuid
 from typing import Annotated, Any
@@ -13,6 +16,7 @@ from pydantic import ValidationError
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncConnection
 
+from nexti_api import license_gate
 from nexti_api.admin.common import audit, not_found, transaction
 from nexti_api.authz.require import Authorized, require_project
 from nexti_api.errors import ProblemError
@@ -29,6 +33,7 @@ from nexti_api.spec.schemas import (
 )
 from nexti_core.jobs import defer_ui_change
 from nexti_core.spec.screens import ScreenSpec
+from nexti_ui.figma_export import export_zip
 
 router = APIRouter(prefix="/api/v1/projects/{project_id}", tags=["screens"])
 ViewProject = Annotated[Authorized, Depends(require_project("project.view"))]
@@ -139,6 +144,30 @@ async def design_system(request: Request, project_id: uuid.UUID, auth: ViewProje
     if row is None:
         raise not_found("design system")
     return DesignSystemOut.model_validate(dict(row))
+
+
+@router.get("/screens:figma-export")
+async def figma_export(request: Request, project_id: uuid.UUID, auth: ViewProject) -> Response:
+    """The newest version of every screen as a Figma development plugin (manifest.json and code.js) in a zip."""
+    async with transaction(request, auth) as conn:
+        screens = await _screens(conn, project_id)
+        if not screens:
+            raise not_found("screens")
+        tokens = (
+            await conn.execute(
+                text("SELECT tokens FROM design_system WHERE project_id = :p ORDER BY version DESC LIMIT 1"),
+                {"p": project_id},
+            )
+        ).scalar_one_or_none()
+        await audit(conn, auth, "screens.figma_export", f"project:{project_id}", {"screens": len(screens)})
+    data = export_zip([s["data"] for s in screens], tokens)
+    headers = {
+        "Content-Disposition": f'attachment; filename="figma-screens-{project_id}.zip"',
+        "X-Content-Type-Options": "nosniff",
+        "Content-Security-Policy": "default-src 'none'; sandbox",
+        "Cache-Control": "private, no-store",
+    }
+    return Response(data, media_type="application/zip", headers=headers)
 
 
 async def _prototype(conn: AsyncConnection, project_id: uuid.UUID, key: str, version: int) -> dict[str, Any]:
@@ -330,6 +359,7 @@ async def ask_change(
     request: Request, project_id: uuid.UUID, key: str, body: ChatIn, auth: EditPrototypes
 ) -> list[ChatMessageOut]:
     """Records the change and enqueues it for the UX/UI designer (the API never runs agents)."""
+    await license_gate.ensure_writable(request, auth, "ui_change.request", f"project:{project_id}")
     async with transaction(request, auth) as conn:
         if not await _screens(conn, project_id, key):
             raise not_found("screen")

@@ -36,8 +36,16 @@ from nexti_core.db.models import (
     UsageLedger,
 )
 from nexti_core.db.session import DbScope, scoped_connection
-from nexti_model_gateway.openrouter import ChatResult, ChatUsage, OpenRouterClient, Pricing, ProviderError
+from nexti_model_gateway.openrouter import (
+    ChatResult,
+    ChatUsage,
+    OpenAICompatibleClient,
+    OpenRouterClient,
+    Pricing,
+    ProviderError,
+)
 from nexti_model_gateway.rules import (
+    OPENAI_COMPATIBLE,
     AssignmentRow,
     OfferingFacts,
     Policy,
@@ -124,6 +132,8 @@ class _Plan:
     temperature: Decimal | None
     timeout_seconds: int
     max_retries: int
+    provider: str = "openrouter"  # the connection's provider
+    base_url: str | None = None  # openai-compatible: the server's base URL (ADR-0030)
 
 
 RESERVATION_TTL = timedelta(minutes=15)  # a reservation left by a crashed process stops counting after this
@@ -175,12 +185,15 @@ class ModelGateway:
         *,
         sleep: Sleep = asyncio.sleep,
         backoff_seconds: float = 0.5,
+        openrouter_enabled: bool = True,
     ) -> None:
+        """`openrouter_enabled` False (air-gapped profile, ADR-0030): OpenRouter offerings are blocked."""
         self.engine = engine
         self.secrets = secrets
         self.client = client
         self.sleep = sleep
         self.backoff_seconds = backoff_seconds
+        self.openrouter_enabled = openrouter_enabled
 
     # --- configuration -------------------------------------------------------------------------------------
 
@@ -211,6 +224,8 @@ class ModelGateway:
                     ModelProfile.fallback_profile_id,
                     ProviderConnection.id.label("connection_id"),
                     ProviderConnection.vault_path,
+                    ProviderConnection.provider.label("connection_provider"),
+                    ProviderConnection.base_url,
                     ModelOffering.id.label("offering_id"),
                     ModelOffering.provider,
                     ModelOffering.upstream_provider,
@@ -259,6 +274,8 @@ class ModelGateway:
             temperature=row.temperature,
             timeout_seconds=row.timeout_seconds,
             max_retries=row.max_retries,
+            provider=row.connection_provider,
+            base_url=row.base_url,
         )
         return plan, row.fallback_profile_id
 
@@ -383,12 +400,17 @@ class ModelGateway:
     def _body(
         self, plan: _Plan, policy: Policy, messages: list[dict[str, Any]], extra: dict[str, Any]
     ) -> dict[str, Any]:
+        # OpenRouter-only fields (usage accounting, provider routing) are not sent to an openai-compatible server.
+        openrouter: dict[str, Any] = (
+            {"usage": {"include": True}, "provider": routing(policy, plan.offering)}
+            if plan.provider != OPENAI_COMPATIBLE
+            else {}
+        )
         body: dict[str, Any] = {
             "model": plan.model,
             "messages": messages,
             "max_tokens": plan.max_output_tokens,
-            "usage": {"include": True},
-            "provider": routing(policy, plan.offering),
+            **openrouter,
             **plan.effort_parameters,
             **extra,
         }
@@ -400,14 +422,19 @@ class ModelGateway:
         self, plan: _Plan, policy: Policy, messages: list[dict[str, Any]], extra: dict[str, Any]
     ) -> _Attempt:
         api_key = await self.secrets.get(plan.vault_path) if plan.vault_path else None
-        if not api_key:
+        local = plan.provider == OPENAI_COMPATIBLE
+        if local and not plan.base_url:
+            return _Attempt(plan, "error", "missing_base_url")
+        # The API key of an openai-compatible server is optional (a local vLLM or Ollama often has none).
+        if not api_key and not local:
             return _Attempt(plan, "error", "missing_credential")
+        client = OpenAICompatibleClient(self.client.http, plan.base_url or "") if local else self.client
         body = self._body(plan, policy, messages, extra)
         attempt = _Attempt(plan, "error")
         for retry in range(plan.max_retries + 1):
             started = time.perf_counter()
             try:
-                result = await self.client.chat(api_key, body, plan.timeout_seconds)
+                result = await client.chat(api_key, body, plan.timeout_seconds)
             except ProviderError as exc:
                 attempt.latency_ms += int((time.perf_counter() - started) * 1000)
                 attempt.error_code = f"provider:{exc.status}"
@@ -498,6 +525,8 @@ class ModelGateway:
         attempts: list[_Attempt] = []
         for plan in chain:
             denial = policy_denial(policy, plan.offering)
+            if denial is None and plan.offering.provider == "openrouter" and not self.openrouter_enabled:
+                denial = "openrouter_disabled"
             if denial is not None:
                 attempts.append(_Attempt(plan, "blocked", f"policy:{denial}"))
                 continue

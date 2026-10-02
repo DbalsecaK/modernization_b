@@ -110,6 +110,8 @@ class LiveFigma:
         self.base_url = base_url
 
     async def file(self, key: str) -> dict[str, Any]:
+        if not self.base_url:
+            raise figma.FigmaError("Figma is not read in this deployment (air-gapped profile)")
         async with scoped_connection(self.engine, DbScope(tenant_id=self.tenant_id)) as conn:
             path = (
                 await conn.execute(

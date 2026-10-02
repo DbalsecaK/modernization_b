@@ -2069,10 +2069,30 @@
       "ConnectionCreate": {
         "properties": {
           "apiKey": {
-            "maxLength": 500,
-            "minLength": 8,
-            "title": "Apikey",
-            "type": "string"
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "minLength": 8,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Apikey"
+          },
+          "baseUrl": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "minLength": 8,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Baseurl"
           },
           "name": {
             "maxLength": 200,
@@ -2081,15 +2101,17 @@
             "type": "string"
           },
           "provider": {
-            "const": "openrouter",
             "default": "openrouter",
+            "enum": [
+              "openrouter",
+              "openai-compatible"
+            ],
             "title": "Provider",
             "type": "string"
           }
         },
         "required": [
-          "name",
-          "apiKey"
+          "name"
         ],
         "title": "ConnectionCreate",
         "type": "object"
@@ -2157,6 +2179,17 @@
       },
       "ConnectionOut": {
         "properties": {
+          "baseUrl": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Baseurl"
+          },
           "hasCredential": {
             "title": "Hascredential",
             "type": "boolean"
@@ -2194,7 +2227,10 @@
             "type": "string"
           },
           "provider": {
-            "const": "openrouter",
+            "enum": [
+              "openrouter",
+              "openai-compatible"
+            ],
             "title": "Provider",
             "type": "string"
           },
@@ -2212,6 +2248,7 @@
           "id",
           "provider",
           "name",
+          "baseUrl",
           "status",
           "hasCredential",
           "lastTestedAt",
@@ -2234,6 +2271,19 @@
               }
             ],
             "title": "Apikey"
+          },
+          "baseUrl": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "minLength": 8,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Baseurl"
           },
           "name": {
             "anyOf": [
@@ -4782,6 +4832,163 @@
         "title": "IvvOut",
         "type": "object"
       },
+      "LicenseOut": {
+        "properties": {
+          "customer": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Customer"
+          },
+          "deploymentProfile": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deploymentprofile"
+          },
+          "expiresAt": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expiresat"
+          },
+          "features": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Features",
+            "type": "array"
+          },
+          "issuedAt": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Issuedat"
+          },
+          "licenseId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Licenseid"
+          },
+          "maxProjects": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Maxprojects"
+          },
+          "maxTenants": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Maxtenants"
+          },
+          "projects": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Projects"
+          },
+          "readOnly": {
+            "title": "Readonly",
+            "type": "boolean"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "enum": [
+                  "public_key_missing",
+                  "public_key_invalid",
+                  "file_not_found",
+                  "signature_not_found",
+                  "bad_signature",
+                  "malformed",
+                  "not_yet_valid",
+                  "expired",
+                  "max_tenants",
+                  "max_projects"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "state": {
+            "enum": [
+              "not_required",
+              "valid",
+              "missing",
+              "invalid",
+              "expired",
+              "over_limits"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "tenants": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tenants"
+          }
+        },
+        "required": [
+          "state",
+          "readOnly"
+        ],
+        "title": "LicenseOut",
+        "type": "object"
+      },
       "LinkIn": {
         "properties": {
           "kind": {
@@ -4823,6 +5030,130 @@
           "offerings"
         ],
         "title": "LoadOut",
+        "type": "object"
+      },
+      "LocalModelIn": {
+        "description": "A model the openai-compatible server serves, by its exact id there (e.g. `meta-llama/Llama-3.1-8B-Instruct`).",
+        "properties": {
+          "capabilities": {
+            "items": {
+              "enum": [
+                "tools",
+                "structured_output",
+                "reasoning",
+                "vision"
+              ],
+              "type": "string"
+            },
+            "maxItems": 4,
+            "title": "Capabilities",
+            "type": "array"
+          },
+          "contextWindow": {
+            "anyOf": [
+              {
+                "maximum": 10000000.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contextwindow"
+          },
+          "inputPerMtok": {
+            "anyOf": [
+              {
+                "maximum": 100000.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              }
+            ],
+            "default": "0",
+            "title": "Inputpermtok"
+          },
+          "maxOutputTokens": {
+            "anyOf": [
+              {
+                "maximum": 1000000.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Maxoutputtokens"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "outputPerMtok": {
+            "anyOf": [
+              {
+                "maximum": 100000.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              }
+            ],
+            "default": "0",
+            "title": "Outputpermtok"
+          },
+          "slug": {
+            "maxLength": 200,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/@+-]*$",
+            "title": "Slug",
+            "type": "string"
+          },
+          "zdr": {
+            "default": false,
+            "title": "Zdr",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "slug"
+        ],
+        "title": "LocalModelIn",
+        "type": "object"
+      },
+      "LocalModelOut": {
+        "properties": {
+          "offeringId": {
+            "format": "uuid",
+            "title": "Offeringid",
+            "type": "string"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          }
+        },
+        "required": [
+          "offeringId",
+          "slug"
+        ],
+        "title": "LocalModelOut",
         "type": "object"
       },
       "ManualPriceIn": {
@@ -5377,6 +5708,18 @@
             "title": "Capabilities",
             "type": "array"
           },
+          "connectionId": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Connectionid"
+          },
           "contextWindow": {
             "anyOf": [
               {
@@ -5425,6 +5768,14 @@
               }
             ]
           },
+          "provider": {
+            "enum": [
+              "openrouter",
+              "openai-compatible"
+            ],
+            "title": "Provider",
+            "type": "string"
+          },
           "status": {
             "enum": [
               "available",
@@ -5444,6 +5795,8 @@
         },
         "required": [
           "id",
+          "provider",
+          "connectionId",
           "upstreamProvider",
           "contextWindow",
           "maxOutputTokens",
@@ -5793,6 +6146,9 @@
             "title": "Instances",
             "type": "array"
           },
+          "license": {
+            "$ref": "#/components/schemas/LicenseOut"
+          },
           "queues": {
             "items": {
               "$ref": "#/components/schemas/QueueOut"
@@ -5827,7 +6183,8 @@
           "activeRuns",
           "waitingRuns",
           "failedLastDay",
-          "recentFailures"
+          "recentFailures",
+          "license"
         ],
         "title": "PlatformStatus",
         "type": "object"
@@ -8394,6 +8751,31 @@
         "title": "SearchHit",
         "type": "object"
       },
+      "ServedModelOut": {
+        "properties": {
+          "contextWindow": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contextwindow"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          }
+        },
+        "required": [
+          "slug",
+          "contextWindow"
+        ],
+        "title": "ServedModelOut",
+        "type": "object"
+      },
       "SessionTenantOut": {
         "properties": {
           "id": {
@@ -10658,9 +11040,111 @@
         ]
       }
     },
+    "/api/v1/ai/connections/{connection_id}/models": {
+      "post": {
+        "description": "Add (or refresh) a model of an openai-compatible connection, with the price the tenant declares (zero by\ndefault). It is visible only to this tenant.",
+        "operationId": "add_model_api_v1_ai_connections__connection_id__models_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "connection_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Connection Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LocalModelIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LocalModelOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Add Model",
+        "tags": [
+          "ai"
+        ]
+      }
+    },
+    "/api/v1/ai/connections/{connection_id}/served-models": {
+      "get": {
+        "description": "What the server lists at `<base>/models`, when it does (vLLM and Ollama do).",
+        "operationId": "list_served_models_api_v1_ai_connections__connection_id__served_models_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "connection_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Connection Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ServedModelOut"
+                  },
+                  "title": "Response List Served Models Api V1 Ai Connections  Connection Id  Served Models Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Served Models",
+        "tags": [
+          "ai"
+        ]
+      }
+    },
     "/api/v1/ai/connections/{connection_id}:test": {
       "post": {
-        "description": "Check the stored credential with the provider (no model is called, so it costs nothing).",
+        "description": "Check the stored credential with the provider (no model is called, so it costs nothing). An openai-compatible\nserver is asked for its models.",
         "operationId": "test_connection_api_v1_ai_connections__connection_id__test_post",
         "parameters": [
           {
@@ -15664,6 +16148,48 @@
           }
         },
         "summary": "Screen Versions",
+        "tags": [
+          "screens"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/screens:figma-export": {
+      "get": {
+        "description": "The newest version of every screen as a Figma development plugin (manifest.json and code.js) in a zip.",
+        "operationId": "figma_export_api_v1_projects__project_id__screens_figma_export_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Figma Export",
         "tags": [
           "screens"
         ]

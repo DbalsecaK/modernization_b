@@ -10,6 +10,9 @@ from typing import Any
 from nexti_model_gateway.openrouter import ChatUsage, Pricing
 
 MTOK = Decimal(1_000_000)
+# A server with the OpenAI chat API at the connection's own base URL (vLLM, Ollama; ADR-0030).
+OPENAI_COMPATIBLE = "openai-compatible"
+PROVIDERS = ("openrouter", OPENAI_COMPATIBLE)
 USD = Decimal("0.00000001")
 
 
@@ -59,6 +62,9 @@ def policy_denial(policy: Policy, offering: OfferingFacts) -> str | None:
     """None if the offering may be used; otherwise a stable reason code."""
     if offering.provider == "openrouter" and not policy.openrouter_allowed:
         return "provider_not_allowed"
+    if offering.provider == OPENAI_COMPATIBLE:
+        # The tenant's own server (ADR-0030): the upstream lists name OpenRouter's providers and do not apply.
+        return "zdr_required" if policy.require_zdr and not offering.zdr else None
     upstream = _provider_family(offering.upstream_provider)
     if upstream in policy.denied_upstream_providers or offering.upstream_provider in policy.denied_upstream_providers:
         return "upstream_provider_denied"

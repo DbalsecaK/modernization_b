@@ -73,7 +73,7 @@ class RecordingClient(OpenRouterClient):
     def _path(self, key: str) -> Path:
         return self.directory / f"{key}.json"
 
-    async def chat(self, api_key: str, body: dict[str, Any], timeout_seconds: float) -> ChatResult:
+    async def chat(self, api_key: str | None, body: dict[str, Any], timeout_seconds: float) -> ChatResult:
         key = request_key(body)
         path = self._path(key)
         found = next((p for p in (path, *(d / path.name for d in self.shared)) if p.exists()), None)

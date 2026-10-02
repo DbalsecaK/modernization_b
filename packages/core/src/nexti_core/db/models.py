@@ -249,9 +249,24 @@ class ModelFamily(Base):
 
 class ModelVersion(Base):
     __tablename__ = "model_version"
+    __table_args__ = (
+        # Global (provider catalog) slugs are unique; a tenant's own models (openai-compatible, migration 0018) are
+        # unique within the tenant and visible only to it.
+        Index(
+            "model_version_global_slug_key", "provider_slug", unique=True, postgresql_where=text("tenant_id IS NULL")
+        ),
+        Index(
+            "model_version_tenant_slug_key",
+            "tenant_id",
+            "provider_slug",
+            unique=True,
+            postgresql_where=text("tenant_id IS NOT NULL"),
+        ),
+    )
     id: Mapped[uuid.UUID] = _uuid_pk()
     family_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("model_family.id"), nullable=False)
-    provider_slug: Mapped[str] = mapped_column(Text, nullable=False, unique=True)
+    tenant_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("tenant.id"))
+    provider_slug: Mapped[str] = mapped_column(Text, nullable=False)
     # Aliases and variants (":thinking", ":free") share the canonical slug of the version they point to.
     canonical_slug: Mapped[str] = mapped_column(Text, nullable=False, index=True)
     name: Mapped[str] = mapped_column(Text, nullable=False)
@@ -264,10 +279,19 @@ class ModelVersion(Base):
 
 class ModelOffering(Base):
     __tablename__ = "model_offering"
-    __table_args__ = (UniqueConstraint("version_id", "provider", "upstream_provider"),)
+    __table_args__ = (
+        UniqueConstraint("version_id", "provider", "upstream_provider"),
+        ForeignKeyConstraint(
+            ["connection_id", "tenant_id"], ["provider_connection.id", "provider_connection.tenant_id"]
+        ),
+        Index("ix_model_offering_connection", "connection_id", postgresql_where=text("connection_id IS NOT NULL")),
+    )
     id: Mapped[uuid.UUID] = _uuid_pk()
     version_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("model_version.id"), nullable=False)
     provider: Mapped[str] = mapped_column(Text, nullable=False)
+    # openai-compatible offerings belong to one tenant and one of its connections (migration 0018, ADR-0030).
+    tenant_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("tenant.id"))
+    connection_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
     upstream_provider: Mapped[str] = mapped_column(Text, nullable=False)
     context_window: Mapped[int | None] = mapped_column(Integer)
     max_output_tokens: Mapped[int | None] = mapped_column(Integer)
@@ -311,6 +335,8 @@ class ProviderConnection(Base):
     tenant_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("tenant.id"), nullable=False)
     provider: Mapped[str] = mapped_column(Text, nullable=False)
     name: Mapped[str] = mapped_column(Text, nullable=False)
+    # openai-compatible: the server's base URL (ADR-0030); the API key, if any, is in the secrets store.
+    base_url: Mapped[str | None] = mapped_column(Text)
     vault_path: Mapped[str | None] = mapped_column(Text)
     status: Mapped[str] = mapped_column(Text, nullable=False, server_default="untested")
     last_tested_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

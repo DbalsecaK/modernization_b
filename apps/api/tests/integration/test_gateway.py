@@ -33,7 +33,7 @@ from nexti_core.db.models import (
     UsageLedger,
 )
 from nexti_core.db.session import DbScope, scoped_connection
-from nexti_model_gateway.catalog import load_offerings, sync_catalog
+from nexti_model_gateway.catalog import LocalModel, add_local_model, load_offerings, sync_catalog
 from nexti_model_gateway.gateway import (
     BudgetExceededError,
     CallContext,
@@ -41,7 +41,7 @@ from nexti_model_gateway.gateway import (
     NoProfileError,
     PolicyDeniedError,
 )
-from nexti_model_gateway.openrouter import BASE_URL, OpenRouterClient
+from nexti_model_gateway.openrouter import BASE_URL, OpenRouterClient, Pricing
 from nexti_model_gateway.secrets import SecretsConfig, SecretStore, connection_path
 
 from .conftest import SETTINGS
@@ -472,3 +472,116 @@ async def test_catalog_sync_and_offerings_with_versioned_prices(
     assert prices[0].valid_to is not None
     assert prices[1].valid_to is None
     assert effort == {"reasoning": {"effort": "high"}}
+
+
+LOCAL_BASE = "http://vllm.internal:8000/v1"
+LOCAL_CHAT: dict[str, Any] = {
+    "id": "chatcmpl-local",
+    "model": "llama-3.1-8b-instruct",
+    "choices": [{"message": {"role": "assistant", "content": "Ok."}}],
+    "usage": {"prompt_tokens": 1000, "completion_tokens": 500},
+}
+
+
+async def local_tenant(
+    owner_engine: AsyncEngine, app_engine: AsyncEngine, price: Decimal
+) -> tuple[uuid.UUID, uuid.UUID]:
+    """A tenant with an openai-compatible connection (no API key) and one model entered by hand with a declared
+    price, as the API does it (catalog.add_local_model under the tenant's RLS scope)."""
+    async with owner_engine.begin() as conn:
+        tenant_id = await create_tenant(conn, slug=f"gwl-{uuid.uuid4().hex[:8]}", name="Local models")
+        connection = (
+            await conn.execute(
+                insert(ProviderConnection)
+                .values(tenant_id=tenant_id, provider="openai-compatible", name="vLLM", base_url=LOCAL_BASE)
+                .returning(ProviderConnection.id)
+            )
+        ).scalar_one()
+    async with scoped_connection(app_engine, DbScope(tenant_id=tenant_id)) as conn:
+        offering = await add_local_model(
+            conn, tenant_id, connection, LocalModel("llama-3.1-8b-instruct", "Llama", price=Pricing(price, price))
+        )
+        profile = (
+            await conn.execute(
+                insert(ModelProfile)
+                .values(
+                    tenant_id=tenant_id, name="Local", connection_id=connection, offering_id=offering, max_retries=0
+                )
+                .returning(ModelProfile.id)
+            )
+        ).scalar_one()
+        await conn.execute(insert(ModelAssignment).values(tenant_id=tenant_id, profile_id=profile))
+    return tenant_id, offering
+
+
+async def test_an_openai_compatible_server_is_called_and_its_usage_recorded(
+    app_engine: AsyncEngine, owner_engine: AsyncEngine, http: httpx.AsyncClient
+) -> None:
+    tenant_id, offering = await local_tenant(owner_engine, app_engine, Decimal("2"))
+    with mock_openrouter() as router:
+        route = router.post(f"{LOCAL_BASE}/chat/completions").respond(json=LOCAL_CHAT)
+        result = await gateway(app_engine, http).complete(CallContext(tenant_id, phase="extraction"), MESSAGES)
+    request = route.calls.last.request
+    body = json.loads(request.content)
+    assert "authorization" not in request.headers
+    assert not {"provider", "usage"} & set(body)  # nothing OpenRouter-only
+    assert body["model"] == "llama-3.1-8b-instruct"
+    # 1500 tokens at the declared 2 USD per million.
+    assert result.cost_usd == Decimal("0.00300000")
+    [row] = await ledger(owner_engine, tenant_id)
+    assert (row.outcome, row.offering_id, row.input_tokens, row.output_tokens) == ("success", offering, 1000, 500)
+    assert row.cost_usd == Decimal("0.00300000")
+    assert row.provider_cost_usd is None
+
+
+async def test_a_local_model_costs_zero_by_default_and_works_with_openrouter_off(
+    app_engine: AsyncEngine, owner_engine: AsyncEngine, http: httpx.AsyncClient, tenant: Tenant
+) -> None:
+    tenant_id, _ = await local_tenant(owner_engine, app_engine, Decimal(0))
+
+    async def no_sleep(_: float) -> None:
+        return None
+
+    airgapped = ModelGateway(
+        app_engine, secrets_store(http), OpenRouterClient(http), sleep=no_sleep, openrouter_enabled=False
+    )
+    with mock_openrouter() as router:
+        router.post(f"{LOCAL_BASE}/chat/completions").respond(json=LOCAL_CHAT)
+        openrouter = router.post(f"{BASE_URL}/chat/completions").respond(json=CHAT)
+        result = await airgapped.complete(CallContext(tenant_id), MESSAGES)
+        with pytest.raises(PolicyDeniedError):
+            await airgapped.complete(CallContext(tenant.id), MESSAGES)
+    assert result.cost_usd == Decimal(0)
+    assert not openrouter.called
+    assert {r.error_code for r in await ledger(owner_engine, tenant.id)} == {"policy:openrouter_disabled"}
+
+
+async def test_a_tenants_local_models_are_invisible_to_other_tenants(
+    app_engine: AsyncEngine, owner_engine: AsyncEngine
+) -> None:
+    tenant_a, offering = await local_tenant(owner_engine, app_engine, Decimal(0))
+    tenant_b, _ = await local_tenant(owner_engine, app_engine, Decimal(0))  # same slug: unique per tenant
+    async with scoped_connection(app_engine, DbScope(tenant_id=tenant_b)) as conn:
+        assert (await conn.execute(select(ModelOffering).where(ModelOffering.id == offering))).first() is None
+        assert (await conn.execute(select(PriceVersion).where(PriceVersion.offering_id == offering))).first() is None
+        assert (await conn.execute(select(EffortMapping).where(EffortMapping.offering_id == offering))).first() is None
+        versions = (
+            (
+                await conn.execute(
+                    select(ModelVersion.tenant_id).where(ModelVersion.provider_slug == "llama-3.1-8b-instruct")
+                )
+            )
+            .scalars()
+            .all()
+        )
+        assert set(versions) == {tenant_b}
+        # Nor can it attach a model to another tenant's rows.
+        with pytest.raises(DBAPIError):
+            await conn.execute(
+                insert(ModelOffering).values(
+                    version_id=select(ModelVersion.id).where(ModelVersion.tenant_id == tenant_b).scalar_subquery(),
+                    provider="openai-compatible",
+                    upstream_provider="connection:forged",
+                    tenant_id=tenant_a,
+                )
+            )

@@ -90,6 +90,7 @@ NOT_AUDITED = {("PATCH", "/api/v1/me"), ("POST", "/api/v1/projects:compose"), ("
 # OpenRouter is simulated in these tests (shapes recorded from the real API, packages/model_gateway/tests).
 OPENROUTER = "https://openrouter.test/api/v1"
 FIGMA = "https://figma.test/v1"  # the Figma API, simulated
+LOCAL_SERVER = "https://llm.andesbank.example/v1"  # an openai-compatible model server (ADR-0030), simulated
 IDP = "https://login.microsoftonline.com/00000000-0000-0000-0000-000000000000/v2.0"  # an Entra ID issuer
 JIRA_SITE = "https://andesbank.atlassian.net"  # Jira Cloud, simulated with state (nexti_integrations.simulated)
 MODEL = "openai/gpt-4o-mini"
@@ -287,6 +288,22 @@ class Ctx:
                     vault_path=path,
                 )
             )  # fmt: skip
+        return connection_id
+
+    async def local_connection(self, tenant_id: uuid.UUID | None = None) -> uuid.UUID:
+        """An openai-compatible connection without an API key (ADR-0030)."""
+        tenant_id = tenant_id or self.world.tenant_a
+        async with self.owner.begin() as conn:
+            connection_id: uuid.UUID = (
+                await conn.execute(
+                    insert(ProviderConnection)
+                    .values(
+                        tenant_id=tenant_id, provider="openai-compatible", name=f"vLLM {uuid.uuid4().hex[:8]}",
+                        base_url=LOCAL_SERVER,
+                    )
+                    .returning(ProviderConnection.id)
+                )
+            ).scalar_one()  # fmt: skip
         return connection_id
 
     async def integration(self, tenant_id: uuid.UUID | None = None, token: str = "figd_test") -> uuid.UUID:  # noqa: S107
@@ -942,6 +959,21 @@ CASES = [
         "member",
         _with("connection", "/api/v1/ai/connections/{id}:test"),
     ),
+    # Local models (M15, ADR-0030): models.configure.
+    Case(
+        "GET",
+        "/api/v1/ai/connections/{connection_id}/served-models",
+        "admin",
+        "member",
+        _with("local_connection", "/api/v1/ai/connections/{id}/served-models"),
+    ),
+    Case(
+        "POST",
+        "/api/v1/ai/connections/{connection_id}/models",
+        "admin",
+        "member",
+        _with("local_connection", "/api/v1/ai/connections/{id}/models", {"slug": "llama-3.1-8b-instruct"}),
+    ),
     # Integrations of the tenant (M7): integrations.manage.
     Case("GET", "/api/v1/integrations", "admin", "member", fixed("/api/v1/integrations")),
     Case("POST", "/api/v1/integrations", "admin", "member", _new_integration),
@@ -1161,6 +1193,10 @@ CASES = [
     Case("PUT", "/api/v1/projects/{project_id}/screens/{key}", "admin", "member", _edit_screen),
     Case("GET", "/api/v1/projects/{project_id}/design-system", "admin", "outsider", _screens("/design-system")),
     Case(
+        "GET", "/api/v1/projects/{project_id}/screens:figma-export", "admin", "outsider",
+        _screens("/screens:figma-export"),
+    ),
+    Case(
         "GET", "/api/v1/projects/{project_id}/screens/{key}/prototypes", "admin", "outsider",
         _screens("/screens/SCR-PAGOORD/prototypes"),
     ),
@@ -1264,6 +1300,7 @@ def openrouter() -> Iterator[respx.MockRouter]:
             json={"data": {"label": "sk-or-v1-...", "limit": None, "is_free_tier": False}}
         )
         router.post(f"{OPENROUTER}/chat/completions").respond(json=CHAT)
+        router.get(f"{LOCAL_SERVER}/models").respond(json={"data": [{"id": "llama-3.1-8b-instruct"}]})
         router.get(f"{FIGMA}/me").respond(json={"id": "1", "handle": "disenador.ficticio", "email": "d@example.com"})
         router.route(host="andesbank.atlassian.net").mock(
             side_effect=FakeJira("ops@andesbank.example", "jira-token-1").handle
@@ -1439,6 +1476,10 @@ async def test_ai_configuration_and_usage_of_another_tenant_are_unreachable(
     assert api.patch(f"/api/v1/ai/connections/{b_connection}", json={"name": "x"}, headers=headers).status_code == 404
     assert api.post(f"/api/v1/ai/connections/{b_connection}:test", headers=headers).status_code == 404
     assert api.delete(f"/api/v1/ai/connections/{b_connection}", headers=headers).status_code == 404
+    b_local = await ctx.local_connection(world.tenant_b)
+    assert api.get(f"/api/v1/ai/connections/{b_local}/served-models").status_code == 404
+    added = api.post(f"/api/v1/ai/connections/{b_local}/models", json={"slug": "b-model"}, headers=headers)
+    assert added.status_code == 404
 
     assert str(b_profile) not in {p["id"] for p in api.get("/api/v1/ai/profiles").json()}
     body = await _profile_body(ctx)

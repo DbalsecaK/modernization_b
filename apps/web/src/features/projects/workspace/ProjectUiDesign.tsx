@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { AlertTriangle, Check, FileCode2, Loader2, MessageSquare, RotateCcw, ShieldCheck } from 'lucide-react'
+import { AlertTriangle, Check, Download, FileCode2, Loader2, MessageSquare, RotateCcw, ShieldCheck } from 'lucide-react'
 import { cn } from '@/lib/cn'
 import { formatDateTime } from '@/lib/format'
 import { ApiError } from '@/api/client'
 import type { ProjectDetail } from '@/api/projects'
 import {
   CODE_VIEW,
+  figmaExportUrl,
   PROTOTYPE_COMMENT,
   PROTOTYPE_EDIT,
   prototypePageUrl,
@@ -95,6 +96,16 @@ export function ProjectUiDesign({ project, onOpenRuns }: { project: ProjectDetai
         <CardHeader
           title={t('uiDesign.catalog')}
           subtitle={t('uiDesign.catalogHint', { count: all.length, mapsets: mapsets.join(', ') || '—' })}
+          action={
+            <a
+              href={figmaExportUrl(project.id)}
+              download
+              aria-describedby="figma-export-help"
+              className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-surface px-3 text-sm font-medium text-text hover:bg-surface-2"
+            >
+              <Download size={14} aria-hidden /> {t('uiDesign.figmaExport')}
+            </a>
+          }
         />
         <CardBody>
           <div role="group" aria-label={t('uiDesign.catalog')} className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
@@ -120,6 +131,9 @@ export function ProjectUiDesign({ project, onOpenRuns }: { project: ProjectDetai
               </button>
             ))}
           </div>
+          <p id="figma-export-help" className="mt-3 text-xs text-muted">
+            {t('uiDesign.figmaExportHelp')}
+          </p>
         </CardBody>
       </Card>
       <ScreenDesign

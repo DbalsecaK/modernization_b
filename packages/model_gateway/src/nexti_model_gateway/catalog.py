@@ -4,14 +4,16 @@ upstream provider, versioned prices and the default effort table."""
 import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from decimal import Decimal
 from typing import Any
 
-from sqlalchemy import select, update
+from sqlalchemy import select, text, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from nexti_core.db.models import EffortMapping, ModelFamily, ModelOffering, ModelVersion, PriceVersion
 from nexti_model_gateway.openrouter import OpenRouterClient, Pricing
+from nexti_model_gateway.rules import OPENAI_COMPATIBLE
 
 EFFORTS = ("low", "medium", "high", "max")
 
@@ -58,6 +60,7 @@ async def sync_catalog(conn: AsyncConnection, client: OpenRouterClient) -> SyncR
             )
             .on_conflict_do_update(
                 index_elements=["provider_slug"],
+                index_where=text("tenant_id IS NULL"),
                 set_={
                     "name": model.name,
                     "context_window": model.context_window,
@@ -156,3 +159,97 @@ async def load_offerings(conn: AsyncConnection, client: OpenRouterClient, versio
                 .on_conflict_do_nothing()
             )
     return len(endpoints)
+
+
+LOCAL_FAMILY = "local"
+FREE = Pricing(Decimal(0), Decimal(0))
+
+
+@dataclass(frozen=True)
+class LocalModel:
+    """A model served by a tenant's openai-compatible connection (ADR-0030), entered by hand or listed by the server."""
+
+    slug: str
+    name: str
+    context_window: int | None = None
+    max_output_tokens: int | None = None
+    capabilities: tuple[str, ...] = ()
+    zdr: bool = False
+    price: Pricing = FREE
+
+
+async def add_local_model(
+    conn: AsyncConnection,
+    tenant_id: uuid.UUID,
+    connection_id: uuid.UUID,
+    model: LocalModel,
+    by: uuid.UUID | None = None,
+) -> uuid.UUID:
+    """The tenant's version (unique slug within the tenant) and its offering on the connection, with the price the
+    tenant declares (zero by default) and an empty effort table. Idempotent: an existing offering is refreshed."""
+    family_id = (
+        await conn.execute(
+            pg_insert(ModelFamily)
+            .values(key=LOCAL_FAMILY, name="Local models")
+            .on_conflict_do_update(index_elements=["key"], set_={"key": LOCAL_FAMILY})
+            .returning(ModelFamily.id)
+        )
+    ).scalar_one()
+    version_id = (
+        await conn.execute(
+            pg_insert(ModelVersion)
+            .values(
+                family_id=family_id,
+                tenant_id=tenant_id,
+                provider_slug=model.slug,
+                canonical_slug=model.slug,
+                name=model.name,
+                context_window=model.context_window,
+                capabilities=list(model.capabilities),
+            )
+            .on_conflict_do_update(
+                index_elements=["tenant_id", "provider_slug"],
+                index_where=text("tenant_id IS NOT NULL"),
+                set_={"status": "available"},
+            )
+            .returning(ModelVersion.id)
+        )
+    ).scalar_one()
+    offering_id: uuid.UUID = (
+        await conn.execute(
+            pg_insert(ModelOffering)
+            .values(
+                version_id=version_id,
+                provider=OPENAI_COMPATIBLE,
+                upstream_provider=f"connection:{connection_id}",
+                tenant_id=tenant_id,
+                connection_id=connection_id,
+                context_window=model.context_window,
+                max_output_tokens=model.max_output_tokens,
+                capabilities=list(model.capabilities),
+                zdr=model.zdr,
+            )
+            .on_conflict_do_update(
+                index_elements=["version_id", "provider", "upstream_provider"],
+                set_={
+                    "context_window": model.context_window,
+                    "max_output_tokens": model.max_output_tokens,
+                    "capabilities": list(model.capabilities),
+                    "zdr": model.zdr,
+                    "status": "available",
+                    "updated_at": datetime.now(UTC),
+                },
+            )
+            .returning(ModelOffering.id)
+        )
+    ).scalar_one()
+    await record_price(conn, offering_id, model.price, "manual", by)
+    # No effort parameter by default: OpenRouter's unified `reasoning` is not part of the OpenAI API every server
+    # accepts. The administrator can set one per offering (spec 12.3).
+    for effort in EFFORTS:
+        await conn.execute(
+            pg_insert(EffortMapping)
+            .values(offering_id=offering_id, effort=effort, parameters={})
+            .on_conflict_do_nothing()
+        )
+    return offering_id

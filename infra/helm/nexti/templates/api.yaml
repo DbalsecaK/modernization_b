@@ -31,6 +31,16 @@ spec:
             {{- include "nexti.containerSecurity" . | nindent 12 }}
           env:
             {{- include "nexti.env" . | nindent 12 }}
+            {{- if .Values.license.enabled }}
+            # Offline license (14.4, ADR-0030): verified at start-up; invalid or expired leaves the platform read-only.
+            - name: LICENSE_FILE
+              value: /etc/nexti/license/license.json
+            - name: LICENSE_SIGNATURE_FILE
+              value: /etc/nexti/license/license.json.sig
+            - name: LICENSE_PUBLIC_KEY
+              valueFrom:
+                secretKeyRef: {name: {{ .Values.license.secretName | quote }}, key: public-key}
+            {{- end }}
           envFrom:
             - secretRef:
                 name: {{ .Values.secretName }}
@@ -45,8 +55,19 @@ spec:
             {{- toYaml .Values.api.resources | nindent 12 }}
           volumeMounts:
             - {name: tmp, mountPath: /tmp}
+            {{- if .Values.license.enabled }}
+            - {name: license, mountPath: /etc/nexti/license, readOnly: true}
+            {{- end }}
       volumes:
         - {name: tmp, emptyDir: {}}
+        {{- if .Values.license.enabled }}
+        - name: license
+          secret:
+            secretName: {{ .Values.license.secretName | quote }}
+            items:
+              - {key: license.json, path: license.json}
+              - {key: license.json.sig, path: license.json.sig}
+        {{- end }}
 ---
 apiVersion: v1
 kind: Service

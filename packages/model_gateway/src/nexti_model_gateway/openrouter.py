@@ -1,7 +1,10 @@
-"""OpenRouter HTTP client (OpenAI-compatible API). Only the gateway uses it.
+"""Model provider HTTP clients (OpenAI chat API). Only the gateway uses them.
 
-Requests pin the upstream provider (`provider.order` + `allow_fallbacks: false`) so the offering, and therefore
-the price, is exactly the one configured, and ask for the usage with its cost (`usage.include`).
+`OpenAICompatibleClient` talks to any server with the OpenAI chat API (vLLM, Ollama, ...) at its own base URL, with
+an optional API key (ADR-0030). `OpenRouterClient` adds OpenRouter's catalog endpoints.
+
+OpenRouter requests pin the upstream provider (`provider.order` + `allow_fallbacks: false`) so the offering, and
+therefore the price, is exactly the one configured, and ask for the usage with its cost (`usage.include`).
 """
 
 from dataclasses import dataclass, field
@@ -107,19 +110,89 @@ def capabilities_from(supported_parameters: list[str], input_modalities: list[st
     return tuple(sorted(caps))
 
 
-class OpenRouterClient:
-    def __init__(self, http: httpx.AsyncClient, base_url: str = BASE_URL) -> None:
+def _auth(api_key: str | None) -> dict[str, str]:
+    return {"Authorization": f"Bearer {api_key}"} if api_key else {}
+
+
+class OpenAICompatibleClient:
+    """`<base>/chat/completions` and `<base>/models` of a server with the OpenAI API. Nothing OpenRouter-only is
+    sent: the gateway builds the body."""
+
+    def __init__(self, http: httpx.AsyncClient, base_url: str) -> None:
         self.http = http
         self.base_url = base_url.rstrip("/")
 
     async def _get(self, path: str, api_key: str | None = None) -> Any:
-        headers = {"Authorization": f"Bearer {api_key}"} if api_key else {}
-        res = await self.http.get(f"{self.base_url}{path}", headers=headers)
+        res = await self.http.get(f"{self.base_url}{path}", headers=_auth(api_key))
         if res.status_code != 200:
             raise ProviderError(
                 res.status_code, "http_error", res.text[:200], retryable=res.status_code in RETRYABLE_STATUS
             )
         return res.json()
+
+    async def served_models(self, api_key: str | None = None) -> list[ModelInfo]:
+        """The models the server lists at `/models` (OpenAI format); vLLM adds `max_model_len`."""
+        data = await self._get("/models", api_key)
+        items = data.get("data", []) if isinstance(data, dict) else []
+        return [
+            ModelInfo(
+                provider_slug=str(m["id"]),
+                canonical_slug=str(m["id"]),
+                name=str(m["id"]),
+                context_window=m.get("max_model_len") if isinstance(m.get("max_model_len"), int) else None,
+                capabilities=(),
+            )
+            for m in items
+            if isinstance(m, dict) and m.get("id")
+        ]
+
+    async def chat(self, api_key: str | None, body: dict[str, Any], timeout_seconds: float) -> ChatResult:
+        try:
+            res = await self.http.post(
+                f"{self.base_url}/chat/completions",
+                json=body,
+                headers=_auth(api_key),
+                timeout=timeout_seconds,
+            )
+        except httpx.TimeoutException as exc:
+            raise ProviderError(408, "timeout", str(exc) or "timeout", retryable=True) from exc
+        except httpx.TransportError as exc:
+            raise ProviderError(503, "network_error", str(exc), retryable=True) from exc
+        try:
+            data = res.json() if res.content else {}
+        except ValueError:  # a server's plain-text error page (vLLM while loading, a proxy)
+            data = {}
+        error = data.get("error") if isinstance(data, dict) else None
+        if res.status_code != 200 or error:
+            code = str((error or {}).get("code", ""))
+            status = int(code) if code.isdigit() else res.status_code
+            message = (error or {}).get("message") or res.text[:200]
+            raise ProviderError(status, "provider_error", str(message)[:300], retryable=status in RETRYABLE_STATUS)
+        usage = data.get("usage") or {}
+        prompt_details = usage.get("prompt_tokens_details") or {}
+        completion_details = usage.get("completion_tokens_details") or {}
+        cost = usage.get("cost")
+        choice = (data.get("choices") or [{}])[0]
+        return ChatResult(
+            request_id=data.get("id"),
+            model=data.get("model") or body.get("model", ""),
+            provider_name=data.get("provider"),
+            content=(choice.get("message") or {}).get("content") or "",
+            usage=ChatUsage(
+                input_tokens=int(usage.get("prompt_tokens") or 0),
+                output_tokens=int(usage.get("completion_tokens") or 0),
+                reasoning_tokens=int(completion_details.get("reasoning_tokens") or 0),
+                cache_read_tokens=int(prompt_details.get("cached_tokens") or 0),
+                cache_write_tokens=int(prompt_details.get("cache_write_tokens") or 0),
+                provider_cost_usd=Decimal(str(cost)) if cost is not None else None,
+            ),
+            raw=data,
+        )
+
+
+class OpenRouterClient(OpenAICompatibleClient):
+    def __init__(self, http: httpx.AsyncClient, base_url: str = BASE_URL) -> None:
+        super().__init__(http, base_url)
 
     async def list_models(self) -> list[ModelInfo]:
         """The public catalog (no API key needed)."""
@@ -164,43 +237,3 @@ class OpenRouterClient:
         """Validates the API key without calling a model (free): limit, usage, free tier."""
         info: dict[str, Any] = (await self._get("/key", api_key))["data"]
         return info
-
-    async def chat(self, api_key: str, body: dict[str, Any], timeout_seconds: float) -> ChatResult:
-        try:
-            res = await self.http.post(
-                f"{self.base_url}/chat/completions",
-                json=body,
-                headers={"Authorization": f"Bearer {api_key}"},
-                timeout=timeout_seconds,
-            )
-        except httpx.TimeoutException as exc:
-            raise ProviderError(408, "timeout", str(exc) or "timeout", retryable=True) from exc
-        except httpx.TransportError as exc:
-            raise ProviderError(503, "network_error", str(exc), retryable=True) from exc
-        data = res.json() if res.content else {}
-        error = data.get("error") if isinstance(data, dict) else None
-        if res.status_code != 200 or error:
-            code = str((error or {}).get("code", ""))
-            status = int(code) if code.isdigit() else res.status_code
-            message = (error or {}).get("message") or res.text[:200]
-            raise ProviderError(status, "provider_error", str(message)[:300], retryable=status in RETRYABLE_STATUS)
-        usage = data.get("usage") or {}
-        prompt_details = usage.get("prompt_tokens_details") or {}
-        completion_details = usage.get("completion_tokens_details") or {}
-        cost = usage.get("cost")
-        choice = (data.get("choices") or [{}])[0]
-        return ChatResult(
-            request_id=data.get("id"),
-            model=data.get("model") or body.get("model", ""),
-            provider_name=data.get("provider"),
-            content=(choice.get("message") or {}).get("content") or "",
-            usage=ChatUsage(
-                input_tokens=int(usage.get("prompt_tokens") or 0),
-                output_tokens=int(usage.get("completion_tokens") or 0),
-                reasoning_tokens=int(completion_details.get("reasoning_tokens") or 0),
-                cache_read_tokens=int(prompt_details.get("cached_tokens") or 0),
-                cache_write_tokens=int(prompt_details.get("cache_write_tokens") or 0),
-                provider_cost_usd=Decimal(str(cost)) if cost is not None else None,
-            ),
-            raw=data,
-        )

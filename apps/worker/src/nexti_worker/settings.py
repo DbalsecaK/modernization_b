@@ -40,6 +40,10 @@ class WorkerSettings(BaseSettings):
     sandbox_docker: str = "docker"
     # Models (M4): through the gateway with the tenant's connection; OpenRouter base URL for tests.
     openrouter_url: str | None = None
+    # False in the air-gapped profile (ADR-0030): OpenRouter is never called, only openai-compatible servers.
+    openrouter_enabled: bool = True
+    # Figma REST API base (ADR-0018); empty: Figma is not read (air-gapped profile, ADR-0030).
+    figma_url: str = "https://api.figma.com/v1"
     # Recorded responses (ADR-0012), development and test only: a folder and replay|record.
     model_cassettes_dir: str = ""
     model_cassettes_mode: Literal["", "replay", "record"] = ""

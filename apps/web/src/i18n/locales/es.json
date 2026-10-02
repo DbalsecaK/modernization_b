@@ -700,6 +700,8 @@
     "notYet": "Aparecen cuando una corrida ejecuta la fase UI sobre fuentes con mapas BMS.",
     "catalog": "Catálogo de pantallas",
     "catalogHint": "{{count}} pantallas leídas de los mapsets {{mapsets}}",
+    "figmaExport": "Exportar a Figma",
+    "figmaExportHelp": "Descarga un plugin de Figma que dibuja estas pantallas con el sistema de diseño. En Figma de escritorio: Plugins → Development → Import plugin from manifest, elige manifest.json de la carpeta descomprimida y ejecuta el plugin.",
     "fieldCount_one": "{{count}} campo",
     "fieldCount_other": "{{count}} campos",
     "version": "Versión",
@@ -1355,7 +1357,8 @@
     "openai": "OpenAI API",
     "anthropic": "Anthropic API",
     "vertex": "Google Vertex AI",
-    "openrouter": "OpenRouter"
+    "openrouter": "OpenRouter",
+    "openaiCompatible": "Servidor compatible con OpenAI (vLLM, Ollama)"
   },
   "capabilities": {
     "toolCalling": "Herramientas",
@@ -1821,6 +1824,43 @@
     "lastSeen": "Último latido",
     "instanceAlive": "Activa",
     "instanceSilent": "Sin latido",
+    "license": {
+      "title": "Licencia",
+      "hint": "La licencia offline de esta instalación (air-gapped y on-premises).",
+      "notRequired": "Este despliegue no necesita licencia.",
+      "readOnly": "La plataforma está en solo lectura: se puede ver todo, pero no se inician ejecuciones ni se crean proyectos o tenants hasta instalar una licencia válida.",
+      "customer": "Cliente",
+      "profile": "Perfil de despliegue",
+      "licenseId": "ID de licencia",
+      "issued": "Emitida",
+      "expires": "Vence",
+      "tenants": "Tenants",
+      "projects": "Proyectos",
+      "usage": "{{used}} de {{max}}",
+      "features": "Funciones",
+      "noFeatures": "Ninguna",
+      "reason": "Motivo",
+      "states": {
+        "not_required": "No requerida",
+        "valid": "Válida",
+        "missing": "Ausente",
+        "invalid": "Inválida",
+        "expired": "Vencida",
+        "over_limits": "Límites excedidos"
+      },
+      "reasons": {
+        "public_key_missing": "La clave pública de la licencia no está configurada.",
+        "public_key_invalid": "La clave pública de la licencia no se puede leer.",
+        "file_not_found": "No se encontró el archivo de licencia.",
+        "signature_not_found": "No se encontró el archivo de firma de la licencia.",
+        "bad_signature": "La firma no coincide: la licencia fue modificada o firmada con otra clave.",
+        "malformed": "El contenido de la licencia no es válido.",
+        "not_yet_valid": "La licencia todavía no es válida.",
+        "expired": "La licencia está vencida.",
+        "max_tenants": "Hay más tenants de los que permite la licencia.",
+        "max_projects": "Hay más proyectos de los que permite la licencia."
+      }
+    },
     "components": {
       "api": "API",
       "worker": "Worker"
@@ -1892,7 +1932,28 @@
     "rotateHint": "Déjala vacía para conservar la actual. Una nueva reemplaza a la anterior.",
     "otherProviders": "Azure AI Foundry, AWS Bedrock y las API directas llegan después con la misma configuración.",
     "requestPrice": "Precio por solicitud (USD)",
-    "saveFailed": "No se pudo completar la acción: {{message}}"
+    "saveFailed": "No se pudo completar la acción: {{message}}",
+    "local": {
+      "providerHint": "Un servidor de modelos con la API de chat de OpenAI dentro de tu red. Sus modelos se agregan a mano y cuestan lo que declares.",
+      "baseUrl": "URL base",
+      "baseUrlHint": "Hasta la versión de la API, p. ej. http://vllm.internal:8000/v1. Las llamadas van a <base>/chat/completions.",
+      "apiKey": "API key (opcional)",
+      "open": "Modelos",
+      "title": "Modelos de {{name}}",
+      "hint": "Agrega los modelos que sirve este servidor, con su id exacto. Solo los ve este tenant.",
+      "listServed": "Listar los modelos del servidor",
+      "served": "Modelos que lista el servidor",
+      "pick": "Elige un modelo…",
+      "noServed": "El servidor no lista modelos: escribe el id a mano.",
+      "serverUnavailable": "El servidor no listó sus modelos; escribe el id a mano.",
+      "slug": "Id del modelo",
+      "slugHint": "Tal como lo nombra el servidor; solo versiones fijas, sin \"latest\".",
+      "contextWindow": "Ventana de contexto (tokens)",
+      "zdr": "El servidor no retiene datos (retención cero)",
+      "priceHint": "USD por millón de tokens, cero por defecto. El registro de consumo guarda los tokens y este costo en cada llamada.",
+      "add": "Agregar modelo",
+      "added": "Modelo {{model}} agregado."
+    }
   },
   "adminForms": {
     "tenantHint": "Crea el cliente, su organización en Keycloak y su primer administrador.",

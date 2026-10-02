@@ -57,6 +57,12 @@ capabilities:
   value: {{ .Values.services.malwareScannerPort | quote }}
 - name: OSV_URL
   value: {{ .Values.services.osvUrl | quote }}
+- name: FIGMA_URL
+  value: {{ .Values.services.figmaUrl | quote }}
+- name: OPENROUTER_ENABLED
+  value: {{ .Values.models.openrouterEnabled | quote }}
+- name: MODEL_SERVERS_ALLOW_PRIVATE_HOSTS
+  value: {{ .Values.models.allowPrivateHosts | quote }}
 - name: SESSION_COOKIE_SECURE
   value: "true"
 - name: NEXTI_PROFILE

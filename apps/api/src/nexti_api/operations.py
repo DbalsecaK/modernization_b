@@ -2,7 +2,8 @@
 the runs in progress across tenants, and the jobs that failed in the last day.
 
 Workers and jobs are Procrastinate's own tables (ADR-0009): a worker is alive while its heartbeat is recent. Runs are
-read with platform scope. Each API and worker instance registers its version and deployment profile (ADR-0024)."""
+read with platform scope. Each API and worker instance registers its version and deployment profile (ADR-0024), and
+the state of the offline license is shown with them (ADR-0030)."""
 
 from datetime import UTC, datetime, timedelta
 from typing import Annotated
@@ -10,6 +11,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Request
 from sqlalchemy import text
 
+from nexti_api import license_gate
 from nexti_api.admin.common import transaction
 from nexti_api.authz.require import Authorized, require_platform
 from nexti_api.schemas import ApiModel
@@ -63,6 +65,8 @@ class PlatformStatus(ApiModel):
     waiting_runs: int
     failed_last_day: int
     recent_failures: list[FailedJobOut]
+    # The offline license (ADR-0030): "not_required" when none is configured (SaaS, development).
+    license: license_gate.LicenseOut
 
 
 @router.get("/status", response_model=PlatformStatus)
@@ -100,4 +104,5 @@ async def status(request: Request, auth: Operator) -> PlatformStatus:
         failed_last_day=len(failed),
         recent_failures=[FailedJobOut(id=f.id, task=f.task_name, queue=f.queue_name, attempts=f.attempts,
                                       failed_at=f.at) for f in failed[:MAX_FAILURES]],
+        license=license_gate.to_out(await license_gate.current(request)),
     )  # fmt: skip
