@@ -242,7 +242,8 @@
   },
   "flows": {
     "modernization": "Modernization",
-    "newFeature": "New feature"
+    "newFeature": "New feature",
+    "independentValidation": "Independent validation"
   },
   "verdict": {
     "PROVEN": "PROVEN",
@@ -275,7 +276,11 @@
     "normalization": "Normalization",
     "consolidation": "Consolidation",
     "specReview": "Spec review",
-    "validation": "Validation"
+    "validation": "Validation",
+    "targetIntake": "Target intake",
+    "mapping": "Mapping",
+    "targetRules": "Target rules",
+    "report": "Report"
   },
   "level": {
     "certified": "Certified",
@@ -432,7 +437,8 @@
       "document": "Document",
       "screenshot": "Screenshot",
       "figma_link": "Figma link",
-      "prototype_link": "Prototype link"
+      "prototype_link": "Prototype link",
+      "target_archive": "Target code (third party)"
     },
     "secretsFound_one": "{{count}} credential found",
     "secretsFound_other": "{{count}} credentials found",
@@ -454,7 +460,8 @@
     },
     "withToken": "With token",
     "tokenKept": "Leave empty to keep the current token.",
-    "branches": "Branches: {{branches}}"
+    "branches": "Branches: {{branches}}",
+    "targetArchiveHint": "A zip with the third party's source and its runnable artifact (a Spring Boot jar)."
   },
   "inventory": {
     "programs": "Programs",
@@ -1086,7 +1093,8 @@
     "flow": "Flow",
     "flowHint": {
       "modernization": "Extract the rules from legacy code and rebuild it on a modern stack, with proof of equivalence.",
-      "newFeature": "Build a new feature from user stories, documents, Figma files or screenshots."
+      "newFeature": "Build a new feature from user stories, documents, Figma files or screenshots.",
+      "independentValidation": "Validate a migration made by a third party: the platform characterizes the legacy and checks their target against it, with a verdict computed by code."
     },
     "artifactLanguage": "Artifact language",
     "artifactLanguageHint": "Language of the specification, documentation and reports. Code identifiers are always in English.",

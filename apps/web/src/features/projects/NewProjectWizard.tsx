@@ -53,7 +53,9 @@ const PROJECT_ROLES = ['projectOwner', 'architect', 'analyst', 'businessReviewer
 const DEFAULT_SOURCES: Record<Flow, string[]> = {
   modernization: ['cobol-cics', 'bms'],
   newFeature: ['user-stories', 'figma'],
+  independentValidation: ['sybase-sp'],
 }
+const FLOWS = ['modernization', 'newFeature', 'independentValidation'] as const
 const DEFAULT_TARGET: Target = {
   architecture: 'microservices-hexagonal',
   backend: 'spring-boot',
@@ -95,6 +97,7 @@ function Wizard({ catalog }: { catalog: Catalog }) {
   const [delivery, setDelivery] = useState<'git' | 'zip'>('git')
   const [git, setGit] = useState<GitInput>({ url: '', branch: 'main', token: '' })
   const [archive, setArchive] = useState<File | null>(null)
+  const [targetArchive, setTargetArchive] = useState<File | null>(null)
   const [documents, setDocuments] = useState<File[]>([])
   const [uiRefs, setUiRefs] = useState<UiReferences>(EMPTY_UI_REFERENCES)
   const [target, setTarget] = useState<Target>(DEFAULT_TARGET)
@@ -121,6 +124,8 @@ function Wizard({ catalog }: { catalog: Catalog }) {
   const optionName = (axis: string, key: string) =>
     catalog.targets.find((o) => o.axis === axis && o.key === key)?.name ?? key
   const index = STEPS.indexOf(step)
+  // Flow 1 and Flow 4 (ADR-0025) start from the legacy code; Flow 4 also brings the third party's target.
+  const legacyCode = flow !== 'newFeature'
   const resetComposition = () => {
     setAgentOverride(null)
     setSkillOverride(null)
@@ -171,9 +176,11 @@ function Wizard({ catalog }: { catalog: Catalog }) {
   async function submit() {
     if (!result) return
     const items: { label: string; run: (id: string) => Promise<unknown> }[] = []
-    if (flow === 'modernization' && delivery === 'zip' && archive)
+    if (legacyCode && delivery === 'zip' && archive)
       items.push({ label: archive.name, run: (id) => uploadInput(id, archive, 'source_archive') })
-    if (flow === 'modernization' && delivery === 'git' && git.url.trim())
+    if (flow === 'independentValidation' && targetArchive)
+      items.push({ label: targetArchive.name, run: (id) => uploadInput(id, targetArchive, 'target_archive') })
+    if (legacyCode && delivery === 'git' && git.url.trim())
       items.push({
         label: git.url.trim(),
         run: (id) =>
@@ -286,8 +293,8 @@ function Wizard({ catalog }: { catalog: Catalog }) {
                 </Field>
                 <div>
                   <div className="mb-2 text-sm font-medium text-text">{t('wizard.flow')}</div>
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    {(['modernization', 'newFeature'] as const).map((f) => (
+                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                    {FLOWS.map((f) => (
                       <ChoiceCard
                         key={f}
                         selected={flow === f}
@@ -314,12 +321,12 @@ function Wizard({ catalog }: { catalog: Catalog }) {
             {step === 'source' && (
               <>
                 <StepTitle
-                  title={t(flow === 'modernization' ? 'wizard.sourceTitle' : 'wizard.inputsTitle')}
-                  hint={t(flow === 'modernization' ? 'wizard.sourceHint' : 'wizard.inputsHint')}
+                  title={t(legacyCode ? 'wizard.sourceTitle' : 'wizard.inputsTitle')}
+                  hint={t(legacyCode ? 'wizard.sourceHint' : 'wizard.inputsHint')}
                 />
                 <div className="flex flex-wrap gap-2">
                   {catalog.sources
-                    .filter((s) => s.flow === flow)
+                    .filter((s) => s.flows.includes(flow))
                     .map((s) => (
                       <Chip
                         key={s.key}
@@ -333,7 +340,7 @@ function Wizard({ catalog }: { catalog: Catalog }) {
                       </Chip>
                     ))}
                 </div>
-                {flow === 'modernization' ? (
+                {legacyCode ? (
                   <>
                     <div className="grid gap-3 sm:grid-cols-2">
                       <ChoiceCard
@@ -353,6 +360,17 @@ function Wizard({ catalog }: { catalog: Catalog }) {
                       <GitSection value={git} onChange={setGit} />
                     ) : (
                       <ArchiveSection value={archive} onChange={setArchive} />
+                    )}
+                    {flow === 'independentValidation' && (
+                      <div>
+                        <div className="mb-2 text-sm font-medium text-text">{t('inputs.kinds.target_archive')}</div>
+                        <ArchiveSection
+                          value={targetArchive}
+                          onChange={setTargetArchive}
+                          hint={t('inputs.targetArchiveHint')}
+                          label={t('inputs.kinds.target_archive')}
+                        />
+                      </div>
                     )}
                   </>
                 ) : (

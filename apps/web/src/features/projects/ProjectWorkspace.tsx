@@ -77,8 +77,8 @@ export function ProjectWorkspace() {
   }
   if (!project.data) return null
   const p = project.data
-  // The inventory tab only applies to modernization projects (the legacy map).
-  const visibleTabs = TABS.filter((id) => p.flow === 'modernization' || id !== 'inventory')
+  // The inventory tab only applies to the flows that start from legacy code (the legacy map): Flow 1 and Flow 4.
+  const visibleTabs = TABS.filter((id) => p.flow !== 'newFeature' || id !== 'inventory')
   const owners = p.team.filter((m) => m.roleKey === 'projectOwner').map((m) => m.displayName)
 
   return (

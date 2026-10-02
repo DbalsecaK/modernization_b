@@ -846,6 +846,7 @@
           "kind": {
             "enum": [
               "source_archive",
+              "target_archive",
               "document",
               "screenshot"
             ],
@@ -1659,7 +1660,8 @@
           "flow": {
             "enum": [
               "modernization",
-              "newFeature"
+              "newFeature",
+              "independentValidation"
             ],
             "title": "Flow",
             "type": "string"
@@ -3169,7 +3171,8 @@
           "key": {
             "enum": [
               "modernization",
-              "newFeature"
+              "newFeature",
+              "independentValidation"
             ],
             "title": "Key",
             "type": "string"
@@ -3916,6 +3919,7 @@
           "kind": {
             "enum": [
               "source_archive",
+              "target_archive",
               "document",
               "screenshot",
               "figma_link",
@@ -6212,7 +6216,8 @@
           "flow": {
             "enum": [
               "modernization",
-              "newFeature"
+              "newFeature",
+              "independentValidation"
             ],
             "title": "Flow",
             "type": "string"
@@ -6363,7 +6368,8 @@
           "flow": {
             "enum": [
               "modernization",
-              "newFeature"
+              "newFeature",
+              "independentValidation"
             ],
             "title": "Flow",
             "type": "string"
@@ -6484,7 +6490,8 @@
           "flow": {
             "enum": [
               "modernization",
-              "newFeature"
+              "newFeature",
+              "independentValidation"
             ],
             "title": "Flow",
             "type": "string"
@@ -8433,13 +8440,17 @@
             ],
             "title": "Adapter"
           },
-          "flow": {
-            "enum": [
-              "modernization",
-              "newFeature"
-            ],
-            "title": "Flow",
-            "type": "string"
+          "flows": {
+            "items": {
+              "enum": [
+                "modernization",
+                "newFeature",
+                "independentValidation"
+              ],
+              "type": "string"
+            },
+            "title": "Flows",
+            "type": "array"
           },
           "key": {
             "title": "Key",
@@ -8460,7 +8471,7 @@
         "required": [
           "key",
           "name",
-          "flow",
+          "flows",
           "adapter",
           "requiredSkills"
         ],

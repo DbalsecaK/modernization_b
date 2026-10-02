@@ -1,0 +1,41 @@
+# Interface mapping for the independent validation of BillPay (NexTI Flow 4, ADR-0025): how the legacy
+# dbo.sp_pago_orden maps to this service. Written by the vendor, approved by the customer at gate C2.
+programs:
+  - legacy: dbo.sp_pago_orden
+    endpoint: {method: POST, path: /api/v1/payments}
+    request:
+      orderId: "@i_orden"
+      companyId: "@i_empresa"
+      serviceCode: "@i_servicio"
+      accountType: "@i_tipo_cuenta"
+      accountNumber: "@i_cuenta"
+      amount: "@i_valor"
+      channel: "@i_canal"
+      processDate: "@i_fecha_proceso"
+    response:
+      returns: status
+      outputs:
+        "@o_movimiento": movementId
+        "@o_mensaje": message
+    tables:
+      db_pagos..pg_orden:
+        table: orders
+        columns: {ord_numero: order_no, ord_empresa: company_id, ord_estado: status, ord_fecha_pago: paid_at, ord_comision: fee}
+      db_admin..ad_tarifa_empresa:
+        table: company_fees
+        columns: {tar_empresa: company_id, tar_servicio: service_code, tar_valor: fee, tar_separada: charged_apart}
+      db_admin..ad_servicio:
+        table: services
+        columns: {srv_codigo: code, srv_tarifa: fee}
+      db_cuentas..ct_cuenta:
+        table: accounts
+        columns: {cta_numero: account_no, cta_tipo: account_type, cta_saldo: balance}
+    calls:
+      db_cuentas..sp_debito:
+        property: core.debit-url
+        arguments: {"@i_cuenta": account, "@i_tipo": type, "@i_valor": amount, "@i_referencia": reference}
+        answer: {returns: code, outputs: {"@o_secuencial": sequence}}
+    masks:
+      - {path: "calls:cobis..sp_cerror", reason: "The legacy error log; the service logs through its own framework"}
+      - {path: "outputs:@o_movimiento", when: rejected, reason: "A rejected payment has no movement in the service"}
+      - {path: "calls:db_cuentas..sp_debito", when: rejected, reason: "The legacy records its calls inside the transaction: a rolled-back payment leaves no record of them"}

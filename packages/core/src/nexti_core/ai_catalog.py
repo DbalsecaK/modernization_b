@@ -1,7 +1,7 @@
 """Phases of the flows and agent roles (spec 6.1, 7.2, 9.3): the axes of the model assignment matrix (12.5).
 Keys match the prototype (`apps/web`)."""
 
-# Flow 1 (modernization) and flow 2 (new feature from documents).
+# Flow 1 (modernization), flow 2 (new feature from documents) and flow 4 (independent validation, ADR-0025).
 PHASES: tuple[str, ...] = (
     "preflight",
     "inventory",
@@ -21,6 +21,10 @@ PHASES: tuple[str, ...] = (
     "consolidation",
     "specReview",
     "validation",
+    "targetIntake",
+    "mapping",
+    "targetRules",
+    "report",
 )
 
 AGENT_ROLES: tuple[str, ...] = (

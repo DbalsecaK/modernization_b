@@ -524,7 +524,7 @@ class SourceOptionDefinition(Base):
     key: Mapped[str] = mapped_column(Text, primary_key=True)
     position: Mapped[int] = mapped_column(Integer, nullable=False)
     name: Mapped[str] = mapped_column(Text, nullable=False)
-    flow: Mapped[str] = mapped_column(Text, nullable=False)
+    flows: Mapped[list[str]] = mapped_column(ARRAY(Text), nullable=False)
     adapter_key: Mapped[str | None] = mapped_column(ForeignKey("source_adapter.key"))
     required_skills: Mapped[list[str]] = mapped_column(ARRAY(Text), nullable=False, server_default=text("'{}'"))
 

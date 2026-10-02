@@ -2641,7 +2641,7 @@ export interface components {
              * Kind
              * @enum {string}
              */
-            kind: "source_archive" | "document" | "screenshot";
+            kind: "source_archive" | "target_archive" | "document" | "screenshot";
             /**
              * Notes
              * @default
@@ -2943,7 +2943,7 @@ export interface components {
              * Flow
              * @enum {string}
              */
-            flow: "modernization" | "newFeature";
+            flow: "modernization" | "newFeature" | "independentValidation";
             /** Projectid */
             projectId?: string | null;
             /** Skills */
@@ -3481,7 +3481,7 @@ export interface components {
              * Key
              * @enum {string}
              */
-            key: "modernization" | "newFeature";
+            key: "modernization" | "newFeature" | "independentValidation";
             /** Phases */
             phases: components["schemas"]["PhaseOut"][];
         };
@@ -3739,7 +3739,7 @@ export interface components {
              * Kind
              * @enum {string}
              */
-            kind: "source_archive" | "document" | "screenshot" | "figma_link" | "prototype_link";
+            kind: "source_archive" | "target_archive" | "document" | "screenshot" | "figma_link" | "prototype_link";
             /** Name */
             name: string;
             /** Notes */
@@ -4497,7 +4497,7 @@ export interface components {
              * Flow
              * @enum {string}
              */
-            flow: "modernization" | "newFeature";
+            flow: "modernization" | "newFeature" | "independentValidation";
             /**
              * Maxiterations
              * @default 3
@@ -4547,7 +4547,7 @@ export interface components {
              * Flow
              * @enum {string}
              */
-            flow: "modernization" | "newFeature";
+            flow: "modernization" | "newFeature" | "independentValidation";
             /**
              * Id
              * Format: uuid
@@ -4595,7 +4595,7 @@ export interface components {
              * Flow
              * @enum {string}
              */
-            flow: "modernization" | "newFeature";
+            flow: "modernization" | "newFeature" | "independentValidation";
             /**
              * Id
              * Format: uuid
@@ -5307,11 +5307,8 @@ export interface components {
         SourceOptionOut: {
             /** Adapter */
             adapter: string | null;
-            /**
-             * Flow
-             * @enum {string}
-             */
-            flow: "modernization" | "newFeature";
+            /** Flows */
+            flows: ("modernization" | "newFeature" | "independentValidation")[];
             /** Key */
             key: string;
             /** Name */

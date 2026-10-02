@@ -11,7 +11,7 @@ class Limits:
     max_archive_bytes: int = 200 * MB
     max_document_bytes: int = 25 * MB
     max_screenshot_bytes: int = 10 * MB
-    # Archives (the code zip and Office documents, which are zips too).
+    # Archives (the code zips and Office documents, which are zips too).
     max_entries: int = 50_000
     max_uncompressed_bytes: int = 2_000 * MB
     max_compression_ratio: int = 200
@@ -24,6 +24,7 @@ class Limits:
     def max_bytes(self, kind: str) -> int:
         return {
             "source_archive": self.max_archive_bytes,
+            "target_archive": self.max_archive_bytes,
             "document": self.max_document_bytes,
             "screenshot": self.max_screenshot_bytes,
         }[kind]

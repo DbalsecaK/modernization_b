@@ -309,4 +309,7 @@ async def test_the_catalog_endpoint_serves_the_synced_catalog(api: TestClient, w
     skill = api.get("/api/v1/catalog/skills/bms-parsing").json()
     assert skill["content"].startswith("# BMS map parsing")
     assert api.get("/api/v1/catalog/skills/nope").status_code == 404
-    assert [f["key"] for f in catalog["flows"]] == ["modernization", "newFeature"]
+    assert [f["key"] for f in catalog["flows"]] == ["modernization", "newFeature", "independentValidation"]
+    flows = {s["key"]: s["flows"] for s in catalog["sources"]}
+    assert flows["sybase-sp"] == ["modernization", "independentValidation"]  # Flow 4 validates legacy migrations
+    assert flows["figma"] == ["newFeature"]

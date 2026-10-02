@@ -242,7 +242,8 @@
   },
   "flows": {
     "modernization": "Modernización",
-    "newFeature": "Nueva funcionalidad"
+    "newFeature": "Nueva funcionalidad",
+    "independentValidation": "Validación independiente"
   },
   "verdict": {
     "PROVEN": "PROVEN",
@@ -275,7 +276,11 @@
     "normalization": "Normalización",
     "consolidation": "Consolidación",
     "specReview": "Revisión de spec",
-    "validation": "Validación"
+    "validation": "Validación",
+    "targetIntake": "Ingesta del destino",
+    "mapping": "Mapeo",
+    "targetRules": "Reglas del destino",
+    "report": "Informe"
   },
   "level": {
     "certified": "Certificado",
@@ -432,7 +437,8 @@
       "document": "Documento",
       "screenshot": "Captura de pantalla",
       "figma_link": "Link de Figma",
-      "prototype_link": "Link de prototipo"
+      "prototype_link": "Link de prototipo",
+      "target_archive": "Código del destino (tercero)"
     },
     "secretsFound_one": "{{count}} credencial encontrada",
     "secretsFound_other": "{{count}} credenciales encontradas",
@@ -454,7 +460,8 @@
     },
     "withToken": "Con token",
     "tokenKept": "Déjalo vacío para conservar el token actual.",
-    "branches": "Ramas: {{branches}}"
+    "branches": "Ramas: {{branches}}",
+    "targetArchiveHint": "Un zip con el código fuente del tercero y su artefacto ejecutable (un jar de Spring Boot)."
   },
   "inventory": {
     "programs": "Programas",
@@ -1086,7 +1093,8 @@
     "flow": "Flujo",
     "flowHint": {
       "modernization": "Extrae las reglas del código legacy y reconstrúyelo en un stack moderno, con prueba de equivalencia.",
-      "newFeature": "Construye una funcionalidad nueva desde historias de usuario, documentos, Figma o capturas."
+      "newFeature": "Construye una funcionalidad nueva desde historias de usuario, documentos, Figma o capturas.",
+      "independentValidation": "Valida una migración hecha por un tercero: la plataforma caracteriza el legado y contrasta su destino con él, con un veredicto calculado por código."
     },
     "artifactLanguage": "Idioma de los artefactos",
     "artifactLanguageHint": "Idioma de la especificación, la documentación y los informes. Los identificadores de código siempre van en inglés.",

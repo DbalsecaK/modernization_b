@@ -10,6 +10,7 @@ import yaml
 
 from nexti_core.composition.model import (
     AXES,
+    FLOWS,
     Agent,
     Catalog,
     CompatibilityRule,
@@ -40,12 +41,21 @@ def adapters(data: Mapping[str, Any]) -> tuple[SourceAdapter, ...]:
     )
 
 
+def option_flows(value: Any) -> tuple[str, ...]:
+    """The `flow` of a source option: one flow or a list of them (a legacy technology serves Flow 1 and Flow 4)."""
+    found = (str(value),) if isinstance(value, str) else tuple(str(v) for v in value or ())
+    unknown = set(found) - set(FLOWS)
+    if not found or unknown:
+        raise ValueError(f"a source option needs known flows, got {value!r}")
+    return found
+
+
 def sources(data: Mapping[str, Any]) -> tuple[SourceOption, ...]:
     return tuple(
         SourceOption(
             key=str(o["key"]),
             name=str(o["name"]),
-            flow=str(o["flow"]),
+            flows=option_flows(o["flow"]),
             adapter=o.get("adapter"),
             required_skills=tuple(o.get("required_skills") or ()),
         )

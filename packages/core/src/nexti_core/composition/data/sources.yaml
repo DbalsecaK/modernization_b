@@ -1,5 +1,6 @@
 # Source adapters (spec 8.2, 8.3, 8.6) and the source options a project picks.
-# Flow 1 picks legacy technologies; flow 2 picks the kinds of documentary inputs it brings (7.1).
+# Flow 1 picks legacy technologies; flow 2 picks the kinds of documentary inputs it brings (7.1). Flow 4 validates a
+# third party's migration of the same legacy technologies (3.3, ADR-0025): `flow` takes one flow or a list.
 # `required_skills`: a composition with this source and without these skills gets a "missing skill" warning (9.7).
 
 adapters:
@@ -10,13 +11,13 @@ adapters:
   - {key: plsql, name: "PL/SQL (Oracle)", level: experimental, version: 0.2.0, validation: goldenMasterLocal}
 
 options:
-  - {key: cobol, name: "COBOL", flow: modernization, adapter: cobol-batch}
-  - {key: cobol-cics, name: "COBOL CICS", flow: modernization, adapter: cobol-cics-bms, required_skills: [exec-cics]}
-  - {key: bms, name: "BMS maps", flow: modernization, adapter: cobol-cics-bms, required_skills: [bms-parsing]}
-  - {key: db2, name: "DB2", flow: modernization, adapter: cobol-batch}
-  - {key: sybase-sp, name: "Sybase ASE stored procedures", flow: modernization, adapter: sybase-sp, required_skills: [sybase-tsql]}
-  - {key: aspx-webforms, name: "ASP.NET WebForms", flow: modernization, adapter: aspx-dotnet, required_skills: [webforms]}
-  - {key: dotnet-framework, name: "C# .NET Framework 4.8", flow: modernization, adapter: aspx-dotnet}
+  - {key: cobol, name: "COBOL", flow: [modernization, independentValidation], adapter: cobol-batch}
+  - {key: cobol-cics, name: "COBOL CICS", flow: [modernization, independentValidation], adapter: cobol-cics-bms, required_skills: [exec-cics]}
+  - {key: bms, name: "BMS maps", flow: [modernization, independentValidation], adapter: cobol-cics-bms, required_skills: [bms-parsing]}
+  - {key: db2, name: "DB2", flow: [modernization, independentValidation], adapter: cobol-batch}
+  - {key: sybase-sp, name: "Sybase ASE stored procedures", flow: [modernization, independentValidation], adapter: sybase-sp, required_skills: [sybase-tsql]}
+  - {key: aspx-webforms, name: "ASP.NET WebForms", flow: [modernization, independentValidation], adapter: aspx-dotnet, required_skills: [webforms]}
+  - {key: dotnet-framework, name: "C# .NET Framework 4.8", flow: [modernization, independentValidation], adapter: aspx-dotnet}
   - {key: user-stories, name: "User stories (Jira)", flow: newFeature}
   - {key: functional-document, name: "Functional document (Word)", flow: newFeature}
   - {key: user-manual, name: "User manual (PDF)", flow: newFeature}

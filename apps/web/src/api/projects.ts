@@ -19,7 +19,7 @@ export type Repository = Schemas['RepositoryOut']
 export type RepositoryInput = Schemas['RepositoryIn']
 export type Target = Schemas['TargetIn']
 export type Flow = ProjectCreateInput['flow']
-export type FileKind = 'source_archive' | 'document' | 'screenshot'
+export type FileKind = 'source_archive' | 'target_archive' | 'document' | 'screenshot'
 export type LinkKind = 'figma_link' | 'prototype_link'
 
 export const AXES = ['architecture', 'backend', 'frontend', 'database', 'cloud'] as const

@@ -28,7 +28,7 @@ from nexti_core.spec.screens import ScreenSpec
 from nexti_graph import GraphStore, Scope
 from nexti_ingest import documents as document_reader
 from nexti_ingest import figma
-from nexti_ingest.archive import read_text_files
+from nexti_ingest.archive import read_all_files, read_text_files
 from nexti_ingest.documents import Document
 from nexti_model_gateway.gateway import CallContext, NoProfileError
 from nexti_model_gateway.service import GatewayService
@@ -155,6 +155,7 @@ class WorkerProjectPort:
         self.graph = graph
         self.scope = Scope(run.tenant_id, run.project_id)
         self._files: list[SourceFile] | None = None
+        self._target: dict[str, bytes] | None = None
         self._sandboxes = sandboxes
         self._legacy = legacy
         self._figma = figma_reader
@@ -164,28 +165,45 @@ class WorkerProjectPort:
         return scoped_connection(self.engine, DbScope(tenant_id=self.run.tenant_id))
 
     async def source_files(self) -> list[SourceFile]:
-        if self._files is not None:
-            return self._files
+        if self._files is None:
+            self._files = await self._archive_files("source_archive")
+        return self._files
+
+    async def target_archive(self) -> dict[str, bytes]:
+        """Flow 4 (ADR-0025): every file of the newest third-party target, binary included, never mixed with the
+        legacy code."""
+        if self._target is None:
+            self._target = {}
+            for data in await self._archives("target_archive"):
+                self._target |= read_all_files(data)
+        return self._target
+
+    async def _archive_files(self, kind: str) -> list[SourceFile]:
+        files: list[SourceFile] = []
+        for data in await self._archives(kind):
+            files += read_zip(data)
+        return files
+
+    async def _archives(self, kind: str) -> list[bytes]:
+        """The bytes of the latest version of each accepted archive of a kind."""
         async with self._db() as conn:
             rows = (
                 await conn.execute(
                     text(
-                        "SELECT name, object_key FROM input_artifact WHERE project_id = :p AND kind = 'source_archive' "
+                        "SELECT name, object_key FROM input_artifact WHERE project_id = :p AND kind = :k "
                         "AND status = 'accepted' AND deleted_at IS NULL ORDER BY name, version DESC"
                     ),
-                    {"p": self.run.project_id},
+                    {"p": self.run.project_id, "k": kind},
                 )
             ).all()
-        files: list[SourceFile] = []
+        found: list[bytes] = []
         seen: set[str] = set()
         for row in rows:
             if row.name in seen or self.objects is None:  # the latest version of each archive only
                 continue
             seen.add(row.name)
-            data = b"".join(await self.objects.read(row.object_key))
-            files += read_zip(data)
-        self._files = files
-        return files
+            found.append(b"".join(await self.objects.read(row.object_key)))
+        return found
 
     # -- inputs of Flow 2 (M7) -----------------------------------------------------------------------------------
     async def _accepted(self, kind: str) -> list[Any]:
@@ -585,6 +603,11 @@ class WorkerProjectPort:
             ).scalar_one_or_none()  # fmt: skip
         return key
 
+    async def load_artifact(self, path: str) -> str | None:
+        """The newest version of one generated file (the IV&V inventory, mapping and comparison, ADR-0025)."""
+        key = await self._artifact_key(path)
+        return await self._get(key) if key else None
+
     async def load_golden_master(self) -> GoldenMaster | None:
         key = await self._artifact_key("characterization/golden_master.json")
         return GoldenMaster.model_validate_json(await self._get(key)) if key else None
@@ -597,6 +620,7 @@ class WorkerProjectPort:
                     text("SELECT DISTINCT ON (path) path, object_key, rules FROM generated_artifact "
                          "WHERE project_id = :p AND path NOT LIKE 'design/%' AND path NOT LIKE 'characterization/%' "
                          "AND path NOT LIKE 'frontend/%' AND path NOT LIKE 'inputs/%' AND path NOT LIKE 'infra/%' "
+                         "AND path NOT LIKE 'ivv/%' "
                          "ORDER BY path, created_at DESC"),
                     {"p": self.run.project_id},
                 )

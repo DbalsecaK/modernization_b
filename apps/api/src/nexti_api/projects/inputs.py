@@ -25,13 +25,13 @@ from nexti_ingest import Rejection, ScannerUnavailableError, figma_link, prototy
 router = APIRouter(prefix="/api/v1/projects/{project_id}/inputs", tags=["inputs"])
 ViewProject = Annotated[Authorized, Depends(require_project("project.view"))]
 UploadInputs = Annotated[Authorized, Depends(require_project("input.upload"))]
-FileKind = Literal["source_archive", "document", "screenshot"]
+FileKind = Literal["source_archive", "target_archive", "document", "screenshot"]
 LinkKind = Literal["figma_link", "prototype_link"]
 
 
 class InputOut(ApiModel):
     id: uuid.UUID
-    kind: Literal["source_archive", "document", "screenshot", "figma_link", "prototype_link"]
+    kind: Literal["source_archive", "target_archive", "document", "screenshot", "figma_link", "prototype_link"]
     name: str
     version: int | None
     status: Literal["accepted", "rejected", "deleted"]
@@ -220,7 +220,7 @@ async def input_content(
         ).one_or_none()  # fmt: skip
     if row is None or row.status != "accepted" or row.object_key is None:
         raise not_found("input")
-    if row.kind == "source_archive":
+    if row.kind in ("source_archive", "target_archive"):
         obj = names.project(project_id)
         if not await request.app.state.fga.check(names.user(auth.user_id), "code_download", obj):
             await deny(request, auth.session, auth.tenant_id, "code.download", obj)

@@ -69,19 +69,29 @@ export function DocumentsSection({ value, onChange }: { value: File[]; onChange:
   )
 }
 
-export function ArchiveSection({ value, onChange }: { value: File | null; onChange: (v: File | null) => void }) {
+export function ArchiveSection({
+  value,
+  onChange,
+  hint,
+  label,
+}: {
+  value: File | null
+  onChange: (v: File | null) => void
+  hint?: string
+  label?: string
+}) {
   const { t } = useTranslation()
   return (
     <div>
       <label className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-border px-6 py-6 text-center hover:bg-surface-2">
         <Upload size={20} className="text-muted" />
         <span className="text-sm text-text">{t('setup.dropArchive')}</span>
-        <span className="text-xs text-muted">{t('setup.archiveHint')}</span>
+        <span className="text-xs text-muted">{hint ?? t('setup.archiveHint')}</span>
         <input
           type="file"
           accept=".zip,application/zip"
           className="sr-only"
-          aria-label={t('wizard.uploadZip')}
+          aria-label={label ?? t('wizard.uploadZip')}
           onChange={(e) => onChange(e.target.files?.[0] ?? null)}
         />
       </label>
