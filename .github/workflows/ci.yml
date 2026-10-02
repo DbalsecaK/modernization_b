@@ -96,8 +96,10 @@ jobs:
           docker build -q -t nexti-sandbox-docs:1 infra/sandbox/docs
           # The Spring Boot pack on Oracle (M8b, ADR-0021): Oracle Database Free 23ai with the JDK and ojdbc11.
           docker build -q -t nexti-sandbox-java-oracle:1 infra/sandbox/java-oracle
-          # The deployment pack (M8b, ADR-0021): OpenTofu with the AWS, Azure and random providers mirrored offline.
-          docker build -q -t nexti-sandbox-iac:1 infra/sandbox/iac
+          # The Spring Boot pack on MySQL (M12, ADR-0027): MySQL 8.4 on loopback with the JDK and Connector/J.
+          docker build -q -t nexti-sandbox-java-mysql:1 infra/sandbox/java-mysql
+          # The deployment pack (M8b, ADR-0021; M12, ADR-0027): OpenTofu with the AWS, Azure, Google and random providers mirrored offline.
+          docker build -q -t nexti-sandbox-iac:2 infra/sandbox/iac
           # The hardening sandbox (M9a, ADR-0023): gitleaks over the generated files, without network.
           docker build -q -t nexti-sandbox-hardening:1 infra/sandbox/hardening
       # Includes the M3 acceptance: worker processes (python -m nexti_worker) killed and replaced, and generated code

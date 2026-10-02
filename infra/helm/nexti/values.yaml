@@ -72,11 +72,12 @@ worker:
     images:
       - nexti-sandbox-java:2
       - nexti-sandbox-java-oracle:1
+      - nexti-sandbox-java-mysql:1
       - nexti-sandbox-dotnet:1
       - nexti-sandbox-frontend:1
       - nexti-sandbox-web:1
       - nexti-sandbox-docs:1
-      - nexti-sandbox-iac:1
+      - nexti-sandbox-iac:2
       - nexti-sandbox-hardening:1
 
 ingress:

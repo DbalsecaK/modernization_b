@@ -52,11 +52,12 @@ jobs:
           # The sandboxes the worker pulls into its daemon (infra/helm/nexti, worker.sandbox.images).
           docker build -q -t "$r/nexti-sandbox-java:2" infra/sandbox/java && docker push -q "$r/nexti-sandbox-java:2"
           docker build -q -t "$r/nexti-sandbox-java-oracle:1" infra/sandbox/java-oracle && docker push -q "$r/nexti-sandbox-java-oracle:1"
+          docker build -q -t "$r/nexti-sandbox-java-mysql:1" infra/sandbox/java-mysql && docker push -q "$r/nexti-sandbox-java-mysql:1"
           docker build -q -t "$r/nexti-sandbox-dotnet:1" infra/sandbox/dotnet && docker push -q "$r/nexti-sandbox-dotnet:1"
           docker build -q -t "$r/nexti-sandbox-frontend:1" -f infra/sandbox/frontend/Dockerfile . && docker push -q "$r/nexti-sandbox-frontend:1"
           docker build -q -t "$r/nexti-sandbox-web:1" -f infra/sandbox/web/Dockerfile . && docker push -q "$r/nexti-sandbox-web:1"
           docker build -q -t "$r/nexti-sandbox-docs:1" infra/sandbox/docs && docker push -q "$r/nexti-sandbox-docs:1"
-          docker build -q -t "$r/nexti-sandbox-iac:1" infra/sandbox/iac && docker push -q "$r/nexti-sandbox-iac:1"
+          docker build -q -t "$r/nexti-sandbox-iac:2" infra/sandbox/iac && docker push -q "$r/nexti-sandbox-iac:2"
           docker build -q -t "$r/nexti-sandbox-hardening:1" infra/sandbox/hardening && docker push -q "$r/nexti-sandbox-hardening:1"
       - name: Sign and attest the SBOM (cosign keyless)
         env:

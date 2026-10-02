@@ -22,12 +22,12 @@ axes:
     - {key: none, name: "No frontend"}
   database:
     - {key: postgresql, name: "PostgreSQL", level: certified, wave: 1}
-    - {key: mysql, name: "MySQL", level: assisted, wave: 2}
+    - {key: mysql, name: "MySQL", level: certified, wave: 2}
     - {key: sqlserver, name: "SQL Server", level: certified, wave: 1}
     - {key: oracle, name: "Oracle", level: certified, wave: 1}
     - {key: mongodb, name: "MongoDB", level: experimental, wave: 3}
   cloud:
     - {key: aws, name: "AWS", level: certified, wave: 1}
     - {key: azure, name: "Azure", level: certified, wave: 1}
-    - {key: gcp, name: "GCP", level: assisted, wave: 2}
+    - {key: gcp, name: "GCP", level: certified, wave: 2}
     - {key: kubernetes, name: "Kubernetes (on-prem)"}
