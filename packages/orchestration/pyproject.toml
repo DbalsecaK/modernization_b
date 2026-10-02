@@ -21,6 +21,7 @@ dependencies = [
   "nexti-core",
   "nexti-pack-spring-boot",
   "nexti-pack-dotnet",
+  "nexti-pack-go",
   "nexti-sandbox",
   "nexti-ui",
   "nexti-verification",
@@ -41,6 +42,7 @@ nexti-agents = { workspace = true }
 nexti-core = { workspace = true }
 nexti-pack-spring-boot = { workspace = true }
 nexti-pack-dotnet = { workspace = true }
+nexti-pack-go = { workspace = true }
 nexti-sandbox = { workspace = true }
 nexti-ui = { workspace = true }
 nexti-verification = { workspace = true }
