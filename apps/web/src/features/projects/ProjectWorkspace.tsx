@@ -20,6 +20,7 @@ import { ProjectArchitecture } from './workspace/ProjectArchitecture'
 import { ProjectCosts } from './workspace/ProjectCosts'
 import { ProjectBacklog } from './workspace/ProjectBacklog'
 import { ProjectIvv } from './workspace/ProjectIvv'
+import { ProjectDelta } from './workspace/ProjectDelta'
 
 const TABS = [
   'overview',
@@ -31,6 +32,7 @@ const TABS = [
   'code',
   'traceability',
   'ivv',
+  'delta',
   'validation',
   'backlog',
   'runs',
@@ -40,7 +42,7 @@ const TABS = [
 ] as const
 export type ProjectTab = (typeof TABS)[number]
 // Connected so far (M2: overview, inputs, settings; M3: runs, activity; M4: specification, traceability, validation;
-// M5: uiDesign; M6: inventory; P2: architecture, code, costs; M7b: backlog; M10: ivv);
+// M5: uiDesign; M6: inventory; P2: architecture, code, costs; M7b: backlog; M10: ivv; M11: delta);
 // the others fill in as the pipeline produces their content.
 const CONNECTED: ProjectTab[] = [
   'overview',
@@ -52,6 +54,7 @@ const CONNECTED: ProjectTab[] = [
   'code',
   'traceability',
   'ivv',
+  'delta',
   'validation',
   'backlog',
   'runs',
@@ -82,12 +85,14 @@ export function ProjectWorkspace() {
   const p = project.data
   // The inventory tab only applies to the flows that start from code: Flow 1 and Flow 4 (the legacy map) and Flow 3
   // (the AS-IS inventory of the application it extends, ADR-0026). Flow 3 has no UI delta, so no UI design tab.
-  // The IV&V tab (the third party's target, its mapping and report) only exists in Flow 4.
+  // The IV&V tab (the third party's target, its mapping and report) only exists in Flow 4, and the Delta tab (the
+  // baseline, the delta design, its files and DELTA.md) only in Flow 3.
   const visibleTabs = TABS.filter(
     (id) =>
       (p.flow !== 'newFeature' || id !== 'inventory') &&
       (p.flow !== 'extendExisting' || id !== 'uiDesign') &&
-      (p.flow === 'independentValidation' || id !== 'ivv'),
+      (p.flow === 'independentValidation' || id !== 'ivv') &&
+      (p.flow === 'extendExisting' || id !== 'delta'),
   )
   // A link to a tab this flow does not have opens the overview.
   const tab = visibleTabs.includes(requested) ? requested : 'overview'
@@ -131,6 +136,7 @@ export function ProjectWorkspace() {
       {tab === 'code' && <ProjectCode project={p} onOpenRuns={() => setTab('runs')} />}
       {tab === 'traceability' && <ProjectTraceability project={p} onOpenRuns={() => setTab('runs')} />}
       {tab === 'ivv' && <ProjectIvv project={p} onOpenRuns={() => setTab('runs')} />}
+      {tab === 'delta' && <ProjectDelta project={p} onOpenRuns={() => setTab('runs')} />}
       {tab === 'validation' && <ProjectValidation project={p} onOpenRuns={() => setTab('runs')} />}
       {tab === 'runs' && <ProjectRuns project={p} />}
       {tab === 'costs' && <ProjectCosts project={p} onOpenRuns={() => setTab('runs')} />}

@@ -343,7 +343,8 @@
       "activity": "Activity",
       "settings": "Settings",
       "backlog": "Backlog",
-      "ivv": "IV&V"
+      "ivv": "IV&V",
+      "delta": "Delta"
     },
     "createdOn": "Created {{date}}",
     "runsLater": "Runs start with the orchestration engine (next milestone).",
@@ -360,7 +361,8 @@
       "runs": "Runs appear when the pipeline starts",
       "costs": "Costs appear with the first model calls of the pipeline",
       "activity": "Activity appears when the agents start working",
-      "ivv": "The third party target, its mapping and the report appear after the target intake"
+      "ivv": "The third party target, its mapping and the report appear after the target intake",
+      "delta": "The baseline, the delta design and its files appear after the AS-IS intake"
     },
     "openRuns": "Runs"
   },
@@ -953,7 +955,10 @@
       "logs": "Logs",
       "targetRuns": "Target runs",
       "contractMapped": "Contract mapped",
-      "rulesCovered": "Rules covered"
+      "rulesCovered": "Rules covered",
+      "regression": "Regression",
+      "contractKept": "Contract kept",
+      "fitness": "Fitness functions"
     },
     "status": {
       "passed": "Passed",
@@ -2813,5 +2818,39 @@
     "similarity": "similarity {{value}}",
     "report": "Report",
     "reportHint": "The report of the independent validation, written by code from the verdict."
+  },
+  "delta": {
+    "loading": "Loading the delta…",
+    "loadError": "The delta could not be loaded",
+    "emptyTitle": "No delta yet",
+    "notYet": "The AS-IS inventory, the baseline, the delta design and its files appear as the pipeline produces them.",
+    "inventory": "AS-IS inventory",
+    "inventoryHint": "What the worker read of the existing application: its endpoints and its tables.",
+    "noEndpoints": "No endpoints were found in the application.",
+    "noTables": "No tables were found in the application.",
+    "baseline": "Baseline",
+    "baselineHint": "The application's tests run before the delta. Every one that passes here must still pass after it.",
+    "passing_one": "{{count}} test passing",
+    "passing_other": "{{count}} tests passing",
+    "noTests": "No test passed before the delta: the regression check stays not checked and the verdict cannot be PROVEN.",
+    "alreadyFailing_one": "{{count}} test already failing before the delta",
+    "alreadyFailing_other": "{{count}} tests already failing before the delta",
+    "alreadyFailingHint": "They do not count as a regression.",
+    "design": "Delta design",
+    "designHint": "The changes the architect proposed from the approved stories and the AS-IS inventory. It is approved at gate C3.",
+    "changes_one": "{{count}} change",
+    "changes_other": "{{count}} changes",
+    "noChanges": "The design has no changes.",
+    "reuses": "Reuses",
+    "tables": "Tables",
+    "newTables": "New tables",
+    "files": "Files",
+    "decisions": "Decisions",
+    "deltaFiles": "Delta files",
+    "deltaFilesHint": "Only the delta is kept: no existing file is deleted. Each file opens in the Code tab.",
+    "added": "New files",
+    "changed": "Changed files",
+    "report": "DELTA.md",
+    "reportHint": "The new and changed files, the stories and the verdict, written by code."
   }
 }

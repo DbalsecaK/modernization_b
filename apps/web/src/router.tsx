@@ -16,10 +16,12 @@ import { PlatformPage } from '@/features/platform/PlatformPage'
 import { AccountPage } from '@/features/auth/AccountPage'
 import { NotFoundPage } from '@/features/NotFoundPage'
 
-const tabSearch = (search: Record<string, unknown>): { tab?: string; rule?: string; view?: string } => ({
+// `file` opens a file of the Code tab by its path (the Delta tab links its new and changed files).
+const tabSearch = (search: Record<string, unknown>): { tab?: string; rule?: string; view?: string; file?: string } => ({
   tab: typeof search.tab === 'string' ? search.tab : undefined,
   rule: typeof search.rule === 'string' ? search.rule : undefined,
   view: typeof search.view === 'string' ? search.view : undefined,
+  file: typeof search.file === 'string' ? search.file : undefined,
 })
 
 const rootRoute = createRootRoute({ component: Outlet, notFoundComponent: NotFoundPage })

@@ -343,7 +343,8 @@
       "activity": "Actividad",
       "settings": "Configuración",
       "backlog": "Backlog",
-      "ivv": "IV&V"
+      "ivv": "IV&V",
+      "delta": "Delta"
     },
     "createdOn": "Creado el {{date}}",
     "runsLater": "Las ejecuciones arrancan con el motor de orquestación (próximo hito).",
@@ -360,7 +361,8 @@
       "runs": "Las ejecuciones aparecen cuando arranca el pipeline",
       "costs": "Los costos aparecen con las primeras llamadas a modelos del pipeline",
       "activity": "La actividad aparece cuando los agentes empiezan a trabajar",
-      "ivv": "El target del tercero, su mapeo y el informe aparecen tras la recepción del target"
+      "ivv": "El target del tercero, su mapeo y el informe aparecen tras la recepción del target",
+      "delta": "La línea base, el diseño del delta y sus archivos aparecen tras la recepción del AS-IS"
     },
     "openRuns": "Ejecuciones"
   },
@@ -953,7 +955,10 @@
       "logs": "Registros",
       "targetRuns": "El target se ejecuta",
       "contractMapped": "Contrato mapeado",
-      "rulesCovered": "Reglas cubiertas"
+      "rulesCovered": "Reglas cubiertas",
+      "regression": "Regresión",
+      "contractKept": "Contrato intacto",
+      "fitness": "Fitness functions"
     },
     "status": {
       "passed": "Pasa",
@@ -2813,5 +2818,39 @@
     "similarity": "similitud {{value}}",
     "report": "Informe",
     "reportHint": "El informe de la validación independiente, escrito por código a partir del veredicto."
+  },
+  "delta": {
+    "loading": "Cargando el delta…",
+    "loadError": "No se pudo cargar el delta",
+    "emptyTitle": "Aún no hay delta",
+    "notYet": "El inventario AS-IS, la línea base, el diseño del delta y sus archivos aparecen a medida que el pipeline los produce.",
+    "inventory": "Inventario AS-IS",
+    "inventoryHint": "Lo que el worker leyó de la aplicación existente: sus endpoints y sus tablas.",
+    "noEndpoints": "No se encontraron endpoints en la aplicación.",
+    "noTables": "No se encontraron tablas en la aplicación.",
+    "baseline": "Línea base",
+    "baselineHint": "Las pruebas de la aplicación corridas antes del delta. Toda la que pasa aquí debe seguir pasando después.",
+    "passing_one": "{{count}} prueba pasa",
+    "passing_other": "{{count}} pruebas pasan",
+    "noTests": "Ninguna prueba pasaba antes del delta: el chequeo de regresión queda sin comprobar y el veredicto no puede ser PROVEN.",
+    "alreadyFailing_one": "{{count}} prueba ya fallaba antes del delta",
+    "alreadyFailing_other": "{{count}} pruebas ya fallaban antes del delta",
+    "alreadyFailingHint": "No cuentan como regresión.",
+    "design": "Diseño del delta",
+    "designHint": "Los cambios que propuso el arquitecto a partir de las historias aprobadas y del inventario AS-IS. Se aprueba en la compuerta C3.",
+    "changes_one": "{{count}} cambio",
+    "changes_other": "{{count}} cambios",
+    "noChanges": "El diseño no tiene cambios.",
+    "reuses": "Reutiliza",
+    "tables": "Tablas",
+    "newTables": "Tablas nuevas",
+    "files": "Archivos",
+    "decisions": "Decisiones",
+    "deltaFiles": "Archivos del delta",
+    "deltaFilesHint": "Solo se guarda el delta: nunca se borra un archivo existente. Cada archivo se abre en la pestaña Código.",
+    "added": "Archivos nuevos",
+    "changed": "Archivos cambiados",
+    "report": "DELTA.md",
+    "reportHint": "Los archivos nuevos y cambiados, las historias y el veredicto, escritos por código."
   }
 }
