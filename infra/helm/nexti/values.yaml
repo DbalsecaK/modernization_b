@@ -73,8 +73,10 @@ worker:
       - nexti-sandbox-java:2
       - nexti-sandbox-java-oracle:1
       - nexti-sandbox-java-mysql:1
+      - nexti-sandbox-java-mongodb:1
       - nexti-sandbox-java-quarkus:1
       - nexti-sandbox-dotnet:1
+      - nexti-sandbox-go:1
       - nexti-sandbox-frontend:2
       - nexti-sandbox-web:1
       - nexti-sandbox-docs:1

@@ -13,7 +13,7 @@ axes:
     - {key: spring-boot, name: "Java Spring Boot", level: certified, wave: 1}
     - {key: quarkus, name: "Java Quarkus", level: certified, wave: 2}
     - {key: dotnet-10, name: ".NET 10", level: certified, wave: 1}
-    - {key: go, name: "Go", level: experimental, wave: 3}
+    - {key: go, name: "Go", level: certified, wave: 3}
     - {key: nextjs, name: "Next.js", level: assisted, wave: 2}
   frontend:
     - {key: react, name: "React", level: certified, wave: 1}
@@ -25,7 +25,7 @@ axes:
     - {key: mysql, name: "MySQL", level: certified, wave: 2}
     - {key: sqlserver, name: "SQL Server", level: certified, wave: 1}
     - {key: oracle, name: "Oracle", level: certified, wave: 1}
-    - {key: mongodb, name: "MongoDB", level: experimental, wave: 3}
+    - {key: mongodb, name: "MongoDB", level: certified, wave: 3}
   cloud:
     - {key: aws, name: "AWS", level: certified, wave: 1}
     - {key: azure, name: "Azure", level: certified, wave: 1}
