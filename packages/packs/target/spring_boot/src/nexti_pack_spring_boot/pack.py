@@ -8,7 +8,7 @@ from typing import Any
 
 from nexti_core.spec.characterization import GoldenMaster, Scalar
 from nexti_core.spec.equivalence import EquivalenceRun
-from nexti_pack_spring_boot import oracle
+from nexti_pack_spring_boot import mysql, oracle
 from nexti_pack_spring_boot.build import IMAGE, compile_and_test
 from nexti_pack_spring_boot.canary import Mutation, mutations
 from nexti_pack_spring_boot.design import Design, Port, UseCase
@@ -157,5 +157,44 @@ class SpringBootOraclePack(SpringBootPack):
         return {"name": self.name, "image": self.image, "database": self.database}
 
 
+class SpringBootMySqlPack(SpringBootPack):
+    """The same pack with MySQL as its persistence (ADR-0027): the MySQL schema, the adapters asked for MySQL SQL,
+    MySQL Connector/J in the project and the golden master run against MySQL in its sandbox."""
+
+    image = mysql.IMAGE
+    database = "mysql"
+
+    def skeleton(self, design: Design) -> dict[str, str]:
+        files = super().skeleton(design)
+        files[SCHEMA] = mysql.schema(design)
+        files["pom.xml"] = files["pom.xml"].replace(
+            "<dependency><groupId>org.postgresql</groupId><artifactId>postgresql</artifactId><scope>runtime</scope>"
+            "</dependency>",
+            "<dependency><groupId>com.mysql</groupId><artifactId>mysql-connector-j</artifactId>"
+            "<scope>runtime</scope></dependency>",
+        )
+        return files
+
+    def adapter_request(self, design: Design, port: str, files: Mapping[str, str]) -> str:
+        return (
+            f"Write the JDBC adapter Jdbc{port} of the port {port}. The database is MySQL 8.4 with a strict sql_mode: "
+            "use MySQL SQL (LIMIT n; no RETURNING; booleans are BOOLEAN, i.e. TINYINT(1); timestamps are DATETIME(3) "
+            "in UTC). Write the identifiers exactly as the schema does: a name the schema quotes with backticks (a "
+            "reserved word, e.g. `condition`) is quoted the same way in every statement.\n\n"
+            f"Design:\n{design.model_dump_json(indent=1)}\n\nExisting files:\n{self.existing(files, design)}\n\n"
+            f"Target schema (MySQL):\n{files[SCHEMA]}"
+        )
+
+    async def run_equivalence(
+        self, sandbox: Sandbox, files: dict[str, str], design: Design, use_case: UseCase, master: GoldenMaster,
+        defaults: dict[str, Scalar] | None = None,
+    ) -> EquivalenceRun:  # fmt: skip
+        return await mysql.run_equivalence(sandbox, files, design, use_case, master, defaults)
+
+    def describe(self) -> dict[str, Any]:
+        return {"name": self.name, "image": self.image, "database": self.database}
+
+
 PACK = SpringBootPack()
 ORACLE_PACK = SpringBootOraclePack()
+MYSQL_PACK = SpringBootMySqlPack()
