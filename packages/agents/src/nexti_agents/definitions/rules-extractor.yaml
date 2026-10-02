@@ -1,6 +1,6 @@
 # Agent card (spec 9.2). The system prompt arrives with the orchestration engine (M3).
 id: rules-extractor
-version: 2.1.0
+version: 2.2.0
 order: 2
 name: "Business rules extractor"
 name_es: "Extractor de reglas de negocio"
@@ -17,4 +17,6 @@ relative_cost: 3
 # Deterministic recommendation (spec 9.4): the first rule that matches gives the reason.
 recommend:
   - when: {flow: modernization}
+    reason: legacySource
+  - when: {flow: independentValidation}
     reason: legacySource

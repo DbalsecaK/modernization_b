@@ -341,7 +341,8 @@
       "costs": "Costs",
       "activity": "Activity",
       "settings": "Settings",
-      "backlog": "Backlog"
+      "backlog": "Backlog",
+      "ivv": "IV&V"
     },
     "createdOn": "Created {{date}}",
     "runsLater": "Runs start with the orchestration engine (next milestone).",
@@ -357,7 +358,8 @@
       "backlog": "The backlog appears with the Jira / Azure DevOps link",
       "runs": "Runs appear when the pipeline starts",
       "costs": "Costs appear with the first model calls of the pipeline",
-      "activity": "Activity appears when the agents start working"
+      "activity": "Activity appears when the agents start working",
+      "ivv": "The third party target, its mapping and the report appear after the target intake"
     },
     "openRuns": "Runs"
   },
@@ -947,7 +949,10 @@
       "dbNotPublic": "Database not public",
       "noSecretsInCode": "No secrets in code",
       "tags": "Tags",
-      "logs": "Logs"
+      "logs": "Logs",
+      "targetRuns": "Target runs",
+      "contractMapped": "Contract mapped",
+      "rulesCovered": "Rules covered"
     },
     "status": {
       "passed": "Passed",
@@ -2582,7 +2587,14 @@
         "C2": "Screens and prototypes",
         "C3": "Architecture and design",
         "C4": "Final sign-off"
-      }
+      },
+      "ivvHint": "Interface mapping between the legacy and the target",
+      "ivvOpen": "Review the mapping",
+      "ivvReady": "The mapping has no problems: it is ready for C2.",
+      "ivvProblems_one": "The mapping has {{count}} problem. Correct it in the IV&V tab before approving.",
+      "ivvProblems_other": "The mapping has {{count}} problems. Correct them in the IV&V tab before approving.",
+      "ivvNoMapping": "There is no mapping yet: the target has not been taken in.",
+      "ivvUnknown": "The state of the mapping could not be loaded. Review it in the IV&V tab before approving."
     },
     "status": {
       "queued": "Queued",
@@ -2740,5 +2752,60 @@
       "failed": "Push failed",
       "ready": "ZIP"
     }
+  },
+  "ivv": {
+    "loading": "Loading the independent validation…",
+    "loadError": "The independent validation could not be loaded",
+    "emptyTitle": "No target taken in yet",
+    "notYet": "The third party target, its mapping and the report appear after the target intake phase.",
+    "inventory": "Target inventory",
+    "inventoryHint": "What the worker read of the third party target: its endpoints and its tables.",
+    "mainClass": "Main class: {{value}}",
+    "artifact": "Artifact: {{value}}",
+    "schema": "Schema: {{value}}",
+    "endpoints_one": "{{count}} endpoint",
+    "endpoints_other": "{{count}} endpoints",
+    "noEndpoints": "No endpoints were found in the target.",
+    "endpoint": "Endpoint",
+    "handler": "Handler",
+    "request": "Request fields",
+    "response": "Response fields",
+    "tables_one": "{{count}} table",
+    "tables_other": "{{count}} tables",
+    "noTables": "No tables were found in the target.",
+    "table": "Table",
+    "columns": "Columns",
+    "key": "Key",
+    "mapping": "Interface mapping",
+    "mappingHint": "How each legacy program, field and table maps to the target. It is approved at gate C2.",
+    "mappingUpdated": "Last saved {{date}}. It is approved at gate C2.",
+    "mappingEditor": "Interface mapping (YAML)",
+    "readyBadge": "Ready for C2",
+    "problemsBadge_one": "{{count}} problem",
+    "problemsBadge_other": "{{count}} problems",
+    "readyForC2": "The server found no problems in the mapping: it is ready for gate C2.",
+    "problemsTitle_one": "{{count}} problem must be corrected before approving C2",
+    "problemsTitle_other": "{{count}} problems must be corrected before approving C2",
+    "gapsTitle_one": "{{count}} gap found at the target intake",
+    "gapsTitle_other": "{{count}} gaps found at the target intake",
+    "gapsHint": "What the proposed mapping could not match by name. Fill it in the mapping.",
+    "save": "Save mapping",
+    "discard": "Discard changes",
+    "saveHint": "Saving with problems is allowed; the validation fails while any remains.",
+    "savedReady": "Mapping saved. It has no problems.",
+    "savedWithProblems_one": "Mapping saved with {{count}} problem.",
+    "savedWithProblems_other": "Mapping saved with {{count}} problems.",
+    "saveError": "The mapping was not saved: {{detail}}",
+    "noPermission": "Only someone who can approve gate C2 can change the mapping.",
+    "comparison": "Rule comparison",
+    "comparisonHint": "The approved legacy rules compared with the rules found in the target. Evidence for the report: the execution decides the verdict.",
+    "present": "Found in the target",
+    "missing": "Not found",
+    "extra": "Only in the target",
+    "none": "None",
+    "inTarget": "In the target: {{name}}",
+    "similarity": "similarity {{value}}",
+    "report": "Report",
+    "reportHint": "The report of the independent validation, written by code from the verdict."
   }
 }

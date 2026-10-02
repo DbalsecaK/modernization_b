@@ -176,7 +176,8 @@ def _like(expected: str | None, actual: Any) -> str | None:
         if re.fullmatch(r"-?\d+\.\d+", expected):
             scale = len(expected.split(".")[1])
             return str(Decimal(text).quantize(Decimal(1).scaleb(-scale)))
-        if re.fullmatch(r"-?\d+", expected) and re.fullmatch(r"-?\d+(\.0+)?", text):
+        # an integer, not a code with leading zeros (an account number "0012345678" stays text)
+        if re.fullmatch(r"-?(0|[1-9]\d*)", expected) and re.fullmatch(r"-?\d+(\.0+)?", text):
             return str(int(Decimal(text)))
         if re.fullmatch(r"\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(\.\d+)?", expected):
             moment = datetime.fromisoformat(text.strip().replace(" ", "T"))

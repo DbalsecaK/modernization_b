@@ -150,6 +150,9 @@ def test_independent_validation_offers_the_legacy_sources_and_needs_the_analysis
     result = evaluate(catalog, request, agents=agents)
     assert result.ok, result.problems
     assert result.uncovered_phases == ()
+    proposed = evaluate(catalog, request)  # the proposal of the wizard: the legacy readers and the Control agents
+    assert {"legacy-analyst", "rules-extractor"} <= set(proposed.agents)
+    assert (proposed.ok, proposed.uncovered_phases) == (True, ())
     without = evaluate(catalog, request, agents=["rules-extractor", *catalog.mandatory_agents])
     assert without.uncovered_phases == ("inventory",)
     figma = evaluate(catalog, Request("independentValidation", ("figma",), request.target), agents=agents)

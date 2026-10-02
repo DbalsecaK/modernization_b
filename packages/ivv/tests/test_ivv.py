@@ -139,3 +139,11 @@ def test_the_stored_inventory_reads_back_the_same() -> None:
 
     found = target_inventory(archive())
     assert TargetInventory.from_dict(json.loads(json.dumps(asdict(found), default=list))) == found
+
+
+def test_codes_with_leading_zeros_are_compared_as_text() -> None:
+    from nexti_ivv.runner import _like
+
+    assert _like("0012345678", "0012345678") == "0012345678"
+    assert _like("7001", 7001.0) == "7001"
+    assert _like("2.0000", "2") == "2.0000"

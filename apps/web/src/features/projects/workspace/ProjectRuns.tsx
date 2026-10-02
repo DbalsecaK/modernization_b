@@ -1,4 +1,5 @@
 import { useState, type ReactElement } from 'react'
+import { useNavigate } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
 import { AlertTriangle, CheckCircle2, Circle, Loader2, PauseCircle, Play, Square, XCircle } from 'lucide-react'
 import { cn } from '@/lib/cn'
@@ -18,6 +19,7 @@ import {
   type RunDetail,
 } from '@/api/runs'
 import { useMe } from '@/api/session'
+import { useIvv } from '@/api/ivv'
 import { Badge, Button, Card, CardBody, CardHeader, EmptyState, Table, Td, Th } from '@/components/ui/primitives'
 import { Textarea, toast } from '@/components/ui/overlay'
 import { QuestionList } from '@/features/decisions/QuestionCard'
@@ -314,6 +316,8 @@ function GateCard({
   const [comment, setComment] = useState('')
   const key = gate.gate as Gate
   const allowed = project.permissions.includes(GATE_PERMISSION[key]) && !launchedByMe
+  // Flow 4's C2 approves the interface mapping (ADR-0025): the approver sees whether it is complete first.
+  const ivvMapping = project.flow === 'independentValidation' && key === 'C2'
   const send = (approve: boolean) =>
     decide.mutate(
       { runId, gate: key, approve, comment },
@@ -324,8 +328,12 @@ function GateCard({
     )
   return (
     <Card>
-      <CardHeader title={t('runsPage.gate.title', { gate: key })} subtitle={t(`runsPage.gate.hint.${key}`)} />
+      <CardHeader
+        title={t('runsPage.gate.title', { gate: key })}
+        subtitle={ivvMapping ? t('runsPage.gate.ivvHint') : t(`runsPage.gate.hint.${key}`)}
+      />
       <CardBody className="space-y-3">
+        {ivvMapping && <IvvMappingStatus projectId={project.id} />}
         {launchedByMe && <p className="text-sm text-muted">{t('runsPage.gate.segregation')}</p>}
         {!allowed && !launchedByMe && <p className="text-sm text-muted">{t('runsPage.gate.noPermission')}</p>}
         <Textarea
@@ -346,5 +354,33 @@ function GateCard({
         </div>
       </CardBody>
     </Card>
+  )
+}
+
+/** Gate C2 of Flow 4: the mapping's problems the server found, with a link to correct them in the IV&V tab. */
+function IvvMappingStatus({ projectId }: { projectId: string }) {
+  const { t } = useTranslation()
+  const navigate = useNavigate()
+  const ivv = useIvv(projectId)
+  const open = () =>
+    void navigate({ to: '.', search: ((prev: Record<string, unknown>) => ({ ...prev, tab: 'ivv' })) as never })
+  const problems = ivv.data?.problems.length ?? 0
+  const status = ivv.isLoading
+    ? t('ivv.loading')
+    : ivv.isError || !ivv.data
+      ? t('runsPage.gate.ivvUnknown')
+      : ivv.data.mapping === null
+        ? t('runsPage.gate.ivvNoMapping')
+        : problems > 0
+          ? t('runsPage.gate.ivvProblems', { count: problems })
+          : t('runsPage.gate.ivvReady')
+  const tone = ivv.data && ivv.data.mapping !== null && problems === 0 ? 'bg-good/10' : 'bg-warning/12'
+  return (
+    <div className={cn('flex flex-wrap items-center gap-3 rounded-md p-3 text-sm', tone)} role="status">
+      <span className="min-w-0 flex-1 text-text-2">{status}</span>
+      <Button size="sm" onClick={open}>
+        {t('runsPage.gate.ivvOpen')}
+      </Button>
+    </div>
   )
 }

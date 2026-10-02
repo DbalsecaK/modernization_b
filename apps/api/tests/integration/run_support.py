@@ -24,8 +24,8 @@ TARGET = {
 }
 # A small but complete team for the modernization flow (every agent_required phase covered).
 TEAM = {
-    "legacy-analyst": "1.4.0",
-    "rules-extractor": "2.1.0",
+    "legacy-analyst": "1.5.0",
+    "rules-extractor": "2.2.0",
     "solution-architect": "1.3.0",
     "backend-dev": "1.5.0",
     "equivalence-validator": "1.4.0",

@@ -341,7 +341,8 @@
       "costs": "Costos",
       "activity": "Actividad",
       "settings": "Configuración",
-      "backlog": "Backlog"
+      "backlog": "Backlog",
+      "ivv": "IV&V"
     },
     "createdOn": "Creado el {{date}}",
     "runsLater": "Las ejecuciones arrancan con el motor de orquestación (próximo hito).",
@@ -357,7 +358,8 @@
       "backlog": "El backlog aparece con el vínculo a Jira / Azure DevOps",
       "runs": "Las ejecuciones aparecen cuando arranca el pipeline",
       "costs": "Los costos aparecen con las primeras llamadas a modelos del pipeline",
-      "activity": "La actividad aparece cuando los agentes empiezan a trabajar"
+      "activity": "La actividad aparece cuando los agentes empiezan a trabajar",
+      "ivv": "El target del tercero, su mapeo y el informe aparecen tras la recepción del target"
     },
     "openRuns": "Ejecuciones"
   },
@@ -947,7 +949,10 @@
       "dbNotPublic": "Base de datos no pública",
       "noSecretsInCode": "Sin secretos en el código",
       "tags": "Etiquetas",
-      "logs": "Registros"
+      "logs": "Registros",
+      "targetRuns": "El target se ejecuta",
+      "contractMapped": "Contrato mapeado",
+      "rulesCovered": "Reglas cubiertas"
     },
     "status": {
       "passed": "Pasa",
@@ -2582,7 +2587,14 @@
         "C2": "Pantallas y prototipos",
         "C3": "Arquitectura y diseño",
         "C4": "Firma final"
-      }
+      },
+      "ivvHint": "Mapeo de interfaz entre el legacy y el target",
+      "ivvOpen": "Revisar el mapeo",
+      "ivvReady": "El mapeo no tiene problemas: está listo para C2.",
+      "ivvProblems_one": "El mapeo tiene {{count}} problema. Corrígelo en la pestaña IV&V antes de aprobar.",
+      "ivvProblems_other": "El mapeo tiene {{count}} problemas. Corrígelos en la pestaña IV&V antes de aprobar.",
+      "ivvNoMapping": "Todavía no hay mapeo: el target no se ha recibido.",
+      "ivvUnknown": "No se pudo cargar el estado del mapeo. Revísalo en la pestaña IV&V antes de aprobar."
     },
     "status": {
       "queued": "En cola",
@@ -2740,5 +2752,60 @@
       "failed": "Push fallido",
       "ready": "ZIP"
     }
+  },
+  "ivv": {
+    "loading": "Cargando la validación independiente…",
+    "loadError": "No se pudo cargar la validación independiente",
+    "emptyTitle": "Todavía no se ha recibido un target",
+    "notYet": "El target del tercero, su mapeo y el informe aparecen tras la fase de recepción del target.",
+    "inventory": "Inventario del target",
+    "inventoryHint": "Lo que el worker leyó del target del tercero: sus endpoints y sus tablas.",
+    "mainClass": "Clase principal: {{value}}",
+    "artifact": "Artefacto: {{value}}",
+    "schema": "Esquema: {{value}}",
+    "endpoints_one": "{{count}} endpoint",
+    "endpoints_other": "{{count}} endpoints",
+    "noEndpoints": "No se encontraron endpoints en el target.",
+    "endpoint": "Endpoint",
+    "handler": "Manejador",
+    "request": "Campos de la petición",
+    "response": "Campos de la respuesta",
+    "tables_one": "{{count}} tabla",
+    "tables_other": "{{count}} tablas",
+    "noTables": "No se encontraron tablas en el target.",
+    "table": "Tabla",
+    "columns": "Columnas",
+    "key": "Clave",
+    "mapping": "Mapeo de interfaz",
+    "mappingHint": "Cómo se corresponde cada programa, campo y tabla del legacy con el target. Se aprueba en la compuerta C2.",
+    "mappingUpdated": "Guardado por última vez el {{date}}. Se aprueba en la compuerta C2.",
+    "mappingEditor": "Mapeo de interfaz (YAML)",
+    "readyBadge": "Listo para C2",
+    "problemsBadge_one": "{{count}} problema",
+    "problemsBadge_other": "{{count}} problemas",
+    "readyForC2": "El servidor no encontró problemas en el mapeo: está listo para la compuerta C2.",
+    "problemsTitle_one": "Hay que corregir {{count}} problema antes de aprobar C2",
+    "problemsTitle_other": "Hay que corregir {{count}} problemas antes de aprobar C2",
+    "gapsTitle_one": "{{count}} vacío encontrado en la recepción del target",
+    "gapsTitle_other": "{{count}} vacíos encontrados en la recepción del target",
+    "gapsHint": "Lo que el mapeo propuesto no pudo emparejar por nombre. Complétalo en el mapeo.",
+    "save": "Guardar mapeo",
+    "discard": "Descartar cambios",
+    "saveHint": "Se puede guardar con problemas; la validación falla mientras quede alguno.",
+    "savedReady": "Mapeo guardado. No tiene problemas.",
+    "savedWithProblems_one": "Mapeo guardado con {{count}} problema.",
+    "savedWithProblems_other": "Mapeo guardado con {{count}} problemas.",
+    "saveError": "El mapeo no se guardó: {{detail}}",
+    "noPermission": "Solo quien puede aprobar la compuerta C2 puede cambiar el mapeo.",
+    "comparison": "Comparación de reglas",
+    "comparisonHint": "Las reglas aprobadas del legacy comparadas con las reglas encontradas en el target. Es evidencia para el informe: la ejecución decide el veredicto.",
+    "present": "Encontradas en el target",
+    "missing": "No encontradas",
+    "extra": "Solo en el target",
+    "none": "Ninguna",
+    "inTarget": "En el target: {{name}}",
+    "similarity": "similitud {{value}}",
+    "report": "Informe",
+    "reportHint": "El informe de la validación independiente, escrito por código a partir del veredicto."
   }
 }
