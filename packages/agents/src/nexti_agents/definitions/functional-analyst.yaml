@@ -1,6 +1,6 @@
 # Agent card (spec 9.2). The system prompt arrives with the orchestration engine (M3).
 id: functional-analyst
-version: 0.9.0
+version: 0.10.0
 order: 5
 name: "Functional analyst"
 name_es: "Analista funcional"
@@ -17,4 +17,6 @@ relative_cost: 2
 # Deterministic recommendation (spec 9.4): the first rule that matches gives the reason.
 recommend:
   - when: {flow: newFeature}
+    reason: documents
+  - when: {flow: extendExisting}
     reason: documents

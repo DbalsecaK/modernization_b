@@ -12,7 +12,7 @@ from nexti_api.schemas import ApiModel
 
 router = APIRouter(prefix="/api/v1/catalog", tags=["catalog"])
 TenantMember = Annotated[Authorized, Depends(require_tenant("tenant.view"))]
-FlowKey = Literal["modernization", "newFeature", "independentValidation"]
+FlowKey = Literal["modernization", "newFeature", "independentValidation", "extendExisting"]
 
 
 class RecommendRuleOut(ApiModel):
@@ -65,7 +65,7 @@ class AdapterOut(ApiModel):
 class SourceOptionOut(ApiModel):
     key: str
     name: str
-    flows: list[FlowKey]  # a legacy technology serves Flow 1 and Flow 4
+    flows: list[FlowKey]  # a legacy technology serves Flow 1 and Flow 4; a kind of document, Flow 2 and Flow 3
     adapter: str | None
     required_skills: list[str]
 

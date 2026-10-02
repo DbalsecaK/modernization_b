@@ -67,7 +67,18 @@ IVV_CHECKS: tuple[tuple[str, str], ...] = (
     ("rules_covered", "Rules covered"),
     ("source_intact", "Source intact"),
 )
-_TITLES = dict(CHECKS) | dict(FRONTEND_CHECKS) | dict(FEATURE_CHECKS) | dict(IAC_CHECKS) | dict(IVV_CHECKS)
+# The checks of a delta added to an existing application (Flow 3, ADR-0026): what worked keeps working, the new
+# criteria pass, the existing contract is kept and the delta respects the application's architecture.
+EXTEND_CHECKS: tuple[tuple[str, str], ...] = (
+    ("regression", "Regression"),
+    ("criteria_covered", "Criteria covered"),
+    ("contract_kept", "Contract kept"),
+    ("fitness", "Fitness functions"),
+    ("canary", "Canary"),
+    ("traced_to_inputs", "Traced to inputs"),
+)
+_TITLES = (dict(CHECKS) | dict(FRONTEND_CHECKS) | dict(FEATURE_CHECKS) | dict(IAC_CHECKS) | dict(IVV_CHECKS)
+           | dict(EXTEND_CHECKS))  # fmt: skip
 _CRITERION = re.compile(r"(?i)ac_?us-?_?0*(\d{1,4})_(\d{1,3})(?![0-9])")
 
 
@@ -323,3 +334,39 @@ def rules_covered(traces: Sequence[RuleTrace]) -> Check:
     return Check(
         "rules_covered", "passed", f"{len(traces)} of {len(traces)} rule(s) reproduced by the target", evidence
     )
+
+
+# -- delta on an existing application (ADR-0026) -------------------------------------------------------------------
+def regression(baseline: Sequence[str], passed: Sequence[str], report_found: bool) -> Check:
+    """Every test that passed in the baseline (the application before the delta) passes after it."""
+    if not report_found:
+        return Check("regression", "failed", "the tests of the extended application did not run (no JUnit report)")
+    if not baseline:
+        return Check("regression", "not_checked", "the application had no passing test before the delta",
+                     {"baseline": []})  # fmt: skip
+    broken = sorted(set(baseline) - set(passed))
+    evidence = {"baseline": len(baseline), "broken": broken}
+    if broken:
+        return Check("regression", "failed", f"{len(broken)} test(s) that passed before fail now: "
+                     f"{', '.join(broken[:5])}"[:1000], evidence)  # fmt: skip
+    return Check("regression", "passed", f"the {len(baseline)} test(s) of the baseline still pass", evidence)
+
+
+def contract_kept(endpoints: Sequence[str], broken: Sequence[str]) -> Check:
+    """Every endpoint of the application before the delta keeps its method, path and request fields."""
+    if not endpoints:
+        return Check("contract_kept", "not_checked", "the application had no endpoint before the delta")
+    evidence = {"endpoints": list(endpoints), "broken": list(broken)}
+    if broken:
+        return Check("contract_kept", "failed", f"endpoints changed or removed: {'; '.join(broken[:5])}"[:1000],
+                     evidence)  # fmt: skip
+    return Check("contract_kept", "passed", f"the {len(endpoints)} existing endpoint(s) are kept", evidence)
+
+
+def fitness(violations: Sequence[str]) -> Check:
+    """The delta's architecture rules: no file deleted, no existing test or build file touched, no SQL in a
+    controller."""
+    if violations:
+        return Check("fitness", "failed", f"{len(violations)} violation(s): {'; '.join(violations[:5])}"[:1000],
+                     {"violations": list(violations)})  # fmt: skip
+    return Check("fitness", "passed", "the delta respects the application's architecture rules", {"violations": []})

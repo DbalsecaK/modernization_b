@@ -197,6 +197,28 @@ async def test_a_target_archive_is_validated_and_guarded_like_the_legacy_code(
     assert api.get(f"/api/v1/projects/{world.project_a}/inputs/{ok.json()['id']}/content").status_code == 403
 
 
+async def test_a_project_extending_an_application_takes_its_code_and_the_request_documents(
+    api: TestClient, admin: dict[str, str], world: World
+) -> None:
+    # Flow 3 (ADR-0026): the existing Spring Boot application as a source archive and the stories as documents.
+    target = {"architecture": "modular-monolith", "backend": "spring-boot", "frontend": "none",
+              "database": "postgresql", "cloud": "aws"}  # fmt: skip
+    body = {"name": f"Extend {uuid.uuid4().hex[:8]}", "flow": "extendExisting", "pipelineTemplate": "bankStandard",
+            "sources": ["spring-boot-app", "user-stories"], "target": target}  # fmt: skip
+    created = api.post("/api/v1/projects", json=body, headers=admin)
+    assert created.status_code == 201, created.text
+    project = uuid.UUID(created.json()["id"])
+    app = zip_bytes({"pom.xml": b"<project/>", "src/main/java/App.java": b"class App {}"})
+    code = upload(api, admin, project, "billpay.zip", app, "source_archive")
+    assert code.status_code == 201, code.text
+    assert (code.json()["kind"], code.json()["findings"]["archive"]["entries"]) == ("source_archive", 2)
+    story = b"# Refunds\n\nAs a customer I want to request a refund of a payment.\n"
+    document = upload(api, admin, project, "refunds.md", story, "document")
+    assert document.status_code == 201, document.text
+    listed = {i["kind"] for i in api.get(f"/api/v1/projects/{project}/inputs").json() if i["status"] == "accepted"}
+    assert listed == {"source_archive", "document"}
+
+
 async def test_screenshots_go_through_the_same_validation(api: TestClient, admin: dict[str, str], world: World) -> None:
     ok = upload(api, admin, world.project_a, f"login-{uuid.uuid4().hex[:4]}.png", png(), "screenshot")
     assert ok.status_code == 201, ok.text

@@ -62,6 +62,7 @@ export function ProjectsPage() {
           <option value="all">{t('projects.allFlows')}</option>
           <option value="modernization">{t('flows.modernization')}</option>
           <option value="newFeature">{t('flows.newFeature')}</option>
+          <option value="extendExisting">{t('flows.extendExisting')}</option>
           <option value="independentValidation">{t('flows.independentValidation')}</option>
         </Select>
         <Select

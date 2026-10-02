@@ -1,4 +1,5 @@
-# The flows (spec 3.1) with their phases and gates (6.1 and 7.2); `independentValidation` is Flow 4 (3.3, ADR-0025).
+# The flows (spec 3.1) with their phases and gates (6.1 and 7.2); `extendExisting` is Flow 3 (ADR-0026) and
+# `independentValidation` is Flow 4 (3.3, ADR-0025).
 # `agent_required`: the composition must have at least one agent acting in that phase (spec 9.4); the others are
 # deterministic (preflight, inventory parsing) or covered by the phases around them.
 cost_unit_usd: 260  # planning figure per unit of an agent's relative cost; calibrated with the evaluations of M3
@@ -42,3 +43,15 @@ flows:
       - {key: targetRules}
       - {key: validation, gate: C4, agent_required: false}
       - {key: report}
+  - key: extendExisting
+    phases:
+      - {key: preflight}
+      - {key: inventory}  # by code (endpoints, fields, tables, services) plus a baseline build of the existing tests
+      - {key: ingestion}
+      - {key: normalization, agent_required: true}
+      - {key: consolidation}
+      - {key: specReview, gate: C1}
+      - {key: design, gate: C3, agent_required: true}
+      - {key: generation, agent_required: true}
+      - {key: validation, gate: C4}  # EXTEND_CHECKS, computed by code
+      - {key: delivery}

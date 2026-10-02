@@ -1034,6 +1034,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/projects/{project_id}/delta": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Delta
+         * @description Everything Flow 3 produced so far (empty before the inventory).
+         */
+        get: operations["get_delta_api_v1_projects__project_id__delta_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/projects/{project_id}/design": {
         parameters: {
             query?: never;
@@ -2983,7 +3003,7 @@ export interface components {
              * Flow
              * @enum {string}
              */
-            flow: "modernization" | "newFeature" | "independentValidation";
+            flow: "modernization" | "newFeature" | "independentValidation" | "extendExisting";
             /** Projectid */
             projectId?: string | null;
             /** Skills */
@@ -3261,6 +3281,27 @@ export interface components {
             /** Tokenstoday */
             tokensToday: number;
         };
+        /** DeltaOut */
+        DeltaOut: {
+            /** Added */
+            added: string[];
+            /** Baseline */
+            baseline: {
+                [key: string]: string[];
+            } | null;
+            /** Changed */
+            changed: string[];
+            /** Design */
+            design: {
+                [key: string]: unknown;
+            } | null;
+            /** Inventory */
+            inventory: {
+                [key: string]: unknown;
+            } | null;
+            /** Report */
+            report: string | null;
+        };
         /**
          * DemoOptionsIn
          * @description Behaviour of the demonstration pipeline (development and test only).
@@ -3521,7 +3562,7 @@ export interface components {
              * Key
              * @enum {string}
              */
-            key: "modernization" | "newFeature" | "independentValidation";
+            key: "modernization" | "newFeature" | "independentValidation" | "extendExisting";
             /** Phases */
             phases: components["schemas"]["PhaseOut"][];
         };
@@ -4563,7 +4604,7 @@ export interface components {
              * Flow
              * @enum {string}
              */
-            flow: "modernization" | "newFeature" | "independentValidation";
+            flow: "modernization" | "newFeature" | "independentValidation" | "extendExisting";
             /**
              * Maxiterations
              * @default 3
@@ -4613,7 +4654,7 @@ export interface components {
              * Flow
              * @enum {string}
              */
-            flow: "modernization" | "newFeature" | "independentValidation";
+            flow: "modernization" | "newFeature" | "independentValidation" | "extendExisting";
             /**
              * Id
              * Format: uuid
@@ -4661,7 +4702,7 @@ export interface components {
              * Flow
              * @enum {string}
              */
-            flow: "modernization" | "newFeature" | "independentValidation";
+            flow: "modernization" | "newFeature" | "independentValidation" | "extendExisting";
             /**
              * Id
              * Format: uuid
@@ -5374,7 +5415,7 @@ export interface components {
             /** Adapter */
             adapter: string | null;
             /** Flows */
-            flows: ("modernization" | "newFeature" | "independentValidation")[];
+            flows: ("modernization" | "newFeature" | "independentValidation" | "extendExisting")[];
             /** Key */
             key: string;
             /** Name */
@@ -8112,6 +8153,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CoverageOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_delta_api_v1_projects__project_id__delta_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeltaOut"];
                 };
             };
             /** @description Validation Error */

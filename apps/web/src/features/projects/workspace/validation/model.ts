@@ -55,11 +55,23 @@ export const IVV_CHECK_KEYS = [
   'source_intact',
 ] as const
 
+/** The checks of a delta's verdict (Flow 3, ADR-0026); its module is `delta-<name>`. */
+export const DELTA_CHECK_KEYS = [
+  'regression',
+  'criteria_covered',
+  'contract_kept',
+  'fitness',
+  'canary',
+  'traced_to_inputs',
+] as const
+
 export const isFrontendModule = (module: string) => module.startsWith('frontend-')
 
 export const isIacModule = (module: string) => module.startsWith('iac-')
 
 export const isIvvModule = (module: string) => module.startsWith('ivv-')
+
+export const isDeltaModule = (module: string) => module.startsWith('delta-')
 
 /** A Flow 2 verdict reports the checks only Flow 2 has. */
 export const isFeatureVerdict = (checks: CheckOut[]) =>
@@ -92,9 +104,11 @@ export function allChecks(checks: CheckOut[], module = ''): CheckView[] {
       ? IAC_CHECK_KEYS
       : isIvvModule(module)
         ? IVV_CHECK_KEYS
-        : isFeatureVerdict(checks)
-          ? FEATURE_CHECK_KEYS
-          : CHECK_KEYS
+        : isDeltaModule(module)
+          ? DELTA_CHECK_KEYS
+          : isFeatureVerdict(checks)
+            ? FEATURE_CHECK_KEYS
+            : CHECK_KEYS
   const byKey = new Map(checks.map((c) => [c.key, c]))
   const known = keys.map((key): CheckView =>
     byKey.has(key)

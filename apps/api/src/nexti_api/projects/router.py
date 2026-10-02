@@ -46,7 +46,7 @@ TenantMember = Annotated[Authorized, Depends(require_tenant("tenant.view"))]
 CreateProjects = Annotated[Authorized, Depends(require_tenant("project.create"))]
 ViewProject = Annotated[Authorized, Depends(require_project("project.view"))]
 ConfigureProject = Annotated[Authorized, Depends(require_project("project.configure"))]
-Flow = Literal["modernization", "newFeature", "independentValidation"]
+Flow = Literal["modernization", "newFeature", "independentValidation", "extendExisting"]
 Autonomy = Literal["guided", "balanced", "autonomous"]
 Key = Annotated[str, Field(min_length=1, max_length=64)]
 # Project permissions the screens use to show or hide actions (the API checks them anyway).

@@ -103,6 +103,27 @@ describe('checks', () => {
     expect(checkTitleKey('contract_mapped')).toBe('validation.checkTitles.contractMapped')
   })
 
+  it('shows the six checks of a delta verdict in their order', () => {
+    // A delta verdict reports criteria_covered and traced_to_inputs too: the module decides, not the Flow 2 keys.
+    const checks = allChecks(
+      [
+        { key: 'criteria_covered', title: 'Criteria covered', status: 'passed', detail: '' },
+        { key: 'regression', title: 'Regression', status: 'failed', detail: '1 test stopped passing' },
+      ],
+      'delta-rate-quote',
+    )
+    expect(checks.map((c) => c.key)).toEqual([
+      'regression',
+      'criteria_covered',
+      'contract_kept',
+      'fitness',
+      'canary',
+      'traced_to_inputs',
+    ])
+    expect(checks.filter((c) => c.missing)).toHaveLength(4)
+    expect(checkTitleKey('contract_kept')).toBe('validation.checkTitles.contractKept')
+  })
+
   it('maps keys and statuses to i18n keys and tones', () => {
     expect(checkTitleKey('same_behaviour')).toBe('validation.checkTitles.sameBehaviour')
     expect(checkStatusKey('not_checked')).toBe('validation.status.notChecked')

@@ -74,18 +74,20 @@ export function ArchiveSection({
   onChange,
   hint,
   label,
+  prompt,
 }: {
   value: File | null
   onChange: (v: File | null) => void
   hint?: string
   label?: string
+  prompt?: string
 }) {
   const { t } = useTranslation()
   return (
     <div>
       <label className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-border px-6 py-6 text-center hover:bg-surface-2">
         <Upload size={20} className="text-muted" />
-        <span className="text-sm text-text">{t('setup.dropArchive')}</span>
+        <span className="text-sm text-text">{prompt ?? t('setup.dropArchive')}</span>
         <span className="text-xs text-muted">{hint ?? t('setup.archiveHint')}</span>
         <input
           type="file"

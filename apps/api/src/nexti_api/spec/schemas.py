@@ -365,3 +365,13 @@ class IvvOut(ApiModel):
 
 class IvvMappingIn(ApiModel):
     mapping: str = Field(min_length=1)
+
+
+# -- delta on an existing application (Flow 3, ADR-0026) ------------------------------------------------------------
+class DeltaOut(ApiModel):
+    inventory: dict[str, Any] | None
+    baseline: dict[str, list[str]] | None
+    design: dict[str, Any] | None
+    added: list[str]
+    changed: list[str]
+    report: str | None
