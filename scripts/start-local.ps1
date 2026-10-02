@@ -121,9 +121,11 @@ try {
       @('nexti-sandbox-web:1', @('build', '-q', '-f', 'infra/sandbox/web/Dockerfile', '-t', 'nexti-sandbox-web:1', '.')),
       @('nexti-sandbox-frontend:2', @('build', '-q', '-f', 'infra/sandbox/frontend/Dockerfile', '-t', 'nexti-sandbox-frontend:2', '.')),
       @('nexti-sandbox-dotnet:1', @('build', '-q', '-t', 'nexti-sandbox-dotnet:1', 'infra/sandbox/dotnet')),
+      @('nexti-sandbox-go:1', @('build', '-q', '-t', 'nexti-sandbox-go:1', 'infra/sandbox/go')),
       @('nexti-sandbox-docs:1', @('build', '-q', '-t', 'nexti-sandbox-docs:1', 'infra/sandbox/docs')),
       @('nexti-sandbox-java-oracle:1', @('build', '-q', '-t', 'nexti-sandbox-java-oracle:1', 'infra/sandbox/java-oracle')),
       @('nexti-sandbox-java-mysql:1', @('build', '-q', '-t', 'nexti-sandbox-java-mysql:1', 'infra/sandbox/java-mysql')),
+      @('nexti-sandbox-java-mongodb:1', @('build', '-q', '-t', 'nexti-sandbox-java-mongodb:1', 'infra/sandbox/java-mongodb')),
       @('nexti-sandbox-java-quarkus:1', @('build', '-q', '-t', 'nexti-sandbox-java-quarkus:1', 'infra/sandbox/java-quarkus')),
       @('nexti-sandbox-iac:2', @('build', '-q', '-t', 'nexti-sandbox-iac:2', 'infra/sandbox/iac')),
       @('nexti-sandbox-hardening:1', @('build', '-q', '-t', 'nexti-sandbox-hardening:1', 'infra/sandbox/hardening'))

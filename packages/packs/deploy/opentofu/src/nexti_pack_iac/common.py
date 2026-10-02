@@ -1,6 +1,6 @@
-"""What the IaC is generated from (spec 8.4, ADR-0021, ADR-0027): the bounded context of the design, the target's
-cloud, database and architecture, and the legacy concepts mapped to managed services (written in the README of the
-IaC)."""
+"""What the IaC is generated from (spec 8.4, ADR-0021, ADR-0027, ADR-0029): the bounded context of the design, the
+target's cloud, database and architecture, and the legacy concepts mapped to managed services (written in the README
+of the IaC)."""
 
 import re
 from collections.abc import Mapping
@@ -12,8 +12,8 @@ from nexti_core.spec.design import Design
 CLOUDS = ("aws", "azure", "gcp")
 # The databases each cloud's generator writes; any other one is not supported there (the generator says so).
 DATABASES = {
-    "aws": ("postgresql", "oracle", "sqlserver", "mysql"),
-    "azure": ("postgresql", "oracle", "sqlserver", "mysql"),
+    "aws": ("postgresql", "oracle", "sqlserver", "mysql", "mongodb"),
+    "azure": ("postgresql", "oracle", "sqlserver", "mysql", "mongodb"),
     "gcp": ("postgresql", "mysql", "sqlserver"),
 }
 SERVICES = {
@@ -27,6 +27,13 @@ SERVICES = {
     "gcp": {"database": "Cloud SQL", "service": "Cloud Run with direct VPC egress",
             "serverless": "Cloud Run with direct VPC egress, scaling to zero instances",
             "secrets": "Secret Manager", "logs": "Cloud Logging (a log bucket with retention)"},
+}  # fmt: skip
+# MongoDB (ADR-0029) runs on each cloud's own MongoDB-compatible service instead of the cloud's managed SQL databases.
+DOCUMENT_SERVICES = {"aws": "Amazon DocumentDB", "azure": "Azure Cosmos DB for MongoDB"}
+# Why a database has no IaC on a cloud, when there is more to say than that the pack does not support it.
+REASONS = {
+    ("gcp", "mongodb"): "GCP has no managed MongoDB-compatible service of its own (MongoDB Atlas on GCP is a "
+                        "third-party service the customer contracts and provisions)",
 }  # fmt: skip
 # What the serverless architecture means on each cloud (README of the IaC).
 SERVERLESS = {
@@ -66,7 +73,10 @@ def unsupported(target: Mapping[str, Any]) -> str:
     if not cloud or cloud not in CLOUDS:
         return ""
     if database not in DATABASES[cloud]:
-        return f"No IaC: the {database} database is not supported on {cloud.upper()} by the deployment pack"
+        reason = REASONS.get((cloud, database))
+        return f"No IaC: the {database} database is not supported on {cloud.upper()} by the deployment pack" + (
+            f": {reason}" if reason else ""
+        )
     return ""
 
 
@@ -101,8 +111,11 @@ def readme(target: Target) -> str:
         "| Legacy | Target |",
         "|---|---|",
     ]
+    document = target.database == "mongodb"
+    database = DOCUMENT_SERVICES[target.cloud] if document else services["database"]
     for table, legacy in target.tables:
-        lines.append(f"| Table {legacy or '(new)'} | Table {table} in {services['database']} ({target.database}) |")
+        kept = "Collection" if document else "Table"
+        lines.append(f"| Table {legacy or '(new)'} | {kept} {table} in {database} ({target.database}) |")
     for program in target.programs:
         lines.append(f"| Program {program} | The generated service on {runtime} |")
     variables = "-var project=<project id> " if target.cloud == "gcp" else ""

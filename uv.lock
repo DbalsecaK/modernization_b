@@ -26,6 +26,7 @@ members = [
     "nexti-orchestration",
     "nexti-pack-dotnet",
     "nexti-pack-frontend",
+    "nexti-pack-go",
     "nexti-pack-iac",
     "nexti-pack-spring-boot",
     "nexti-sandbox",
@@ -1539,6 +1540,7 @@ dependencies = [
     { name = "nexti-ivv" },
     { name = "nexti-pack-dotnet" },
     { name = "nexti-pack-frontend" },
+    { name = "nexti-pack-go" },
     { name = "nexti-pack-iac" },
     { name = "nexti-pack-spring-boot" },
     { name = "nexti-sandbox" },
@@ -1563,6 +1565,7 @@ requires-dist = [
     { name = "nexti-ivv", editable = "packages/ivv" },
     { name = "nexti-pack-dotnet", editable = "packages/packs/target/dotnet" },
     { name = "nexti-pack-frontend", editable = "packages/packs/target/frontend" },
+    { name = "nexti-pack-go", editable = "packages/packs/target/go" },
     { name = "nexti-pack-iac", editable = "packages/packs/deploy/opentofu" },
     { name = "nexti-pack-spring-boot", editable = "packages/packs/target/spring_boot" },
     { name = "nexti-sandbox", editable = "packages/sandbox" },
@@ -1603,6 +1606,25 @@ requires-dist = [
     { name = "nexti-core", editable = "packages/core" },
     { name = "nexti-pack-spring-boot", editable = "packages/packs/target/spring_boot" },
     { name = "nexti-sandbox", editable = "packages/sandbox" },
+]
+
+[[package]]
+name = "nexti-pack-go"
+version = "0.1.0"
+source = { editable = "packages/packs/target/go" }
+dependencies = [
+    { name = "nexti-core" },
+    { name = "nexti-pack-spring-boot" },
+    { name = "nexti-sandbox" },
+    { name = "pydantic" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "nexti-core", editable = "packages/core" },
+    { name = "nexti-pack-spring-boot", editable = "packages/packs/target/spring_boot" },
+    { name = "nexti-sandbox", editable = "packages/sandbox" },
+    { name = "pydantic", specifier = ">=2.11" },
 ]
 
 [[package]]
