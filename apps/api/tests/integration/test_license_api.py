@@ -38,10 +38,10 @@ def write_license(
     expires: datetime = NOW + timedelta(days=30),
     max_tenants: int = 1000,
     max_projects: int = 1000,
-    key: Ed25519PrivateKey = KEY,
+    signer: Ed25519PrivateKey = KEY,
 ) -> Path:
     data, signature = lic.issue(
-        key, customer="Andes Bank", deployment_profile="air-gapped", expires_at=expires, max_tenants=max_tenants,
+        signer, customer="Andes Bank", deployment_profile="air-gapped", expires_at=expires, max_tenants=max_tenants,
         max_projects=max_projects, features=["modernization"], issued_at=NOW - timedelta(days=60),
     )  # fmt: skip
     path = tmp_path / f"license-{uuid.uuid4().hex[:6]}.json"

@@ -146,7 +146,7 @@ async def test_air_gapped_turns_off_openrouter_and_figma_but_not_local_models(
     await reconcile(app_engine, fga)
     with client(api_settings, openrouter_enabled=False, figma_url="", model_servers_allow_private_hosts=True) as api:
         headers = sign_in(api, world.a_user)
-        openrouter = {"name": f"OR {uuid.uuid4().hex[:8]}", "apiKey": "sk-or-v1-airgapped"}
+        openrouter = {"name": f"OR {uuid.uuid4().hex[:8]}", "apiKey": "placeholder-not-a-key"}
         assert api.post("/api/v1/ai/connections", json=openrouter, headers=headers).json()["code"] == (
             "openrouter_disabled"
         )
