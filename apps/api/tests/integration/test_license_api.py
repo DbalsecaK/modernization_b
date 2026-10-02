@@ -36,8 +36,8 @@ def write_license(
     tmp_path: Path,
     *,
     expires: datetime = NOW + timedelta(days=30),
-    max_tenants: int = 1000,
-    max_projects: int = 1000,
+    max_tenants: int = 1_000_000,  # the shared test database of a full run holds thousands of projects
+    max_projects: int = 1_000_000,
     signer: Ed25519PrivateKey = KEY,
 ) -> Path:
     data, signature = lic.issue(
@@ -124,7 +124,7 @@ async def test_valid_license_enables_and_is_shown(
         headers = sign_in(api, root)
         found = api.get("/api/v1/platform/status").json()["license"]
         assert (found["state"], found["readOnly"], found["customer"], found["maxProjects"]) == (
-            "valid", False, "Andes Bank", 1000)  # fmt: skip
+            "valid", False, "Andes Bank", 1_000_000)  # fmt: skip
         assert found["tenants"] >= 2
         assert found["projects"] >= 2
         assert api.post("/api/v1/tenants", json=new_tenant(), headers=headers).status_code == 201

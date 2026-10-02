@@ -1,0 +1,5 @@
+# Reviewed false positives (2026-10-02): a parameter named `key` holding a test Ed25519 key object, and an invented
+# 18-character API key in a test that only checks OpenRouter is disabled. Neither is a real secret; both lines were
+# changed in the next commit.
+b8e0b506fe99bc5e0e468356827a8b85ed15fb24:apps/api/tests/integration/test_license_api.py:generic-api-key:41
+b8e0b506fe99bc5e0e468356827a8b85ed15fb24:apps/api/tests/integration/test_local_models_api.py:generic-api-key:149
