@@ -12,6 +12,7 @@ from nexti_orchestration.feature import FeaturePhases, FeaturePort
 from nexti_orchestration.feature_build import FeatureBuildPhases, FeatureBuildPort
 from nexti_orchestration.generation import GenerationPhases, GenerationPort
 from nexti_orchestration.graph import Executor
+from nexti_orchestration.ivv import IvvPhases, IvvPort
 from nexti_orchestration.model import RunContext
 from nexti_orchestration.modernization import ModernizationPhases, ProjectPort
 from nexti_orchestration.preflight import Preflight, PreflightProbe
@@ -70,4 +71,16 @@ def executors_for(
         })  # fmt: skip
         if hasattr(port, "save_release"):
             executors["delivery"] = ReleasePhases(cast(ReleasePort, port)).delivery
+    if port is not None and run.flow == "independentValidation":  # Flow 4 (M10, ADR-0025)
+        phases = ModernizationPhases(port)
+        executors.update({"inventory": phases.inventory, "ruleExtraction": phases.rule_extraction,
+                          "ruleReview": phases.rule_review})  # fmt: skip
+        if hasattr(port, "legacy_runner"):
+            executors["characterization"] = CharacterizationPhases(cast(CharacterizationPort, port)).characterization
+        if hasattr(port, "target_archive"):
+            ivv = IvvPhases(cast(IvvPort, port))
+            executors.update({
+                "targetIntake": ivv.target_intake, "mapping": ivv.mapping, "targetRules": ivv.target_rules,
+                "validation": ivv.validation, "report": ivv.report,
+            })  # fmt: skip
     return executors

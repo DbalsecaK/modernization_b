@@ -1,7 +1,7 @@
 // Domain types shared by the prototype. They mirror the entities in docs/ESPECIFICACION_PLATAFORMA.md
 // (section 19.4) so the mocks can later be replaced by API responses with the same shape.
 
-export type Flow = 'modernization' | 'newFeature'
+export type Flow = 'modernization' | 'newFeature' | 'independentValidation'
 
 export type Verdict = 'PROVEN' | 'PARTLY_PROVEN' | 'NOT_PROVEN' | 'NOT_VERIFIED'
 

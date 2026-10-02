@@ -30,5 +30,6 @@ reemplaza y se marca el anterior como "Reemplazado por ADR-NNNN".
 | [0022](0022-identidad-empresarial-organizations-sso-mfa.md) | Identidad empresarial: Organizations por tenant, SSO, MFA por nivel de autenticación | Aceptada |
 | [0023](0023-endurecimiento-entrega-y-division-de-m9.md) | Endurecimiento y entrega del proyecto; división de M9 | Aceptada |
 | [0024](0024-empaquetado-y-despliegue-de-la-plataforma.md) | Empaquetado y despliegue de la plataforma | Aceptada |
+| [0025](0025-flujo-4-validacion-independiente.md) | Flujo 4: validación independiente (IV&V) de una migración hecha por un tercero | Aceptada |
 
 Plantilla: contexto, decisión, alternativas consideradas, consecuencias y cómo se valida.

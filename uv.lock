@@ -21,6 +21,7 @@ members = [
     "nexti-hardening",
     "nexti-ingest",
     "nexti-integrations",
+    "nexti-ivv",
     "nexti-model-gateway",
     "nexti-orchestration",
     "nexti-pack-dotnet",
@@ -1346,6 +1347,7 @@ dependencies = [
     { name = "nexti-graph" },
     { name = "nexti-ingest" },
     { name = "nexti-integrations" },
+    { name = "nexti-ivv" },
     { name = "nexti-model-gateway" },
     { name = "nexti-skills" },
     { name = "psycopg", extra = ["binary"] },
@@ -1372,6 +1374,7 @@ requires-dist = [
     { name = "nexti-graph", editable = "packages/graph" },
     { name = "nexti-ingest", editable = "packages/ingest" },
     { name = "nexti-integrations", editable = "packages/integrations" },
+    { name = "nexti-ivv", editable = "packages/ivv" },
     { name = "nexti-model-gateway", editable = "packages/model_gateway" },
     { name = "nexti-skills", editable = "packages/skills" },
     { name = "psycopg", extras = ["binary"], specifier = ">=3.2" },
@@ -1484,6 +1487,25 @@ dependencies = [
 requires-dist = [{ name = "httpx", specifier = ">=0.28" }]
 
 [[package]]
+name = "nexti-ivv"
+version = "0.1.0"
+source = { editable = "packages/ivv" }
+dependencies = [
+    { name = "nexti-core" },
+    { name = "nexti-sandbox" },
+    { name = "nexti-verification" },
+    { name = "pyyaml" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "nexti-core", editable = "packages/core" },
+    { name = "nexti-sandbox", editable = "packages/sandbox" },
+    { name = "nexti-verification", editable = "packages/verification" },
+    { name = "pyyaml", specifier = ">=6.0" },
+]
+
+[[package]]
 name = "nexti-model-gateway"
 version = "0.1.0"
 source = { editable = "packages/model_gateway" }
@@ -1514,6 +1536,7 @@ dependencies = [
     { name = "nexti-delivery" },
     { name = "nexti-hardening" },
     { name = "nexti-ingest" },
+    { name = "nexti-ivv" },
     { name = "nexti-pack-dotnet" },
     { name = "nexti-pack-frontend" },
     { name = "nexti-pack-iac" },
@@ -1537,6 +1560,7 @@ requires-dist = [
     { name = "nexti-delivery", editable = "packages/delivery" },
     { name = "nexti-hardening", editable = "packages/hardening" },
     { name = "nexti-ingest", editable = "packages/ingest" },
+    { name = "nexti-ivv", editable = "packages/ivv" },
     { name = "nexti-pack-dotnet", editable = "packages/packs/target/dotnet" },
     { name = "nexti-pack-frontend", editable = "packages/packs/target/frontend" },
     { name = "nexti-pack-iac", editable = "packages/packs/deploy/opentofu" },

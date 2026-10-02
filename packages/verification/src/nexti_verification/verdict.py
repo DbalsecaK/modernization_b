@@ -57,7 +57,17 @@ IAC_CHECKS: tuple[tuple[str, str], ...] = (
     ("tags", "Tags"),
     ("logs", "Logs"),
 )
-_TITLES = dict(CHECKS) | dict(FRONTEND_CHECKS) | dict(FEATURE_CHECKS) | dict(IAC_CHECKS)
+# The checks of an independent validation (Flow 4, ADR-0025): a third party's target against the legacy's golden
+# master, through the approved mapping. There is no canary: the third party's artifact is not mutated.
+IVV_CHECKS: tuple[tuple[str, str], ...] = (
+    ("target_runs", "Target runs"),
+    ("contract_mapped", "Contract mapped"),
+    ("same_behaviour", "Same behaviour"),
+    ("fresh_inputs", "Fresh inputs"),
+    ("rules_covered", "Rules covered"),
+    ("source_intact", "Source intact"),
+)
+_TITLES = dict(CHECKS) | dict(FRONTEND_CHECKS) | dict(FEATURE_CHECKS) | dict(IAC_CHECKS) | dict(IVV_CHECKS)
 _CRITERION = re.compile(r"(?i)ac_?us-?_?0*(\d{1,4})_(\d{1,3})(?![0-9])")
 
 
@@ -284,3 +294,32 @@ def compute(
     notes = list(not_proven) + [f"{c.title}: {c.detail}" for c in checks if c.status == "not_checked"]
     notes += [f"{_TITLES[key]}: not run" for key in missing]
     return Verdict(module, value, list(checks), notes)
+
+
+# -- independent validation (ADR-0025) ----------------------------------------------------------------------------
+def target_runs(ready: bool, diagnostic: str) -> Check:
+    if not ready:
+        return Check("target_runs", "failed", f"the target did not run: {diagnostic}"[:1000])
+    return Check("target_runs", "passed", f"the target started in the sandbox and answered; {diagnostic}")
+
+
+def contract_mapped(problems: Sequence[str], approved: bool) -> Check:
+    if problems:
+        detail = f"{len(problems)} problem(s) in the mapping: {'; '.join(problems[:4])}"[:1000]
+        return Check("contract_mapped", "failed", detail, {"problems": list(problems)})
+    if not approved:
+        return Check("contract_mapped", "not_checked", "the mapping was not approved at C2")
+    return Check("contract_mapped", "passed", "the approved mapping covers every input, output, table and call")
+
+
+def rules_covered(traces: Sequence[RuleTrace]) -> Check:
+    """Every approved legacy rule needs a golden case the target reproduced (every priority: IV&V judges the whole)."""
+    missing = [t.rule for t in traces if not t.verified]
+    evidence = {"verified": [t.rule for t in traces if t.verified], "unverified": missing}
+    if not traces:
+        return Check("rules_covered", "not_checked", "there are no approved rules", evidence)
+    if missing:
+        return Check("rules_covered", "failed", f"rules the target does not reproduce: {', '.join(missing)}", evidence)
+    return Check(
+        "rules_covered", "passed", f"{len(traces)} of {len(traces)} rule(s) reproduced by the target", evidence
+    )

@@ -86,6 +86,23 @@ describe('checks', () => {
     expect(checkTitleKey('traced_to_inputs')).toBe('validation.checkTitles.tracedToInputs')
   })
 
+  it('shows the six checks of an independent validation verdict in their order', () => {
+    const checks = allChecks(
+      [{ key: 'contract_mapped', title: 'Contract mapped', status: 'failed', detail: '2 problem(s)' }],
+      'ivv-sp_loans',
+    )
+    expect(checks.map((c) => c.key)).toEqual([
+      'target_runs',
+      'contract_mapped',
+      'same_behaviour',
+      'fresh_inputs',
+      'rules_covered',
+      'source_intact',
+    ])
+    expect(checks.filter((c) => c.missing)).toHaveLength(5)
+    expect(checkTitleKey('contract_mapped')).toBe('validation.checkTitles.contractMapped')
+  })
+
   it('maps keys and statuses to i18n keys and tones', () => {
     expect(checkTitleKey('same_behaviour')).toBe('validation.checkTitles.sameBehaviour')
     expect(checkStatusKey('not_checked')).toBe('validation.status.notChecked')

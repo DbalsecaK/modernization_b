@@ -176,6 +176,27 @@ async def test_an_accepted_zip_is_versioned_hashed_and_downloadable_only_with_co
     assert api.get(f"/api/v1/projects/{world.project_a}/inputs/{v1.json()['id']}/content").status_code == 403
 
 
+async def test_a_target_archive_is_validated_and_guarded_like_the_legacy_code(
+    api: TestClient,
+    admin: dict[str, str],
+    owner_engine: AsyncEngine,
+    fga: OpenFga,
+    app_engine: AsyncEngine,
+    world: World,
+) -> None:
+    # Flow 4 (ADR-0025): the third party's code and its jar, a zip with the rules of the source archive.
+    target = zip_bytes({"src/main/java/App.java": b"class App {}", "app.jar": b"jar"})
+    ok = upload(api, admin, world.project_a, f"target-{uuid.uuid4().hex[:6]}.zip", target, "target_archive")
+    assert ok.status_code == 201, ok.text
+    assert (ok.json()["kind"], ok.json()["findings"]["archive"]["entries"]) == ("target_archive", 2)
+    bad = upload(api, admin, world.project_a, "target.zip", zip_bytes({"../x": b"evil"}), "target_archive")
+    assert (bad.status_code, bad.json()["code"]) == (422, "path_traversal")
+    architect = await new_member(owner_engine, world, "architect")
+    await reconcile(app_engine, fga)
+    sign_in(api, architect)  # it is code: downloading it needs code.download
+    assert api.get(f"/api/v1/projects/{world.project_a}/inputs/{ok.json()['id']}/content").status_code == 403
+
+
 async def test_screenshots_go_through_the_same_validation(api: TestClient, admin: dict[str, str], world: World) -> None:
     ok = upload(api, admin, world.project_a, f"login-{uuid.uuid4().hex[:4]}.png", png(), "screenshot")
     assert ok.status_code == 201, ok.text

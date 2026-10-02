@@ -19,6 +19,7 @@ import { ProjectCode } from './workspace/ProjectCode'
 import { ProjectArchitecture } from './workspace/ProjectArchitecture'
 import { ProjectCosts } from './workspace/ProjectCosts'
 import { ProjectBacklog } from './workspace/ProjectBacklog'
+import { ProjectIvv } from './workspace/ProjectIvv'
 
 const TABS = [
   'overview',
@@ -29,6 +30,7 @@ const TABS = [
   'architecture',
   'code',
   'traceability',
+  'ivv',
   'validation',
   'backlog',
   'runs',
@@ -38,7 +40,7 @@ const TABS = [
 ] as const
 export type ProjectTab = (typeof TABS)[number]
 // Connected so far (M2: overview, inputs, settings; M3: runs, activity; M4: specification, traceability, validation;
-// M5: uiDesign; M6: inventory; P2: architecture, code, costs; M7b: backlog);
+// M5: uiDesign; M6: inventory; P2: architecture, code, costs; M7b: backlog; M10: ivv);
 // the others fill in as the pipeline produces their content.
 const CONNECTED: ProjectTab[] = [
   'overview',
@@ -49,6 +51,7 @@ const CONNECTED: ProjectTab[] = [
   'architecture',
   'code',
   'traceability',
+  'ivv',
   'validation',
   'backlog',
   'runs',
@@ -60,7 +63,7 @@ const CONNECTED: ProjectTab[] = [
 export function ProjectWorkspace() {
   const { t } = useTranslation()
   const { projectId } = useParams({ strict: false }) as { projectId: string }
-  const [tab, setTab] = useTab(TABS, 'overview')
+  const [requested, setTab] = useTab(TABS, 'overview')
   const project = useProject(projectId)
 
   if (project.isError) {
@@ -77,8 +80,13 @@ export function ProjectWorkspace() {
   }
   if (!project.data) return null
   const p = project.data
-  // The inventory tab only applies to modernization projects (the legacy map).
-  const visibleTabs = TABS.filter((id) => p.flow === 'modernization' || id !== 'inventory')
+  // The inventory tab only applies to the flows that start from legacy code (the legacy map): Flow 1 and Flow 4.
+  // The IV&V tab (the third party's target, its mapping and report) only exists in Flow 4.
+  const visibleTabs = TABS.filter(
+    (id) => (p.flow !== 'newFeature' || id !== 'inventory') && (p.flow === 'independentValidation' || id !== 'ivv'),
+  )
+  // A link to a tab this flow does not have opens the overview.
+  const tab = visibleTabs.includes(requested) ? requested : 'overview'
   const owners = p.team.filter((m) => m.roleKey === 'projectOwner').map((m) => m.displayName)
 
   return (
@@ -118,6 +126,7 @@ export function ProjectWorkspace() {
       {tab === 'architecture' && <ProjectArchitecture project={p} onOpenRuns={() => setTab('runs')} />}
       {tab === 'code' && <ProjectCode project={p} onOpenRuns={() => setTab('runs')} />}
       {tab === 'traceability' && <ProjectTraceability project={p} onOpenRuns={() => setTab('runs')} />}
+      {tab === 'ivv' && <ProjectIvv project={p} onOpenRuns={() => setTab('runs')} />}
       {tab === 'validation' && <ProjectValidation project={p} onOpenRuns={() => setTab('runs')} />}
       {tab === 'runs' && <ProjectRuns project={p} />}
       {tab === 'costs' && <ProjectCosts project={p} onOpenRuns={() => setTab('runs')} />}

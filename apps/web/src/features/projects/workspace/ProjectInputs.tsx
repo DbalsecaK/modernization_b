@@ -49,11 +49,20 @@ import { FIGMA_LINK } from '../ProjectSetupSections'
 
 const KIND_ICON = {
   source_archive: FileArchive,
+  target_archive: FileArchive,
   document: FileText,
   screenshot: Image,
   figma_link: PenTool,
   prototype_link: Link2,
 } as const
+const ARCHIVES: readonly string[] = ['source_archive', 'target_archive']
+// The files each flow uploads here; the first is the default. Flow 4 (ADR-0025) brings the legacy code and the
+// third party's target.
+const FILE_KINDS: Record<ProjectDetail['flow'], FileKind[]> = {
+  modernization: ['source_archive', 'document'],
+  newFeature: ['document'],
+  independentValidation: ['source_archive', 'target_archive'],
+}
 
 function useErrorText() {
   const { t } = useTranslation()
@@ -90,7 +99,7 @@ export function ProjectInputs({ project }: { project: ProjectDetail }) {
 
   return (
     <div className="space-y-6">
-      {project.flow === 'modernization' && <RepositoryCard project={project} canEdit={canUpload} />}
+      {project.flow !== 'newFeature' && <RepositoryCard project={project} canEdit={canUpload} />}
       <Card>
         <AddInputDrawer key={opened} project={project} open={open} onClose={() => setOpen(false)} />
         <CardHeader
@@ -133,7 +142,7 @@ export function ProjectInputs({ project }: { project: ProjectDetail }) {
                 const secrets = (item.findings as { secrets?: { total?: number } }).secrets?.total ?? 0
                 const downloadable =
                   item.status === 'accepted' &&
-                  (item.kind === 'document' || (item.kind === 'source_archive' && canDownloadCode))
+                  (item.kind === 'document' || (ARCHIVES.includes(item.kind) && canDownloadCode))
                 return (
                   <tr key={item.id}>
                     <Td>
@@ -224,7 +233,9 @@ function AddInputDrawer({ project, open, onClose }: { project: ProjectDetail; op
   const link = useAddLink(project.id)
   const errorText = useErrorText()
   const [source, setSource] = useState<Source>('files')
-  const [kind, setKind] = useState<FileKind>(project.flow === 'modernization' ? 'source_archive' : 'document')
+  const kinds = FILE_KINDS[project.flow]
+  const [kind, setKind] = useState<FileKind>(kinds[0])
+  const archive = ARCHIVES.includes(kind)
   const [files, setFiles] = useState<File[]>([])
   const [url, setUrl] = useState('')
   const [notes, setNotes] = useState('')
@@ -296,10 +307,11 @@ function AddInputDrawer({ project, open, onClose }: { project: ProjectDetail; op
       {source === 'files' && (
         <Field label={t('inputs.kind')}>
           <Select value={kind} onChange={(e) => setKind(e.target.value as FileKind)}>
-            {project.flow === 'modernization' && (
-              <option value="source_archive">{t('inputs.kinds.source_archive')}</option>
-            )}
-            <option value="document">{t('inputs.kinds.document')}</option>
+            {kinds.map((k) => (
+              <option key={k} value={k}>
+                {t(`inputs.kinds.${k}`)}
+              </option>
+            ))}
           </Select>
         </Field>
       )}
@@ -312,17 +324,19 @@ function AddInputDrawer({ project, open, onClose }: { project: ProjectDetail; op
           <span className="text-xs text-muted">
             {source === 'screens'
               ? t('inputForms.screensHint')
-              : kind === 'source_archive'
-                ? t('inputs.archiveOnly')
-                : t('inputForms.acceptedDocs')}
+              : kind === 'target_archive'
+                ? t('inputs.targetArchiveHint')
+                : archive
+                  ? t('inputs.archiveOnly')
+                  : t('inputForms.acceptedDocs')}
           </span>
           <input
             type="file"
-            multiple={!(source === 'files' && kind === 'source_archive')}
+            multiple={!(source === 'files' && archive)}
             accept={
               source === 'screens'
                 ? 'image/png,image/jpeg,image/webp'
-                : kind === 'source_archive'
+                : archive
                   ? '.zip,application/zip'
                   : '.pdf,.docx,.xlsx,.md,.txt'
             }

@@ -350,3 +350,18 @@ class ChatMessageOut(ApiModel):
     prototype_version: int | None
     author: str | None
     created_at: datetime
+
+
+# -- independent validation (Flow 4, ADR-0025) --------------------------------------------------------------------
+class IvvOut(ApiModel):
+    inventory: dict[str, Any] | None
+    mapping: str | None
+    mapping_updated_at: datetime | None
+    gaps: list[str]
+    problems: list[str]
+    comparison: dict[str, Any] | None
+    report: str | None
+
+
+class IvvMappingIn(ApiModel):
+    mapping: str = Field(min_length=1)

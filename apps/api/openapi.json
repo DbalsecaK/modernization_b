@@ -846,6 +846,7 @@
           "kind": {
             "enum": [
               "source_archive",
+              "target_archive",
               "document",
               "screenshot"
             ],
@@ -1659,7 +1660,8 @@
           "flow": {
             "enum": [
               "modernization",
-              "newFeature"
+              "newFeature",
+              "independentValidation"
             ],
             "title": "Flow",
             "type": "string"
@@ -3169,7 +3171,8 @@
           "key": {
             "enum": [
               "modernization",
-              "newFeature"
+              "newFeature",
+              "independentValidation"
             ],
             "title": "Key",
             "type": "string"
@@ -3916,6 +3919,7 @@
           "kind": {
             "enum": [
               "source_archive",
+              "target_archive",
               "document",
               "screenshot",
               "figma_link",
@@ -4593,6 +4597,107 @@
           "finishedAt"
         ],
         "title": "InvocationOut",
+        "type": "object"
+      },
+      "IvvMappingIn": {
+        "properties": {
+          "mapping": {
+            "minLength": 1,
+            "title": "Mapping",
+            "type": "string"
+          }
+        },
+        "required": [
+          "mapping"
+        ],
+        "title": "IvvMappingIn",
+        "type": "object"
+      },
+      "IvvOut": {
+        "properties": {
+          "comparison": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comparison"
+          },
+          "gaps": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Gaps",
+            "type": "array"
+          },
+          "inventory": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Inventory"
+          },
+          "mapping": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mapping"
+          },
+          "mappingUpdatedAt": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mappingupdatedat"
+          },
+          "problems": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Problems",
+            "type": "array"
+          },
+          "report": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Report"
+          }
+        },
+        "required": [
+          "inventory",
+          "mapping",
+          "mappingUpdatedAt",
+          "gaps",
+          "problems",
+          "comparison",
+          "report"
+        ],
+        "title": "IvvOut",
         "type": "object"
       },
       "LinkIn": {
@@ -6212,7 +6317,8 @@
           "flow": {
             "enum": [
               "modernization",
-              "newFeature"
+              "newFeature",
+              "independentValidation"
             ],
             "title": "Flow",
             "type": "string"
@@ -6363,7 +6469,8 @@
           "flow": {
             "enum": [
               "modernization",
-              "newFeature"
+              "newFeature",
+              "independentValidation"
             ],
             "title": "Flow",
             "type": "string"
@@ -6484,7 +6591,8 @@
           "flow": {
             "enum": [
               "modernization",
-              "newFeature"
+              "newFeature",
+              "independentValidation"
             ],
             "title": "Flow",
             "type": "string"
@@ -8433,13 +8541,17 @@
             ],
             "title": "Adapter"
           },
-          "flow": {
-            "enum": [
-              "modernization",
-              "newFeature"
-            ],
-            "title": "Flow",
-            "type": "string"
+          "flows": {
+            "items": {
+              "enum": [
+                "modernization",
+                "newFeature",
+                "independentValidation"
+              ],
+              "type": "string"
+            },
+            "title": "Flows",
+            "type": "array"
           },
           "key": {
             "title": "Key",
@@ -8460,7 +8572,7 @@
         "required": [
           "key",
           "name",
-          "flow",
+          "flows",
           "adapter",
           "requiredSkills"
         ],
@@ -13519,6 +13631,104 @@
         "summary": "Add Link",
         "tags": [
           "inputs"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/ivv": {
+      "get": {
+        "description": "Everything the independent validation produced so far (empty before the target intake).",
+        "operationId": "get_ivv_api_v1_projects__project_id__ivv_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IvvOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Ivv",
+        "tags": [
+          "validation"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/ivv/mapping": {
+      "put": {
+        "description": "A person corrects the mapping before approving C2; it must be valid YAML of the mapping's shape.",
+        "operationId": "change_mapping_api_v1_projects__project_id__ivv_mapping_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IvvMappingIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IvvOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Change Mapping",
+        "tags": [
+          "validation"
         ]
       }
     },

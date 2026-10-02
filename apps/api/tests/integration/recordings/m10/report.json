@@ -1,0 +1,33 @@
+{
+  "mode": "record",
+  "verdict": "PROVEN",
+  "checks": {
+    "target_runs": "passed",
+    "contract_mapped": "passed",
+    "same_behaviour": "passed",
+    "fresh_inputs": "passed",
+    "rules_covered": "passed",
+    "source_intact": "passed"
+  },
+  "details": {
+    "target_runs": "the target started in the sandbox and answered; 28 of 28 case(s) reproduced",
+    "contract_mapped": "the approved mapping covers every input, output, table and call",
+    "same_behaviour": "28 golden case(s) reproduced",
+    "fresh_inputs": "12 fresh input(s) matched on both sides",
+    "rules_covered": "11 of 11 rule(s) reproduced by the target",
+    "source_intact": "the legacy is the code that was characterized (SHA-256)"
+  },
+  "rules_compared": {
+    "present": 8,
+    "missing": 3,
+    "extra": 2
+  },
+  "model_calls": 46,
+  "cost_usd": "1.13140800",
+  "decisions": [
+    "questions",
+    "C1",
+    "C2",
+    "C4"
+  ]
+}

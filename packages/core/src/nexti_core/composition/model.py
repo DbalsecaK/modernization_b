@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 AXES: tuple[str, ...] = ("architecture", "backend", "frontend", "database", "cloud")
-FLOWS: tuple[str, ...] = ("modernization", "newFeature")
+FLOWS: tuple[str, ...] = ("modernization", "newFeature", "independentValidation")
 NO_FRONTEND = "none"
 _CONDITION_KEYS = {"flow", "sources_any", "sources_none", "target", "target_not"}
 
@@ -206,7 +206,7 @@ class SourceAdapter:
 class SourceOption:
     key: str
     name: str
-    flow: str
+    flows: tuple[str, ...]  # the flows that offer it: a legacy technology serves Flow 1 and Flow 4
     adapter: str | None
     required_skills: tuple[str, ...]
 

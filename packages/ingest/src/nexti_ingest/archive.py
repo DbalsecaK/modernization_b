@@ -124,3 +124,22 @@ def read_text_files(data: bytes, prefix: str = "") -> list[tuple[str, str]]:
                 content = raw.decode("latin-1")
             files.append((f"{prefix}{name}", content.replace("\r\n", "\n")))
     return files
+
+
+MAX_TARGET_TOTAL_BYTES = 200 * 1024 * 1024
+
+
+def read_all_files(data: bytes) -> dict[str, bytes]:
+    """Every file of an accepted archive, binary included (a third party's target with its jars, ADR-0025)."""
+    files: dict[str, bytes] = {}
+    total = 0
+    with zipfile.ZipFile(io.BytesIO(data)) as archive:
+        for info in archive.infolist():
+            name = info.filename.replace("\\", "/")
+            if info.is_dir() or unsafe_path(name):
+                continue
+            total += info.file_size
+            if total > MAX_TARGET_TOTAL_BYTES:
+                raise ValueError("the archive is larger than the target limit")
+            files[name] = archive.read(info)
+    return files

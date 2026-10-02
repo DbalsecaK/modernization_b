@@ -81,7 +81,7 @@ def _request_problems(catalog: Catalog, request: Request) -> list[Problem]:
         problems.append(Problem("no_sources"))
     for key in request.sources:
         option = catalog.source(key)
-        if option is None or option.flow != request.flow:
+        if option is None or request.flow not in option.flows:
             problems.append(Problem("unknown_source", key))
     for axis in AXES:
         if catalog.target_option(axis, request.target.get(axis)) is None:

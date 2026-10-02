@@ -16,6 +16,7 @@ MARKDOWN = "text/markdown"
 # What each kind of input may be.
 ALLOWED = {
     "source_archive": {ZIP},
+    "target_archive": {ZIP},  # Flow 4: the third party's code and its runnable artifact (ADR-0025)
     "document": {PDF, DOCX, XLSX, TEXT, MARKDOWN},
     "screenshot": {PNG, JPEG, WEBP},
 }

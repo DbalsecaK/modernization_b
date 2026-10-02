@@ -62,6 +62,7 @@ export function ProjectsPage() {
           <option value="all">{t('projects.allFlows')}</option>
           <option value="modernization">{t('flows.modernization')}</option>
           <option value="newFeature">{t('flows.newFeature')}</option>
+          <option value="independentValidation">{t('flows.independentValidation')}</option>
         </Select>
         <Select
           className="max-w-xs"

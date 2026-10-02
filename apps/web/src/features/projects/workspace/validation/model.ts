@@ -45,9 +45,21 @@ export const IAC_CHECK_KEYS = [
   'logs',
 ] as const
 
+/** The checks of an independent validation's verdict (Flow 4, ADR-0025); its module is `ivv-<program>`. */
+export const IVV_CHECK_KEYS = [
+  'target_runs',
+  'contract_mapped',
+  'same_behaviour',
+  'fresh_inputs',
+  'rules_covered',
+  'source_intact',
+] as const
+
 export const isFrontendModule = (module: string) => module.startsWith('frontend-')
 
 export const isIacModule = (module: string) => module.startsWith('iac-')
+
+export const isIvvModule = (module: string) => module.startsWith('ivv-')
 
 /** A Flow 2 verdict reports the checks only Flow 2 has. */
 export const isFeatureVerdict = (checks: CheckOut[]) =>
@@ -78,9 +90,11 @@ export function allChecks(checks: CheckOut[], module = ''): CheckView[] {
     ? FRONTEND_CHECK_KEYS
     : isIacModule(module)
       ? IAC_CHECK_KEYS
-      : isFeatureVerdict(checks)
-        ? FEATURE_CHECK_KEYS
-        : CHECK_KEYS
+      : isIvvModule(module)
+        ? IVV_CHECK_KEYS
+        : isFeatureVerdict(checks)
+          ? FEATURE_CHECK_KEYS
+          : CHECK_KEYS
   const byKey = new Map(checks.map((c) => [c.key, c]))
   const known = keys.map((key): CheckView =>
     byKey.has(key)

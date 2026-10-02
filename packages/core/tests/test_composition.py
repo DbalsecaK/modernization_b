@@ -49,9 +49,12 @@ def test_the_catalog_references_only_what_exists(catalog: Catalog) -> None:
     for compat in catalog.rules:
         assert compat.when.referenced_options() <= options, compat.key
     assert {t.axis for t in catalog.targets} == set(AXES)
+    gates = {"modernization": ["C1", "C2", "C3", "C4"], "newFeature": ["C1", "C2", "C3", "C4"],
+             "independentValidation": ["C1", "C2", "C4"]}  # fmt: skip
+    assert [f.key for f in catalog.flows] == list(gates)
     for flow in catalog.flows:
         assert {p.key for p in flow.phases} <= set(PHASES)
-        assert [p.gate for p in flow.phases if p.gate] == ["C1", "C2", "C3", "C4"]
+        assert [p.gate for p in flow.phases if p.gate] == gates[flow.key]
     assert all(set(t.required_gates) <= {"C1", "C2", "C3", "C4"} for t in catalog.templates)
 
 
@@ -134,6 +137,26 @@ def test_new_feature_with_figma_needs_no_ux_designer(catalog: Catalog) -> None:
     assert "ux-designer" not in reasons
     assert "legacy-analyst" not in reasons
     assert "equivalence-validator" not in reasons
+
+
+def test_independent_validation_offers_the_legacy_sources_and_needs_the_analysis_agents(catalog: Catalog) -> None:
+    # Flow 4 (ADR-0025): the legacy technologies of Flow 1; the target is the third party's stack.
+    request = Request(
+        "independentValidation", ("sybase-sp",), Target("modular-monolith", "spring-boot", "none", "postgresql", "aws")
+    )
+    legacy = {s.key for s in catalog.sources if "modernization" in s.flows}
+    assert legacy == {s.key for s in catalog.sources if "independentValidation" in s.flows}
+    agents = ["legacy-analyst", "rules-extractor", *catalog.mandatory_agents]
+    result = evaluate(catalog, request, agents=agents)
+    assert result.ok, result.problems
+    assert result.uncovered_phases == ()
+    proposed = evaluate(catalog, request)  # the proposal of the wizard: the legacy readers and the Control agents
+    assert {"legacy-analyst", "rules-extractor"} <= set(proposed.agents)
+    assert (proposed.ok, proposed.uncovered_phases) == (True, ())
+    without = evaluate(catalog, request, agents=["rules-extractor", *catalog.mandatory_agents])
+    assert without.uncovered_phases == ("inventory",)
+    figma = evaluate(catalog, Request("independentValidation", ("figma",), request.target), agents=agents)
+    assert ("unknown_source", "figma") in [(p.code, p.subject) for p in figma.problems]
 
 
 def test_without_frontend_there_is_no_frontend_or_ux_work(catalog: Catalog) -> None:

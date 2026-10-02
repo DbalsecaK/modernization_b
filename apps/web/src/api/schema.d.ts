@@ -1214,6 +1214,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/projects/{project_id}/ivv": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Ivv
+         * @description Everything the independent validation produced so far (empty before the target intake).
+         */
+        get: operations["get_ivv_api_v1_projects__project_id__ivv_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/projects/{project_id}/ivv/mapping": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Change Mapping
+         * @description A person corrects the mapping before approving C2; it must be valid YAML of the mapping's shape.
+         */
+        put: operations["change_mapping_api_v1_projects__project_id__ivv_mapping_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/projects/{project_id}/plan": {
         parameters: {
             query?: never;
@@ -2641,7 +2681,7 @@ export interface components {
              * Kind
              * @enum {string}
              */
-            kind: "source_archive" | "document" | "screenshot";
+            kind: "source_archive" | "target_archive" | "document" | "screenshot";
             /**
              * Notes
              * @default
@@ -2943,7 +2983,7 @@ export interface components {
              * Flow
              * @enum {string}
              */
-            flow: "modernization" | "newFeature";
+            flow: "modernization" | "newFeature" | "independentValidation";
             /** Projectid */
             projectId?: string | null;
             /** Skills */
@@ -3481,7 +3521,7 @@ export interface components {
              * Key
              * @enum {string}
              */
-            key: "modernization" | "newFeature";
+            key: "modernization" | "newFeature" | "independentValidation";
             /** Phases */
             phases: components["schemas"]["PhaseOut"][];
         };
@@ -3739,7 +3779,7 @@ export interface components {
              * Kind
              * @enum {string}
              */
-            kind: "source_archive" | "document" | "screenshot" | "figma_link" | "prototype_link";
+            kind: "source_archive" | "target_archive" | "document" | "screenshot" | "figma_link" | "prototype_link";
             /** Name */
             name: string;
             /** Notes */
@@ -3970,6 +4010,32 @@ export interface components {
             status: string;
             /** Summary */
             summary: string | null;
+        };
+        /** IvvMappingIn */
+        IvvMappingIn: {
+            /** Mapping */
+            mapping: string;
+        };
+        /** IvvOut */
+        IvvOut: {
+            /** Comparison */
+            comparison: {
+                [key: string]: unknown;
+            } | null;
+            /** Gaps */
+            gaps: string[];
+            /** Inventory */
+            inventory: {
+                [key: string]: unknown;
+            } | null;
+            /** Mapping */
+            mapping: string | null;
+            /** Mappingupdatedat */
+            mappingUpdatedAt: string | null;
+            /** Problems */
+            problems: string[];
+            /** Report */
+            report: string | null;
         };
         /** LinkIn */
         LinkIn: {
@@ -4497,7 +4563,7 @@ export interface components {
              * Flow
              * @enum {string}
              */
-            flow: "modernization" | "newFeature";
+            flow: "modernization" | "newFeature" | "independentValidation";
             /**
              * Maxiterations
              * @default 3
@@ -4547,7 +4613,7 @@ export interface components {
              * Flow
              * @enum {string}
              */
-            flow: "modernization" | "newFeature";
+            flow: "modernization" | "newFeature" | "independentValidation";
             /**
              * Id
              * Format: uuid
@@ -4595,7 +4661,7 @@ export interface components {
              * Flow
              * @enum {string}
              */
-            flow: "modernization" | "newFeature";
+            flow: "modernization" | "newFeature" | "independentValidation";
             /**
              * Id
              * Format: uuid
@@ -5307,11 +5373,8 @@ export interface components {
         SourceOptionOut: {
             /** Adapter */
             adapter: string | null;
-            /**
-             * Flow
-             * @enum {string}
-             */
-            flow: "modernization" | "newFeature";
+            /** Flows */
+            flows: ("modernization" | "newFeature" | "independentValidation")[];
             /** Key */
             key: string;
             /** Name */
@@ -8370,6 +8433,72 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["InputOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_ivv_api_v1_projects__project_id__ivv_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IvvOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    change_mapping_api_v1_projects__project_id__ivv_mapping_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IvvMappingIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IvvOut"];
                 };
             };
             /** @description Validation Error */

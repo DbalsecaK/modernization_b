@@ -62,8 +62,8 @@ RECORDINGS = Path(__file__).parent / "recordings" / "m4"
 MODEL = "anthropic/claude-sonnet-5.5"  # recorded with this model; its OpenRouter price is $2 / $10 per million tokens
 BUDGET_USD = Decimal("5.00")
 FULL_TEAM = {
-    "legacy-analyst": "1.4.0",
-    "rules-extractor": "2.1.0",
+    "legacy-analyst": "1.5.0",
+    "rules-extractor": "2.2.0",
     "rules-verifier": "1.3.0",
     "solution-architect": "1.3.0",
     "test-engineer": "1.6.0",

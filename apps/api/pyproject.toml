@@ -24,6 +24,7 @@ dependencies = [
   "nexti-delivery",
   "nexti-graph",
   "nexti-ingest",
+  "nexti-ivv",
   "nexti-model-gateway",
   "nexti-skills",
 ]
@@ -35,6 +36,7 @@ nexti-core = { workspace = true }
 nexti-delivery = { workspace = true }
 nexti-graph = { workspace = true }
 nexti-ingest = { workspace = true }
+nexti-ivv = { workspace = true }
 nexti-model-gateway = { workspace = true }
 nexti-skills = { workspace = true }
 

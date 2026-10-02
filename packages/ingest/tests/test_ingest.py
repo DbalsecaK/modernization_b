@@ -88,6 +88,16 @@ async def test_a_clean_code_zip_is_accepted_with_hash_and_stats() -> None:
     assert scanner.scanned == 1
 
 
+async def test_a_target_archive_follows_the_rules_of_the_source_archive() -> None:
+    # Flow 4 (ADR-0025): the third party's code and its runnable jar, a zip like the legacy code.
+    stream = zip_bytes({"src/main/java/App.java": b"class App {}\n", "target/app.jar": b"PK\x03\x04jar"})
+    accepted = await validate(stream, "third-party.zip", "target_archive", LIMITS, CleanScanner())
+    assert accepted.content_type == "application/zip"
+    assert LIMITS.max_bytes("target_archive") == LIMITS.max_bytes("source_archive")
+    pdf = io.BytesIO(b"%PDF-1.7\n1 0 obj\n")
+    assert (await rejected(pdf, "target.pdf", "target_archive")).code == "type_not_allowed"
+
+
 @pytest.mark.parametrize(
     "entry",
     ["../../etc/passwd", "src/../../escape.cbl", "/etc/cron.d/job", "C:/Windows/evil.dll", "src\\..\\evil.cbl"],
@@ -273,3 +283,17 @@ async def test_without_the_scanner_the_upload_fails_closed() -> None:
     scanner = ClamdScanner("127.0.0.1", 1, timeout_seconds=2)  # nothing listens on port 1
     with pytest.raises(ScannerUnavailableError):
         await validate(png_bytes(), "login.png", "screenshot", LIMITS, scanner)
+
+
+def test_a_target_archive_is_read_whole_with_its_binaries() -> None:
+    from nexti_ingest.archive import read_all_files
+
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w") as archive:
+        archive.writestr("app/Main.java", "class Main {}")
+        archive.writestr("lib/app.jar", b"PK\x03\x04\x00binary")
+        archive.writestr("app/", "")
+    assert read_all_files(buffer.getvalue()) == {
+        "app/Main.java": b"class Main {}",
+        "lib/app.jar": b"PK\x03\x04\x00binary",
+    }

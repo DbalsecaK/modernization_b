@@ -15,7 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 
 import nexti_agents
 import nexti_skills
-from nexti_core.composition import AXES, Catalog, build_catalog, core_data
+from nexti_core.composition import AXES, Catalog, build_catalog, core_data, option_flows
 from nexti_core.db.models import (
     AgentDefinition,
     CompatibilityRuleDefinition,
@@ -147,7 +147,7 @@ async def sync_catalog(conn: AsyncConnection) -> SyncReport:
                 "key": o["key"],
                 "position": i,
                 "name": o["name"],
-                "flow": o["flow"],
+                "flows": list(option_flows(o["flow"])),
                 "adapter_key": o.get("adapter"),
                 "required_skills": list(o.get("required_skills") or []),
             }
@@ -217,7 +217,7 @@ async def load_catalog(conn: AsyncConnection) -> Catalog:
     data["sources"] = {
         "adapters": [dict(a) for a in adapters],
         "options": [
-            {"key": o["key"], "name": o["name"], "flow": o["flow"], "adapter": o["adapter_key"],
+            {"key": o["key"], "name": o["name"], "flow": list(o["flows"]), "adapter": o["adapter_key"],
              "required_skills": o["required_skills"]}
             for o in options
         ],

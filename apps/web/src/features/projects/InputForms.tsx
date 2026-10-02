@@ -25,7 +25,7 @@ export function AddInputForm({
 }) {
   const { t } = useTranslation()
   const sources: Source[] =
-    flow === 'modernization'
+    flow !== 'newFeature'
       ? ['files', 'git', 'screens', 'figma', 'prototype', 'jira']
       : ['files', 'screens', 'figma', 'prototype', 'jira']
   const [source, setSource] = useState<Source>(initialSource ?? sources[0])
@@ -114,7 +114,7 @@ export function AddInputForm({
             <Upload size={22} className="text-muted" />
             <span className="text-sm text-text">{t('inputForms.drop')}</span>
             <span className="text-xs text-muted">
-              {t(flow === 'modernization' ? 'inputForms.acceptedCode' : 'inputForms.acceptedDocs')}
+              {t(flow !== 'newFeature' ? 'inputForms.acceptedCode' : 'inputForms.acceptedDocs')}
             </span>
             <input
               type="file"
