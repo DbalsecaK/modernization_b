@@ -1,5 +1,5 @@
-"""Builds and tests a generated frontend in the sandbox (ADR-0016): the compiler (tsc or ngc), the bundles, and the
-platform's harness on every screen. What passed comes from the sandbox report, never from what an agent says."""
+"""Builds and tests a generated frontend in the sandbox (ADR-0016): the compiler (tsc, or ngc for Angular), the bundles,
+and the platform's harness on every screen. What passed comes from the sandbox report, never from what an agent says."""
 
 import json
 from collections.abc import Mapping, Sequence
@@ -9,7 +9,7 @@ from typing import Any, Literal
 from nexti_pack_frontend.contract import ScreenContract
 from nexti_sandbox import Limits, Sandbox
 
-Flavour = Literal["react", "angular"]
+Flavour = Literal["react", "angular", "nextjs"]
 LIMITS = Limits(cpus=2.0, memory_mb=1536, pids=256, timeout_seconds=420, work_mb=512, max_output_bytes=4 * 1024 * 1024)
 CHECKS = ("mounts", "fields", "actions", "validation", "accessibility", "submit", "navigation")
 

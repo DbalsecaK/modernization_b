@@ -35,6 +35,11 @@ ya tiene React y Angular con el mismo contrato OpenAPI, el mismo arnés de panta
     pantallas con esbuild como en React, sin `next build` en el sandbox (sin red, `/work` sin ejecución).
   - **Frontend + BFF:** la ruta `app/api/[...path]/route.ts` reenvía al backend generado. El backend es el de
     siempre; el BFF no lleva lógica de negocio.
+  - Las pantallas no usan APIs de Next.js: navegan con `navigate` y la ruta generada de cada una le da el cliente y
+    el router. Así el arnés las monta igual que en React, sin router. El bundle de la app (layouts, páginas y rutas)
+    cambia `next/link` y `next/navigation` por shims mínimos: solo se arma para probar que todo resuelve, no se
+    ejecuta. La imagen no incluye el compilador nativo de Next (SWC) ni `sharp`.
+  - El BFF se agrega cuando la arquitectura es `bff-microservices`.
   - Se elige con `frontend: nextjs`.
 
 ## Consecuencias

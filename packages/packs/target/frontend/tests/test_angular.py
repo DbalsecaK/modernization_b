@@ -1,7 +1,7 @@
 """The Angular pack in the real sandbox (ADR-0016): the skeleton with the hand-written reference screens of the
 fictitious BMS application compiles with ngc (strict templates), bundles and passes the platform's harness on every
 screen; a screen that breaks the contract or its template types fails with the reason. Skipped without Docker or the
-image nexti-sandbox-frontend:1."""
+image nexti-sandbox-frontend:2."""
 
 from pathlib import Path
 

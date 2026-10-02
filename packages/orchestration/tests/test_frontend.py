@@ -1,7 +1,8 @@
 """Frontend generation (spec 8.4, ADR-0016) on the fictitious application: the frontend developer writes one page
 per screen and the harness checks each in the real sandbox; a page that forgets a field goes back to the developer.
 A frontend without a pack waits (D-06), `none` builds nothing, and the verdict's checks come from the sandbox run.
-The model is a stand-in that answers with the hand-written reference pages. Skipped without the frontend image."""
+Next.js (ADR-0028) goes the same way, with the BFF route on a BFF architecture. The model is a stand-in that answers
+with the hand-written reference pages. Skipped without the frontend image."""
 
 import asyncio
 import hashlib
@@ -16,8 +17,8 @@ from nexti_core.adapters import SourceFile
 from nexti_core.spec.screens import ScreenSpec
 from nexti_orchestration import PhaseSpec, RunContext
 from nexti_orchestration.context import PhaseContext
-from nexti_orchestration.extraction import ModelCaller, ModelReply
-from nexti_orchestration.frontend import flavour_of, frontend_checks, generate
+from nexti_orchestration.extraction import ModelCaller, ModelReply, ReplyError
+from nexti_orchestration.frontend import code_block, flavour_of, frontend_checks, generate, options_of
 from nexti_orchestration.memory import MemoryStore
 from nexti_orchestration.model import PhaseUnavailableError
 from nexti_orchestration.store import Usage
@@ -28,7 +29,9 @@ from nexti_pack_spring_boot import Design
 from nexti_sandbox import DockerSandbox, Sandbox
 
 ROOT = Path(__file__).resolve().parents[3]
-PAGES = ROOT / "packages/packs/target/frontend/tests/fixtures/react"
+FIXTURES = ROOT / "packages/packs/target/frontend/tests/fixtures"
+PAGES = FIXTURES / "react"
+PATHS = {"react": "src/screens/{}.tsx", "nextjs": "src/app/screens/{}/screen.tsx"}
 DESIGN = Design.model_validate_json(
     (ROOT / "packages/packs/target/spring_boot/tests/fixtures/pago_orden/design.json").read_text(encoding="utf-8")
 )
@@ -39,23 +42,25 @@ SCREENS = BmsAdapter().screens([SourceFile("maps/PAGOSET.bms", BMS.read_text(enc
 class Developer:
     """Answers each screen with its reference page; the first answer for PAGOORD forgets the field ORDEN."""
 
-    def __init__(self) -> None:
+    def __init__(self, flavour: str = "react") -> None:
+        self.flavour = flavour
         self.calls: list[tuple[str, int]] = []
 
     async def complete(
         self, agent: str, phase: str, messages: list[dict[str, str]], *, iteration: int = 1, judge: int = 0
     ) -> ModelReply:
-        module = next(m for m in ("pagomen", "pagoord", "pagores") if f"src/screens/{m}.tsx" in messages[1]["content"])
+        path = PATHS[self.flavour]
+        module = next(m for m in ("pagomen", "pagoord", "pagores") if path.format(m) in messages[1]["content"])
         self.calls.append((module, iteration))
-        page = (PAGES / f"{module}.tsx").read_text(encoding="utf-8")
+        page = (FIXTURES / self.flavour / f"{module}.tsx").read_text(encoding="utf-8")
         if module == "pagoord" and iteration == 1:
             page = page.replace('data-field="ORDEN" ', "")
         return ModelReply(f"```tsx\n{page}```", Usage(model="developer", input_tokens=10, output_tokens=10))
 
 
 class MemoryPort:
-    def __init__(self, sandbox: Sandbox) -> None:
-        self.developer = Developer()
+    def __init__(self, sandbox: Sandbox, flavour: str = "react") -> None:
+        self.developer = Developer(flavour)
         self.models: ModelCaller = self.developer
         self._sandbox = sandbox
         self.files: dict[str, str] = {}
@@ -78,10 +83,10 @@ class MemoryPort:
         return self._sandbox
 
 
-def _context(frontend: str) -> tuple[PhaseContext, MemoryStore]:
+def _context(frontend: str, architecture: str = "mvc") -> tuple[PhaseContext, MemoryStore]:
     phase = PhaseSpec("generation", None, True)
     run = RunContext(uuid.uuid4(), uuid.uuid4(), uuid.uuid4(), "pipeline", "modernization", (phase,), (),
-                     "balanced", 3, (), target={"frontend": frontend})  # fmt: skip
+                     "balanced", 3, (), target={"frontend": frontend, "architecture": architecture})  # fmt: skip
     store = MemoryStore()
     return PhaseContext(run, store, phase, None), store
 
@@ -105,10 +110,24 @@ def sandbox() -> DockerSandbox:
 def test_the_frontend_target_picks_the_pack_or_waits() -> None:
     assert flavour_of({"frontend": "react"}) == "react"
     assert flavour_of({"frontend": "angular"}) == "angular"
+    assert flavour_of({"frontend": "nextjs"}) == "nextjs"
     assert flavour_of({"frontend": "none"}) is None
     assert flavour_of({}) is None
-    with pytest.raises(PhaseUnavailableError, match="nextjs"):
-        flavour_of({"frontend": "nextjs"})
+    with pytest.raises(PhaseUnavailableError, match="vue"):
+        flavour_of({"frontend": "vue"})
+
+
+def test_the_nextjs_bff_follows_the_architecture() -> None:
+    assert options_of({"frontend": "nextjs", "architecture": "bff-microservices"}, "nextjs") == {"bff": True}
+    assert options_of({"frontend": "nextjs", "architecture": "mvc"}, "nextjs") == {"bff": False}
+    assert options_of({"frontend": "react", "architecture": "bff-microservices"}, "react") == {}
+
+
+def test_a_nextjs_answer_is_a_page_in_a_code_block() -> None:
+    page = (FIXTURES / "nextjs" / "pagores.tsx").read_text(encoding="utf-8")
+    assert code_block(f"Here it is:\n```tsx\n{page}```", "nextjs").startswith("'use client'")
+    with pytest.raises(ReplyError):
+        code_block("```tsx\nconst x = 1\n```", "nextjs")
 
 
 def test_a_page_may_only_use_the_client_the_framework_and_the_design_system() -> None:
@@ -140,6 +159,20 @@ async def test_each_page_is_written_checked_and_corrected_in_the_sandbox(sandbox
         "compiles": "passed", "screens_mount": "passed", "fields_covered": "passed", "validations": "passed",
         "actions": "passed", "accessibility": "passed",
     }  # fmt: skip
+
+
+async def test_each_nextjs_screen_is_written_and_checked_with_the_bff(sandbox: DockerSandbox) -> None:
+    port = MemoryPort(sandbox, "nextjs")
+    ctx, store = _context("nextjs", "bff-microservices")
+    files, final, summary = await generate(ctx, port, DESIGN, "nextjs")
+    assert final is not None
+    assert final.ok, final.diagnostic()
+    assert summary == "nextjs frontend: 3 page(s) that compile and pass the harness"
+    assert f"{PREFIX}src/app/screens/pagoord/screen.tsx" in files
+    assert f"{PREFIX}src/app/screens/pagoord/page.tsx" in files
+    assert f"{PREFIX}src/app/api/[...path]/route.ts" in files
+    assert ("pagoord", 2) in port.developer.calls
+    assert store.kinds().count("selfCorrected") == 1
 
 
 def test_the_verdict_checks_follow_the_sandbox_run() -> None:
