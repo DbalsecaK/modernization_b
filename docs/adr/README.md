@@ -33,5 +33,6 @@ reemplaza y se marca el anterior como "Reemplazado por ADR-NNNN".
 | [0025](0025-flujo-4-validacion-independiente.md) | Flujo 4: validación independiente (IV&V) de una migración hecha por un tercero | Aceptada |
 | [0026](0026-flujo-3-anadir-a-lo-existente.md) | Flujo 3: añadir funcionalidad a una aplicación existente | Aceptada |
 | [0027](0027-ola-2-mysql-gcp-serverless.md) | Ola 2 (primera parte): MySQL, GCP y despliegue serverless | Aceptada |
+| [0028](0028-ola-2-quarkus-y-nextjs.md) | Ola 2 (segunda parte): Quarkus y Next.js | Aceptada |
 
 Plantilla: contexto, decisión, alternativas consideradas, consecuencias y cómo se valida.

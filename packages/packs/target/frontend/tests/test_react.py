@@ -1,7 +1,7 @@
 """The React pack in the real sandbox (ADR-0016): the skeleton with the hand-written reference pages of the
 fictitious BMS application compiles (tsc strict), bundles and passes the platform's harness on every screen; a page
 that loses a field, skips a validation, breaks accessibility or does not type-check fails with the reason. Skipped
-without Docker or the image nexti-sandbox-frontend:1."""
+without Docker or the image nexti-sandbox-frontend:2."""
 
 from pathlib import Path
 

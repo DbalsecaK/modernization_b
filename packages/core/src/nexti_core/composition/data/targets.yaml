@@ -11,14 +11,14 @@ axes:
     - {key: bff-microservices, name: "BFF + microservices"}
   backend:
     - {key: spring-boot, name: "Java Spring Boot", level: certified, wave: 1}
-    - {key: quarkus, name: "Java Quarkus", level: assisted, wave: 2}
+    - {key: quarkus, name: "Java Quarkus", level: certified, wave: 2}
     - {key: dotnet-10, name: ".NET 10", level: certified, wave: 1}
     - {key: go, name: "Go", level: experimental, wave: 3}
     - {key: nextjs, name: "Next.js", level: assisted, wave: 2}
   frontend:
     - {key: react, name: "React", level: certified, wave: 1}
     - {key: angular, name: "Angular", level: certified, wave: 1}
-    - {key: nextjs, name: "Next.js", level: assisted, wave: 2}
+    - {key: nextjs, name: "Next.js", level: certified, wave: 2}
     - {key: none, name: "No frontend"}
   database:
     - {key: postgresql, name: "PostgreSQL", level: certified, wave: 1}

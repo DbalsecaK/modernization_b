@@ -1,10 +1,15 @@
-// Builds and tests one generated frontend in the sandbox (ADR-0016). Input: /input/project (a React or Angular
-// project written by the platform and the agent) and /input/screens.json (the screen contracts). The type check is
-// the compiler (tsc for React, ngc with strict templates for Angular); then the app and the platform's harness entry
-// are bundled, and every screen is mounted in jsdom with a recording API and navigation and checked against its
-// contract, with axe-core. Prints one JSON report between markers; the container has no network.
+// Builds and tests one generated frontend in the sandbox (ADR-0016, ADR-0028). Input: /input/project (a React, Angular
+// or Next.js project written by the platform and the agent) and /input/screens.json (the screen contracts). The type
+// check is the compiler (tsc for React and Next.js, ngc with strict templates for Angular); then the app and the
+// platform's harness entry are bundled, and every screen is mounted in jsdom with a recording API and navigation and
+// checked against its contract, with axe-core. Prints one JSON report between markers; the container has no network.
+//
+// Next.js: no `next build` here (no network, /work is noexec). tsc checks the project with Next's own types; the app
+// bundle is every layout, page and route of src/app, with next/link and next/navigation replaced by the small shims
+// of scripts/next (the bundle is never run, it proves every import resolves); the screens use no Next.js API, so the
+// harness mounts them like React pages.
 import { execFileSync } from 'node:child_process'
-import { cpSync, existsSync, readFileSync, symlinkSync } from 'node:fs'
+import { cpSync, existsSync, readdirSync, readFileSync, symlinkSync } from 'node:fs'
 import { createRequire } from 'node:module'
 
 const require = createRequire('/opt/sandbox/')
@@ -54,13 +59,34 @@ const options = {
   define: { 'process.env.NODE_ENV': '"production"' },
   logLevel: 'silent',
 }
-const entry = flavour === 'angular' ? 'src' : 'src'
+if (flavour === 'nextjs') {
+  options.alias = { ...options.alias, 'next/link': '/opt/sandbox/scripts/next/link.jsx',
+    'next/navigation': '/opt/sandbox/scripts/next/navigation.js' }
+}
+
+// The App Router files of a Next.js project: every layout, page and route under src/app.
+function nextApp() {
+  const found = []
+  const walk = (dir) => {
+    for (const item of readdirSync(dir, { withFileTypes: true })) {
+      const path = `${dir}/${item.name}`
+      if (item.isDirectory()) walk(path)
+      else if (/^(layout|page|route)\.tsx?$/.test(item.name)) found.push(path)
+    }
+  }
+  if (existsSync('src/app')) walk('src/app')
+  const imports = found.map((path, i) => `import * as m${i} from ${JSON.stringify(`./${path}`)}`)
+  imports.push(`globalThis.__app = [${found.map((_, i) => `m${i}`).join(', ')}]`)
+  return { contents: `${imports.join('\n')}\n`, resolveDir: '/work/project', sourcefile: 'next-app.tsx', loader: 'tsx' }
+}
+
 const ext = flavour === 'angular' ? 'ts' : 'tsx'
 let harness
 try {
-  await esbuild.build({ ...options, entryPoints: [`${entry}/main.${ext}`] })
+  const app = flavour === 'nextjs' ? { stdin: nextApp() } : { entryPoints: [`src/main.${ext}`] }
+  await esbuild.build({ ...options, ...app })
   report.app = true
-  harness = (await esbuild.build({ ...options, entryPoints: [`${entry}/harness.${ext}`] })).outputFiles[0].text
+  harness = (await esbuild.build({ ...options, entryPoints: [`src/harness.${ext}`] })).outputFiles[0].text
 } catch (error) {
   report.errors = (error.errors ?? [{ text: String(error) }]).slice(0, 20).map((e) =>
     e.location ? `${e.location.file}:${e.location.line}: ${e.text}` : e.text)

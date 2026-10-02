@@ -28,8 +28,13 @@ HARNESS_CLASS = "nexti.equivalence.EquivalenceHarness"
 JDBC_URL = "jdbc:postgresql://localhost:5432/nexti"
 
 
-def harness_source() -> str:
-    return (package_files("nexti_pack_spring_boot") / "harness" / "EquivalenceHarness.java").read_text("utf-8")
+def harness_source(flavour: str = "") -> str:
+    """The harness of the Spring Boot pack (Spring JDBC), or of one of its frameworks (`quarkus`: plain JDBC over a
+    DataSource). Every flavour is the class `nexti.equivalence.EquivalenceHarness` and prints the same lines."""
+    folder = package_files("nexti_pack_spring_boot") / "harness"
+    return (folder / flavour / "EquivalenceHarness.java" if flavour else folder / "EquivalenceHarness.java").read_text(
+        "utf-8"
+    )
 
 
 def plan(design: Design, use_case: UseCase) -> dict[str, Any]:
@@ -97,12 +102,14 @@ async def run_equivalence(
     use_case: UseCase,
     master: GoldenMaster,
     defaults: dict[str, Scalar] | None = None,
+    harness: str | None = None,
 ) -> EquivalenceRun:
-    """Compiles the project (tests included, counted from JUnit XML) and runs every golden case on it."""
+    """Compiles the project (tests included, counted from JUnit XML) and runs every golden case on it. `harness` is the
+    source of the harness when the project's framework is not Spring (Quarkus, ADR-0028)."""
     recorded = [r for r in master.results if r.observation.error is None]
     cases = [target_case(design, use_case, r.case, defaults) for r in recorded]
     extra = {
-        "harness/EquivalenceHarness.java": harness_source(),
+        "harness/EquivalenceHarness.java": harness if harness is not None else harness_source(),
         "harness/plan.json": json.dumps(plan(design, use_case)),
         "harness/cases.json": json.dumps(cases),
     }

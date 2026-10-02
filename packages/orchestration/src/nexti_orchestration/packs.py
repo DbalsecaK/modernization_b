@@ -11,6 +11,7 @@ from nexti_pack_dotnet.pack import PACK as DOTNET
 from nexti_pack_spring_boot.pack import MYSQL_PACK as SPRING_BOOT_MYSQL
 from nexti_pack_spring_boot.pack import ORACLE_PACK as SPRING_BOOT_ORACLE
 from nexti_pack_spring_boot.pack import PACK as SPRING_BOOT
+from nexti_pack_spring_boot.quarkus import QUARKUS_PACK as QUARKUS
 from nexti_sandbox import Sandbox
 from nexti_sandbox.build import BuildResult
 
@@ -77,16 +78,19 @@ class BackendPack(Protocol):
     def mutations(self, source: str) -> Sequence[Any]: ...
 
 
-PACKS: dict[str, BackendPack] = {SPRING_BOOT.name: SPRING_BOOT, DOTNET.name: DOTNET}
+PACKS: dict[str, BackendPack] = {SPRING_BOOT.name: SPRING_BOOT, QUARKUS.name: QUARKUS, DOTNET.name: DOTNET}
 
 
 def backend_pack(target: Mapping[str, Any]) -> BackendPack | None:
     """The pack of a project's backend (Spring Boot when none is chosen), with its database when the pack has a
-    variant for it (Spring Boot with Oracle, ADR-0021, or MySQL, ADR-0027); None when that backend has no pack yet."""
+    variant for it (Spring Boot with Oracle, ADR-0021, or MySQL, ADR-0027); None when that backend has no pack yet.
+    Quarkus (ADR-0028) is certified with PostgreSQL only: with another database it has no pack yet."""
     backend = str(target.get("backend") or DEFAULT)
     database = str(target.get("database") or "").lower()
     if backend == SPRING_BOOT.name and database == "oracle":
         return SPRING_BOOT_ORACLE
     if backend == SPRING_BOOT.name and database == "mysql":
         return SPRING_BOOT_MYSQL
+    if backend == QUARKUS.name and database not in ("", "postgresql"):
+        return None
     return PACKS.get(backend)
