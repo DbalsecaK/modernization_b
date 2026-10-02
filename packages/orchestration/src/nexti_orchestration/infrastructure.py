@@ -1,7 +1,8 @@
 """The infrastructure of the target (spec 8.4, ADR-0021): after the code, the deployment pack writes the OpenTofu of
 the target's cloud from the approved design (code, no model), and verification gives it its own verdict
 (`iac-<cloud>`): `tofu validate` in the sandbox without credentials and the fitness functions of the pack. A target
-without a cloud, or with a cloud that has no generator yet, gets no IaC."""
+without a cloud, or with a cloud that has no generator yet, gets no IaC; one whose cloud does not support its
+database gets no IaC and the reason in the summary."""
 
 import io
 import json
@@ -30,10 +31,11 @@ class InfrastructurePort(Protocol):
 
 
 def generate(design: Design, target: Mapping[str, Any]) -> tuple[dict[str, str], str]:
-    """The IaC files of the target and a summary; nothing when the target has no cloud with a generator."""
+    """The IaC files of the target and a summary; no files when the target has no cloud with a generator, and the
+    reason as the summary when its cloud does not support its database."""
     files = nexti_pack_iac.generate(design, target)
     if not files:
-        return {}, ""
+        return {}, nexti_pack_iac.unsupported(target)
     cloud = str(target.get("cloud")).lower()
     return files, f"OpenTofu for {cloud.upper()}: {sum(1 for p in files if p.endswith('.tf'))} file(s)"
 

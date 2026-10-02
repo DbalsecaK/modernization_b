@@ -1,9 +1,74 @@
 # ruff: noqa: E501 - the HCL templates keep the lines OpenTofu formats
-"""The Azure IaC of a target (spec 8.4, ADR-0021), deterministic: a resource group and a virtual network, the service on
-Container Apps, the database managed and private (PostgreSQL Flexible Server, Azure SQL or Oracle Database@Azure),
-its password generated and kept in Key Vault, and the logs in Log Analytics. Everything is tagged."""
+"""The Azure IaC of a target (spec 8.4, ADR-0021, ADR-0027), deterministic: a resource group and a virtual network, the
+service on Container Apps (scaling to zero when the architecture is serverless), the database managed and private
+(PostgreSQL or MySQL Flexible Server, Azure SQL or Oracle Database@Azure), its password generated and kept in Key
+Vault, and the logs in Log Analytics. Everything is tagged."""
 
 from nexti_pack_iac.common import Target
+
+MYSQL_SERVER = """resource "azurerm_mysql_flexible_server" "main" {
+  name                   = "${local.name}-db"
+  resource_group_name    = azurerm_resource_group.main.name
+  location               = azurerm_resource_group.main.location
+  version                = "8.0.21"
+  sku_name               = var.db_sku
+  backup_retention_days  = 7
+  delegated_subnet_id    = azurerm_subnet.db.id
+  private_dns_zone_id    = azurerm_private_dns_zone.db.id
+  administrator_login    = "app"
+  administrator_password = random_password.db.result
+  tags                   = local.tags
+  depends_on             = [azurerm_private_dns_zone_virtual_network_link.db]
+  storage {
+    size_gb = 32
+  }
+}
+
+resource "azurerm_mysql_flexible_database" "main" {
+  name                = local.name
+  resource_group_name = azurerm_resource_group.main.name
+  server_name         = azurerm_mysql_flexible_server.main.name
+  charset             = "utf8mb4"
+  collation           = "utf8mb4_0900_ai_ci"
+}
+"""
+
+POSTGRESQL_SERVER = """resource "azurerm_postgresql_flexible_server" "main" {
+  name                          = "${local.name}-db"
+  resource_group_name           = azurerm_resource_group.main.name
+  location                      = azurerm_resource_group.main.location
+  version                       = "16"
+  sku_name                      = var.db_sku
+  storage_mb                    = 32768
+  backup_retention_days         = 7
+  delegated_subnet_id           = azurerm_subnet.db.id
+  private_dns_zone_id           = azurerm_private_dns_zone.db.id
+  public_network_access_enabled = false
+  administrator_login           = "app"
+  administrator_password        = random_password.db.result
+  tags                          = local.tags
+  depends_on                    = [azurerm_private_dns_zone_virtual_network_link.db]
+}
+"""
+
+
+def _private_dns(engine: str) -> str:
+    """The private DNS zone of a Flexible Server with private access, linked to the virtual network."""
+    return f"""resource "azurerm_private_dns_zone" "db" {{
+  name                = "${{local.name}}.{engine}.database.azure.com"
+  resource_group_name = azurerm_resource_group.main.name
+  tags                = local.tags
+}}
+
+resource "azurerm_private_dns_zone_virtual_network_link" "db" {{
+  name                  = "${{local.name}}-db"
+  resource_group_name   = azurerm_resource_group.main.name
+  private_dns_zone_name = azurerm_private_dns_zone.db.name
+  virtual_network_id    = azurerm_virtual_network.main.id
+  tags                  = local.tags
+}}
+
+"""
 
 
 def _database(database: str) -> str:
@@ -51,44 +116,18 @@ resource "azurerm_mssql_database" "main" {
   tags                             = local.tags
 }
 """
-    return """resource "azurerm_private_dns_zone" "db" {
-  name                = "${local.name}.postgres.database.azure.com"
-  resource_group_name = azurerm_resource_group.main.name
-  tags                = local.tags
-}
-
-resource "azurerm_private_dns_zone_virtual_network_link" "db" {
-  name                  = "${local.name}-db"
-  resource_group_name   = azurerm_resource_group.main.name
-  private_dns_zone_name = azurerm_private_dns_zone.db.name
-  virtual_network_id    = azurerm_virtual_network.main.id
-  tags                  = local.tags
-}
-
-resource "azurerm_postgresql_flexible_server" "main" {
-  name                          = "${local.name}-db"
-  resource_group_name           = azurerm_resource_group.main.name
-  location                      = azurerm_resource_group.main.location
-  version                       = "16"
-  sku_name                      = var.db_sku
-  storage_mb                    = 32768
-  backup_retention_days         = 7
-  delegated_subnet_id           = azurerm_subnet.db.id
-  private_dns_zone_id           = azurerm_private_dns_zone.db.id
-  public_network_access_enabled = false
-  administrator_login           = "app"
-  administrator_password        = random_password.db.result
-  tags                          = local.tags
-  depends_on                    = [azurerm_private_dns_zone_virtual_network_link.db]
-}
-"""
+    if database == "mysql":
+        return _private_dns("mysql") + MYSQL_SERVER
+    return _private_dns("postgres") + POSTGRESQL_SERVER
 
 
 def files(target: Target) -> dict[str, str]:
     name = target.name
     delegation = {"sqlserver": "", "oracle": "Oracle.Database/networkAttachments",
-                  "postgresql": "Microsoft.DBforPostgreSQL/flexibleServers"}.get(target.database,
-                                                                               "Microsoft.DBforPostgreSQL/flexibleServers")  # fmt: skip
+                  "mysql": "Microsoft.DBforMySQL/flexibleServers"}.get(target.database,
+                                                                     "Microsoft.DBforPostgreSQL/flexibleServers")  # fmt: skip
+    db_sku = "GP_Standard_D2ds_v4" if target.database == "mysql" else "GP_Standard_D2s_v3"
+    min_replicas = 0 if target.serverless else 1
     db_subnet_delegation = (
         f'''  delegation {{
     name = "db"
@@ -234,7 +273,7 @@ resource "azurerm_container_app" "main" {{
     }}
   }}
   template {{
-    min_replicas = 1
+    min_replicas = {min_replicas}
     max_replicas = 3
     container {{
       name   = local.name
@@ -249,25 +288,25 @@ resource "azurerm_container_app" "main" {{
   }}
 }}
 '''
-    variables = """variable "location" {
+    variables = f"""variable "location" {{
   type    = string
   default = "eastus2"
-}
+}}
 
-variable "environment" {
+variable "environment" {{
   type    = string
   default = "dev"
-}
+}}
 
-variable "container_image" {
+variable "container_image" {{
   type        = string
   description = "The image of the generated service, built and pushed by the pipeline of the customer"
-}
+}}
 
-variable "db_sku" {
+variable "db_sku" {{
   type    = string
-  default = "GP_Standard_D2s_v3"
-}
+  default = "{db_sku}"
+}}
 """
     outputs = """output "url" {
   value = "https://${azurerm_container_app.main.ingress[0].fqdn}"

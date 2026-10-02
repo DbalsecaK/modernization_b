@@ -1,7 +1,7 @@
 [project]
 name = "nexti-pack-iac"
 version = "0.1.0"
-description = "Deployment pack: OpenTofu for AWS and Azure generated from the design, validated in the sandbox with fitness functions (spec 8.4, ADR-0021)."
+description = "Deployment pack: OpenTofu for AWS, Azure and GCP (containers or serverless) generated from the design, validated in the sandbox with fitness functions (spec 8.4, ADR-0021, ADR-0027)."
 requires-python = ">=3.12"
 dependencies = ["nexti-core", "nexti-sandbox", "nexti-verification"]
 

@@ -41,7 +41,7 @@ class MemoryPort:
         self.saved: list[tuple[Verdict, bytes]] = []
 
     def sandbox(self, image: str) -> ValidSandbox:
-        assert image == "nexti-sandbox-iac:1"
+        assert image == "nexti-sandbox-iac:2"
         return self.box
 
     async def load_infrastructure(self) -> dict[str, str]:
@@ -64,6 +64,11 @@ def test_generation_writes_the_iac_of_the_cloud_and_nothing_without_one() -> Non
     assert set(files) == {"infra/aws/main.tf", "infra/aws/variables.tf", "infra/aws/outputs.tf", "infra/aws/README.md"}
     assert summary == "OpenTofu for AWS: 3 file(s)"
     assert infrastructure.generate(DESIGN, {"backend": "spring-boot"}) == ({}, "")
+    gcp, summary = infrastructure.generate(DESIGN, {"database": "mysql", "cloud": "gcp", "architecture": "serverless"})
+    assert "infra/gcp/main.tf" in gcp
+    assert summary == "OpenTofu for GCP: 3 file(s)"
+    assert infrastructure.generate(DESIGN, {"database": "oracle", "cloud": "gcp"}) == (
+        {}, "No IaC: the oracle database is not supported on GCP by the deployment pack")  # fmt: skip
 
 
 def test_verification_gives_the_iac_its_own_verdict() -> None:
