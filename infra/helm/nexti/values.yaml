@@ -30,6 +30,23 @@ services:
   malwareScannerHost: clamav
   malwareScannerPort: 3310
   osvUrl: https://api.osv.dev  # empty: dependencies of the generated code are not checked (offline)
+  figmaUrl: https://api.figma.com/v1  # empty: Figma files are not read (air-gapped)
+
+# Models (spec 12, ADR-0030). `openrouterEnabled: false` (air-gapped profile) turns OpenRouter off: no catalog sync,
+# no OpenRouter connection and no call; the models are the tenant's own openai-compatible servers (vLLM, Ollama),
+# added in AI configuration with their base URL. `allowPrivateHosts` lets those base URLs point to private or
+# loopback hosts (and use plain http only there); off, only https on a public host is accepted (SSRF).
+models:
+  openrouterEnabled: true
+  allowPrivateHosts: false
+
+# Offline license (14.4, ADR-0030; docs/guias/air-gapped.md), on in the air-gapped profile. A Secret with the keys
+# `license.json`, `license.json.sig` and `public-key` (NexTI's Ed25519 public key, PEM or base64): the two files are
+# mounted in the API pod and LICENSE_FILE, LICENSE_SIGNATURE_FILE and LICENSE_PUBLIC_KEY point to them. Off, no
+# license is required (SaaS).
+license:
+  enabled: false
+  secretName: nexti-license
 
 openfga:
   storeId: ""  # pinned after the first installation

@@ -1,0 +1,21 @@
+# Air-gapped (14.3, ADR-0030): on-prem with no route to the internet. Nothing calls out: OpenRouter is off (no
+# catalog sync, connection or call), the dependencies of the generated code are not checked in OSV and Figma files
+# are not read. The models are the customer's own openai-compatible servers (vLLM, Ollama) on its private network,
+# added in AI configuration with their base URL; the images arrive in the signed update bundle and the license is an
+# offline signed file.
+profile: air-gapped
+controlPlane: {enabled: true}
+dataPlane: {enabled: true}
+services:
+  osvUrl: ""  # no OSV
+  figmaUrl: ""  # no Figma reading (the export to Figma is a plugin the user runs, it needs no outbound call)
+models:
+  openrouterEnabled: false
+  allowPrivateHosts: true  # the model servers live on the customer's private network, often over http
+license:
+  enabled: true  # the Secret `nexti-license` (license.json, license.json.sig, public-key) must exist
+  secretName: nexti-license
+openfga:
+  bootstrap: true
+api: {replicas: 2}
+worker: {replicas: 1}

@@ -37,7 +37,7 @@ import {
   type ProfileTest,
 } from '@/api/ai'
 import { Textarea, toast } from '@/components/ui/overlay'
-import { ConnectionForm, ManualPriceForm } from './AiForms'
+import { ConnectionForm, LocalModelForm, ManualPriceForm } from './AiForms'
 import {
   Badge,
   Button,
@@ -136,24 +136,26 @@ function useRoleLabel() {
 /** Offerings a profile can use: the ones loaded in the catalog, with the model they belong to. */
 function useOfferedModels() {
   const catalog = useCatalog('', true)
-  return useMemo(
-    () =>
-      (catalog.data ?? []).flatMap((v) =>
-        v.offerings.map((o) => ({
-          ...o,
-          versionId: v.id,
-          model: v.providerSlug,
-          label: `${v.providerSlug} · ${o.upstreamProvider}`,
-        })),
-      ),
-    [catalog.data],
-  )
+  const connections = useConnections()
+  return useMemo(() => {
+    // A local model (ADR-0030) is labelled with the connection that serves it, not its internal upstream tag.
+    const names = new Map((connections.data ?? []).map((c) => [c.id, c.name]))
+    return (catalog.data ?? []).flatMap((v) =>
+      v.offerings.map((o) => ({
+        ...o,
+        versionId: v.id,
+        model: v.providerSlug,
+        label: `${v.providerSlug} · ${(o.connectionId && names.get(o.connectionId)) || o.upstreamProvider}`,
+      })),
+    )
+  }, [catalog.data, connections.data])
 }
 
 // ---------------------------------------------------------------------------------------------------------------
 // Connections
 
 const CONNECTION_TONE = { ok: 'good', failed: 'critical', untested: 'neutral' } as const
+const PROVIDER_KEYS = { openrouter: 'providers.openrouter', 'openai-compatible': 'providers.openaiCompatible' } as const
 
 function Connections() {
   const { t } = useTranslation()
@@ -162,9 +164,18 @@ function Connections() {
   const remove = useDeleteConnection()
   const [form, setForm] = useState<{ open: boolean; initial?: Connection; key: number }>({ open: false, key: 0 })
   const open = (initial?: Connection) => setForm((f) => ({ open: true, initial, key: f.key + 1 }))
+  const [models, setModels] = useState<{ connection?: Connection; key: number }>({ key: 0 })
 
   return (
     <div className="space-y-4">
+      {models.connection && (
+        <LocalModelForm
+          key={models.key}
+          open
+          connection={models.connection}
+          onClose={() => setModels((m) => ({ key: m.key }))}
+        />
+      )}
       <ConnectionForm
         key={form.key}
         open={form.open}
@@ -188,7 +199,8 @@ function Connections() {
                 <div className="flex items-start justify-between gap-2">
                   <div>
                     <div className="text-sm font-semibold text-text">{c.name}</div>
-                    <div className="text-xs text-muted">{t(`providers.${c.provider}`)}</div>
+                    <div className="text-xs text-muted">{t(PROVIDER_KEYS[c.provider])}</div>
+                    {c.baseUrl && <div className="break-all text-xs text-muted">{c.baseUrl}</div>}
                   </div>
                   <Badge tone={CONNECTION_TONE[c.status]}>
                     {c.status === 'ok' ? (
@@ -232,6 +244,11 @@ function Connections() {
                     {testing ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}{' '}
                     {t('ai.testConnection')}
                   </Button>
+                  {c.provider === 'openai-compatible' && (
+                    <Button size="sm" onClick={() => setModels((m) => ({ connection: c, key: m.key + 1 }))}>
+                      <Plus size={14} /> {t('aiForms.local.open')}
+                    </Button>
+                  )}
                   <Button size="sm" variant="ghost" onClick={() => open(c)}>
                     {t('common.edit')}
                   </Button>
@@ -491,6 +508,15 @@ function ProfileEditor({
   const mapping = useEffortMapping(offeringId || null)
   const offering = offered.find((o) => o.id === offeringId)
   const connectionList = connections.data ?? []
+  const chosen = connectionList.find((c) => c.id === connectionId)
+  // An OpenRouter connection serves the OpenRouter catalog; an openai-compatible one only its own models.
+  const servable = offered.filter(
+    (o) =>
+      !chosen ||
+      (chosen.provider === 'openai-compatible'
+        ? o.connectionId === chosen.id
+        : (o.provider ?? 'openrouter') === 'openrouter'),
+  )
   const valid = name.trim() && connectionId && offeringId && Number(maxOutput) > 0
 
   async function submit() {
@@ -541,7 +567,7 @@ function ProfileEditor({
           <Field label={t('ai.offering')}>
             <Select value={offeringId} onChange={(e) => setOfferingId(e.target.value)}>
               <option value="">{t('ai.choose')}</option>
-              {offered.map((o) => (
+              {servable.map((o) => (
                 <option key={o.id} value={o.id} disabled={!o.allowedByPolicy || o.status !== 'available'}>
                   {o.label}
                   {o.zdr ? ' · ZDR' : ''}

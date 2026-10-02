@@ -192,6 +192,47 @@ export interface paths {
         patch: operations["update_connection_api_v1_ai_connections__connection_id__patch"];
         trace?: never;
     };
+    "/api/v1/ai/connections/{connection_id}/models": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Add Model
+         * @description Add (or refresh) a model of an openai-compatible connection, with the price the tenant declares (zero by
+         *     default). It is visible only to this tenant.
+         */
+        post: operations["add_model_api_v1_ai_connections__connection_id__models_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ai/connections/{connection_id}/served-models": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Served Models
+         * @description What the server lists at `<base>/models`, when it does (vLLM and Ollama do).
+         */
+        get: operations["list_served_models_api_v1_ai_connections__connection_id__served_models_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/ai/connections/{connection_id}:test": {
         parameters: {
             query?: never;
@@ -203,7 +244,8 @@ export interface paths {
         put?: never;
         /**
          * Test Connection
-         * @description Check the stored credential with the provider (no model is called, so it costs nothing).
+         * @description Check the stored credential with the provider (no model is called, so it costs nothing). An openai-compatible
+         *     server is asked for its models.
          */
         post: operations["test_connection_api_v1_ai_connections__connection_id__test_post"];
         delete?: never;
@@ -1731,6 +1773,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/projects/{project_id}/screens:figma-export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Figma Export
+         * @description The newest version of every screen as a Figma development plugin (manifest.json and code.js) in a zip.
+         */
+        get: operations["figma_export_api_v1_projects__project_id__screens_figma_export_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/projects/{project_id}/spec/rules": {
         parameters: {
             query?: never;
@@ -3120,15 +3182,17 @@ export interface components {
         /** ConnectionCreate */
         ConnectionCreate: {
             /** Apikey */
-            apiKey: string;
+            apiKey?: string | null;
+            /** Baseurl */
+            baseUrl?: string | null;
             /** Name */
             name: string;
             /**
              * Provider
              * @default openrouter
-             * @constant
+             * @enum {string}
              */
-            provider: "openrouter";
+            provider: "openrouter" | "openai-compatible";
         };
         /** ConnectionHealth */
         ConnectionHealth: {
@@ -3161,6 +3225,8 @@ export interface components {
         };
         /** ConnectionOut */
         ConnectionOut: {
+            /** Baseurl */
+            baseUrl: string | null;
             /** Hascredential */
             hasCredential: boolean;
             /**
@@ -3176,9 +3242,9 @@ export interface components {
             name: string;
             /**
              * Provider
-             * @constant
+             * @enum {string}
              */
-            provider: "openrouter";
+            provider: "openrouter" | "openai-compatible";
             /**
              * Status
              * @enum {string}
@@ -3189,6 +3255,8 @@ export interface components {
         ConnectionUpdate: {
             /** Apikey */
             apiKey?: string | null;
+            /** Baseurl */
+            baseUrl?: string | null;
             /** Name */
             name?: string | null;
         };
@@ -4078,6 +4146,38 @@ export interface components {
             /** Report */
             report: string | null;
         };
+        /** LicenseOut */
+        LicenseOut: {
+            /** Customer */
+            customer?: string | null;
+            /** Deploymentprofile */
+            deploymentProfile?: string | null;
+            /** Expiresat */
+            expiresAt?: string | null;
+            /** Features */
+            features?: string[];
+            /** Issuedat */
+            issuedAt?: string | null;
+            /** Licenseid */
+            licenseId?: string | null;
+            /** Maxprojects */
+            maxProjects?: number | null;
+            /** Maxtenants */
+            maxTenants?: number | null;
+            /** Projects */
+            projects?: number | null;
+            /** Readonly */
+            readOnly: boolean;
+            /** Reason */
+            reason?: ("public_key_missing" | "public_key_invalid" | "file_not_found" | "signature_not_found" | "bad_signature" | "malformed" | "not_yet_valid" | "expired" | "max_tenants" | "max_projects") | null;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "not_required" | "valid" | "missing" | "invalid" | "expired" | "over_limits";
+            /** Tenants */
+            tenants?: number | null;
+        };
         /** LinkIn */
         LinkIn: {
             /**
@@ -4097,6 +4197,47 @@ export interface components {
         LoadOut: {
             /** Offerings */
             offerings: number;
+        };
+        /**
+         * LocalModelIn
+         * @description A model the openai-compatible server serves, by its exact id there (e.g. `meta-llama/Llama-3.1-8B-Instruct`).
+         */
+        LocalModelIn: {
+            /** Capabilities */
+            capabilities?: ("tools" | "structured_output" | "reasoning" | "vision")[];
+            /** Contextwindow */
+            contextWindow?: number | null;
+            /**
+             * Inputpermtok
+             * @default 0
+             */
+            inputPerMtok: number | string;
+            /** Maxoutputtokens */
+            maxOutputTokens?: number | null;
+            /** Name */
+            name?: string | null;
+            /**
+             * Outputpermtok
+             * @default 0
+             */
+            outputPerMtok: number | string;
+            /** Slug */
+            slug: string;
+            /**
+             * Zdr
+             * @default false
+             */
+            zdr: boolean;
+        };
+        /** LocalModelOut */
+        LocalModelOut: {
+            /**
+             * Offeringid
+             * Format: uuid
+             */
+            offeringId: string;
+            /** Slug */
+            slug: string;
         };
         /** ManualPriceIn */
         ManualPriceIn: {
@@ -4265,6 +4406,8 @@ export interface components {
             allowedByPolicy: boolean;
             /** Capabilities */
             capabilities: string[];
+            /** Connectionid */
+            connectionId: string | null;
             /** Contextwindow */
             contextWindow: number | null;
             /**
@@ -4277,6 +4420,11 @@ export interface components {
             /** Policyreason */
             policyReason: string | null;
             price: components["schemas"]["PriceOut"] | null;
+            /**
+             * Provider
+             * @enum {string}
+             */
+            provider: "openrouter" | "openai-compatible";
             /**
              * Status
              * @enum {string}
@@ -4387,6 +4535,7 @@ export interface components {
             failedLastDay: number;
             /** Instances */
             instances: components["schemas"]["InstanceOut"][];
+            license: components["schemas"]["LicenseOut"];
             /** Queues */
             queues: components["schemas"]["QueueOut"][];
             /** Recentfailures */
@@ -5333,6 +5482,13 @@ export interface components {
              * Format: uuid
              */
             projectId: string;
+        };
+        /** ServedModelOut */
+        ServedModelOut: {
+            /** Contextwindow */
+            contextWindow: number | null;
+            /** Slug */
+            slug: string;
         };
         /** SessionTenantOut */
         SessionTenantOut: {
@@ -6337,6 +6493,72 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ConnectionOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    add_model_api_v1_ai_connections__connection_id__models_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                connection_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LocalModelIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LocalModelOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_served_models_api_v1_ai_connections__connection_id__served_models_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                connection_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServedModelOut"][];
                 };
             };
             /** @description Validation Error */
@@ -9611,6 +9833,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["nexti_api__spec__schemas__RuleOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    figma_export_api_v1_projects__project_id__screens_figma_export_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
             /** @description Validation Error */

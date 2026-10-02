@@ -3,9 +3,34 @@ import { api, toApiError, type Schemas } from './client'
 
 // AI configuration and usage of the active tenant (spec 12, 13). The API key of a connection goes to the
 // secrets store on the server and never comes back; every model call goes through the server's gateway.
-export type Connection = Schemas['ConnectionOut']
-export type CatalogVersion = Schemas['VersionOut']
-export type Offering = Schemas['OfferingOut']
+// Local models (ADR-0030): written by hand until the schema is regenerated; the intersections stay valid after.
+export type ConnectionProvider = 'openrouter' | 'openai-compatible'
+export type Connection = Omit<Schemas['ConnectionOut'], 'provider'> & {
+  provider: ConnectionProvider
+  baseUrl?: string | null
+}
+export type ConnectionCreateInput = {
+  provider: ConnectionProvider
+  name: string
+  apiKey?: string | null
+  baseUrl?: string | null
+}
+export type ConnectionUpdateInput = { name?: string; apiKey?: string; baseUrl?: string }
+export type Offering = Schemas['OfferingOut'] & { provider?: ConnectionProvider; connectionId?: string | null }
+export type CatalogVersion = Omit<Schemas['VersionOut'], 'offerings'> & { offerings: Offering[] }
+export type ServedModel = { slug: string; contextWindow: number | null }
+export type Capability = 'tools' | 'structured_output' | 'reasoning' | 'vision'
+export type LocalModelInput = {
+  slug: string
+  name?: string | null
+  contextWindow?: number | null
+  maxOutputTokens?: number | null
+  capabilities?: Capability[]
+  zdr?: boolean
+  inputPerMtok?: string
+  outputPerMtok?: string
+}
+export type LocalModelAdded = { offeringId: string; slug: string }
 export type Price = Schemas['PriceOut']
 export type Profile = Schemas['ProfileOut']
 export type ProfileInput = Schemas['ProfileIn']
@@ -29,6 +54,14 @@ async function unwrap<T>(call: Promise<Result<T>>): Promise<T> {
   const { data, error, response } = await call
   if (!response.ok) throw toApiError(response, error)
   return data as T
+}
+
+/** The routes the generated schema does not list yet (local models); the CSRF middleware still applies. */
+type LooseInit = { params?: { path?: Record<string, string> }; body?: unknown }
+const loose = api as unknown as {
+  GET: (path: string, init?: LooseInit) => Promise<Result<unknown>>
+  POST: (path: string, init?: LooseInit) => Promise<Result<unknown>>
+  PATCH: (path: string, init?: LooseInit) => Promise<Result<unknown>>
 }
 
 /** Money and prices travel as decimal strings; the screens show them as numbers. */
@@ -58,19 +91,51 @@ function useAiMutation<A, R>(fn: (args: A) => Promise<R>, refresh: readonly (rea
 
 // Connections
 export const useConnections = () =>
-  useQuery({ queryKey: keys.connections, queryFn: () => unwrap(api.GET('/api/v1/ai/connections')) })
+  useQuery({
+    queryKey: keys.connections,
+    queryFn: () => unwrap(api.GET('/api/v1/ai/connections')) as Promise<Connection[]>,
+  })
 
 export const useCreateConnection = () =>
   useAiMutation(
-    (body: Schemas['ConnectionCreate']) => unwrap(api.POST('/api/v1/ai/connections', { body })),
+    (body: ConnectionCreateInput) => unwrap(loose.POST('/api/v1/ai/connections', { body })) as Promise<Connection>,
     [keys.connections],
   )
 
 export const useUpdateConnection = () =>
   useAiMutation(
-    ({ id, ...body }: Schemas['ConnectionUpdate'] & { id: string }) =>
-      unwrap(api.PATCH('/api/v1/ai/connections/{connection_id}', { params: { path: { connection_id: id } }, body })),
+    ({ id, ...body }: ConnectionUpdateInput & { id: string }) =>
+      unwrap(
+        loose.PATCH('/api/v1/ai/connections/{connection_id}', { params: { path: { connection_id: id } }, body }),
+      ) as Promise<Connection>,
     [keys.connections],
+  )
+
+/** What an openai-compatible server lists at `<base>/models` (fetched on demand). */
+export const useServedModels = (connectionId: string | null, enabled: boolean) =>
+  useQuery({
+    queryKey: [...keys.connections, connectionId, 'served-models'],
+    queryFn: () =>
+      unwrap(
+        loose.GET('/api/v1/ai/connections/{connection_id}/served-models', {
+          params: { path: { connection_id: connectionId! } },
+        }),
+      ) as Promise<ServedModel[]>,
+    enabled: enabled && !!connectionId,
+    retry: false,
+  })
+
+/** Add a model of an openai-compatible connection, with the price the tenant declares (zero by default). */
+export const useAddLocalModel = () =>
+  useAiMutation(
+    ({ connectionId, ...body }: LocalModelInput & { connectionId: string }) =>
+      unwrap(
+        loose.POST('/api/v1/ai/connections/{connection_id}/models', {
+          params: { path: { connection_id: connectionId } },
+          body,
+        }),
+      ) as Promise<LocalModelAdded>,
+    [keys.catalog],
   )
 
 export const useDeleteConnection = () =>
@@ -96,7 +161,7 @@ export const useCatalog = (search: string, onlyOffered: boolean) =>
         api.GET('/api/v1/ai/catalog', {
           params: { query: { search: search || undefined, only_offered: onlyOffered } },
         }),
-      ),
+      ) as Promise<CatalogVersion[]>,
     placeholderData: keepPreviousData,
   })
 

@@ -700,6 +700,8 @@
     "notYet": "They appear when a run executes the UI phase on sources with BMS maps.",
     "catalog": "Screen catalog",
     "catalogHint": "{{count}} screens read from the mapsets {{mapsets}}",
+    "figmaExport": "Export to Figma",
+    "figmaExportHelp": "Downloads a Figma plugin that draws these screens with the design system. In Figma desktop: Plugins → Development → Import plugin from manifest, choose manifest.json from the unzipped folder and run the plugin.",
     "fieldCount_one": "{{count}} field",
     "fieldCount_other": "{{count}} fields",
     "version": "Version",
@@ -1355,7 +1357,8 @@
     "openai": "OpenAI API",
     "anthropic": "Anthropic API",
     "vertex": "Google Vertex AI",
-    "openrouter": "OpenRouter"
+    "openrouter": "OpenRouter",
+    "openaiCompatible": "OpenAI-compatible server (vLLM, Ollama)"
   },
   "capabilities": {
     "toolCalling": "Tools",
@@ -1821,6 +1824,43 @@
     "lastSeen": "Last seen",
     "instanceAlive": "Live",
     "instanceSilent": "Silent",
+    "license": {
+      "title": "License",
+      "hint": "The offline license of this installation (air-gapped and on-premises).",
+      "notRequired": "This deployment does not need a license.",
+      "readOnly": "The platform is read-only: everything can be seen, but no run is started and no project or tenant is created until a valid license is installed.",
+      "customer": "Customer",
+      "profile": "Deployment profile",
+      "licenseId": "License ID",
+      "issued": "Issued",
+      "expires": "Expires",
+      "tenants": "Tenants",
+      "projects": "Projects",
+      "usage": "{{used}} of {{max}}",
+      "features": "Features",
+      "noFeatures": "None",
+      "reason": "Reason",
+      "states": {
+        "not_required": "Not required",
+        "valid": "Valid",
+        "missing": "Missing",
+        "invalid": "Invalid",
+        "expired": "Expired",
+        "over_limits": "Over limits"
+      },
+      "reasons": {
+        "public_key_missing": "The license public key is not configured.",
+        "public_key_invalid": "The license public key cannot be read.",
+        "file_not_found": "The license file was not found.",
+        "signature_not_found": "The license signature file was not found.",
+        "bad_signature": "The signature does not match: the license was changed or signed with another key.",
+        "malformed": "The license content is not valid.",
+        "not_yet_valid": "The license is not valid yet.",
+        "expired": "The license has expired.",
+        "max_tenants": "There are more tenants than the license allows.",
+        "max_projects": "There are more projects than the license allows."
+      }
+    },
     "components": {
       "api": "API",
       "worker": "Worker"
@@ -1892,7 +1932,28 @@
     "rotateHint": "Leave empty to keep the current key. A new key replaces the old one.",
     "otherProviders": "Azure AI Foundry, AWS Bedrock and direct APIs arrive later with the same configuration.",
     "requestPrice": "Price per request (USD)",
-    "saveFailed": "Could not complete the action: {{message}}"
+    "saveFailed": "Could not complete the action: {{message}}",
+    "local": {
+      "providerHint": "A model server with the OpenAI chat API inside your network. Its models are added by hand and cost what you declare.",
+      "baseUrl": "Base URL",
+      "baseUrlHint": "Up to the API version, e.g. http://vllm.internal:8000/v1. Calls go to <base>/chat/completions.",
+      "apiKey": "API key (optional)",
+      "open": "Models",
+      "title": "Models of {{name}}",
+      "hint": "Add the models this server serves, by their exact id. They are visible only to this tenant.",
+      "listServed": "List the server's models",
+      "served": "Models the server lists",
+      "pick": "Pick a model…",
+      "noServed": "The server lists no models: type the id by hand.",
+      "serverUnavailable": "The server did not list its models; type the id by hand.",
+      "slug": "Model id",
+      "slugHint": "Exactly as the server names it; fixed versions only, no \"latest\".",
+      "contextWindow": "Context window (tokens)",
+      "zdr": "The server retains no data (zero data retention)",
+      "priceHint": "USD per million tokens, zero by default. The usage ledger records the tokens and this cost for every call.",
+      "add": "Add model",
+      "added": "Model {{model}} added."
+    }
   },
   "adminForms": {
     "tenantHint": "Creates the customer, its Keycloak organization and its first administrator.",

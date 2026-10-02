@@ -59,6 +59,7 @@ class Runtime:
     figma: FigmaReader | None = None  # Figma answers (tests and demo); by default the tenant's integration (M7)
     trackers: TrackerFactory | None = None  # Jira / Azure DevOps clients (tests and demo); by default the real ones
     osv_url: str | None = None  # dependencies of the generated code in OSV (M9a); None: not checked (tests)
+    figma_url: str = "https://api.figma.com/v1"  # empty: Figma is not read (air-gapped, ADR-0030)
 
 
 async def _resume_value(
@@ -127,7 +128,7 @@ async def execute_run(runtime: Runtime, run_id: uuid.UUID, tenant_id: uuid.UUID)
             runtime.graph,
             runtime.sandboxes,
             runtime.legacy,
-            runtime.figma or LiveFigma(runtime.engine, tenant_id, runtime.secrets, runtime.http),
+            runtime.figma or LiveFigma(runtime.engine, tenant_id, runtime.secrets, runtime.http, runtime.figma_url),
             DeliveryServices(runtime.http, runtime.secrets, runtime.osv_url, runtime.allow_private_hosts),
         )
         if runtime.gateway is not None

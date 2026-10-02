@@ -27,6 +27,7 @@ dependencies = [
   "nexti-ivv",
   "nexti-model-gateway",
   "nexti-skills",
+  "nexti-ui",
 ]
 
 [tool.uv.sources]
@@ -39,6 +40,7 @@ nexti-ingest = { workspace = true }
 nexti-ivv = { workspace = true }
 nexti-model-gateway = { workspace = true }
 nexti-skills = { workspace = true }
+nexti-ui = { workspace = true }
 
 [build-system]
 requires = ["hatchling"]

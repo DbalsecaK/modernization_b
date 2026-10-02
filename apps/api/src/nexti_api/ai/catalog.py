@@ -12,7 +12,7 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from nexti_api.admin.common import audit, not_found, transaction
-from nexti_api.ai.common import ConfigureModels, gateway_service
+from nexti_api.ai.common import ConfigureModels, gateway_service, require_openrouter
 from nexti_api.authz.require import Authorized, require_platform
 from nexti_api.schemas import ApiModel
 from nexti_core.db.models import (
@@ -45,6 +45,9 @@ class PriceOut(ApiModel):
 
 class OfferingOut(ApiModel):
     id: uuid.UUID
+    provider: Literal["openrouter", "openai-compatible"]
+    # openai-compatible: the tenant's connection that serves it (ADR-0030); None for OpenRouter.
+    connection_id: uuid.UUID | None
     upstream_provider: str
     context_window: int | None
     max_output_tokens: int | None
@@ -162,6 +165,8 @@ async def list_catalog(
         by_version.setdefault(offering.version_id, []).append(
             OfferingOut(
                 id=offering.id,
+                provider=offering.provider,
+                connection_id=offering.connection_id,
                 upstream_provider=offering.upstream_provider,
                 context_window=offering.context_window,
                 max_output_tokens=offering.max_output_tokens,
@@ -198,6 +203,7 @@ async def list_catalog(
 @router.post("/catalog:sync", response_model=SyncOut)
 async def sync(request: Request, auth: ConfigureModels) -> SyncOut:
     """Refresh families and versions from the provider's public catalog."""
+    require_openrouter(request)
     async with transaction(request, auth) as conn:
         report = await gateway_service(request).sync_catalog(conn)
         await audit(conn, auth, "ai.catalog_sync", "catalog", {"versions": report.versions})
@@ -207,6 +213,7 @@ async def sync(request: Request, auth: ConfigureModels) -> SyncOut:
 @router.post("/catalog/versions/{version_id}:load-offerings", response_model=LoadOut)
 async def load(request: Request, version_id: uuid.UUID, auth: ConfigureModels) -> LoadOut:
     """Load the upstream providers of one model with their current prices."""
+    require_openrouter(request)
     async with transaction(request, auth) as conn:
         if (await conn.execute(select(ModelVersion.id).where(ModelVersion.id == version_id))).first() is None:
             raise not_found("model_version")

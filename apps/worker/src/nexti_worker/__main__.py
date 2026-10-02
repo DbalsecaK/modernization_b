@@ -77,12 +77,14 @@ async def run_worker(settings: WorkerSettings, *, name: str | None = None, wait:
             ) if settings.secrets_url else None,
             allow_private_hosts=settings.git_allow_private_hosts and settings.is_local,
             osv_url=settings.osv_url or None,
+            figma_url=settings.figma_url,
             gateway=GatewayService(
                 engine, http,
                 GatewaySecrets(settings.secrets_url, settings.secrets_token.get_secret_value(), settings.secrets_mount),
                 settings.openrouter_url,
                 cassettes=(Path(settings.model_cassettes_dir), settings.model_cassettes_mode)
                 if settings.model_cassettes_mode else None,
+                openrouter_enabled=settings.openrouter_enabled,
             ) if settings.secrets_url else None,
             sandboxes=lambda image: DockerSandbox(image=image, docker=settings.sandbox_docker),
             legacy=lambda: legacy_runner(settings),

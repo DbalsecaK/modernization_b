@@ -44,6 +44,10 @@ Quedan dos pendientes de la sección 20:
   variantes, con los tokens del sistema de diseño como estilos.
 - El código del plugin es determinista y no lleva datos del cliente fuera de las pantallas del proyecto.
 - Se prueba ejecutando `code.js` contra una API de Figma simulada en el sandbox de frontend.
+- Se descarga con `GET /api/v1/projects/{id}/screens:figma-export`: pide `project.view` (son las mismas pantallas que
+  ya lee quien ve el proyecto) y queda auditada (`screens.figma_export`). Sin pantallas responde 404. Una pantalla
+  sin estados declarados recibe los cuatro; los colores y tipografías salen del sistema de diseño del proyecto sobre
+  los tokens base de NexTI.
 
 ## Consecuencias
 

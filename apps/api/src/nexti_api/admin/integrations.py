@@ -199,6 +199,8 @@ async def who(request: Request, kind: str, config: dict[str, str], token: str) -
     """Who the token belongs to, as the tool reports it."""
     http = request.app.state.resources.http
     if kind == "figma":
+        if not request.app.state.settings.figma_url:
+            raise FigmaError("Figma is not read in this deployment (air-gapped profile).")
         return await FigmaClient(http, token, request.app.state.settings.figma_url).me()
     settings = request.app.state.settings
     url = config.get("site") or config.get("organization") or ""

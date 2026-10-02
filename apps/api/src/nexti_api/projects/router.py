@@ -14,6 +14,7 @@ from sqlalchemy import func, insert, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncConnection
 
+from nexti_api import license_gate
 from nexti_api.admin.common import audit, not_found, transaction
 from nexti_api.authz import names
 from nexti_api.authz.require import Authorized, deny, require_project, require_tenant
@@ -382,6 +383,7 @@ async def create_project(request: Request, body: ProjectCreate, auth: CreateProj
     ):
         await deny(request, auth.session, auth.tenant_id, "models.configure", names.tenant(auth.tenant_id))
     config = body.to_input()
+    await license_gate.ensure_writable(request, auth, "project.create", f"tenant:{auth.tenant_id}", creating="project")
     try:
         async with transaction(request, auth) as conn:
             catalog = await load_catalog(conn)

@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends, Request
 from sqlalchemy import RowMapping, func, insert, select, text, update
 from sqlalchemy.ext.asyncio import AsyncConnection
 
+from nexti_api import license_gate
 from nexti_api.admin.common import audit, not_found, transaction
 from nexti_api.authz import names
 from nexti_api.authz.require import Authorized, require_gate, require_project
@@ -84,6 +85,7 @@ async def start_run(request: Request, project_id: uuid.UUID, body: RunIn, auth: 
     if body.kind == "demo" and not request.app.state.settings.is_local:
         raise ProblemError(422, "demo_not_available", "The demonstration pipeline is only available in development.")
     assert auth.tenant_id is not None  # noqa: S101 - require_project guarantees it
+    await license_gate.ensure_writable(request, auth, "run.start", f"project:{project_id}")
     async with transaction(request, auth) as conn:
         project = (
             await conn.execute(select(Project.id).where(Project.id == project_id).with_for_update())

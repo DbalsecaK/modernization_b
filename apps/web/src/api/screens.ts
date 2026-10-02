@@ -110,6 +110,9 @@ export const prototypePageUrl = (projectId: string, key: string, version: number
 export const prototypeSourceUrl = (projectId: string, key: string, version: number) =>
   `/api/v1/projects/${projectId}/screens/${key}/prototypes/${version}/source`
 
+/** Every screen as a Figma development plugin in a zip (ADR-0030); audited by the API. */
+export const figmaExportUrl = (projectId: string) => `/api/v1/projects/${projectId}/screens:figma-export`
+
 export const useComments = (projectId: string, key: string | null, version: number | null) =>
   useQuery({
     queryKey: keys.comments(projectId, key ?? '', version ?? 0),

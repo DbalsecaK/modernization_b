@@ -1351,6 +1351,7 @@ dependencies = [
     { name = "nexti-ivv" },
     { name = "nexti-model-gateway" },
     { name = "nexti-skills" },
+    { name = "nexti-ui" },
     { name = "psycopg", extra = ["binary"] },
     { name = "pydantic" },
     { name = "pydantic-settings" },
@@ -1378,6 +1379,7 @@ requires-dist = [
     { name = "nexti-ivv", editable = "packages/ivv" },
     { name = "nexti-model-gateway", editable = "packages/model_gateway" },
     { name = "nexti-skills", editable = "packages/skills" },
+    { name = "nexti-ui", editable = "packages/ui" },
     { name = "psycopg", extras = ["binary"], specifier = ">=3.2" },
     { name = "pydantic", specifier = ">=2.11" },
     { name = "pydantic-settings", specifier = ">=2.10" },
@@ -1394,6 +1396,7 @@ name = "nexti-core"
 version = "0.1.0"
 source = { editable = "packages/core" }
 dependencies = [
+    { name = "cryptography" },
     { name = "httpx" },
     { name = "minio" },
     { name = "pydantic" },
@@ -1405,6 +1408,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
+    { name = "cryptography", specifier = ">=46" },
     { name = "httpx", specifier = ">=0.28" },
     { name = "minio", specifier = ">=7.2" },
     { name = "pydantic", specifier = ">=2.11" },

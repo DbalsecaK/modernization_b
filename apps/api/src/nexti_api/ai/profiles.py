@@ -98,13 +98,20 @@ async def _load(conn: AsyncConnection, profile_id: uuid.UUID) -> ProfileOut:
 
 
 async def _validate(conn: AsyncConnection, body: ProfileIn, profile_id: uuid.UUID | None) -> None:
-    if (
-        await conn.execute(select(ProviderConnection.id).where(ProviderConnection.id == body.connection_id))
-    ).first() is None:
+    connection = (
+        await conn.execute(select(ProviderConnection.provider).where(ProviderConnection.id == body.connection_id))
+    ).first()
+    if connection is None:
         raise not_found("connection")
     offering = (
         await conn.execute(
-            select(ModelOffering.status, ModelOffering.max_output_tokens, ModelVersion.provider_slug)
+            select(
+                ModelOffering.status,
+                ModelOffering.max_output_tokens,
+                ModelOffering.provider,
+                ModelOffering.connection_id,
+                ModelVersion.provider_slug,
+            )
             .join(ModelVersion, ModelVersion.id == ModelOffering.version_id)
             .where(ModelOffering.id == body.offering_id)
         )
@@ -113,6 +120,11 @@ async def _validate(conn: AsyncConnection, body: ProfileIn, profile_id: uuid.UUI
         raise not_found("offering")
     if offering.status != "available":
         raise ProblemError(422, "offering_unavailable", "The offering is not available.")
+    # An OpenRouter offering goes through an OpenRouter connection; a local model only through its own server.
+    if offering.provider != connection.provider or (
+        offering.connection_id is not None and offering.connection_id != body.connection_id
+    ):
+        raise ProblemError(422, "offering_connection_mismatch", "The model is not served by this connection.")
     # Fixed versions only (rule 10): aliases that move to a newer model are not assignable.
     if "latest" in offering.provider_slug:
         raise ProblemError(422, "alias_not_allowed", "Only fixed model versions can be used, not aliases.")

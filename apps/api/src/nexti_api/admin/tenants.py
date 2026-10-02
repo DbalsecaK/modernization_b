@@ -9,6 +9,7 @@ from pydantic import Field
 from sqlalchemy import select, update
 from sqlalchemy.exc import IntegrityError
 
+from nexti_api import license_gate
 from nexti_api.admin.common import audit, not_found, transaction
 from nexti_api.authz.require import Authorized, require_platform
 from nexti_api.authz.sync import enqueue
@@ -72,6 +73,7 @@ async def list_tenants(request: Request, auth: SuperAdmin) -> list[TenantOut]:
 
 @router.post("", response_model=TenantOut, status_code=201)
 async def create(request: Request, body: TenantCreate, auth: SuperAdmin) -> TenantOut:
+    await license_gate.ensure_writable(request, auth, "tenant.create", "platform", creating="tenant")
     try:
         async with transaction(request, auth) as conn:
             tenant_id = await create_tenant(
