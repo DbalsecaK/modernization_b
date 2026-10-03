@@ -1,6 +1,6 @@
 # Plan del hito M11 — Flujo 3: añadir funcionalidad a una aplicación existente
 
-- **Estado:** cerrado (2026-10-02), con la grabación de la aceptación pendiente del OK del aprobador.
+- **Estado:** cerrado (2026-10-02); aceptación grabada el 2026-10-03 con el OK del aprobador.
 - **Fuente:** `docs/ESPECIFICACION_PLATAFORMA.md`:
   - secciones 3.1 y 3.3, 7, 11.4 y 20 (Posterior);
   - ADR-0026 y D-45.
@@ -69,8 +69,10 @@
 - **Pruebas puras:** el diseño contra el inventario, la ubicación de los archivos, las fitness functions y el
   contrato AS-IS (un endpoint quitado se detecta).
 - **API:** matriz de permisos, aislamiento entre tenants y estado vacío antes del inventario.
-- **`test_acceptance_m11.py`:** en replay llega hasta la normalización del pedido; falta grabar las respuestas de los
-  modelos (hasta 2 USD) con el OK del aprobador.
+- **`test_acceptance_m11.py`** (grabada el 2026-10-03 con modelos reales): BillPay recibe la consulta del estado de una
+  orden y el veredicto es **PROVEN** con los seis chequeos. Las 5 pruebas de la línea base siguen pasando, los 4
+  criterios del pedido tienen su prueba en verde, el endpoint existente se mantiene y el canario lo detecta una prueba
+  nueva. Fueron 5 llamadas por **0,14 USD reales** (de un tope de 2 USD); el CI la reproduce sin costo.
 
 **Cambios respecto del plan**
 
@@ -81,5 +83,4 @@
 
 **Queda para después**
 
-- Grabar la aceptación con modelos reales.
 - Delta de UI y pilas distintas de Spring Boot.
