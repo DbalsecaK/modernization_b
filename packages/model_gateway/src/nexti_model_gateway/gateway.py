@@ -8,6 +8,8 @@ recorded in another, so a slow model never holds a database connection.
 """
 
 import asyncio
+import ipaddress
+import socket
 import time
 import uuid
 from collections.abc import Awaitable, Callable
@@ -15,6 +17,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from typing import Any
+from urllib.parse import urlsplit
 
 from sqlalchemy import delete, func, insert, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
@@ -176,6 +179,22 @@ class _Attempt:
 Sleep = Callable[[float], Awaitable[None]]
 
 
+async def internal_host(url: str) -> bool:
+    """Whether the URL's host resolves (now) to any non-public address, or cannot be resolved."""
+    host = urlsplit(url).hostname
+    if not host:
+        return True
+    try:
+        found = await asyncio.get_running_loop().getaddrinfo(host, None, type=socket.SOCK_STREAM)
+    except OSError:
+        return True
+    for *_, sockaddr in found:
+        ip = ipaddress.ip_address(str(sockaddr[0]).split("%")[0])
+        if not ip.is_global or ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved:
+            return True
+    return False
+
+
 class ModelGateway:
     def __init__(
         self,
@@ -186,14 +205,18 @@ class ModelGateway:
         sleep: Sleep = asyncio.sleep,
         backoff_seconds: float = 0.5,
         openrouter_enabled: bool = True,
+        allow_private_hosts: bool = False,
     ) -> None:
-        """`openrouter_enabled` False (air-gapped profile, ADR-0030): OpenRouter offerings are blocked."""
+        """`openrouter_enabled` False (air-gapped profile, ADR-0030): OpenRouter offerings are blocked.
+        `allow_private_hosts` False: an openai-compatible server whose host resolves to an internal address at call
+        time is refused (the base URL was checked when configured, but DNS can change: no SSRF by rebinding)."""
         self.engine = engine
         self.secrets = secrets
         self.client = client
         self.sleep = sleep
         self.backoff_seconds = backoff_seconds
         self.openrouter_enabled = openrouter_enabled
+        self.allow_private_hosts = allow_private_hosts
 
     # --- configuration -------------------------------------------------------------------------------------
 
@@ -425,6 +448,8 @@ class ModelGateway:
         local = plan.provider == OPENAI_COMPATIBLE
         if local and not plan.base_url:
             return _Attempt(plan, "error", "missing_base_url")
+        if local and not self.allow_private_hosts and await internal_host(plan.base_url or ""):
+            return _Attempt(plan, "error", "host_not_allowed")
         # The API key of an openai-compatible server is optional (a local vLLM or Ollama often has none).
         if not api_key and not local:
             return _Attempt(plan, "error", "missing_credential")

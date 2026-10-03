@@ -117,6 +117,7 @@ def create_app(settings: Settings | None = None, health_checks: dict[str, health
                 SecretsConfig(settings.secrets_url, settings.secrets_token.get_secret_value(), settings.secrets_mount),
                 settings.openrouter_url,
                 openrouter_enabled=settings.openrouter_enabled,
+                allow_private_hosts=settings.model_servers_allow_private_hosts,
             )
             if resources.engine is not None and settings.secrets_url
             else None
