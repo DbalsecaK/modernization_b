@@ -1,17 +1,23 @@
 // Runs the golden master cases on the generated service (NexTI verification, spec 11.3 check 3). Written by the
-// platform, never by a model: the real ADO.NET adapters against SQL Server, the external programs replaced by fakes
-// that record their calls and answer what the case says, and the use case inside one transaction (a rejection
-// undoes its writes and its external calls, as in the legacy). One JSON line per case, prefixed with "NXE ".
+// platform, never by a model: the real ADO.NET adapters against the database (SQL Server or Oracle: the plan names
+// the provider's connection class and the session settings), the external programs replaced by fakes that record
+// their calls and answer what the case says, and the use case inside one transaction (a rejection undoes its writes
+// and its external calls, as in the legacy). One JSON line per case, prefixed with "NXE ".
+using System.Data.Common;
 using System.Globalization;
 using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using Microsoft.Data.SqlClient;
 
 var plan = JsonDocument.Parse(File.ReadAllText(args[0])).RootElement;
 var cases = JsonDocument.Parse(File.ReadAllText(args[1])).RootElement;
-using var connection = new SqlConnection(plan.GetProperty("connection").GetString());
+using var connection = (DbConnection)Activator.CreateInstance(Harness.Find(plan, "provider"))!;
+connection.ConnectionString = plan.GetProperty("connection").GetString();
 connection.Open();
+if (plan.TryGetProperty("session", out var session))
+{
+    foreach (var sql in session.EnumerateArray()) Harness.Execute(connection, sql.GetString()!);
+}
 var db = Activator.CreateInstance(Harness.Find(plan, "db"), connection)!;
 foreach (var testCase in cases.EnumerateArray())
 {
@@ -25,7 +31,7 @@ public static class Harness
     public static Type Find(JsonElement plan, string key) =>
         Type.GetType(plan.GetProperty(key).GetString()!, throwOnError: true)!;
 
-    public static JsonObject Run(JsonElement plan, JsonElement testCase, SqlConnection connection, object db)
+    public static JsonObject Run(JsonElement plan, JsonElement testCase, DbConnection connection, object db)
     {
         var output = new JsonObject { ["name"] = testCase.GetProperty("name").GetString() };
         var calls = new List<JsonObject>();
@@ -74,14 +80,14 @@ public static class Harness
         return output;
     }
 
-    static void Execute(SqlConnection connection, string sql)
+    public static void Execute(DbConnection connection, string sql)
     {
         using var command = connection.CreateCommand();
         command.CommandText = sql;
         command.ExecuteNonQuery();
     }
 
-    static JsonArray Rows(SqlConnection connection, string sql)
+    static JsonArray Rows(DbConnection connection, string sql)
     {
         var rows = new JsonArray();
         using var command = connection.CreateCommand();

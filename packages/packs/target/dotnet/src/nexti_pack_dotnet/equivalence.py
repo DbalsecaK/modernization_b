@@ -4,6 +4,7 @@
 from the seed the image prepared (system databases), in its own tmpfs, while the harness builds."""
 
 import json
+from collections.abc import Callable
 from importlib.resources import files as package_files
 from typing import Any
 
@@ -19,15 +20,17 @@ from nexti_core.spec.equivalence import (
     masks,
 )
 from nexti_core.spec.equivalence import target_case as neutral_target_case
-from nexti_pack_dotnet.build import compile_and_test
+from nexti_pack_dotnet.build import LIMITS, compile_and_test
 from nexti_pack_dotnet.generate import SCHEMA, adapter_name, namespace, sql_type
-from nexti_sandbox import Sandbox
+from nexti_sandbox import Limits, Sandbox
 
 __all__ = ["CaseRun", "EquivalenceRun", "Mask", "expected_view", "masks", "plan", "run_equivalence", "target_case"]
 
 # The SA password only exists inside the sandbox, which has no network (infra/sandbox/dotnet/Dockerfile).
 CONNECTION = ("Server=127.0.0.1,1433;Database=nexti;User Id=sa;Password=Nexti-Sandbox-Only-1;"
               "TrustServerCertificate=True;Encrypt=False")  # fmt: skip
+# The ADO.NET connection class the harness opens (the plan names it, so one harness serves every database).
+PROVIDER = "Microsoft.Data.SqlClient.SqlConnection, Microsoft.Data.SqlClient"
 
 
 def harness_sources() -> dict[str, str]:
@@ -50,6 +53,7 @@ def plan(design: Design, use_case: UseCase) -> dict[str, Any]:
         order = ", ".join(column_of(k, next(f.column for f in entity.fields if f.name == k)) for k in entity.key)
         dump[entity.table] = f"SELECT {columns} FROM {entity.table}" + (f" ORDER BY {order}" if order else "")
     return {
+        "provider": PROVIDER,
         "connection": CONNECTION,
         "db": f"{ns}.Infrastructure.Db, App",
         "service": f"{ns}.Application.{use_case.name}Service, App",
@@ -96,16 +100,22 @@ async def run_equivalence(
     use_case: UseCase,
     master: GoldenMaster,
     defaults: dict[str, Scalar] | None = None,
+    *,
+    harness_plan: dict[str, Any] | None = None,
+    case_of: Callable[[Design, UseCase, Case, dict[str, Scalar] | None], dict[str, Any]] = target_case,
+    script: str = SCRIPT,
+    limits: Limits = LIMITS,
 ) -> EquivalenceRun:
-    """Compiles the project (tests included, counted from JUnit XML) and runs every golden case on it."""
+    """Compiles the project (tests included, counted from JUnit XML) and runs every golden case on it. Another
+    database (Oracle) brings its own plan, case translation, script and limits; SQL Server is the default."""
     recorded = [r for r in master.results if r.observation.error is None]
-    cases = [target_case(design, use_case, r.case, defaults) for r in recorded]
+    cases = [case_of(design, use_case, r.case, defaults) for r in recorded]
     extra = {f"harness/{name}": content for name, content in harness_sources().items()}
     extra.update({
-        "harness/plan.json": json.dumps(plan(design, use_case)),
+        "harness/plan.json": json.dumps(harness_plan or plan(design, use_case)),
         "harness/cases.json": json.dumps(cases),
     })  # fmt: skip
-    build = await compile_and_test(sandbox, files, extra_inputs=extra, after=SCRIPT)
+    build = await compile_and_test(sandbox, files, extra_inputs=extra, after=script, limits=limits)
     found = masks(design, use_case, master)
     if not build.compiled:
         return EquivalenceRun(build, [], found, f"the project does not compile: {build.compile_errors[:300]}")
