@@ -1,6 +1,6 @@
 # Plan del hito M16 — Pendientes: SCIM, Oracle en .NET y revisión de seguridad
 
-- **Estado:** en curso (desde 2026-10-02).
+- **Estado:** cerrado (2026-10-03).
 - **Fuente:** `docs/ESPECIFICACION_PLATAFORMA.md`:
   - secciones 8.4, 13, 15 y 20;
   - ADR-0031 y D-50.
@@ -33,3 +33,41 @@
 | Un token revocado o de otro tenant no entra | Pruebas de SCIM |
 | El objetivo de referencia en .NET reproduce el golden master contra Oracle | Pruebas del pack .NET |
 | Los hallazgos confirmados de la revisión tienen su prueba | Pruebas de cada corrección |
+
+## 4. Cierre
+
+**Lo que se entrega**
+
+- **SCIM 2.0 por tenant** (`/scim/v2`): Users y Groups con filtros, paginación, `PATCH` y desactivación; token de
+  portador creado, rotado y revocado desde Administración → Autenticación, guardado solo como hash y comparado en
+  tiempo constante; sincronización con Keycloak (cuenta en la organización del tenant, deshabilitada al desactivar si
+  la persona no está en otro tenant); grupos a roles con el mapeo del IdP (`source='scim'`); todo auditado
+  (migración 0019).
+- **Oracle en el pack .NET** (`nexti_pack_dotnet.oracle`): Oracle.ManagedDataAccess.Core, DDL y comillas de Oracle,
+  harness con el proveedor ADO.NET que indica el plan, imagen `nexti-sandbox-dotnet-oracle:1`.
+- **Revisión de seguridad** de lo construido desde M9a. Hallazgos corregidos:
+  - *SCIM entre tenants:* los dominios propios de un tenant no eran únicos en la plataforma. Un tenant que declarara
+    el dominio de otro podía vincular por SCIM las cuentas globales de esas personas y reactivar en Keycloak una
+    cuenta deshabilitada. Ahora SCIM rechaza un dominio que otro tenant también declara y nunca reactiva la cuenta
+    de alguien que pertenece a otro tenant;
+  - *SSRF por DNS rebinding en modelos locales:* la URL base se validaba solo al configurarla. Ahora el gateway
+    vuelve a resolver el host antes de cada llamada y rechaza una dirección interna, salvo que el despliegue
+    permita hosts privados (perfil `air-gapped`).
+
+  Revisado sin hallazgos: autenticación SCIM, extracción del paquete air-gapped (rutas, tipos de entrada,
+  duplicados, firma y hashes), plugin de Figma (datos en JSON ASCII, sin red ni `eval`), control de licencia y push
+  de la entrega (token enmascarado, host verificado, nunca la rama base).
+
+**Evidencia**
+
+- SCIM: 12 pruebas, entre ellas el aislamiento entre tenants, el token revocado, la sincronización con Keycloak y el
+  dominio declarado por dos tenants.
+- Oracle en .NET: el objetivo de referencia reproduce el golden master contra Oracle y el canario se detecta; el
+  pack con SQL Server sigue reproduciendo su golden master.
+- Gateway: un host interno al momento de la llamada se rechaza antes de enviar nada y queda en el registro de uso.
+- Matriz de permisos, RLS y esquema en verde.
+
+**Queda para después**
+
+- La prueba de identidad con un tenant real de Entra ID (necesita credenciales de un tenant de prueba).
+- La grabación de la aceptación del Flujo 3 con modelos reales (necesita el OK del aprobador).
