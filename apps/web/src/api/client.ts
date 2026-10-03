@@ -22,6 +22,11 @@ const csrf: Middleware = {
   },
 }
 
+/** Headers of a hand-written same-origin request (routes not yet in the generated types). */
+export function sessionHeaders(method: string): Record<string, string> {
+  return !SAFE.has(method) && csrfToken ? { 'X-CSRF-Token': csrfToken } : {}
+}
+
 export const api = createClient<paths>({ baseUrl: globalThis.location?.origin ?? '', credentials: 'same-origin' })
 api.use(csrf)
 

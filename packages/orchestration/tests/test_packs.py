@@ -44,3 +44,12 @@ def test_go_is_its_own_pack_on_postgresql() -> None:
     assert (pack.name, pack.developer_prompt, pack.tester_prompt) == ("go", "backend-dev-go", "test-engineer-go")
     assert image({"backend": "go", "database": "sqlserver"}) is None
     assert image({"backend": "go", "database": "mongodb"}) is None
+
+
+def test_dotnet_takes_its_oracle_variant() -> None:
+    assert image({"backend": "dotnet-10"}) == "nexti-sandbox-dotnet:1"
+    assert image({"backend": "dotnet-10", "database": "sqlserver"}) == "nexti-sandbox-dotnet:1"
+    assert image({"backend": "dotnet-10", "database": "Oracle"}) == "nexti-sandbox-dotnet-oracle:1"
+    pack = backend_pack({"backend": "dotnet-10", "database": "oracle"})
+    assert pack is not None
+    assert (pack.name, pack.adapter_name("AccountRepository")) == ("dotnet-10", "SqlAccountRepository")

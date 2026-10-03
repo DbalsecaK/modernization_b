@@ -25,6 +25,7 @@ class KeycloakUser:
     id: str
     email: str
     required_actions: tuple[str, ...]
+    enabled: bool = True
 
 
 class KeycloakAdmin:
@@ -64,24 +65,43 @@ class KeycloakAdmin:
         )
         for u in res.json():
             if str(u.get("email", "")).lower() == email.lower():
-                return KeycloakUser(u["id"], u["email"], tuple(u.get("requiredActions", [])))
+                return KeycloakUser(
+                    u["id"], u["email"], tuple(u.get("requiredActions", [])), bool(u.get("enabled", True))
+                )
         return None
 
-    async def create_user(self, email: str, first_name: str | None = None) -> KeycloakUser:
+    async def create_user(
+        self, email: str, first_name: str | None = None, last_name: str | None = None,
+        required_actions: list[str] | None = None,
+    ) -> KeycloakUser:  # fmt: skip
+        """An account for the e-mail; by default with the invitation's actions (password and e-mail check)."""
         body: dict[str, Any] = {
             "username": email,
             "email": email,
             "enabled": True,
             "emailVerified": False,
-            "requiredActions": INVITATION_ACTIONS,
+            "requiredActions": INVITATION_ACTIONS if required_actions is None else required_actions,
         }
         if first_name:
             body["firstName"] = first_name
+        if last_name:
+            body["lastName"] = last_name
         await self._request("POST", "/users", json=body)
         created = await self.find_user(email)
         if created is None:
             raise KeycloakAdminError("the user was created but cannot be found")
         return created
+
+    async def set_user_enabled(self, user_id: str, enabled: bool) -> None:
+        """Turns the account on or off (SCIM deactivation); an account no longer in Keycloak is nothing to do."""
+        res = await self._request("GET", f"/users/{user_id}")
+        if res.status_code == 404:
+            return
+        await self._request("PUT", f"/users/{user_id}", json={**res.json(), "enabled": enabled})
+
+    async def logout_user(self, user_id: str) -> None:
+        """Ends every Keycloak session of the account."""
+        await self._request("POST", f"/users/{user_id}/logout")
 
     async def send_invitation_email(self, user_id: str, lifespan_seconds: int) -> None:
         await self._request(

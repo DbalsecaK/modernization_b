@@ -33,6 +33,7 @@ from nexti_api.runs import activity as runs_activity
 from nexti_api.runs import questions as runs_questions
 from nexti_api.runs import router as runs_router
 from nexti_api.runs import tasks as runs_tasks
+from nexti_api.scim import routes as scim
 from nexti_api.settings import Settings, get_settings
 from nexti_api.spec import architecture as spec_architecture
 from nexti_api.spec import code as spec_code
@@ -198,6 +199,7 @@ def create_app(settings: Settings | None = None, health_checks: dict[str, health
         identity.router,
     ):
         app.include_router(admin_router)
+    scim.install(app)  # /scim/v2 (bearer of the tenant) and its administration (ADR-0031)
     app.include_router(audit_log.router)
     for ai_router in (
         ai_connections.router,
