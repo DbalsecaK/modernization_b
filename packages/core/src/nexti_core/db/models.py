@@ -154,7 +154,8 @@ class RoleAssignment(Base):
     role_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
     scope: Mapped[str] = mapped_column(Text, nullable=False)
     project_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
-    # `idp`: given by the groups of an identity provider and recalculated at each sign-in (migration 0013).
+    # `idp`: given by the groups of an identity provider and recalculated at each sign-in (migration 0013);
+    # `scim`: given by the SCIM groups of the identity provider (migration 0019).
     source: Mapped[str] = mapped_column(Text, nullable=False, server_default="manual")
     created_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("app_user.id"))
     created_at: Mapped[datetime] = _now()
@@ -1192,6 +1193,75 @@ class TenantIdentityProvider(Base):
     created_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("app_user.id"))
     created_at: Mapped[datetime] = _now()
     updated_at: Mapped[datetime] = _now()
+
+
+# SCIM 2.0 of a tenant (migration 0019, ADR-0031). The bearer of the identity provider is kept as a SHA-256 digest only.
+class ScimAccess(Base):
+    __tablename__ = "scim_access"
+    __table_args__ = (
+        Index("scim_access_active", "tenant_id", unique=True, postgresql_where=text("revoked_at IS NULL")),
+    )
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    tenant_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("tenant.id", ondelete="CASCADE"), nullable=False)
+    access_digest: Mapped[bytes] = mapped_column(LargeBinary, nullable=False, unique=True)
+    hint: Mapped[str] = mapped_column(Text, nullable=False)
+    created_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("app_user.id"))
+    created_at: Mapped[datetime] = _now()
+    last_used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    revoked_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("app_user.id"))
+
+
+class ScimUser(Base):
+    __tablename__ = "scim_user"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["tenant_id", "user_id"], ["membership.tenant_id", "membership.user_id"], ondelete="CASCADE"
+        ),
+        UniqueConstraint("id", "tenant_id"),
+        UniqueConstraint("tenant_id", "user_id"),
+        Index("scim_user_name_key", "tenant_id", func.lower(text("user_name")), unique=True),
+        Index("scim_user_external_id", "tenant_id", "external_id"),
+    )
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    keycloak_id: Mapped[str | None] = mapped_column(Text)
+    user_name: Mapped[str] = mapped_column(Text, nullable=False)
+    external_id: Mapped[str | None] = mapped_column(Text)
+    given_name: Mapped[str | None] = mapped_column(Text)
+    family_name: Mapped[str | None] = mapped_column(Text)
+    display_name: Mapped[str | None] = mapped_column(Text)
+    email: Mapped[str] = mapped_column(Text, nullable=False)
+    active: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
+    created_at: Mapped[datetime] = _now()
+    updated_at: Mapped[datetime] = _now()
+
+
+class ScimGroup(Base):
+    __tablename__ = "scim_group"
+    __table_args__ = (
+        UniqueConstraint("id", "tenant_id"),
+        Index("scim_group_name_key", "tenant_id", func.lower(text("display_name")), unique=True),
+    )
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    tenant_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("tenant.id", ondelete="CASCADE"), nullable=False)
+    display_name: Mapped[str] = mapped_column(Text, nullable=False)
+    external_id: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = _now()
+    updated_at: Mapped[datetime] = _now()
+
+
+class ScimGroupMember(Base):
+    __tablename__ = "scim_group_member"
+    __table_args__ = (
+        ForeignKeyConstraint(["group_id", "tenant_id"], ["scim_group.id", "scim_group.tenant_id"], ondelete="CASCADE"),
+        ForeignKeyConstraint(["member_id", "tenant_id"], ["scim_user.id", "scim_user.tenant_id"], ondelete="CASCADE"),
+        Index("scim_group_member_member", "member_id"),
+    )
+    tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    group_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
+    member_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
 
 
 # A delivery of a project (migration 0014, ADR-0023): pushed to a branch of the customer's repository, or a ZIP.

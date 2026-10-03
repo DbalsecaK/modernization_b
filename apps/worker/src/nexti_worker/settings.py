@@ -42,6 +42,7 @@ class WorkerSettings(BaseSettings):
     openrouter_url: str | None = None
     # False in the air-gapped profile (ADR-0030): OpenRouter is never called, only openai-compatible servers.
     openrouter_enabled: bool = True
+    model_servers_allow_private_hosts: bool = False  # air-gapped: local model servers on private hosts
     # Figma REST API base (ADR-0018); empty: Figma is not read (air-gapped profile, ADR-0030).
     figma_url: str = "https://api.figma.com/v1"
     # Recorded responses (ADR-0012), development and test only: a folder and replay|record.

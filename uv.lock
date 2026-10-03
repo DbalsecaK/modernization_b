@@ -1584,6 +1584,7 @@ version = "0.1.0"
 source = { editable = "packages/packs/target/dotnet" }
 dependencies = [
     { name = "nexti-core" },
+    { name = "nexti-pack-spring-boot" },
     { name = "nexti-sandbox" },
     { name = "pydantic" },
 ]
@@ -1591,6 +1592,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "nexti-core", editable = "packages/core" },
+    { name = "nexti-pack-spring-boot", editable = "packages/packs/target/spring_boot" },
     { name = "nexti-sandbox", editable = "packages/sandbox" },
     { name = "pydantic", specifier = ">=2.11" },
 ]

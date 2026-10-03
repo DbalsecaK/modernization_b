@@ -1,0 +1,34 @@
+{
+  "mode": "record",
+  "verdict": "PROVEN",
+  "checks": {
+    "regression": "passed",
+    "criteria_covered": "passed",
+    "contract_kept": "passed",
+    "fitness": "passed",
+    "canary": "passed",
+    "traced_to_inputs": "passed"
+  },
+  "details": {
+    "regression": "the 5 test(s) of the baseline still pass",
+    "criteria_covered": "4 acceptance criteria covered by passing tests",
+    "contract_kept": "the 1 existing endpoint(s) are kept",
+    "fitness": "the delta respects the application's architecture rules",
+    "canary": "line 21 changed (if (status.isEmpty() || status.get(0) != null) {) turned test ac_US001_2_a_paid_order_has_status_A() red",
+    "traced_to_inputs": "2 element(s) traced to the lines of their inputs"
+  },
+  "added": [
+    "src/main/java/com/contoso/billpay/api/OrderController.java",
+    "src/main/java/com/contoso/billpay/api/OrderStatusResponse.java",
+    "src/main/java/com/contoso/billpay/domain/OrderService.java",
+    "src/test/java/com/contoso/billpay/domain/OrderServiceTest.java"
+  ],
+  "changed": [],
+  "model_calls": 5,
+  "cost_usd": "0.14120800",
+  "decisions": [
+    "C1",
+    "C3",
+    "C4"
+  ]
+}

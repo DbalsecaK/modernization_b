@@ -40,6 +40,7 @@ from nexti_model_gateway.gateway import (
     ModelGateway,
     NoProfileError,
     PolicyDeniedError,
+    ProviderCallError,
 )
 from nexti_model_gateway.openrouter import BASE_URL, OpenRouterClient, Pricing
 from nexti_model_gateway.secrets import SecretsConfig, SecretStore, connection_path
@@ -184,11 +185,12 @@ async def tenant(owner_engine: AsyncEngine, catalog: Catalog, http: httpx.AsyncC
     return Tenant(tenant_id, primary, fallback)
 
 
-def gateway(app_engine: AsyncEngine, http: httpx.AsyncClient) -> ModelGateway:
+def gateway(app_engine: AsyncEngine, http: httpx.AsyncClient, *, allow_private_hosts: bool = False) -> ModelGateway:
     async def no_sleep(_: float) -> None:
         return None
 
-    return ModelGateway(app_engine, secrets_store(http), OpenRouterClient(http), sleep=no_sleep)
+    return ModelGateway(app_engine, secrets_store(http), OpenRouterClient(http), sleep=no_sleep,
+                        allow_private_hosts=allow_private_hosts)  # fmt: skip
 
 
 def mock_openrouter() -> respx.MockRouter:
@@ -520,7 +522,9 @@ async def test_an_openai_compatible_server_is_called_and_its_usage_recorded(
     tenant_id, offering = await local_tenant(owner_engine, app_engine, Decimal("2"))
     with mock_openrouter() as router:
         route = router.post(f"{LOCAL_BASE}/chat/completions").respond(json=LOCAL_CHAT)
-        result = await gateway(app_engine, http).complete(CallContext(tenant_id, phase="extraction"), MESSAGES)
+        # the air-gapped deployment allows model servers on private hosts (vllm.internal)
+        local = gateway(app_engine, http, allow_private_hosts=True)
+        result = await local.complete(CallContext(tenant_id, phase="extraction"), MESSAGES)
     request = route.calls.last.request
     body = json.loads(request.content)
     assert "authorization" not in request.headers
@@ -543,7 +547,12 @@ async def test_a_local_model_costs_zero_by_default_and_works_with_openrouter_off
         return None
 
     airgapped = ModelGateway(
-        app_engine, secrets_store(http), OpenRouterClient(http), sleep=no_sleep, openrouter_enabled=False
+        app_engine,
+        secrets_store(http),
+        OpenRouterClient(http),
+        sleep=no_sleep,
+        openrouter_enabled=False,
+        allow_private_hosts=True,
     )
     with mock_openrouter() as router:
         router.post(f"{LOCAL_BASE}/chat/completions").respond(json=LOCAL_CHAT)
@@ -554,6 +563,20 @@ async def test_a_local_model_costs_zero_by_default_and_works_with_openrouter_off
     assert result.cost_usd == Decimal(0)
     assert not openrouter.called
     assert {r.error_code for r in await ledger(owner_engine, tenant.id)} == {"policy:openrouter_disabled"}
+
+
+async def test_a_server_whose_host_is_internal_at_call_time_is_refused(
+    app_engine: AsyncEngine, owner_engine: AsyncEngine, http: httpx.AsyncClient
+) -> None:
+    """The base URL was checked when configured, but DNS can change (rebinding): without private hosts allowed, a
+    host that does not resolve to a public address is refused before any request leaves."""
+    tenant_id, _ = await local_tenant(owner_engine, app_engine, Decimal(0))
+    with mock_openrouter() as router:
+        route = router.post(f"{LOCAL_BASE}/chat/completions").respond(json=LOCAL_CHAT)
+        with pytest.raises(ProviderCallError):
+            await gateway(app_engine, http).complete(CallContext(tenant_id), MESSAGES)
+    assert not route.called
+    assert {r.error_code for r in await ledger(owner_engine, tenant_id)} == {"host_not_allowed"}
 
 
 async def test_a_tenants_local_models_are_invisible_to_other_tenants(

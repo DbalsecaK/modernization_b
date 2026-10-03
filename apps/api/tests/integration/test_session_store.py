@@ -71,3 +71,17 @@ async def test_login_state_is_single_use(redis: Redis) -> None:
     await s.save_login("state-1", {"binding": "b"})
     assert await s.pop_login("state-1") == {"binding": "b"}
     assert await s.pop_login("state-1") is None
+
+
+async def test_the_sessions_of_a_user_end_together_or_per_tenant(redis: Redis) -> None:
+    s = store(redis)
+    user, tenant, other = uuid.uuid4(), uuid.uuid4(), uuid.uuid4()
+    in_tenant, _ = await s.create(user_id=user, auth_method="keycloak", active_tenant_id=tenant)
+    elsewhere, _ = await s.create(user_id=user, auth_method="keycloak", active_tenant_id=other)
+    someone_else, _ = await s.create(user_id=uuid.uuid4(), auth_method="keycloak", active_tenant_id=tenant)
+    assert await s.revoke_user(user, tenant) == 1
+    assert await s.get(in_tenant) is None
+    assert await s.get(elsewhere) is not None
+    assert await s.revoke_user(user) == 1
+    assert await s.get(elsewhere) is None
+    assert await s.get(someone_else) is not None

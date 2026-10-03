@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Pencil, Plus, RotateCw, ShieldCheck, Trash2 } from 'lucide-react'
+import { Copy, KeyRound, Pencil, Plus, RotateCw, ShieldCheck, Trash2 } from 'lucide-react'
 import { roleLabel, useRoles } from '@/api/admin'
 import {
   parseDomains,
@@ -8,9 +8,12 @@ import {
   toGroupRoles,
   useApplyProvider,
   useCreateProvider,
+  useCreateScimAccess,
   useDeleteProvider,
   useIdentity,
+  useRevokeScimAccess,
   useSaveIdentity,
+  useScimAccess,
   useUpdateProvider,
   type Identity,
   type IdentityProvider,
@@ -33,6 +36,7 @@ import {
 } from '@/components/ui/primitives'
 import { Drawer, toast } from '@/components/ui/overlay'
 import { Notice } from '@/features/projects/NewProjectWizard'
+import { formatDateTime } from '@/lib/format'
 import { errorMessage } from './AdminForms'
 
 const STATUS_TONE = { active: 'good', pending: 'neutral', failed: 'critical' } as const
@@ -198,6 +202,8 @@ function AuthenticationForm({ data }: { data: Identity }) {
           </Table>
         )}
       </Card>
+
+      <ScimCard />
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
@@ -464,5 +470,121 @@ function ProviderForm({ initial, onClose }: { initial?: IdentityProvider; onClos
       </Field>
       <Notice tone="info">{t('adminForms.keycloakNote')}</Notice>
     </Drawer>
+  )
+}
+
+/** SCIM 2.0 (M16, ADR-0031): the base URL and the bearer the customer's identity provider uses to provision people. */
+function ScimCard() {
+  const { t } = useTranslation()
+  const access = useScimAccess()
+  const create = useCreateScimAccess()
+  const revoke = useRevokeScimAccess()
+  // The new bearer lives only in this component's state, until "Done": the API never returns it again.
+  const [shown, setShown] = useState<string | null>(null)
+  const data = access.data
+  const failed = (error: unknown) => toast(t('adminForms.actionFailed', { message: errorMessage(error) }))
+  const issue = () =>
+    create.mutateAsync(undefined).then((r) => {
+      setShown(r.token)
+      toast(t(r.rotated ? 'admin.auth.scim.rotated' : 'admin.auth.scim.created'))
+    }, failed)
+  const copy = (value: string) =>
+    navigator.clipboard?.writeText(value).then(
+      () => toast(t('admin.auth.scim.copied')),
+      () => undefined,
+    )
+
+  return (
+    <Card>
+      <CardHeader
+        title={t('admin.auth.scim.title')}
+        subtitle={t('admin.auth.scim.hint')}
+        action={
+          data && (
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                variant={data.enabled ? 'ghost' : 'primary'}
+                disabled={create.isPending}
+                onClick={issue}
+              >
+                {data.enabled ? <RotateCw size={14} /> : <KeyRound size={14} />}{' '}
+                {t(data.enabled ? 'admin.auth.scim.rotate' : 'admin.auth.scim.create')}
+              </Button>
+              {data.enabled && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  disabled={revoke.isPending}
+                  onClick={() =>
+                    revoke.mutateAsync(undefined).then(() => {
+                      setShown(null)
+                      toast(t('admin.auth.scim.revoked'))
+                    }, failed)
+                  }
+                >
+                  <Trash2 size={14} /> {t('admin.auth.scim.revoke')}
+                </Button>
+              )}
+            </div>
+          )
+        }
+      />
+      <CardBody className="space-y-3">
+        {access.isLoading && <p className="text-sm text-muted">{t('common.loading')}</p>}
+        {access.error && <Notice tone="critical">{errorMessage(access.error)}</Notice>}
+        {data && (
+          <dl className="grid grid-cols-[max-content_1fr] gap-x-4 gap-y-2 text-sm">
+            <dt className="text-muted">{t('admin.auth.scim.baseUrl')}</dt>
+            <dd className="flex items-center gap-2 font-mono text-xs">
+              {data.baseUrl}
+              <Button
+                size="sm"
+                variant="ghost"
+                aria-label={t('admin.auth.scim.copy')}
+                onClick={() => copy(data.baseUrl)}
+              >
+                <Copy size={14} />
+              </Button>
+            </dd>
+            <dt className="text-muted">{t('admin.auth.scim.bearer')}</dt>
+            <dd className="flex flex-wrap items-center gap-2">
+              <Badge tone={data.enabled ? 'good' : 'neutral'}>
+                {t(data.enabled ? 'admin.auth.scim.enabled' : 'admin.auth.scim.disabled')}
+              </Badge>
+              {data.enabled && data.hint && (
+                <span className="font-mono text-xs">{t('admin.auth.scim.hintLabel', { hint: data.hint })}</span>
+              )}
+              {data.createdAt && (
+                <span className="text-xs text-muted">
+                  {t('admin.auth.scim.createdAt', { date: formatDateTime(data.createdAt) })}
+                </span>
+              )}
+              {data.enabled && (
+                <span className="text-xs text-muted">
+                  {data.lastUsedAt
+                    ? t('admin.auth.scim.lastUsed', { date: formatDateTime(data.lastUsedAt) })
+                    : t('admin.auth.scim.neverUsed')}
+                </span>
+              )}
+            </dd>
+          </dl>
+        )}
+        {shown && (
+          <div className="space-y-2">
+            <Notice tone="warning">{t('admin.auth.scim.showOnce')}</Notice>
+            <div className="flex items-center gap-2">
+              <Input readOnly value={shown} className="font-mono text-xs" aria-label={t('admin.auth.scim.bearer')} />
+              <Button size="sm" variant="ghost" onClick={() => copy(shown)}>
+                <Copy size={14} /> {t('admin.auth.scim.copy')}
+              </Button>
+              <Button size="sm" onClick={() => setShown(null)}>
+                {t('admin.auth.scim.done')}
+              </Button>
+            </div>
+          </div>
+        )}
+      </CardBody>
+    </Card>
   )
 }

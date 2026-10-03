@@ -85,6 +85,7 @@ async def run_worker(settings: WorkerSettings, *, name: str | None = None, wait:
                 cassettes=(Path(settings.model_cassettes_dir), settings.model_cassettes_mode)
                 if settings.model_cassettes_mode else None,
                 openrouter_enabled=settings.openrouter_enabled,
+                allow_private_hosts=settings.model_servers_allow_private_hosts,
             ) if settings.secrets_url else None,
             sandboxes=lambda image: DockerSandbox(image=image, docker=settings.sandbox_docker),
             legacy=lambda: legacy_runner(settings),

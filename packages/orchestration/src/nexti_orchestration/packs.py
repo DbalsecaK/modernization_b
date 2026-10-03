@@ -7,6 +7,7 @@ from typing import Any, Protocol
 from nexti_core.spec.characterization import GoldenMaster, Scalar
 from nexti_core.spec.design import Design, Port, UseCase
 from nexti_core.spec.equivalence import EquivalenceRun
+from nexti_pack_dotnet.pack import ORACLE_PACK as DOTNET_ORACLE
 from nexti_pack_dotnet.pack import PACK as DOTNET
 from nexti_pack_go.pack import PACK as GO
 from nexti_pack_spring_boot.pack import MONGODB_PACK as SPRING_BOOT_MONGODB
@@ -86,13 +87,15 @@ PACKS: dict[str, BackendPack] = {SPRING_BOOT.name: SPRING_BOOT, QUARKUS.name: QU
 def backend_pack(target: Mapping[str, Any]) -> BackendPack | None:
     """The pack of a project's backend (Spring Boot when none is chosen), with its database when the pack has a
     variant for it (Spring Boot with Oracle, ADR-0021, MySQL, ADR-0027, or MongoDB, ADR-0029); None when that backend
-    has no pack yet.
+    has no pack yet. .NET takes its Oracle variant (ADR-0031).
     Quarkus (ADR-0028) and Go (ADR-0029) are certified with PostgreSQL only: with another database they have no pack
     yet."""
     backend = str(target.get("backend") or DEFAULT)
     database = str(target.get("database") or "").lower()
     if backend == SPRING_BOOT.name and database == "oracle":
         return SPRING_BOOT_ORACLE
+    if backend == DOTNET.name and database == "oracle":
+        return DOTNET_ORACLE
     if backend == SPRING_BOOT.name and database == "mysql":
         return SPRING_BOOT_MYSQL
     if backend == SPRING_BOOT.name and database == "mongodb":

@@ -1,13 +1,14 @@
 [project]
 name = "nexti-pack-dotnet"
 version = "0.1.0"
-description = "Target pack .NET 10 + SQL Server: deterministic generators, sandbox build, equivalence harness and canary (spec 8.4, ADR-0017)."
+description = "Target pack .NET 10 + SQL Server or Oracle: deterministic generators, sandbox build, equivalence harness and canary (spec 8.4, ADR-0017)."
 requires-python = ">=3.12"
-dependencies = ["pydantic>=2.11", "nexti-core", "nexti-sandbox"]
+dependencies = ["pydantic>=2.11", "nexti-core", "nexti-sandbox", "nexti-pack-spring-boot"]
 
 [tool.uv.sources]
 nexti-core = { workspace = true }
 nexti-sandbox = { workspace = true }
+nexti-pack-spring-boot = { workspace = true }
 
 [build-system]
 requires = ["hatchling"]

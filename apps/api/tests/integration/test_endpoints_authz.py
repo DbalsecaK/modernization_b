@@ -84,6 +84,18 @@ PUBLIC = {
     ("GET", "/auth/dev/users"),
     ("POST", "/auth/dev/login"),
 }
+# SCIM 2.0 (ADR-0031): no session and no OpenFGA check; the tenant's bearer authorizes them and scopes them to its
+# tenant (tests/integration/test_scim.py covers allowed, denied, revoked and cross-tenant bearers).
+SCIM_BEARER = {
+    ("GET", "/scim/v2/ServiceProviderConfig"),
+    ("GET", "/scim/v2/ResourceTypes"),
+    ("GET", "/scim/v2/Schemas"),
+    *((method, "/scim/v2/Users") for method in ("GET", "POST")),
+    *((method, "/scim/v2/Users/{scim_id}") for method in ("GET", "PUT", "PATCH", "DELETE")),
+    *((method, "/scim/v2/Groups") for method in ("GET", "POST")),
+    *((method, "/scim/v2/Groups/{scim_id}") for method in ("GET", "PUT", "PATCH", "DELETE")),
+}
+PUBLIC |= SCIM_BEARER
 # Mutations that are not sensitive actions and therefore not audited; projects:compose is a POST that saves nothing.
 NOT_AUDITED = {("PATCH", "/api/v1/me"), ("POST", "/api/v1/projects:compose"), ("POST", "/api/v1/gherkin:validate")}
 
@@ -674,6 +686,17 @@ async def _new_integration(ctx: Ctx) -> Request:
     return "/api/v1/integrations", {"kind": "figma", "name": f"Figma {uuid.uuid4().hex[:8]}", "token": "figd_new-token"}
 
 
+async def _scim_access(ctx: Ctx) -> Request:
+    """Tenant A with an active SCIM bearer, to revoke."""
+    async with ctx.owner.begin() as conn:
+        active = (await conn.execute(text("SELECT 1 FROM scim_access WHERE tenant_id = :t AND revoked_at IS NULL"),
+                                     {"t": ctx.world.tenant_a})).first()  # fmt: skip
+        if active is None:
+            await conn.execute(text("INSERT INTO scim_access (tenant_id, access_digest, hint) VALUES (:t, :d, 'test')"),
+                               {"t": ctx.world.tenant_a, "d": hashlib.sha256(uuid.uuid4().bytes).digest()})  # fmt: skip
+    return "/api/v1/identity/scim", None
+
+
 async def _new_provider(ctx: Ctx) -> Request:
     name = uuid.uuid4().hex[:8]
     return "/api/v1/identity/providers", {
@@ -1009,6 +1032,10 @@ CASES = [
          _with("identity_provider", "/api/v1/identity/providers/{id}:apply")),
     Case("DELETE", "/api/v1/identity/providers/{provider_id}", "admin", "member",
          _with("identity_provider", "/api/v1/identity/providers/{id}")),
+    # SCIM bearer of the tenant (M16, ADR-0031): identity.manage.
+    Case("GET", "/api/v1/identity/scim", "admin", "member", fixed("/api/v1/identity/scim")),
+    Case("POST", "/api/v1/identity/scim", "admin", "member", fixed("/api/v1/identity/scim")),
+    Case("DELETE", "/api/v1/identity/scim", "admin", "member", _scim_access),
     Case("GET", "/api/v1/ai/catalog", "admin", "member", fixed("/api/v1/ai/catalog")),
     Case("POST", "/api/v1/ai/catalog:sync", "admin", "member", fixed("/api/v1/ai/catalog:sync")),
     Case(

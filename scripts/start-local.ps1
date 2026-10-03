@@ -124,6 +124,7 @@ try {
       @('nexti-sandbox-go:1', @('build', '-q', '-t', 'nexti-sandbox-go:1', 'infra/sandbox/go')),
       @('nexti-sandbox-docs:1', @('build', '-q', '-t', 'nexti-sandbox-docs:1', 'infra/sandbox/docs')),
       @('nexti-sandbox-java-oracle:1', @('build', '-q', '-t', 'nexti-sandbox-java-oracle:1', 'infra/sandbox/java-oracle')),
+      @('nexti-sandbox-dotnet-oracle:1', @('build', '-q', '-t', 'nexti-sandbox-dotnet-oracle:1', 'infra/sandbox/dotnet-oracle')),
       @('nexti-sandbox-java-mysql:1', @('build', '-q', '-t', 'nexti-sandbox-java-mysql:1', 'infra/sandbox/java-mysql')),
       @('nexti-sandbox-java-mongodb:1', @('build', '-q', '-t', 'nexti-sandbox-java-mongodb:1', 'infra/sandbox/java-mongodb')),
       @('nexti-sandbox-java-quarkus:1', @('build', '-q', '-t', 'nexti-sandbox-java-quarkus:1', 'infra/sandbox/java-quarkus')),

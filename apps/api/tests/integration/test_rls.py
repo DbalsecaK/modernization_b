@@ -27,7 +27,10 @@ SPEC_TABLES = (
     "verdict", "evaluation", "design_system", "prototype", "prototype_comment", "ui_chat_message",
     "ivv_mapping_version",
 )  # fmt: skip
-RLS_TABLES = ("tenant", "app_user", *TENANT_TABLES, *AI_TABLES, *PROJECT_TABLES, *RUN_TABLES, *SPEC_TABLES)
+SCIM_TABLES = ("scim_access", "scim_user", "scim_group", "scim_group_member")
+RLS_TABLES = (
+    "tenant", "app_user", *TENANT_TABLES, *AI_TABLES, *PROJECT_TABLES, *RUN_TABLES, *SPEC_TABLES, *SCIM_TABLES,
+)  # fmt: skip
 
 
 async def ids(engine: AsyncEngine, scope: DbScope, sql: str) -> list[object]:
@@ -116,6 +119,26 @@ async def test_invitation_helper_returns_an_existing_user_without_exposing_it(
         ).scalar_one()
     assert found == world.b_user
     assert visible == 0
+
+
+async def test_the_scim_shared_helper_answers_only_for_members_of_the_active_tenant(
+    app_engine: AsyncEngine, world: World
+) -> None:
+    async with scoped_connection(app_engine, DbScope(tenant_id=world.tenant_a)) as conn:
+        answers: list[bool] = [
+            (await conn.execute(text("SELECT scim_user_shared(:u)"), {"u": user})).scalar_one()
+            for user in (world.shared, world.a_user, world.b_user)
+        ]
+    async with scoped_connection(app_engine, DbScope()) as conn:
+        unscoped: bool = (await conn.execute(text("SELECT scim_user_shared(:u)"), {"u": world.shared})).scalar_one()
+    assert answers == [True, False, False]  # b_user is not a member of A: nothing is revealed about them
+    assert unscoped is False
+
+
+async def test_the_scim_bearer_lookup_returns_nothing_for_an_unknown_digest(app_engine: AsyncEngine) -> None:
+    async with scoped_connection(app_engine, DbScope()) as conn:
+        rows = (await conn.execute(text("SELECT * FROM scim_access_tenant(:d)"), {"d": bytes(32)})).all()
+    assert rows == []
 
 
 async def test_invitation_helper_requires_an_active_tenant(app_engine: AsyncEngine, world: World) -> None:

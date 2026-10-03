@@ -56,6 +56,7 @@ jobs:
           docker build -q -t "$r/nexti-sandbox-java-mongodb:1" infra/sandbox/java-mongodb && docker push -q "$r/nexti-sandbox-java-mongodb:1"
           docker build -q -t "$r/nexti-sandbox-java-quarkus:1" infra/sandbox/java-quarkus && docker push -q "$r/nexti-sandbox-java-quarkus:1"
           docker build -q -t "$r/nexti-sandbox-dotnet:1" infra/sandbox/dotnet && docker push -q "$r/nexti-sandbox-dotnet:1"
+          docker build -q -t "$r/nexti-sandbox-dotnet-oracle:1" infra/sandbox/dotnet-oracle && docker push -q "$r/nexti-sandbox-dotnet-oracle:1"
           docker build -q -t "$r/nexti-sandbox-go:1" infra/sandbox/go && docker push -q "$r/nexti-sandbox-go:1"
           docker build -q -t "$r/nexti-sandbox-frontend:2" -f infra/sandbox/frontend/Dockerfile . && docker push -q "$r/nexti-sandbox-frontend:2"
           docker build -q -t "$r/nexti-sandbox-web:1" -f infra/sandbox/web/Dockerfile . && docker push -q "$r/nexti-sandbox-web:1"

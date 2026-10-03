@@ -6,6 +6,7 @@ from collections.abc import Mapping, Sequence
 from nexti_core.spec.characterization import GoldenMaster, Scalar
 from nexti_core.spec.design import Design, Port, UseCase
 from nexti_core.spec.equivalence import EquivalenceRun
+from nexti_pack_dotnet import oracle
 from nexti_pack_dotnet.build import IMAGE, compile_and_test
 from nexti_pack_dotnet.canary import Mutation, mutations
 from nexti_pack_dotnet.equivalence import run_equivalence
@@ -103,4 +104,36 @@ class DotnetPack:
         return mutations(source)
 
 
+class DotnetOraclePack(DotnetPack):
+    """The same pack with Oracle as its persistence (ADR-0031): the Oracle schema, the ODP.NET client in the project,
+    the adapters asked for Oracle SQL and the golden master run against Oracle in its sandbox."""
+
+    image = oracle.IMAGE
+    database = "oracle"
+
+    def skeleton(self, design: Design) -> dict[str, str]:
+        return oracle.skeleton(design)
+
+    def adapter_request(self, design: Design, port: str, files: Mapping[str, str]) -> str:
+        return (
+            f"Write the ADO.NET adapter {adapter_name(port)} of the port {port}: the class "
+            f"`{namespace(design)}.Adapters.Out.Sql.{adapter_name(port)}`, in exactly that namespace (the wiring "
+            "uses it). The database is Oracle Database 23ai through Oracle.ManagedDataAccess.Client (ODP.NET): "
+            "use Oracle SQL (no TOP or LIMIT: FETCH FIRST n ROWS ONLY; booleans are BOOLEAN) and bind parameters as "
+            ':name with `command.Parameters.Add(new OracleParameter("name", value))` (the session\'s commands bind '
+            "by name; never a reserved word such as :number as a parameter name). Write the identifiers exactly as "
+            'the schema does: a column the schema quotes (a reserved word, e.g. "NUMBER") is quoted the same way in '
+            "every statement.\n\n"
+            f"Design:\n{design.model_dump_json(indent=1)}\n\nExisting files:\n{self.existing(files, design)}\n\n"
+            f"Target schema (Oracle):\n{files[SCHEMA]}"
+        )
+
+    async def run_equivalence(
+        self, sandbox: Sandbox, files: dict[str, str], design: Design, use_case: UseCase, master: GoldenMaster,
+        defaults: dict[str, Scalar] | None = None,
+    ) -> EquivalenceRun:  # fmt: skip
+        return await oracle.run_equivalence(sandbox, files, design, use_case, master, defaults)
+
+
 PACK = DotnetPack()
+ORACLE_PACK = DotnetOraclePack()

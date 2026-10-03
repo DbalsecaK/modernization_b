@@ -4,6 +4,7 @@
   usable cookie, and the stored record is encrypted (it holds the Keycloak refresh token).
 - Idle timeout slides on every request; the absolute lifetime never extends. A new id is issued at login.
 - Mutating requests need the session's CSRF token in X-CSRF-Token, and a matching Origin when one is sent.
+- Each user has an index of their session keys, so a deactivation (SCIM) can end their sessions at once.
 """
 
 import base64
@@ -103,11 +104,30 @@ class SessionStore:
 
     async def _write(self, session_id: str, session: Session) -> None:
         remaining = int(session.created_at + self.max - time.time())
-        await self.redis.set(
-            self._key("session", session_id),
-            self.fernet.encrypt(session.to_json()),
-            ex=max(1, min(self.idle, remaining)),
-        )
+        key = self._key("session", session_id)
+        index = self._key("user-sessions", str(session.user_id))
+        async with self.redis.pipeline(transaction=False) as pipe:
+            pipe.set(key, self.fernet.encrypt(session.to_json()), ex=max(1, min(self.idle, remaining)))
+            pipe.sadd(index, key)
+            pipe.expire(index, self.max)
+            await pipe.execute()
+
+    async def revoke_user(self, user_id: uuid.UUID, tenant_id: uuid.UUID | None = None) -> int:
+        """Ends the sessions of a user (only those whose active tenant is `tenant_id`, when given). Returns how many."""
+        index = self._key("user-sessions", str(user_id))
+        ended = 0
+        for raw_key in await self.redis.smembers(index):
+            key = raw_key.decode() if isinstance(raw_key, bytes) else str(raw_key)
+            raw = await self.redis.get(key)
+            if raw is not None and tenant_id is not None:
+                try:
+                    if Session.from_json(self.fernet.decrypt(raw)).active_tenant_id != tenant_id:
+                        continue
+                except (InvalidToken, ValueError, KeyError, TypeError):
+                    pass  # unreadable: ended like the others
+            ended += int(await self.redis.delete(key))
+            await self.redis.srem(index, key)
+        return ended
 
     async def get(self, session_id: str) -> Session | None:
         """The session, with its idle timeout renewed; None if unknown, idle too long or past its lifetime."""

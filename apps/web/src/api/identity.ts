@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { api, toApiError, type Schemas } from './client'
+import { api, sessionHeaders, toApiError, type Schemas } from './client'
 
 // Administration → Authentication (M0b, ADR-0022): how the active tenant signs in. The client secret of a provider
 // is sent once to the API, which hands it to Keycloak; it never comes back.
@@ -49,6 +49,32 @@ export const useDeleteProvider = () =>
   useIdentityMutation((id: string) =>
     unwrap(api.DELETE('/api/v1/identity/providers/{provider_id}', { params: { path: { provider_id: id } } })),
   )
+
+// SCIM 2.0 (M16, ADR-0031): the tenant's bearer for its identity provider. Shown once when created; the platform keeps
+// only its digest. Hand-written until the generated types include these routes.
+export type ScimAccess = {
+  enabled: boolean
+  baseUrl: string
+  hint: string | null
+  createdAt: string | null
+  lastUsedAt: string | null
+}
+export type ScimAccessCreated = ScimAccess & { token: string; rotated: boolean }
+
+const SCIM_PATH = '/api/v1/identity/scim'
+const scimKey = ['admin', 'identity', 'scim'] as const
+
+async function scimRequest<T>(method: 'GET' | 'POST' | 'DELETE'): Promise<T> {
+  const response = await fetch(SCIM_PATH, { method, credentials: 'same-origin', headers: sessionHeaders(method) })
+  const body: unknown = response.status === 204 ? undefined : await response.json().catch(() => undefined)
+  if (!response.ok) throw toApiError(response, body)
+  return body as T
+}
+
+export const useScimAccess = (enabled = true) =>
+  useQuery({ queryKey: scimKey, queryFn: () => scimRequest<ScimAccess>('GET'), enabled })
+export const useCreateScimAccess = () => useIdentityMutation(() => scimRequest<ScimAccessCreated>('POST'))
+export const useRevokeScimAccess = () => useIdentityMutation(() => scimRequest<void>('DELETE'))
 
 /** Starting points for the usual providers: what the issuer looks like and what to ask for. */
 export const PRESETS = {
