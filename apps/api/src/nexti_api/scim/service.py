@@ -173,6 +173,10 @@ async def _check_email(conn: AsyncConnection, tenant_id: uuid.UUID, email: str |
     if domain not in await _tenant_domains(conn, tenant_id):
         raise ScimError(400, f"{domain} is not a domain of the tenant (Administration -> Authentication).",
                         "invalidValue")  # fmt: skip
+    claimed = (await conn.execute(text("SELECT scim_domain_claimed_elsewhere(:d)"), {"d": domain})).scalar()
+    if claimed:  # accounts are global: a domain two tenants declare is neither's to provision
+        raise ScimError(400, f"{domain} is also declared by another tenant; it cannot be provisioned by SCIM.",
+                        "invalidValue")  # fmt: skip
     return email.lower()
 
 
@@ -220,12 +224,16 @@ async def create_user(conn: AsyncConnection, scim: Scim, fields: UserFields) -> 
         await conn.execute(insert(Membership).values(tenant_id=scim.tenant_id, user_id=user_id))
     elif member.status != "active":
         await conn.execute(update(Membership).where(Membership.user_id == user_id).values(status="active"))
+    shared = bool((await conn.execute(text("SELECT scim_user_shared(:u)"), {"u": user_id})).scalar())
     admin = scim.keycloak()
     try:
         account = await admin.find_user(email)
         if account is None:
             account = await admin.create_user(email, fields.given_name, fields.family_name, required_actions=[])
         elif not account.enabled:
+            if shared:  # disabled by another tenant or by the platform: not this tenant's to turn back on
+                raise ScimError(409, "The person's account is disabled and belongs to another tenant too.",
+                                "mutability")  # fmt: skip
             await admin.set_user_enabled(account.id, True)
         await admin.add_organization_member(await _organization(conn, scim), account.id)
     except KeycloakAdminError as exc:

@@ -349,3 +349,24 @@ async def test_a_member_cannot_manage_the_bearer(api: TestClient, world: World) 
     headers = admin_headers(api, world.shared)  # an architect of tenant A, without identity.manage
     assert api.post("/api/v1/identity/scim", headers=headers).status_code == 403
     assert api.get("/api/v1/identity/scim").status_code == 403
+
+
+async def test_a_domain_another_tenant_declares_cannot_be_provisioned(
+    api: TestClient, owner_engine: AsyncEngine, world: World
+) -> None:
+    """Accounts are global (D-20): tenant B declaring A's domain must not let B's bearer provision A's people, link
+    their accounts to B's organization or turn a disabled account back on."""
+    async with owner_engine.begin() as conn:
+        await conn.execute(update(TenantIdentity).where(TenantIdentity.tenant_id == world.tenant_b)
+                           .values(domains=["pacificcu.example", "andesbank.example"]))  # fmt: skip
+    try:
+        b_value = await bearer_for(owner_engine, world.tenant_b)
+        refused = api.post("/scim/v2/Users", json=new_user_body(), headers=auth(b_value))
+        assert refused.status_code == 400
+        assert "another tenant" in refused.json()["detail"]
+        # tenant A, which declares it too, cannot either: a shared domain is neither's to provision
+        assert api.post("/scim/v2/Users", json=new_user_body(), headers=auth(new_bearer(api, world))).status_code == 400
+    finally:
+        async with owner_engine.begin() as conn:
+            await conn.execute(update(TenantIdentity).where(TenantIdentity.tenant_id == world.tenant_b)
+                               .values(domains=["pacificcu.example"]))  # fmt: skip

@@ -123,11 +123,25 @@ def upgrade() -> None:
     $$;
     REVOKE ALL ON FUNCTION scim_user_shared(uuid) FROM PUBLIC;
     GRANT EXECUTE ON FUNCTION scim_user_shared(uuid) TO platform_app;
+
+    -- Whether another tenant also declares a domain (as its own or for one of its providers): such a domain is not
+    -- the active tenant's to provision from, since accounts are global (D-20). It answers yes or no, nothing else.
+    CREATE FUNCTION scim_domain_claimed_elsewhere(p_domain text) RETURNS boolean
+      LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public, pg_temp AS $$
+      SELECT app_current_tenant() IS NOT NULL AND (
+        EXISTS (SELECT 1 FROM tenant_identity i
+                 WHERE i.tenant_id <> app_current_tenant() AND lower(p_domain) = ANY (i.domains))
+        OR EXISTS (SELECT 1 FROM tenant_identity_provider p
+                    WHERE p.tenant_id <> app_current_tenant() AND lower(p_domain) = ANY (p.domains)))
+    $$;
+    REVOKE ALL ON FUNCTION scim_domain_claimed_elsewhere(text) FROM PUBLIC;
+    GRANT EXECUTE ON FUNCTION scim_domain_claimed_elsewhere(text) TO platform_app;
     """)
 
 
 def downgrade() -> None:
     op.execute("""
+    DROP FUNCTION IF EXISTS scim_domain_claimed_elsewhere(text);
     DROP FUNCTION scim_user_shared(uuid);
     DROP FUNCTION scim_access_tenant(bytea);
     DELETE FROM role_assignment WHERE source = 'scim';
