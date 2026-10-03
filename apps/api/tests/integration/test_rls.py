@@ -125,12 +125,12 @@ async def test_the_scim_shared_helper_answers_only_for_members_of_the_active_ten
     app_engine: AsyncEngine, world: World
 ) -> None:
     async with scoped_connection(app_engine, DbScope(tenant_id=world.tenant_a)) as conn:
-        answers = [
+        answers: list[bool] = [
             (await conn.execute(text("SELECT scim_user_shared(:u)"), {"u": user})).scalar_one()
             for user in (world.shared, world.a_user, world.b_user)
         ]
     async with scoped_connection(app_engine, DbScope()) as conn:
-        unscoped = (await conn.execute(text("SELECT scim_user_shared(:u)"), {"u": world.shared})).scalar_one()
+        unscoped: bool = (await conn.execute(text("SELECT scim_user_shared(:u)"), {"u": world.shared})).scalar_one()
     assert answers == [True, False, False]  # b_user is not a member of A: nothing is revealed about them
     assert unscoped is False
 

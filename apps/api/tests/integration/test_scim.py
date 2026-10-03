@@ -332,10 +332,10 @@ async def test_a_bearer_reaches_its_tenant_only_and_dies_when_revoked(
 
     # The bearer is never stored nor audited in clear.
     async with owner_engine.connect() as conn:
-        stored = (await conn.execute(text("SELECT coalesce(string_agg(row_to_json(a)::text, ''), '') "
+        stored: str = (await conn.execute(text("SELECT coalesce(string_agg(row_to_json(a)::text, ''), '') "
                                           "FROM scim_access a"))).scalar_one()  # fmt: skip
-        audited = (await conn.execute(text("SELECT coalesce(string_agg(details::text || coalesce(target, ''), ''), '') "
-                                           "FROM audit_log"))).scalar_one()  # fmt: skip
+        everything = "SELECT coalesce(string_agg(details::text || coalesce(target, ''), ''), '') FROM audit_log"
+        audited: str = (await conn.execute(text(everything))).scalar_one()
         query = select(AuditLog.action).where(AuditLog.tenant_id == world.tenant_a,
                                               AuditLog.action.like("identity.scim_access_%"))  # fmt: skip
         actions = set((await conn.execute(query)).scalars())
