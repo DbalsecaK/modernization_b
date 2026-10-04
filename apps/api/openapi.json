@@ -839,9 +839,12 @@
       "Body_upload_input_api_v1_projects__project_id__inputs_post": {
         "properties": {
           "file": {
-            "contentMediaType": "application/octet-stream",
+            "items": {
+              "contentMediaType": "application/octet-stream",
+              "type": "string"
+            },
             "title": "File",
-            "type": "string"
+            "type": "array"
           },
           "kind": {
             "enum": [
@@ -14219,7 +14222,7 @@
         ]
       },
       "post": {
-        "description": "Validate (type, size, zip safety, image header, secrets, malware, hash) and store. 422 with the reason on\nrejection; 503 when the scanner does not answer (fail closed, ADR-0008).",
+        "description": "Validate (type, size, zip safety, image header, secrets, malware, hash) and store. 422 with the reason on\nrejection; 503 when the scanner does not answer (fail closed, ADR-0008). A code input takes one zip or loose\ncode files, which are packed into one zip and validated like an uploaded archive.",
         "operationId": "upload_input_api_v1_projects__project_id__inputs_post",
         "parameters": [
           {

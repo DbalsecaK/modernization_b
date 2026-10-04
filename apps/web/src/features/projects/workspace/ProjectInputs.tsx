@@ -249,7 +249,17 @@ function AddInputDrawer({ project, open, onClose }: { project: ProjectDetail; op
 
   async function start() {
     const out: typeof results = []
-    if (source === 'files' || source === 'screens') {
+    if (source === 'files' && archive) {
+      // One code input: a zip, or the loose code files packed together by the server.
+      const label = files.length === 1 ? files[0].name : `${files[0].name} (+${files.length - 1})`
+      try {
+        await upload.mutateAsync({ file: files, kind, notes })
+        out.push({ name: label, ok: true })
+      } catch (error) {
+        out.push({ name: label, ok: false, detail: errorText(error) })
+      }
+      setResults([...out])
+    } else if (source === 'files' || source === 'screens') {
       for (const file of files) {
         try {
           await upload.mutateAsync({ file, kind: source === 'screens' ? 'screenshot' : kind, notes })
@@ -333,12 +343,12 @@ function AddInputDrawer({ project, open, onClose }: { project: ProjectDetail; op
           </span>
           <input
             type="file"
-            multiple={!(source === 'files' && archive)}
+            multiple
             accept={
               source === 'screens'
                 ? 'image/png,image/jpeg,image/webp'
                 : archive
-                  ? '.zip,application/zip'
+                  ? undefined
                   : '.pdf,.docx,.xlsx,.md,.txt'
             }
             className="sr-only"

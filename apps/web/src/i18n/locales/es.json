@@ -447,7 +447,7 @@
     },
     "secretsFound_one": "{{count}} credencial encontrada",
     "secretsFound_other": "{{count}} credenciales encontradas",
-    "archiveOnly": "Un zip con el código legacy; se valida antes de guardarse.",
+    "archiveOnly": "Un zip, o uno o varios archivos de código (se empaquetan en un solo insumo); se valida antes de guardarse.",
     "deleteInput": "Eliminar {{name}}",
     "confirmDelete": "¿Eliminar «{{name}}»? Se borra el archivo guardado; el registro queda en el historial.",
     "deleted": "«{{name}}» eliminado.",
@@ -466,7 +466,7 @@
     "withToken": "Con token",
     "tokenKept": "Déjalo vacío para conservar el token actual.",
     "branches": "Ramas: {{branches}}",
-    "targetArchiveHint": "Un zip con el código fuente del tercero y su artefacto ejecutable (un jar de Spring Boot)."
+    "targetArchiveHint": "Un zip con el código fuente del tercero y su artefacto ejecutable (un jar de Spring Boot), o sus archivos fuente sueltos."
   },
   "inventory": {
     "programs": "Programas",
@@ -1120,7 +1120,7 @@
     "inputsHint": "Selecciona lo que vas a entregar. Sin Figma, la plataforma propone un design system y prototipos.",
     "connectGit": "Conectar un repositorio Git",
     "connectGitHint": "Recomendado. Conserva versiones y permite resincronizar.",
-    "uploadZip": "Subir un archivo zip",
+    "uploadZip": "Subir un zip o archivos de código",
     "uploadZipHint": "Se valida y analiza antes de que nadie lo lea.",
     "dropInputs": "Suelta aquí documentos o capturas, o pega links de Figma",
     "untrustedNotice": "Tu código se trata como input no confiable y nunca sale del plano de datos de este cliente.",
@@ -2285,8 +2285,8 @@
     "autoCreate": "Crear features, historias y tareas automáticamente al aprobar la spec (C1)",
     "summaryUi": "{{screens}} capturas · {{figma}} Figma · {{prototypes}} prototipos",
     "dropDocuments": "Elige documentos e historias de usuario",
-    "dropArchive": "Elige el zip con el código legacy",
-    "dropExistingArchive": "Elige el zip con el código de la aplicación",
+    "dropArchive": "Elige el zip o los archivos con el código legacy",
+    "dropExistingArchive": "Elige el zip o los archivos con el código de la aplicación",
     "archiveHint": "Se valida (rutas, enlaces, tamaño, malware, secretos) antes de que nadie lo lea.",
     "gitUrl": "URL del repositorio (https)",
     "gitUrlHint": "La plataforma comprueba que puede leer la rama; el clonado ocurre en el preflight.",
