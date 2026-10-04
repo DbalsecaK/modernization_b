@@ -60,6 +60,9 @@ async def test_the_graph_has_the_cics_family_with_rules_domains_and_a_walked_flo
         assert (order["source"], order["loc"], order["state"]) == ("cbl/PAGOORD.cbl:1-192", 192, "inProgress")
         assert {"RULE-001", "RULE-004", "RULE-009"} <= set(order["rules"])
         assert nodes["program:PAGOMOV"]["external"] is True
+        # What each unit really is, so the tab counts what the inventory found (not the columns of the drawing).
+        assert (order["kind"], nodes["file:ORDENES"]["kind"], nodes["map:PAGOSET.PAGORES"]["kind"]) == (
+            "Program", "File", "BmsMap")  # fmt: skip
         assert nodes["file:ORDENES"]["domain"] == "data"
         assert nodes["map:PAGOSET.PAGORES"]["domain"] == nodes["program:PAGOORD"]["domain"]
         assert not any(n["orphan"] for n in nodes.values())

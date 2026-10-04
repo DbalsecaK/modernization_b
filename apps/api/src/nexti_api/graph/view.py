@@ -13,7 +13,10 @@ from nexti_graph import GraphNode
 # The label of a graph node -> the type the tab draws. Paragraphs, fields and statements stay out of the picture:
 # they are reached through the detail of their program.
 VIEW_TYPES = {"Transaction": "transaction", "Program": "program", "StoredProcedure": "program", "BmsMap": "map",
-              "Copybook": "copybook", "File": "file", "Table": "file"}  # fmt: skip
+              "Copybook": "copybook", "File": "file", "Table": "file", "Page": "map", "Class": "program"}  # fmt: skip
+# The label that says what a unit really is (a stored procedure, a table, a COBOL program, an ASPX page): the tab
+# counts what the inventory found by it, instead of the columns of the drawing.
+KINDS = ("StoredProcedure", "Program", "Transaction", "BmsMap", "Copybook", "Page", "Class", "Table", "File")
 VIEW_EDGES = ("STARTS", "CALLS", "READS", "WRITES", "COPIES", "USES_MAP")
 DATA_DOMAIN = "data"
 
@@ -41,6 +44,11 @@ class ViewNode:
     line_end: int | None = None
     external: bool = False
     orphan: bool = False
+    kind: str = ""
+
+
+def _kind(labels: Sequence[str]) -> str:
+    return next((k for k in KINDS if k in labels), "")
 
 
 def _view_type(labels: Sequence[str]) -> str | None:
@@ -87,7 +95,7 @@ def build(
             state=state, loc=loc, rules=node_rules,
             source=f"{p['file']}:{start}-{end}" if p.get("file") and start else p.get("file"),
             file=p.get("file"), line_start=start, line_end=end, external=bool(p.get("external")),
-            orphan=n.key in orphan_keys,
+            orphan=n.key in orphan_keys, kind=_kind(n.labels),
         )  # fmt: skip
     edges = [r for r in relationships if r["type"] in VIEW_EDGES and r["source"] in view and r["target"] in view]
     _inherit_domains(view, edges)

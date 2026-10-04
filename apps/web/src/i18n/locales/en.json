@@ -526,7 +526,18 @@
     "impactResult_one": "{{count}} item depends on it: {{items}}",
     "impactResult_other": "{{count}} items depend on it: {{items}}",
     "openCompare": "Compare source ↔ target",
-    "impactUnused": "Programs, copybooks and files nobody uses"
+    "impactUnused": "Programs, copybooks and files nobody uses",
+    "kinds": {
+      "StoredProcedure": "Stored procedures",
+      "Program": "Programs",
+      "Class": "Classes",
+      "Transaction": "Transactions",
+      "Page": "Pages",
+      "BmsMap": "BMS maps",
+      "Copybook": "Copybooks",
+      "Table": "Tables",
+      "File": "Files"
+    }
   },
   "spec": {
     "filterStatus": "Filter by status",
@@ -1661,7 +1672,28 @@
       "groupMapping": "Group to role mapping",
       "groupMappingHint": "Map identity-provider groups to platform roles.",
       "jit": "Create users on first sign-in (JIT)",
-      "scim": "Provision users with SCIM",
+      "scim": {
+        "title": "Provisioning (SCIM 2.0)",
+        "hint": "Your identity provider creates, updates and deactivates people and groups of this customer. Groups give roles through the group mapping of your providers.",
+        "baseUrl": "SCIM base URL",
+        "bearer": "Bearer token",
+        "enabled": "Active",
+        "disabled": "Not set up",
+        "hintLabel": "Ends in {{hint}}",
+        "createdAt": "Created {{date}}",
+        "lastUsed": "Last used {{date}}",
+        "neverUsed": "Not used yet",
+        "create": "Create bearer",
+        "rotate": "Rotate",
+        "revoke": "Revoke",
+        "created": "Bearer created",
+        "rotated": "Bearer rotated: the previous one no longer works",
+        "revoked": "Bearer revoked",
+        "showOnce": "Copy it now into your identity provider: it is shown only once and the platform keeps only its digest.",
+        "copy": "Copy",
+        "copied": "Copied",
+        "done": "Done"
+      },
       "passwordPolicy": "Password policy",
       "passwordPolicyHint": "Applies to platform accounts only.",
       "minLength": "Minimum length",
@@ -1706,28 +1738,6 @@
         "failed": "Saved, but Keycloak did not take it: see the error"
       },
       "providerDeleted": "Provider deleted",
-      "scim": {
-        "title": "Provisioning (SCIM 2.0)",
-        "hint": "Your identity provider creates, updates and deactivates people and groups of this customer. Groups give roles through the group mapping of your providers.",
-        "baseUrl": "SCIM base URL",
-        "bearer": "Bearer token",
-        "enabled": "Active",
-        "disabled": "Not set up",
-        "hintLabel": "Ends in {{hint}}",
-        "createdAt": "Created {{date}}",
-        "lastUsed": "Last used {{date}}",
-        "neverUsed": "Not used yet",
-        "create": "Create bearer",
-        "rotate": "Rotate",
-        "revoke": "Revoke",
-        "created": "Bearer created",
-        "rotated": "Bearer rotated: the previous one no longer works",
-        "revoked": "Bearer revoked",
-        "showOnce": "Copy it now into your identity provider: it is shown only once and the platform keeps only its digest.",
-        "copy": "Copy",
-        "copied": "Copied",
-        "done": "Done"
-      },
       "mfaSsoNote": "People who sign in through an identity provider use the second factor of that provider.",
       "realmPolicy": "Passwords, lockout and sessions",
       "realmPolicyHint": "Set for the whole platform realm; a customer that needs others moves to a dedicated realm.",
@@ -2167,13 +2177,16 @@
       "calls": "Calls / starts",
       "reads": "Reads",
       "writes": "Writes",
-      "includes": "Includes (copybooks, maps)"
+      "includes": "Includes (copybooks, maps)",
+      "includesShort": "Includes"
     },
     "nodes": "Nodes",
     "visibility": {
       "all": "All nodes",
       "orphans": "Only orphans and isolated",
-      "hideOrphans": "Hide orphans and isolated"
+      "hideOrphans": "Hide orphans and isolated",
+      "external": "Only external calls",
+      "hideExternal": "Hide external calls"
     },
     "stats": "{{nodes}} nodes · {{edges}} relations",
     "zoomIn": "Zoom in",
@@ -2241,7 +2254,10 @@
       "write": "{{from}} writes {{to}}",
       "call": "{{from}} calls {{to}}",
       "transfer": "{{from}} transfers control to {{to}}"
-    }
+    },
+    "externalCalls": "External calls",
+    "externalHint": "Called by the code but not in the inputs: dependencies (ports), not modernized",
+    "externalShort": "external call"
   },
   "protoChat": {
     "title": "Ask for prototype changes",

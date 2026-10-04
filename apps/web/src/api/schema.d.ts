@@ -3883,6 +3883,12 @@ export interface components {
             file: string | null;
             /** Id */
             id: string;
+            /**
+             * Kind
+             * @description What the unit is: StoredProcedure, Program, Table, Page, ...
+             * @default
+             */
+            kind: string;
             /** Lineend */
             lineEnd: number | null;
             /** Linestart */
