@@ -56,12 +56,36 @@ class Entity(DesignModel):
     key: list[str] = Field(default_factory=list, description="Fields of the primary key")
     fields: list[FieldSpec] = Field(min_length=1)
 
+    @model_validator(mode="before")
+    @classmethod
+    def key_by_field_name(cls, data: object) -> object:
+        """A key written with the legacy column or the target column of a field (`or_orden_banco`) means that field:
+        the key lists field names, and the architect often writes the column it read in the legacy."""
+        if (
+            not isinstance(data, dict)
+            or not isinstance(data.get("key"), list)
+            or not isinstance(data.get("fields"), list)
+        ):
+            return data
+        by_column: dict[str, str] = {}
+        for item in data["fields"]:
+            if isinstance(item, dict) and isinstance(item.get("name"), str):
+                for alias in (item.get("legacy"), item.get("column")):
+                    if isinstance(alias, str) and alias:
+                        by_column.setdefault(alias.lower(), item["name"])
+        names = {item.get("name") for item in data["fields"] if isinstance(item, dict)}
+        key = [k if k in names or not isinstance(k, str) else by_column.get(k.lower(), k) for k in data["key"]]
+        return {**data, "key": key}
+
     @model_validator(mode="after")
     def key_fields_exist(self) -> "Entity":
         names = {f.name for f in self.fields}
         missing = [k for k in self.key if k not in names]
         if missing:
-            raise ValueError(f"{self.name}: key fields not declared: {', '.join(missing)}")
+            raise ValueError(
+                f"{self.name}: key fields not declared: {', '.join(missing)} (the key lists names of its fields, one "
+                f"of: {', '.join(sorted(names))}; declare a field for each key column, with the column in `legacy`)"
+            )
         return self
 
 
