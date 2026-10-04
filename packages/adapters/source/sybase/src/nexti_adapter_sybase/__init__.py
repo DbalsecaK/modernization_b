@@ -6,16 +6,63 @@ import re
 from typing import Any
 
 from nexti_adapter_sybase.analysis import backward_slice, classify, slice_targets
-from nexti_adapter_sybase.lexer import LexError
-from nexti_adapter_sybase.parser import ParseError, Procedure, parse
+from nexti_adapter_sybase.blocks import blocks
+from nexti_adapter_sybase.lexer import LexError, tokenize
+from nexti_adapter_sybase.parser import ParseError, Procedure, Statement, name_at, parse
 from nexti_adapter_sybase.types import to_neutral
 from nexti_core.adapters import Edge, Inventory, Node, SliceView, SourceFile
 
 EXTENSIONS = (".sp", ".sql", ".prc", ".proc", ".tsql", ".syb")
 _CREATE_PROC = re.compile(r"\bcreate\s+proc(edure)?\b", re.IGNORECASE)
+_CREATE_TABLE = re.compile(r"\bcreate\s+table\b", re.IGNORECASE)
 _SYBASE_MARKERS = re.compile(
     r"@@error|@@rowcount|\w+\.\.\w+|\bmoney\b|^\s*go\s*$|\bsp_\w+", re.IGNORECASE | re.MULTILINE
 )
+
+
+def _ddl_tables(files: list[SourceFile]) -> set[str]:
+    """The tables whose definition (CREATE TABLE) is in the inputs, full and short names, lower case."""
+    found: set[str] = set()
+    for file in files:
+        if not _CREATE_TABLE.search(file.text):
+            continue
+        try:
+            tokens, _ = tokenize(file.text)
+        except LexError:
+            continue
+        for index, token in enumerate(tokens[:-1]):
+            if token.is_word("CREATE") and tokens[index + 1].is_word("TABLE"):
+                name, _ = name_at(tokens, index + 2)
+                if name and not name.startswith("#"):
+                    found |= {name.lower(), name.lower().split(".")[-1]}
+    return found
+
+
+def _block_layer(inv: Inventory, file: SourceFile, proc: Procedure) -> None:
+    """The logical blocks of a procedure as child nodes of it, with what each reads, writes and calls and the edges
+    between them (ADR-0032). The procedure node and its own edges are not touched."""
+    key = f"proc:{proc.name}"
+    found, links = blocks(proc)
+    for number, block in enumerate(found, start=1):
+        bkey = f"block:{block.id}"
+        statements: list[Statement] = [s for top in block.statements for s in top.walk()]
+        inv.nodes.append(Node(bkey, "Block", block.name, file.path, block.line_start, block.line_end, {
+            "phase": block.phase, "unit": key, "order": number, "statements": len(statements),
+        }))  # fmt: skip
+        inv.edges.append(Edge(key, "CONTAINS", bkey, {"order": number}))
+        for stmt in statements:
+            for table in sorted(stmt.reads):
+                if not table.startswith("#"):
+                    inv.edges.append(Edge(bkey, "READS", f"table:{table}", {"line": stmt.line_start}))
+            for table in sorted(stmt.writes):
+                if not table.startswith("#"):
+                    inv.edges.append(Edge(bkey, "WRITES", f"table:{table}", {"line": stmt.line_start}))
+            for callee in stmt.calls:
+                if not callee.startswith("@"):
+                    inv.edges.append(Edge(bkey, "CALLS", f"proc:{callee}", {"line": stmt.line_start}))
+    for link in links:
+        inv.edges.append(Edge(f"block:{link.source}", link.kind, f"block:{link.target}",
+                              {"line": link.line} if link.line else {}))  # fmt: skip
 
 
 def _procedures(files: list[SourceFile]) -> list[tuple[SourceFile, Procedure]]:
@@ -42,6 +89,7 @@ class SybaseAdapter:
         calls: set[str] = set()
         statements = 0
         decisions = 0
+        parsed: list[tuple[SourceFile, Procedure]] = []
         for file in files:
             if not (file.path.lower().endswith(EXTENSIONS) or _CREATE_PROC.search(file.text)):
                 continue
@@ -51,6 +99,7 @@ class SybaseAdapter:
                 inv.problems.append(f"{file.path}:{exc.line}: {exc}")
                 continue
             for proc in procedures:
+                parsed.append((file, proc))
                 key = f"proc:{proc.name}"
                 stmts = proc.statements()
                 statements += len(stmts)
@@ -87,8 +136,10 @@ class SybaseAdapter:
                         calls.add(callee)
                         inv.edges.append(Edge(key, "CALLS", f"proc:{callee}", {"line": stmt.line_start}))
         known = {n.name for n in inv.nodes if n.label == "StoredProcedure"}
+        defined = _ddl_tables(files)
         for table in sorted(tables):
-            inv.nodes.append(Node(f"table:{table}", "Table", table))
+            schema_known = table in defined or table.split(".")[-1] in defined
+            inv.nodes.append(Node(f"table:{table}", "Table", table, properties={"schema_known": schema_known}))
         for callee in sorted(calls - known):
             inv.nodes.append(Node(f"proc:{callee}", "StoredProcedure", callee, properties={"external": True}))
         # Keep one READS/WRITES/CALLS edge per pair (the first line), so the graph stays small.
@@ -99,6 +150,15 @@ class SybaseAdapter:
             if pair not in seen:
                 seen.add(pair)
                 unique.append(edge)
+        # The blocks go last, after the units and their edges, which stay exactly as they were.
+        for file, proc in parsed:
+            before = len(inv.edges)
+            _block_layer(inv, file, proc)
+            for edge in inv.edges[before:]:
+                pair = (edge.source, edge.type, edge.target)
+                if pair not in seen:
+                    seen.add(pair)
+                    unique.append(edge)
         inv.edges = unique
         inv.metrics = {
             "procedures": len(known), "statements": statements, "decisions": decisions, "tables": len(tables),
@@ -172,8 +232,9 @@ class SybaseAdapter:
                              f"{' OUTPUT' if node.properties.get('output') else ''}")  # fmt: skip
             elif node.label == "Table":
                 lines.append(f"Table {node.name}")
+        # Blocks stay out of the digest: the prompts it feeds do not change (recordings replay by request hash).
         for edge in inventory.edges:
-            if edge.type in ("READS", "WRITES", "CALLS"):
+            if edge.type in ("READS", "WRITES", "CALLS") and not edge.source.startswith("block:"):
                 lines.append(f"{edge.source} {edge.type} {edge.target}")
         return "\n".join(lines)
 

@@ -2197,7 +2197,10 @@
       "reads": "Lee",
       "writes": "Escribe",
       "includes": "Incluye (copybooks, mapas)",
-      "includesShort": "Incluye"
+      "includesShort": "Incluye",
+      "follows": "Sigue a",
+      "jumps": "Salta a",
+      "onError": "Sale por error"
     },
     "nodes": "Nodos",
     "visibility": {
@@ -2211,7 +2214,7 @@
     "zoomIn": "Acercar",
     "zoomOut": "Alejar",
     "reset": "Restablecer vista",
-    "help": "Rueda para zoom · arrastra para mover · clic en un nodo · doble clic para acercar · Esc para restablecer",
+    "help": "Rueda para zoom · arrastra para mover · clic en un nodo · doble clic para entrar · Esc para volver",
     "persona": "Persona: {{persona}}",
     "steps": "Pasos",
     "implementedIn": "Implementada en",
@@ -2248,7 +2251,11 @@
       "READS": "lee",
       "WRITES": "escribe",
       "COPIES": "incluye",
-      "USES_MAP": "usa mapa"
+      "USES_MAP": "usa mapa",
+      "NEXT": "sigue a",
+      "GOTO": "salta a",
+      "ON_ERROR": "sale por error",
+      "CONTAINS": "contiene"
     },
     "orderTitle": "Orden de migración sugerido",
     "orderHint": "Primero datos y layouts compartidos, luego los programas con menos dependientes y al final los puntos de entrada. Los huérfanos quedan fuera hasta confirmarlos.",
@@ -2278,7 +2285,48 @@
     "externalHint": "El código los llama pero no están en los insumos: dependencias (puertos), no se modernizan",
     "externalShort": "llamado externo",
     "flowHint_one": "Un flujo por punto de entrada; elígelo para recorrer sus pasos a la derecha.",
-    "flowHint_other": "{{count}} flujos, uno por punto de entrada; elige uno para recorrer sus pasos a la derecha."
+    "flowHint_other": "{{count}} flujos, uno por punto de entrada; elige uno para recorrer sus pasos a la derecha.",
+    "summary": {
+      "label": "Resumen del inventario",
+      "modules_one": "{{count}} módulo",
+      "modules_other": "{{count}} módulos",
+      "stores_one": "{{count}} almacén",
+      "stores_other": "{{count}} almacenes",
+      "relations_one": "{{count}} relación",
+      "relations_other": "{{count}} relaciones",
+      "entryPoints_one": "{{count}} punto de entrada",
+      "entryPoints_other": "{{count}} puntos de entrada"
+    },
+    "flowGroups": {
+      "entry": "Por punto de entrada",
+      "scenario": "Por escenario"
+    },
+    "scenarioHint_one": "Un escenario de negocio propuesto a partir de las reglas, con su persona y sus pasos.",
+    "scenarioHint_other": "{{count}} escenarios de negocio propuestos a partir de las reglas, cada uno con su persona y sus pasos.",
+    "scenario": "Escenario de negocio",
+    "observations_one": "Observación del arquitecto ({{count}})",
+    "observations_other": "Observaciones del arquitecto ({{count}})",
+    "writtenByModel": "Escrito por un modelo a partir del código",
+    "outsideUnit": "Fuera de la unidad",
+    "phases": {
+      "pre": "Antes de la transacción",
+      "transaction": "Dentro de la transacción",
+      "post": "Después de la transacción",
+      "error": "Salidas por error",
+      "none": "Sin fase"
+    },
+    "breadcrumb": "Ubicación en el grafo",
+    "breadcrumbSystem": "Sistema",
+    "backToSystem": "Volver al sistema (Esc)",
+    "groupBy": "Agrupar por",
+    "groupModes": {
+      "domain": "Dominio",
+      "phase": "Fase"
+    },
+    "noDdl": "sin DDL",
+    "noDdlHint": "Conocida solo por el código: no hay DDL en los insumos",
+    "viewBlocks_one": "Ver bloques ({{count}})",
+    "viewBlocks_other": "Ver bloques ({{count}})"
   },
   "protoChat": {
     "title": "Pedir cambios al prototipo",

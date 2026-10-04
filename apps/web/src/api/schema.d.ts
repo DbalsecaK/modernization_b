@@ -1218,6 +1218,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/projects/{project_id}/graph/insights": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Insights
+         * @description Descriptions, observations and scenarios of the newest run with a deep inventory; empty without one.
+         */
+        get: operations["get_insights_api_v1_projects__project_id__graph_insights_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/projects/{project_id}/hardening": {
         parameters: {
             query?: never;
@@ -3916,11 +3936,26 @@ export interface components {
             from: string;
             /**
              * Kind
+             * @description CONTAINS joins a unit to its blocks (nesting, not a line); NEXT, GOTO and ON_ERROR join the blocks of a unit
              * @enum {string}
              */
-            kind: "STARTS" | "CALLS" | "READS" | "WRITES" | "COPIES" | "USES_MAP";
+            kind: "STARTS" | "CALLS" | "READS" | "WRITES" | "COPIES" | "USES_MAP" | "NEXT" | "GOTO" | "ON_ERROR" | "CONTAINS";
             /** To */
             to: string;
+        };
+        /** GraphInsightsOut */
+        GraphInsightsOut: {
+            /**
+             * Descriptions
+             * @description Node id -> description written by a model
+             */
+            descriptions: {
+                [key: string]: string;
+            };
+            /** Observations */
+            observations: string[];
+            /** Scenarios */
+            scenarios: components["schemas"]["ScenarioOut"][];
         };
         /** GraphNodeOut */
         GraphNodeOut: {
@@ -3934,7 +3969,7 @@ export interface components {
             id: string;
             /**
              * Kind
-             * @description What the unit is: StoredProcedure, Program, Table, Page, ...
+             * @description What the unit is: StoredProcedure, Program, Table, Page, Block, ...
              * @default
              */
             kind: string;
@@ -3948,8 +3983,23 @@ export interface components {
             name: string;
             /** Orphan */
             orphan: boolean;
+            /**
+             * Parent
+             * @description For a block: the id of its unit (CONTAINS); else null
+             */
+            parent: string | null;
+            /**
+             * Phase
+             * @description For a block: before, inside or after the transaction, or the error exit; else null
+             */
+            phase: ("pre" | "transaction" | "post" | "error") | null;
             /** Rules */
             rules: string[];
+            /**
+             * Schemaknown
+             * @description For a table or file: whether the inputs carry its structure (a table needs its CREATE TABLE; false when it is only known because the code uses it); null for other nodes
+             */
+            schemaKnown: boolean | null;
             /** Source */
             source: string | null;
             /**
@@ -3973,6 +4023,7 @@ export interface components {
             nodes: components["schemas"]["GraphNodeOut"][];
             /** Rules */
             rules: components["schemas"]["GraphRuleOut"][];
+            summary: components["schemas"]["GraphSummaryOut"];
         };
         /** GraphRuleOut */
         GraphRuleOut: {
@@ -3982,6 +4033,29 @@ export interface components {
             name: string;
             /** Priority */
             priority: string;
+        };
+        /** GraphSummaryOut */
+        GraphSummaryOut: {
+            /**
+             * Entrypoints
+             * @description Business flows walked from an entry point
+             */
+            entryPoints: number;
+            /**
+             * Modules
+             * @description Code in the inputs: units that are not external, and their blocks
+             */
+            modules: number;
+            /**
+             * Relations
+             * @description Edges drawn as lines (every edge but CONTAINS)
+             */
+            relations: number;
+            /**
+             * Stores
+             * @description Tables and files
+             */
+            stores: number;
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -5617,6 +5691,11 @@ export interface components {
         /** RunIn */
         RunIn: {
             /**
+             * Deepinventory
+             * @description Pipeline runs: model-written descriptions, observations and business scenarios (ADR-0032); on unless false
+             */
+            deepInventory?: boolean | null;
+            /**
              * Kind
              * @default pipeline
              * @enum {string}
@@ -5675,6 +5754,33 @@ export interface components {
             status: "queued" | "running" | "waiting" | "succeeded" | "failed" | "cancelled";
             /** Waitingreason */
             waitingReason: string | null;
+        };
+        /** ScenarioOut */
+        ScenarioOut: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Persona */
+            persona: string;
+            /** Rules */
+            rules: string[];
+            /** Steps */
+            steps: components["schemas"]["ScenarioStepOut"][];
+            /** Summary */
+            summary: string;
+        };
+        /** ScenarioStepOut */
+        ScenarioStepOut: {
+            /**
+             * Nodes
+             * @description Ids of graph nodes (blocks, units or tables) where the step happens
+             */
+            nodes: string[];
+            /** Rule */
+            rule: string | null;
+            /** Title */
+            title: string;
         };
         /** ScimAccessCreated */
         ScimAccessCreated: {
@@ -8864,6 +8970,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ImpactOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_insights_api_v1_projects__project_id__graph_insights_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GraphInsightsOut"];
                 };
             };
             /** @description Validation Error */

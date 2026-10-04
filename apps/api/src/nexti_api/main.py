@@ -22,6 +22,7 @@ from nexti_api.authz import fga as fga_module
 from nexti_api.authz.reconcile import reconcile
 from nexti_api.authz.relay import OutboxRelay
 from nexti_api.errors import install_error_handlers
+from nexti_api.graph import insights as graph_insights
 from nexti_api.graph import router as graph_router
 from nexti_api.keycloak_admin import KeycloakAdmin
 from nexti_api.observability import RequestLogMiddleware, configure_logging, log
@@ -194,6 +195,7 @@ def create_app(settings: Settings | None = None, health_checks: dict[str, health
         spec_delta.router,
         spec_classification.router,
         spec_screens.router,
+        graph_insights.router,
         graph_router.router,
         dashboard.router,
         topbar.router,

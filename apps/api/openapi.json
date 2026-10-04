@@ -3627,13 +3627,18 @@
             "type": "string"
           },
           "kind": {
+            "description": "CONTAINS joins a unit to its blocks (nesting, not a line); NEXT, GOTO and ON_ERROR join the blocks of a unit",
             "enum": [
               "STARTS",
               "CALLS",
               "READS",
               "WRITES",
               "COPIES",
-              "USES_MAP"
+              "USES_MAP",
+              "NEXT",
+              "GOTO",
+              "ON_ERROR",
+              "CONTAINS"
             ],
             "title": "Kind",
             "type": "string"
@@ -3649,6 +3654,39 @@
           "kind"
         ],
         "title": "GraphEdgeOut",
+        "type": "object"
+      },
+      "GraphInsightsOut": {
+        "properties": {
+          "descriptions": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Node id -> description written by a model",
+            "title": "Descriptions",
+            "type": "object"
+          },
+          "observations": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Observations",
+            "type": "array"
+          },
+          "scenarios": {
+            "items": {
+              "$ref": "#/components/schemas/ScenarioOut"
+            },
+            "title": "Scenarios",
+            "type": "array"
+          }
+        },
+        "required": [
+          "descriptions",
+          "observations",
+          "scenarios"
+        ],
+        "title": "GraphInsightsOut",
         "type": "object"
       },
       "GraphNodeOut": {
@@ -3678,7 +3716,7 @@
           },
           "kind": {
             "default": "",
-            "description": "What the unit is: StoredProcedure, Program, Table, Page, ...",
+            "description": "What the unit is: StoredProcedure, Program, Table, Page, Block, ...",
             "title": "Kind",
             "type": "string"
           },
@@ -3723,12 +3761,54 @@
             "title": "Orphan",
             "type": "boolean"
           },
+          "parent": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "For a block: the id of its unit (CONTAINS); else null",
+            "title": "Parent"
+          },
+          "phase": {
+            "anyOf": [
+              {
+                "enum": [
+                  "pre",
+                  "transaction",
+                  "post",
+                  "error"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "For a block: before, inside or after the transaction, or the error exit; else null",
+            "title": "Phase"
+          },
           "rules": {
             "items": {
               "type": "string"
             },
             "title": "Rules",
             "type": "array"
+          },
+          "schemaKnown": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "For a table or file: whether the inputs carry its structure (a table needs its CREATE TABLE; false when it is only known because the code uses it); null for other nodes",
+            "title": "Schemaknown"
           },
           "source": {
             "anyOf": [
@@ -3776,7 +3856,10 @@
           "lineStart",
           "lineEnd",
           "external",
-          "orphan"
+          "orphan",
+          "parent",
+          "phase",
+          "schemaKnown"
         ],
         "title": "GraphNodeOut",
         "type": "object"
@@ -3810,13 +3893,17 @@
             },
             "title": "Rules",
             "type": "array"
+          },
+          "summary": {
+            "$ref": "#/components/schemas/GraphSummaryOut"
           }
         },
         "required": [
           "nodes",
           "edges",
           "rules",
-          "flows"
+          "flows",
+          "summary"
         ],
         "title": "GraphOut",
         "type": "object"
@@ -3842,6 +3929,38 @@
           "priority"
         ],
         "title": "GraphRuleOut",
+        "type": "object"
+      },
+      "GraphSummaryOut": {
+        "properties": {
+          "entryPoints": {
+            "description": "Business flows walked from an entry point",
+            "title": "Entrypoints",
+            "type": "integer"
+          },
+          "modules": {
+            "description": "Code in the inputs: units that are not external, and their blocks",
+            "title": "Modules",
+            "type": "integer"
+          },
+          "relations": {
+            "description": "Edges drawn as lines (every edge but CONTAINS)",
+            "title": "Relations",
+            "type": "integer"
+          },
+          "stores": {
+            "description": "Tables and files",
+            "title": "Stores",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "modules",
+          "stores",
+          "relations",
+          "entryPoints"
+        ],
+        "title": "GraphSummaryOut",
         "type": "object"
       },
       "HTTPValidationError": {
@@ -8615,6 +8734,18 @@
       },
       "RunIn": {
         "properties": {
+          "deepInventory": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Pipeline runs: model-written descriptions, observations and business scenarios (ADR-0032); on unless false",
+            "title": "Deepinventory"
+          },
           "kind": {
             "default": "pipeline",
             "enum": [
@@ -8792,6 +8923,84 @@
           "finishedAt"
         ],
         "title": "RunOut",
+        "type": "object"
+      },
+      "ScenarioOut": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "persona": {
+            "title": "Persona",
+            "type": "string"
+          },
+          "rules": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Rules",
+            "type": "array"
+          },
+          "steps": {
+            "items": {
+              "$ref": "#/components/schemas/ScenarioStepOut"
+            },
+            "title": "Steps",
+            "type": "array"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "persona",
+          "summary",
+          "rules",
+          "steps"
+        ],
+        "title": "ScenarioOut",
+        "type": "object"
+      },
+      "ScenarioStepOut": {
+        "properties": {
+          "nodes": {
+            "description": "Ids of graph nodes (blocks, units or tables) where the step happens",
+            "items": {
+              "type": "string"
+            },
+            "title": "Nodes",
+            "type": "array"
+          },
+          "rule": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rule"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "nodes",
+          "rule"
+        ],
+        "title": "ScenarioStepOut",
         "type": "object"
       },
       "ScimAccessCreated": {
@@ -14248,6 +14457,50 @@
           }
         },
         "summary": "Impact",
+        "tags": [
+          "graph"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/graph/insights": {
+      "get": {
+        "description": "Descriptions, observations and scenarios of the newest run with a deep inventory; empty without one.",
+        "operationId": "get_insights_api_v1_projects__project_id__graph_insights_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GraphInsightsOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Insights",
         "tags": [
           "graph"
         ]

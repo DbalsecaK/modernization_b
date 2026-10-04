@@ -112,6 +112,8 @@ async def start_run(request: Request, project_id: uuid.UUID, body: RunIn, auth: 
         if active is not None:
             raise ProblemError(409, "run_active", "The project already has a run in progress.", run_id=str(active.id))
         options = body.options.model_dump(exclude_unset=True, by_alias=False) if body.options else {}
+        if body.kind == "pipeline":  # runs a person starts read the inventory in depth unless they opt out
+            options = {"deep_inventory": body.deep_inventory is not False}
         run_id: uuid.UUID = (
             await conn.execute(
                 insert(Run)

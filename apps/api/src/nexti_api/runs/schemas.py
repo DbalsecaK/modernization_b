@@ -28,6 +28,11 @@ class DemoOptionsIn(ApiModel):
 class RunIn(ApiModel):
     kind: Literal["pipeline", "demo"] = "pipeline"
     options: DemoOptionsIn | None = None
+    deep_inventory: bool | None = Field(
+        default=None,
+        description="Pipeline runs: model-written descriptions, observations and business scenarios (ADR-0032); "
+        "on unless false",
+    )
 
     @model_validator(mode="after")
     def options_only_for_demo(self) -> "RunIn":
