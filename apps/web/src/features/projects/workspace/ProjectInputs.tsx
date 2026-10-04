@@ -89,7 +89,8 @@ export function ProjectInputs({ project }: { project: ProjectDetail }) {
   const canDownloadCode = hasProjectPermission(project, 'downloadCode')
 
   async function onDelete(item: InputItem) {
-    if (!window.confirm(t('inputs.confirmDelete', { name: item.name }))) return
+    const question = item.status === 'rejected' ? 'inputs.confirmDismiss' : 'inputs.confirmDelete'
+    if (!window.confirm(t(question, { name: item.name }))) return
     try {
       await remove.mutateAsync(item.id)
       toast(t('inputs.deleted', { name: item.name }))
@@ -201,7 +202,7 @@ export function ProjectInputs({ project }: { project: ProjectDetail }) {
                       )}
                     </Td>
                     <Td className="text-right">
-                      {canUpload && item.status === 'accepted' && (
+                      {canUpload && item.status !== 'deleted' && (
                         <Button
                           size="sm"
                           variant="ghost"

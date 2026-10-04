@@ -450,6 +450,7 @@
     "archiveOnly": "Un zip, o uno o varios archivos de código (se empaquetan en un solo insumo); se valida antes de guardarse.",
     "deleteInput": "Eliminar {{name}}",
     "confirmDelete": "¿Eliminar «{{name}}»? Se borra el archivo guardado; el registro queda en el historial.",
+    "confirmDismiss": "¿Quitar \"{{name}}\" de la lista? No se guardó nada; el rechazo queda en la auditoría.",
     "deleted": "«{{name}}» eliminado.",
     "repository": "Repositorio Git",
     "repositoryHint": "La plataforma comprueba que puede leer la rama; el clonado ocurre en el preflight del pipeline.",

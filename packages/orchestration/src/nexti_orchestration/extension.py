@@ -325,7 +325,11 @@ class ExtensionPhases:
         files = await self._application()
         found = read_inventory(files)
         if found.stack != "spring-boot":
-            raise PhaseFailedError("The application is not recognized as Spring Boot")
+            raise PhaseFailedError(
+                "The application is not recognized as Spring Boot: this flow extends an existing Spring Boot "
+                "application (a pom.xml or build.gradle and its Java sources). Legacy code such as a stored procedure "
+                "or COBOL programs goes in a Modernization project."
+            )
         await ctx.store.event("started", "running", "Baseline: the application with its own tests in the sandbox",
                               phase=ctx.phase.key)  # fmt: skip
         build = await pack.compile_and_test(self.port.sandbox(pack.image), files)
