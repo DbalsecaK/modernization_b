@@ -89,12 +89,24 @@ class Entity(DesignModel):
         return self
 
 
+VOID = {"", "void", "none", "null", "unit"}
+PORT_RETURNS = ("boolean", "int", "long")
+
+
 class PortMethod(DesignModel):
     name: JavaName
     description: str = ""
     inputs: list[FieldSpec] = Field(default_factory=list)
     returns: str | None = Field(default=None, description="An entity name, 'boolean', 'int' or null (void)")
     legacy_output: str | None = Field(default=None, description="Output parameter of the external program it returns")
+
+    @field_validator("returns", mode="before")
+    @classmethod
+    def void_is_none(cls, value: object) -> object:
+        """ "void" (what an architect used to Java or C# writes) means the method returns nothing."""
+        if isinstance(value, str) and value.strip().lower() in VOID:
+            return None
+        return value
 
 
 class Port(DesignModel):
@@ -165,8 +177,12 @@ class Design(DesignModel):
             if port.entity and port.entity not in entities:
                 problems.append(f"port {port.name} refers to unknown entity {port.entity}")
             for method in port.methods:
-                if method.returns and method.returns not in entities | {"boolean", "int", "long"}:
-                    problems.append(f"{port.name}.{method.name} returns unknown type {method.returns}")
+                if method.returns and method.returns not in entities | set(PORT_RETURNS):
+                    problems.append(
+                        f"{port.name}.{method.name} returns unknown type {method.returns} (a port method returns an "
+                        "entity of the design, boolean, int, long or null; to return another value, such as a "
+                        "decimal amount or a text, declare an entity with a field of that type and return the entity)"
+                    )
         for use_case in self.use_cases:
             problems += [f"use case {use_case.name} uses unknown port {p}" for p in use_case.ports if p not in ports]
         names = [u.name for u in self.use_cases] + [e.name for e in self.entities] + [p.name for p in self.ports]
