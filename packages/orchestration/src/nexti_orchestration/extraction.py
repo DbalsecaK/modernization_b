@@ -28,6 +28,7 @@ CITATION_SLACK = 2  # lines a citation may extend past the slice (a closing END,
 class ModelReply:
     content: str
     usage: Usage
+    cut_at: int | None = None  # the output limit the reply reached: it was cut before its end
 
 
 class ModelCaller(Protocol):
@@ -135,6 +136,13 @@ def parse_rules(content: str, view: SliceView, source: str) -> list[Rule]:
     return rules
 
 
+def cut_message(what: str, limit: int) -> str:
+    return (
+        f"{what}: the model's answer was cut at the output limit of its profile ({limit} tokens) before it ended; "
+        "raise the maximum output tokens of the model profile (AI configuration -> Profiles) and run again"
+    )
+
+
 async def extract(
     caller: ModelCaller, view: SliceView, source: str, types: dict[str, str], *, max_iterations: int = 3
 ) -> Extraction:
@@ -152,6 +160,8 @@ async def extract(
             result.rules = parse_rules(reply.content, view, source)
             return result
         except ReplyError as exc:
+            if reply.cut_at:  # asking again gives the same cut answer: the profile must allow longer replies
+                raise ReplyError(cut_message(view.unit, reply.cut_at)) from exc
             last_error = str(exc)
             messages += [
                 {"role": "assistant", "content": reply.content},

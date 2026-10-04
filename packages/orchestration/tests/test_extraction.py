@@ -137,3 +137,20 @@ def test_duplicates_from_overlapping_slices_are_merged_and_numbered_by_position(
     merged = consolidate([web, payroll, web_again, account])
     assert [(r.id, r.sources[0].line_start) for r in merged] == [("RULE-001", 34), ("RULE-002", 80), ("RULE-003", 85)]
     assert merged[1].statement.startswith("For the WEB channel")  # the more complete wording wins
+
+
+async def test_an_answer_cut_at_the_output_limit_is_reported_without_retrying() -> None:
+    """A reply that reached the profile's output limit ends mid-JSON; asking again would be cut the same way, so the
+    error says which limit to raise and no second call is paid."""
+
+    class CutModel(ScriptedModel):
+        async def complete(
+            self, agent: str, phase: str, messages: list[dict[str, str]], *, iteration: int = 1, judge: int = 0
+        ) -> ModelReply:
+            self.calls.append((agent, [dict(m) for m in messages], iteration, judge))
+            return ModelReply('{"rules": [{"name": "Web or', Usage(model="scripted", output_tokens=4096), cut_at=4096)
+
+    model = CutModel()
+    with pytest.raises(ReplyError, match=r"cut at the output limit of its profile \(4096 tokens\)"):
+        await extract(model, VIEW, SOURCE, {}, max_iterations=3)
+    assert len(model.calls) == 1

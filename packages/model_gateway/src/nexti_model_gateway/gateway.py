@@ -116,6 +116,7 @@ class Completion:
     was_fallback: bool
     request_id: str | None
     model: str = ""  # the model slug that answered
+    output_limit: int | None = None  # the profile's maximum output tokens (a reply that reaches it was cut)
 
 
 @dataclass(frozen=True)
@@ -570,6 +571,7 @@ class ModelGateway:
                     was_fallback=len(attempts) > 1,
                     request_id=attempt.result.request_id,
                     model=plan.model,
+                    output_limit=plan.max_output_tokens,
                 )
         await self._record(ctx, attempts)
         if all(a.outcome == "blocked" for a in attempts):
