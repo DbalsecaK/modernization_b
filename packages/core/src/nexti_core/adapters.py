@@ -13,7 +13,7 @@ if TYPE_CHECKING:
 
 # Code and data layers (what adapters produce) and knowledge / target layers (spec 5.1).
 NodeLabel = Literal[
-    "StoredProcedure", "Program", "Paragraph", "Statement", "Table", "Column", "Field", "File",
+    "StoredProcedure", "Program", "Paragraph", "Block", "Statement", "Table", "Column", "Field", "File",
     "Mapset", "BmsMap", "Transaction", "Copybook",
     "Rule", "Capability", "Contract", "Story", "TestCase", "Question", "Domain", "Screen",
     "Service", "Module", "Class", "Method", "Endpoint",
@@ -22,6 +22,7 @@ EdgeType = Literal[
     "CALLS", "READS", "WRITES", "CONTAINS", "DECLARES", "EXEC_SQL",
     "COPIES", "PERFORMS", "EXEC_CICS", "USES_MAP", "STARTS", "REDEFINES",
     "DERIVED_FROM", "BELONGS_TO", "VERIFIES", "COVERS", "DEPENDS_ON", "IMPLEMENTS", "MAPS_TO",
+    "NEXT", "GOTO", "ON_ERROR",
 ]  # fmt: skip
 
 

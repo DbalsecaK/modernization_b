@@ -129,3 +129,50 @@ async def test_the_source_target_view_shows_cobol_lines_rule_by_rule(
         assert detail["target"] == []
     finally:
         await forget(world.tenant_a, project_id)
+
+
+SYBASE_FIXTURE = CICS_FIXTURES.parents[3] / "sybase/tests/fixtures/pago_orden/sp_pago_orden.sp"
+
+
+async def test_a_stored_procedure_shows_its_blocks_their_phases_and_jumps(
+    api: TestClient, app_engine: AsyncEngine, owner_engine: AsyncEngine, fga: OpenFga, world: World
+) -> None:
+    """Blocks inside a unit (plan M17 step 2): the inventory of the fictitious procedure as the worker stores it."""
+    from nexti_adapter_sybase import SybaseAdapter
+    from nexti_core.adapters import SourceFile
+
+    project_id = await make_project(owner_engine, world.tenant_a)
+    inventory = SybaseAdapter().inventory([SourceFile("sp_pago_orden.sp", SYBASE_FIXTURE.read_text(encoding="utf-8"))])
+    graph = GraphStore.connect(SETTINGS.graph_uri, SETTINGS.graph_user, SETTINGS.graph_password.get_secret_value())
+    try:
+        await graph.setup()
+        await graph.replace_code_layer(Scope(world.tenant_a, project_id), inventory)
+    finally:
+        await graph.close()
+    await reconcile(app_engine, fga)
+    headers = sign_in(api, world.a_user)
+    try:
+        response = api.get(f"/api/v1/projects/{project_id}/graph", headers=headers)
+        assert response.status_code == 200, response.text
+        body = response.json()
+        nodes = {n["id"]: n for n in body["nodes"]}
+        proc, b = "proc:dbo.sp_pago_orden", "block:dbo.sp_pago_orden#B"
+        blocks = [n for n in body["nodes"] if n["kind"] == "Block"]
+        assert len(blocks) == 10
+        assert all(n["parent"] == proc and n["type"] == "program" for n in blocks)
+        phases = [nodes[f"{b}{n}"]["phase"] for n in (1, 6, 9, 10)]
+        assert phases == ["pre", "transaction", "post", "error"]
+        assert (nodes[proc]["parent"], nodes[proc]["phase"], nodes[proc]["schemaKnown"]) == (None, None, None)
+        assert nodes["table:db_pagos..pg_orden"]["schemaKnown"] is False  # no DDL in the inputs
+        edges = {(e["from"], e["kind"], e["to"]) for e in body["edges"]}
+        assert {(proc, "CONTAINS", f"{b}1"), (f"{b}1", "NEXT", f"{b}2"), (f"{b}5", "GOTO", f"{b}10"),
+                (f"{b}8", "ON_ERROR", f"{b}10"), (proc, "WRITES", "table:db_pagos..pg_orden")} <= edges  # fmt: skip
+        relations = sum(1 for e in body["edges"] if e["kind"] != "CONTAINS")
+        assert body["summary"] == {"modules": 11, "stores": 4, "relations": relations, "entryPoints": 1}
+        assert [f["entry"] for f in body["flows"]] == [proc]
+        assert not any(n["orphan"] for n in blocks)
+        impact = api.get(f"/api/v1/projects/{project_id}/graph/impact",
+                         params={"node": "table:db_pagos..pg_orden", "depth": 1}, headers=headers)  # fmt: skip
+        assert impact.json()["impacted"] == [proc]  # a block lifts to its procedure
+    finally:
+        await forget(world.tenant_a, project_id)

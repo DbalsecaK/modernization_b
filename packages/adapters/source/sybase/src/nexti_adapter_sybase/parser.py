@@ -105,6 +105,9 @@ def _name(tokens: list[Token], i: int) -> tuple[str, int]:
     return ".".join(parts).replace("...", ".."), j
 
 
+name_at = _name  # for the adapter: the object name that starts at a token (CREATE TABLE in DDL files)
+
+
 class _Parser:
     def __init__(self, tokens: list[Token]) -> None:
         self.t = tokens

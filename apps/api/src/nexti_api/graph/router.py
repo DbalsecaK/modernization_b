@@ -12,13 +12,14 @@ from sqlalchemy import text
 from nexti_api.admin.common import transaction
 from nexti_api.authz.require import Authorized, require_project
 from nexti_api.errors import ProblemError
-from nexti_api.graph.view import VIEW_TYPES, RuleRef, build, lift
+from nexti_api.graph.view import BLOCK, VIEW_TYPES, RuleRef, build, lift
 from nexti_api.schemas import ApiModel
 from nexti_graph import GraphError, GraphStore, Scope
 
 router = APIRouter(prefix="/api/v1/projects/{project_id}/graph", tags=["graph"])
 ViewProject = Annotated[Authorized, Depends(require_project("project.view"))]
 NodeType = Literal["transaction", "program", "map", "copybook", "file"]
+Phase = Literal["pre", "transaction", "post", "error"]
 
 
 class GraphNodeOut(ApiModel):
@@ -35,13 +36,26 @@ class GraphNodeOut(ApiModel):
     line_end: int | None
     external: bool
     orphan: bool
-    kind: str = Field(default="", description="What the unit is: StoredProcedure, Program, Table, Page, ...")
+    kind: str = Field(default="", description="What the unit is: StoredProcedure, Program, Table, Page, Block, ...")
+    parent: str | None = Field(description="For a block: the id of its unit (CONTAINS); else null")
+    phase: Phase | None = Field(
+        description="For a block: before, inside or after the transaction, or the error exit; else null"
+    )
+    schema_known: bool | None = Field(
+        description="For a table or file: whether the inputs carry its structure (a table needs its CREATE TABLE; "
+        "false when it is only known because the code uses it); null for other nodes",
+    )
 
 
 class GraphEdgeOut(ApiModel):
     from_: str = Field(alias="from", serialization_alias="from")
     to: str
-    kind: Literal["STARTS", "CALLS", "READS", "WRITES", "COPIES", "USES_MAP"]
+    kind: Literal[
+        "STARTS", "CALLS", "READS", "WRITES", "COPIES", "USES_MAP", "NEXT", "GOTO", "ON_ERROR", "CONTAINS"
+    ] = Field(
+        description="CONTAINS joins a unit to its blocks (nesting, not a line); NEXT, GOTO and ON_ERROR join "
+        "the blocks of a unit"
+    )
     detail: str | None = Field(default=None, description="The kind of call (LINK, XCTL, CALL) when there is one")
 
 
@@ -65,11 +79,19 @@ class BusinessFlowOut(ApiModel):
     steps: list[FlowStepOut]
 
 
+class GraphSummaryOut(ApiModel):
+    modules: int = Field(description="Code in the inputs: units that are not external, and their blocks")
+    stores: int = Field(description="Tables and files")
+    relations: int = Field(description="Edges drawn as lines (every edge but CONTAINS)")
+    entry_points: int = Field(description="Business flows walked from an entry point")
+
+
 class GraphOut(ApiModel):
     nodes: list[GraphNodeOut]
     edges: list[GraphEdgeOut]
     rules: list[GraphRuleOut]
     flows: list[BusinessFlowOut]
+    summary: GraphSummaryOut
 
 
 class ImpactOut(ApiModel):
@@ -145,7 +167,7 @@ async def impact(
     graph = _graph(request)
     scope = _scope(auth, project_id)
     nodes = await graph.nodes(scope)
-    view_ids = {n.key for n in nodes if set(n.labels) & set(VIEW_TYPES)}
+    view_ids = {n.key for n in nodes if set(n.labels) & set(VIEW_TYPES) and BLOCK not in n.labels}
     if node not in {n.key for n in nodes}:
         raise ProblemError(404, "node_not_found", "The node is not in the graph of this project.")
     try:

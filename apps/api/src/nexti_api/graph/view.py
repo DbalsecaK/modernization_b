@@ -1,7 +1,10 @@
 """The knowledge graph as the Inventario tab shows it (spec 5.2, 5.2.1): the code units (transactions, programs,
 maps, copybooks, files) with their domain, migration state, size, rules and origin; the relations between them;
 orphans; and the business flows walked from each entry point in the order of the code. Everything here is computed
-by code from the graph, the rules and the generated artifacts: no model takes part."""
+by code from the graph, the rules and the generated artifacts: no model takes part.
+
+The logical blocks of a unit (ADR-0032) are nodes of their own with `parent` (the unit) and `phase`; the unit keeps
+its own edges, and the flows are still walked from unit to unit."""
 
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
@@ -11,13 +14,18 @@ from typing import Any
 from nexti_graph import GraphNode
 
 # The label of a graph node -> the type the tab draws. Paragraphs, fields and statements stay out of the picture:
-# they are reached through the detail of their program.
+# they are reached through the detail of their program. A block is drawn like a program, inside its unit.
 VIEW_TYPES = {"Transaction": "transaction", "Program": "program", "StoredProcedure": "program", "BmsMap": "map",
-              "Copybook": "copybook", "File": "file", "Table": "file", "Page": "map", "Class": "program"}  # fmt: skip
+              "Copybook": "copybook", "File": "file", "Table": "file", "Page": "map", "Class": "program",
+              "Block": "program"}  # fmt: skip
 # The label that says what a unit really is (a stored procedure, a table, a COBOL program, an ASPX page): the tab
 # counts what the inventory found by it, instead of the columns of the drawing.
-KINDS = ("StoredProcedure", "Program", "Transaction", "BmsMap", "Copybook", "Page", "Class", "Table", "File")
+KINDS = ("StoredProcedure", "Program", "Transaction", "BmsMap", "Copybook", "Page", "Class", "Table", "File", "Block")
 VIEW_EDGES = ("STARTS", "CALLS", "READS", "WRITES", "COPIES", "USES_MAP")
+BLOCK_EDGES = ("NEXT", "GOTO", "ON_ERROR")  # between the blocks of a unit
+CONTAINS = "CONTAINS"  # unit -> block: the web nests the block, it does not draw a line
+BLOCK = "Block"
+CODE_KINDS = ("StoredProcedure", "Program", "Transaction", "BmsMap", "Copybook", "Page", "Class", BLOCK)
 DATA_DOMAIN = "data"
 
 
@@ -45,6 +53,9 @@ class ViewNode:
     external: bool = False
     orphan: bool = False
     kind: str = ""
+    parent: str | None = None
+    phase: str | None = None
+    schema_known: bool | None = None
 
 
 def _kind(labels: Sequence[str]) -> str:
@@ -53,6 +64,17 @@ def _kind(labels: Sequence[str]) -> str:
 
 def _view_type(labels: Sequence[str]) -> str | None:
     return next((VIEW_TYPES[label] for label in labels if label in VIEW_TYPES), None)
+
+
+def _schema_known(kind: str, props: Mapping[str, Any]) -> bool | None:
+    """Whether the inputs carry the structure of a store: a table needs its DDL (CREATE TABLE), otherwise it is only
+    known because the code uses it. A COBOL file is described by the record the program declares, so it counts as
+    known unless the adapter says otherwise. Not a store: None."""
+    if kind == "Table":
+        return bool(props.get("schema_known"))
+    if kind == "File":
+        return bool(props.get("schema_known", True))
+    return None
 
 
 def _same_file(a: str | None, b: str) -> bool:
@@ -76,6 +98,7 @@ def build(
     for r in relationships:
         if r["type"] == "BELONGS_TO" and r["target"] in domain_names:
             domain_of[r["source"]] = domain_names[r["target"]]
+    parent_of = {r["target"]: r["source"] for r in relationships if r["type"] == CONTAINS}
     view: dict[str, ViewNode] = {}
     for n in nodes:
         kind = _view_type(n.labels)
@@ -95,10 +118,24 @@ def build(
             state=state, loc=loc, rules=node_rules,
             source=f"{p['file']}:{start}-{end}" if p.get("file") and start else p.get("file"),
             file=p.get("file"), line_start=start, line_end=end, external=bool(p.get("external")),
-            orphan=n.key in orphan_keys, kind=_kind(n.labels),
+            orphan=n.key in orphan_keys, kind=_kind(n.labels), schema_known=_schema_known(_kind(n.labels), p),
         )  # fmt: skip
-    edges = [r for r in relationships if r["type"] in VIEW_EDGES and r["source"] in view and r["target"] in view]
-    _inherit_domains(view, edges)
+        if BLOCK in n.labels:
+            view[n.key].parent = parent_of.get(n.key) or p.get("unit")
+            view[n.key].phase = p.get("phase")
+    blocks = {k for k, v in view.items() if v.kind == BLOCK}
+    edges = [
+        r for r in relationships
+        if r["source"] in view and r["target"] in view
+        and (r["type"] in VIEW_EDGES + BLOCK_EDGES or (r["type"] == CONTAINS and r["target"] in blocks))
+    ]  # fmt: skip
+    # Domains and flows are computed between units, as before the blocks existed; a block takes its unit's domain.
+    units = [e for e in edges if e["type"] in VIEW_EDGES and e["source"] not in blocks and e["target"] not in blocks]
+    _inherit_domains(view, units)
+    for key in blocks:
+        owner = view.get(view[key].parent or "")
+        view[key].domain = owner.domain if owner else view[key].name
+    found = flows(view, units, rules)
     return {
         "nodes": [vars(v) for v in sorted(view.values(), key=lambda v: (v.type, v.name))],
         "edges": [
@@ -106,7 +143,23 @@ def build(
             for e in edges
         ],
         "rules": [{"id": r.id, "name": r.name, "priority": r.priority} for r in sorted(rules, key=lambda r: r.id)],
-        "flows": flows(view, edges, rules),
+        "flows": found,
+        "summary": summary(view.values(), edges, found),
+    }
+
+
+def summary(
+    view: Iterable[ViewNode], edges: Sequence[Mapping[str, Any]], found: Sequence[Mapping[str, Any]]
+) -> dict[str, int]:
+    """The header of the tab: `modules` is the code in the inputs (units that are not external, and their blocks),
+    `stores` the tables and files, `relations` the edges drawn as lines (all but CONTAINS) and `entryPoints` the
+    business flows walked from an entry point."""
+    nodes = list(view)
+    return {
+        "modules": sum(1 for n in nodes if n.kind in CODE_KINDS and not n.external),
+        "stores": sum(1 for n in nodes if n.type == "file"),
+        "relations": sum(1 for e in edges if e["type"] != CONTAINS),
+        "entryPoints": len(found),
     }
 
 
@@ -116,7 +169,7 @@ def _inherit_domains(view: dict[str, ViewNode], edges: Sequence[Mapping[str, Any
     for node in view.values():
         if node.type == "file":
             node.domain = DATA_DOMAIN
-        elif node.type == "program" and not node.domain and not node.external:
+        elif node.type == "program" and not node.domain and not node.external and node.kind != BLOCK:
             node.domain = node.name  # a program outside any proposed domain is its own group
     for _ in range(2):
         for e in edges:
@@ -149,7 +202,7 @@ def flows(
         items.sort(key=_line)
     called = {e["target"] for e in edges if e["type"] in ("CALLS", "STARTS")}
     entries = [n for n in view.values() if n.type == "transaction"] or [
-        n for n in view.values() if n.type == "program" and not n.external and n.id not in called
+        n for n in view.values() if n.type == "program" and not n.external and n.id not in called and n.kind != BLOCK
     ]
     found = []
     for entry in sorted(entries, key=lambda n: n.name):
@@ -193,13 +246,19 @@ def _walk(
 
 
 def lift(keys: Iterable[str], view_ids: set[str]) -> list[str]:
-    """Graph keys -> the units the tab draws (a paragraph or field lifts to its program or copybook)."""
+    """Graph keys -> the units the tab draws (a paragraph or field lifts to its program or copybook, a block to its
+    procedure)."""
     found = set()
     for key in keys:
         if key in view_ids:
             found.add(key)
             continue
         kind, _, rest = key.partition(":")
+        if kind == "block":
+            unit = "proc:" + rest.rsplit("#B", 1)[0]
+            if unit in view_ids:
+                found.add(unit)
+            continue
         owner = rest.split(".", 1)[0]
         for candidate in (f"program:{owner}", f"copybook:{owner}", f"proc:{owner}"):
             if kind in ("para", "field") and candidate in view_ids:

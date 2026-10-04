@@ -116,7 +116,7 @@ def test_the_adapter_contract() -> None:
     labels = {(n.label, n.name) for n in inventory.nodes}
     assert ("Table", "db_admin..ad_tarifa_empresa") in labels
     assert ("StoredProcedure", "db_cuentas..sp_debito") in labels
-    writes = {(e.source, e.target) for e in inventory.edges if e.type == "WRITES"}
+    writes = {(e.source, e.target) for e in inventory.edges if e.type == "WRITES" and e.source.startswith("proc:")}
     assert writes == {("proc:dbo.sp_pago_orden", "table:db_pagos..pg_orden")}
     types = adapter.types(files)
     assert types["money"] == "decimal(19,4,signed)"
