@@ -1253,7 +1253,8 @@ export interface paths {
         post?: never;
         /**
          * Delete Input
-         * @description Remove the stored file (verifiable deletion, 15.3); the record stays, marked deleted, for the audit trail.
+         * @description Remove the stored file (verifiable deletion, 15.3); the record stays, marked deleted, for the audit trail. A
+         *     rejected upload (nothing was stored) is dismissed from the list; its rejection stays in the audit log.
          */
         delete: operations["delete_input_api_v1_projects__project_id__inputs__input_id__delete"];
         options?: never;

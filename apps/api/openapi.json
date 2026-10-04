@@ -14276,7 +14276,7 @@
     },
     "/api/v1/projects/{project_id}/inputs/{input_id}": {
       "delete": {
-        "description": "Remove the stored file (verifiable deletion, 15.3); the record stays, marked deleted, for the audit trail.",
+        "description": "Remove the stored file (verifiable deletion, 15.3); the record stays, marked deleted, for the audit trail. A\nrejected upload (nothing was stored) is dismissed from the list; its rejection stays in the audit log.",
         "operationId": "delete_input_api_v1_projects__project_id__inputs__input_id__delete",
         "parameters": [
           {
