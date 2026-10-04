@@ -37,5 +37,6 @@ reemplaza y se marca el anterior como "Reemplazado por ADR-NNNN".
 | [0029](0029-ola-3-go-y-mongodb.md) | Ola 3: Go y MongoDB | Aceptada |
 | [0030](0030-air-gapped-y-exportacion-a-figma.md) | Air-gapped y exportación a Figma | Aceptada |
 | [0031](0031-scim-oracle-en-dotnet-y-revision-de-seguridad.md) | SCIM, Oracle en .NET y revisión de seguridad del endurecimiento | Aceptada |
+| [0032](0032-inventario-profundo.md) | Inventario profundo: bloques, descripciones, flujos por escenario y observaciones | Aceptada |
 
 Plantilla: contexto, decisión, alternativas consideradas, consecuencias y cómo se valida.
