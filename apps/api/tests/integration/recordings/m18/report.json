@@ -1,0 +1,50 @@
+{
+  "mode": "record",
+  "rules": 9,
+  "p0": 8,
+  "extraction_shards": [
+    "consolidate",
+    "dbo.sp_pago_orden#whole"
+  ],
+  "evaluation": {
+    "reference": "pago_orden (Banco Ficticio, fictitious)",
+    "reference_sha256": "81c670d21dcc3724ef1356a27f075004d21b0955af9882628ea449e929edede2",
+    "reference_rules": 9,
+    "found_rules": 9,
+    "omissions": [
+      "RULE-009"
+    ],
+    "omissions_p0": [],
+    "hallucinations": [
+      "RULE-007"
+    ],
+    "precision_errors": [
+      {
+        "reference": "RULE-007",
+        "found": "RULE-008",
+        "missing_values": [
+          "50005"
+        ]
+      }
+    ],
+    "known_bias": null,
+    "recall": 0.889,
+    "precision": 0.889
+  },
+  "plain_extraction": {
+    "found_rules": 11,
+    "omissions": [
+      "RULE-009"
+    ],
+    "omissions_p0": [],
+    "hallucinations": [
+      "RULE-003",
+      "RULE-004",
+      "RULE-009"
+    ]
+  },
+  "extraction_cost_usd": "0.16564400",
+  "model_calls": 20,
+  "cost_usd": "0.21051400",
+  "decisions": []
+}

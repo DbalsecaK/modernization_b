@@ -10,7 +10,7 @@ import json
 import re
 from collections.abc import Sequence
 from dataclasses import dataclass, field
-from typing import Any, Protocol
+from typing import TYPE_CHECKING, Any, Protocol
 
 from pydantic import ValidationError
 
@@ -18,6 +18,9 @@ from nexti_agents import prompt
 from nexti_core.adapters import SliceView
 from nexti_core.spec.model import Rule, SourceRef
 from nexti_orchestration.store import Usage
+
+if TYPE_CHECKING:
+    from nexti_orchestration.guided import Guide
 
 EXTRACTOR = "rules-extractor"
 VERIFIER = "rules-verifier"
@@ -197,20 +200,21 @@ def halves(view: SliceView) -> tuple[SliceView, SliceView] | None:
 
 async def extract(
     caller: ModelCaller, view: SliceView, source: str, types: dict[str, str], *, max_iterations: int = 3,
-    splits: int = MAX_SPLITS,
+    splits: int = MAX_SPLITS, guide: "Guide | None" = None,
 ) -> Extraction:  # fmt: skip
     """Extract the rules of one slice, correcting with the concrete errors up to `max_iterations` times. A slice whose
     answer is cut at the model's output limit is halved and each half extracted (up to `splits` times), so a long
     procedure does not fail on a model that writes long answers."""
     try:
-        return await _extract(caller, view, source, types, max_iterations=max_iterations)
+        return await _extract(caller, view, source, types, max_iterations=max_iterations, guide=guide)
     except CutReplyError:
         parts = halves(view) if splits > 0 else None
         if parts is None:
             raise
         result = Extraction([])
         for part in parts:
-            found = await extract(caller, part, source, types, max_iterations=max_iterations, splits=splits - 1)
+            found = await extract(caller, part, source, types, max_iterations=max_iterations, splits=splits - 1,
+                                  guide=guide)  # fmt: skip
             result.rules += found.rules
             result.usage += found.usage
         return result
@@ -221,12 +225,16 @@ class CutReplyError(ReplyError):
 
 
 async def _extract(
-    caller: ModelCaller, view: SliceView, source: str, types: dict[str, str], *, max_iterations: int = 3
-) -> Extraction:
-    messages = [
-        {"role": "system", "content": prompt(EXTRACTOR)},
-        {"role": "user", "content": f"{_context(view, types)}\n\nSlice:\n{numbered(source, view)}"},
-    ]
+    caller: ModelCaller, view: SliceView, source: str, types: dict[str, str], *, max_iterations: int = 3,
+    guide: "Guide | None" = None,
+) -> Extraction:  # fmt: skip
+    request = f"{_context(view, types)}\n\nSlice:\n{numbered(source, view)}"
+    if guide is None:
+        messages = [{"role": "system", "content": prompt(EXTRACTOR)}, {"role": "user", "content": request}]
+    else:  # guided extraction (ADR-0033): the program map and the guidance on top
+        from nexti_orchestration.guided import extractor_messages
+
+        messages = extractor_messages(prompt(EXTRACTOR), request, guide)
     result = Extraction([])
     last_error = ""
     for iteration in range(1, max_iterations + 1):
@@ -252,22 +260,33 @@ class Review:
     problems: tuple[str, ...]
     corrected_statement: str | None
     usage: Usage
+    corrected_source: SourceRef | None = None  # guided extraction: the citation moved to where the rule lives
+    critical: bool | None = None  # guided extraction, criticality lens of a P0 rule: P0 is deserved
 
 
-async def review(caller: ModelCaller, rule: Rule, source: str, *, judge: int = 0) -> Review:
+async def review(caller: ModelCaller, rule: Rule, source: str, *, judge: int = 0, guided: bool = False) -> Review:
     cited = "\n\n".join(f"{ref}:\n{cited_text(source, ref)}" for ref in rule.sources)
     rule_json = rule.model_dump_json(include={"name", "category", "priority", "statement", "condition", "action"})
-    messages = [
-        {"role": "system", "content": prompt(VERIFIER)},
-        {"role": "user", "content": f"Rule:\n{rule_json}\n\nCited lines:\n{cited}"},
-    ]
+    request = f"Rule:\n{rule_json}\n\nCited lines:\n{cited}"
+    if guided:
+        from nexti_orchestration.guided import review_messages
+
+        messages = review_messages(prompt(VERIFIER), request, source, rule, judge)
+    else:
+        messages = [{"role": "system", "content": prompt(VERIFIER)}, {"role": "user", "content": request}]
     reply = await caller.complete(VERIFIER, "ruleExtraction", messages, judge=judge)
     data = parse_json(reply.content)
     if not isinstance(data, dict) or not isinstance(data.get("supported"), bool):
         raise ReplyError('the verifier must answer {"supported": true|false, ...}')
     problems = tuple(str(p) for p in data.get("problems") or [])
     corrected = data.get("corrected_statement")
-    return Review(data["supported"], problems, str(corrected) if corrected else None, reply.usage)
+    if not guided:
+        return Review(data["supported"], problems, str(corrected) if corrected else None, reply.usage)
+    from nexti_orchestration.guided import corrected_source
+
+    critical = data.get("critical")
+    return Review(data["supported"], problems, str(corrected) if corrected else None, reply.usage,
+                  corrected_source(data, rule, source), critical if isinstance(critical, bool) else None)  # fmt: skip
 
 
 def _overlap(a: SourceRef, b: SourceRef) -> float:
