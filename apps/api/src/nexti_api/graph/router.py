@@ -35,6 +35,7 @@ class GraphNodeOut(ApiModel):
     line_end: int | None
     external: bool
     orphan: bool
+    kind: str = Field(default="", description="What the unit is: StoredProcedure, Program, Table, Page, ...")
 
 
 class GraphEdgeOut(ApiModel):
