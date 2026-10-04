@@ -1,0 +1,81 @@
+{
+  "mode": "record",
+  "blocks": 10,
+  "descriptions": 11,
+  "observations": 8,
+  "scenarios": [
+    {
+      "name": "A company pays a pending order with enough balance",
+      "steps": 11,
+      "rules": [
+        "RULE-001",
+        "RULE-002",
+        "RULE-003",
+        "RULE-004",
+        "RULE-005",
+        "RULE-006",
+        "RULE-007",
+        "RULE-008",
+        "RULE-009",
+        "RULE-011"
+      ]
+    },
+    {
+      "name": "A company pays an order with a separately charged commission",
+      "steps": 7,
+      "rules": [
+        "RULE-004",
+        "RULE-006",
+        "RULE-007",
+        "RULE-009",
+        "RULE-010",
+        "RULE-011"
+      ]
+    },
+    {
+      "name": "The order does not exist or is not pending",
+      "steps": 4,
+      "rules": [
+        "RULE-001",
+        "RULE-002",
+        "RULE-003"
+      ]
+    },
+    {
+      "name": "The account type is not permitted",
+      "steps": 2,
+      "rules": [
+        "RULE-001"
+      ]
+    },
+    {
+      "name": "The account has insufficient funds",
+      "steps": 3,
+      "rules": [
+        "RULE-006",
+        "RULE-007",
+        "RULE-008"
+      ]
+    },
+    {
+      "name": "A debit fails during payment",
+      "steps": 3,
+      "rules": [
+        "RULE-009",
+        "RULE-010"
+      ]
+    }
+  ],
+  "insight_invocations": [
+    "classification/legacy-analyst/describe:proc:dbo.sp_pago_orden",
+    "classification/legacy-analyst/observations",
+    "ruleReview/legacy-analyst/scenarios"
+  ],
+  "new_recordings": 3,
+  "insights_cost_usd": "0.06778000",
+  "model_calls": 44,
+  "cost_usd": "0.75460200",
+  "decisions": [
+    "questions"
+  ]
+}

@@ -1292,6 +1292,7 @@ CASES = [
     Case("GET", "/api/v1/projects/{project_id}/ivv", "admin", "outsider", _ivv("/ivv")),
     Case("GET", "/api/v1/projects/{project_id}/delta", "admin", "outsider", _delta("/delta")),
     Case("GET", "/api/v1/projects/{project_id}/classification", "admin", "outsider", _classified("/classification")),
+    Case("GET", "/api/v1/projects/{project_id}/graph/insights", "admin", "outsider", _classified("/graph/insights")),
     Case(
         "PUT", "/api/v1/projects/{project_id}/ivv/mapping", "admin", "member",
         _ivv("/ivv/mapping", {"mapping": (IVV_TARGET / "ivv-mapping.yaml").read_text(encoding="utf-8")}),

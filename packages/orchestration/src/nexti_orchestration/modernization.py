@@ -14,8 +14,9 @@ from typing import Any, Protocol
 from nexti_adapter_aspx import AspxAdapter
 from nexti_adapter_cobol import CobolAdapter
 from nexti_adapter_sybase import SybaseAdapter
-from nexti_core.adapters import Inventory, SourceAdapter, SourceFile
+from nexti_core.adapters import Inventory, Node, SourceAdapter, SourceFile
 from nexti_core.spec.model import Rule
+from nexti_orchestration import insights
 from nexti_orchestration.context import Attempt, NeedsAnswer, PhaseContext
 from nexti_orchestration.extraction import EXTRACTOR, VERIFIER, ModelCaller, ReplyError, consolidate, extract, review
 from nexti_orchestration.model import Option, PhaseFailedError, PhaseResult, QuestionSpec
@@ -128,7 +129,46 @@ class ModernizationPhases:
             return Attempt(counts, f"statements: {summary}")
 
         attempt = await ctx.invoke(_agent(ctx, "legacy-analyst"), work, what="Classification of the statements")
+        if insights.enabled(ctx.run.options) and hasattr(self.port, "save_artifacts"):
+            await self._describe(ctx, dict(attempt.artifact))
         return PhaseResult(summary=attempt.summary)
+
+    async def _describe(self, ctx: PhaseContext, classification: dict[str, int]) -> None:
+        """Deep inventory (ADR-0032): the legacy analyst describes every unit and block (one call per unit), then
+        writes the architect's observations on the inventory. Reading aids, stored as generated artifacts."""
+        files = await self.files()
+        inventory = pick_adapter(files).inventory(files)
+        sources = {f.path: f.text for f in files}
+        agent = _agent(ctx, "legacy-analyst")
+        descriptions: dict[str, str] = {}
+        for unit, blocks in insights.units_of(inventory):
+            if unit.file not in sources:
+                continue
+            unit_ctx = ctx.for_shard(f"describe:{unit.key}")
+
+            async def describe(unit: Node = unit, blocks: list[Node] = blocks) -> Attempt:
+                found = await insights.describe(self.port.models, agent, ctx.phase.key, inventory,
+                                                sources[unit.file or ""], unit, blocks,
+                                                max_iterations=ctx.run.max_iterations)  # fmt: skip
+                left = f", {len(found.problems)} problem(s) left" if found.problems else ""
+                return Attempt(found.value, f"{len(found.value)} description(s){left}", total(found.usage))
+
+            attempt = await unit_ctx.invoke(agent, describe, what=f"Descriptions of {unit.name}")
+            descriptions.update(attempt.artifact)
+        observations_ctx = ctx.for_shard("observations")
+
+        async def observe() -> Attempt:
+            summary = insights.summary_of(inventory, classification, descriptions)
+            found = await insights.observe(self.port.models, agent, ctx.phase.key, summary,
+                                           max_iterations=ctx.run.max_iterations)  # fmt: skip
+            return Attempt(found.value, f"{len(found.value)} observation(s)", total(found.usage))
+
+        observed = await observations_ctx.invoke(agent, observe, what="Observations on the inventory")
+        await self.port.save_artifacts(  # type: ignore[attr-defined]
+            {insights.DESCRIPTIONS: insights.document("descriptions", agent, descriptions),
+             insights.OBSERVATIONS: insights.document("observations", agent, list(observed.artifact))},
+            {insights.DESCRIPTIONS: "docs", insights.OBSERVATIONS: "docs"}, {},
+        )  # fmt: skip
 
     # -- rule extraction with review ------------------------------------------------------------------------------
     async def rule_extraction(self, ctx: PhaseContext) -> PhaseResult:
@@ -241,7 +281,35 @@ class ModernizationPhases:
             return Attempt({"stories": len(stories.drafts), "waves": stories.waves}, summary, total(stories.usage))
 
         attempt = await ctx.invoke(writer, work, what="User stories and migration plan")
+        if insights.enabled(ctx.run.options) and hasattr(self.port, "save_artifacts"):
+            await self._scenarios(ctx, files, rules)
         return PhaseResult(summary=attempt.summary)
+
+    async def _scenarios(self, ctx: PhaseContext, files: list[SourceFile], rules: list[Rule]) -> None:
+        """Deep inventory (ADR-0032, spec 4.1): with the rules consolidated and before C1, the functional analyst
+        (the legacy analyst when the team has none) proposes the business flows as scenarios over graph nodes and
+        rules; code checks every node and rule exists. Business reviews them in C1."""
+        inventory = pick_adapter(files).inventory(files)
+        keys = {a.key for a in ctx.run.agents}
+        agent = STORY_WRITER if STORY_WRITER in keys else _agent(ctx, "legacy-analyst")
+        descriptions: dict[str, str] = {}
+        if hasattr(self.port, "load_artifact"):
+            stored = await self.port.load_artifact(insights.DESCRIPTIONS)
+            descriptions = dict(json.loads(stored).get("descriptions") or {}) if stored else {}
+
+        async def work() -> Attempt:
+            found = await insights.propose_scenarios(self.port.models, agent, ctx.phase.key, inventory, rules,
+                                                     descriptions, max_iterations=ctx.run.max_iterations)  # fmt: skip
+            left = f", {len(found.problems)} problem(s) left" if found.problems else ""
+            return Attempt(found.value, f"{len(found.value)} scenario(s){left}", total(found.usage))
+
+        attempt = await ctx.for_shard("scenarios").invoke(agent, work, what="Business flows by scenario")
+        scenarios = list(attempt.artifact)
+        cited = sorted({r for s in scenarios for r in s["rules"]})
+        await self.port.save_artifacts(  # type: ignore[attr-defined]
+            {insights.SCENARIOS: insights.document("scenarios", agent, scenarios)}, {insights.SCENARIOS: "docs"},
+            {insights.SCENARIOS: cited},
+        )  # fmt: skip
 
     async def ui(self, ctx: PhaseContext) -> PhaseResult:
         return PhaseResult(summary="The sources have no screens: nothing to design (stored procedures only)")

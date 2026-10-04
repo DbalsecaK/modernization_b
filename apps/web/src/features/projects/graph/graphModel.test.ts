@@ -24,6 +24,9 @@ const node = (id: string, extra: Partial<GraphNode> = {}): GraphNode => ({
   external: false,
   orphan: false,
   file: null,
+  parent: null,
+  phase: null,
+  schemaKnown: null,
   lineStart: null,
   lineEnd: null,
   loc: null,
@@ -97,7 +100,7 @@ describe('grouping by phase', () => {
   })
 
   it('treats an unknown phase as no phase', () => {
-    expect(phaseOf(node('x', { phase: 'weird' }))).toBe('none')
+    expect(phaseOf(node('x', { phase: 'weird' as GraphNode['phase'] }))).toBe('none')
     expect(phaseOf(node('x'))).toBe('none')
   })
 

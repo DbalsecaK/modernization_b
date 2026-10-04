@@ -10,14 +10,8 @@ import { api, sessionHeaders, toApiError, type Schemas } from './client'
 // so the code compiles before and after `pnpm api:types` picks them up.
 /** Where a block sits with respect to the transaction: before, inside, after it, or an exit on error. */
 export type BlockPhase = 'pre' | 'transaction' | 'post' | 'error'
-export type GraphNode = Schemas['GraphNodeOut'] & {
-  /** The unit (procedure, program) this block belongs to; absent on units. */
-  parent?: string | null
-  /** The transactional phase of a block (`BlockPhase`); other values are shown as "no phase". */
-  phase?: string | null
-  /** False on tables known only because the code uses them (no DDL in the inputs). */
-  schemaKnown?: boolean | null
-}
+// parent, phase and schemaKnown come from the API (blocks of a unit, their transactional phase, tables without DDL).
+export type GraphNode = Schemas['GraphNodeOut']
 export type GraphEdgeKind = Schemas['GraphEdgeOut']['kind'] | 'NEXT' | 'GOTO' | 'ON_ERROR' | 'CONTAINS'
 export type GraphEdge = Omit<Schemas['GraphEdgeOut'], 'kind'> & { kind: GraphEdgeKind }
 export type GraphSummary = { modules: number; stores: number; relations: number; entryPoints: number }
