@@ -190,6 +190,32 @@ async def cancel_run(request: Request, project_id: uuid.UUID, run_id: uuid.UUID,
         return RunOut.model_validate(dict(await load_run(conn, project_id, run_id)))
 
 
+@router.post("/{run_id}:retry", response_model=RunOut)
+async def retry_run(request: Request, project_id: uuid.UUID, run_id: uuid.UUID, auth: RunPipeline) -> RunOut:
+    """A failed run goes on from the phase that failed (ADR-0034): the phases before it keep their results, the
+    failed one runs again (its agents are called again). Only a failed run, and one run at a time per project."""
+    assert auth.tenant_id is not None  # noqa: S101 - require_project guarantees it
+    await license_gate.ensure_writable(request, auth, "run.retry", f"project:{project_id}")
+    async with transaction(request, auth) as conn:
+        run = await load_run(conn, project_id, run_id, lock=True)
+        if run["status"] != "failed":
+            raise ProblemError(409, "run_not_failed", "Only a failed run can be retried.")
+        active = (
+            await conn.execute(select(Run.id).where(Run.project_id == project_id, Run.status.in_(ACTIVE)).limit(1))
+        ).first()
+        if active is not None:
+            raise ProblemError(409, "run_active", "The project already has a run in progress.", run_id=str(active.id))
+        await conn.execute(
+            update(Run)
+            .where(Run.id == run_id)
+            .values(status="queued", error=None, finished_at=None, waiting_reason=None)
+        )
+        await defer_run(conn, run_id, auth.tenant_id)
+        await audit(conn, auth, "run.retry", f"project:{project_id}",
+                    {"run_id": str(run_id), "phase": run["current_phase"]})  # fmt: skip
+        return RunOut.model_validate(dict(await load_run(conn, project_id, run_id)))
+
+
 async def approve_stories(conn: AsyncConnection, auth: Authorized, project_id: uuid.UUID) -> None:
     """At C1 the active stories are approved (a new version each); from then on a change is a change of scope."""
     for story in await spec_common.stories(conn, project_id):

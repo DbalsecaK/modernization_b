@@ -39,5 +39,6 @@ reemplaza y se marca el anterior como "Reemplazado por ADR-NNNN".
 | [0031](0031-scim-oracle-en-dotnet-y-revision-de-seguridad.md) | SCIM, Oracle en .NET y revisión de seguridad del endurecimiento | Aceptada |
 | [0032](0032-inventario-profundo.md) | Inventario profundo: bloques, descripciones, flujos por escenario y observaciones | Aceptada |
 | [0033](0033-extraccion-guiada.md) | Extracción guiada de reglas | Aceptada |
+| [0034](0034-reintento-desde-la-fase-fallida.md) | Reintento desde la fase fallida y verificación por código que no pierde trabajo | Aceptada |
 
 Plantilla: contexto, decisión, alternativas consideradas, consecuencias y cómo se valida.

@@ -1,7 +1,17 @@
 import { useState, type ReactElement } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
-import { AlertTriangle, CheckCircle2, Circle, Loader2, PauseCircle, Play, Square, XCircle } from 'lucide-react'
+import {
+  AlertTriangle,
+  CheckCircle2,
+  Circle,
+  Loader2,
+  PauseCircle,
+  Play,
+  RotateCw,
+  Square,
+  XCircle,
+} from 'lucide-react'
 import { cn } from '@/lib/cn'
 import { formatDateTime, formatNumber, formatUsd } from '@/lib/format'
 import { ApiError } from '@/api/client'
@@ -10,6 +20,7 @@ import {
   ACTIVE_STATUSES,
   useActivityStream,
   useCancelRun,
+  useRetryRun,
   useDecideGate,
   useRun,
   useRuns,
@@ -135,6 +146,7 @@ function RunView({ project, run }: { project: ProjectDetail; run: RunDetail }) {
   const { t } = useTranslation()
   const me = useMe()
   const cancel = useCancelRun(project.id)
+  const retry = useRetryRun(project.id)
   const live = ACTIVE_STATUSES.includes(run.status)
   const { events } = useActivityStream({ projectId: project.id, runId: run.id }, true)
   const canAnswer = project.permissions.includes('question.answer')
@@ -160,6 +172,20 @@ function RunView({ project, run }: { project: ProjectDetail; run: RunDetail }) {
                 onClick={() => cancel.mutate(run.id, { onError: (e) => toast(errorText(e, t('common.error'))) })}
               >
                 <Square size={14} /> {t('runsPage.cancel')}
+              </Button>
+            ) : run.status === 'failed' && project.permissions.includes('pipeline.run') ? (
+              <Button
+                size="sm"
+                variant="primary"
+                disabled={retry.isPending}
+                onClick={() =>
+                  retry.mutate(run.id, {
+                    onSuccess: () => toast(t('runsPage.retried')),
+                    onError: (e) => toast(errorText(e, t('common.error'))),
+                  })
+                }
+              >
+                <RotateCw size={14} /> {t('runsPage.retry')}
               </Button>
             ) : undefined
           }

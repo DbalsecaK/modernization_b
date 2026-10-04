@@ -10,8 +10,10 @@
 A project whose backend has no pack yet waits in generation (ADR-0010): it never generates another language.
 """
 
+import difflib
 import json
 import re
+import unicodedata
 from collections.abc import Sequence
 from typing import Any, Protocol, cast
 
@@ -23,6 +25,7 @@ from nexti_core.spec.model import Rule
 from nexti_orchestration import frontend, infrastructure
 from nexti_orchestration.context import Attempt, PhaseContext, Verification
 from nexti_orchestration.extraction import ModelCaller, ReplyError, parse_json
+from nexti_orchestration.guided import enabled as guided_enabled
 from nexti_orchestration.model import PhaseFailedError, PhaseResult, PhaseUnavailableError
 from nexti_orchestration.packs import BackendPack, backend_pack
 from nexti_orchestration.store import Usage
@@ -94,6 +97,36 @@ def legacy_names(files: Sequence[SourceFile]) -> set[str]:
     return names
 
 
+_INVISIBLE = re.compile(r"[\u200b-\u200f\u2060\ufeff\u00a0\s]")
+
+
+def _normal(name: str) -> str:
+    """A legacy name as it is compared: Unicode-normalized, without invisible characters, lowercase, without the
+    schema or program prefix (`db..tabla.col` -> `col`)."""
+    return _INVISIBLE.sub("", unicodedata.normalize("NFKC", name)).lower().rsplit(".", 1)[-1]
+
+
+def _known(name: str, names: set[str]) -> bool:
+    """`@o_trn` and `o_trn` name the same parameter: the design may drop the marker, or add it to a column."""
+    plain = _normal(name)
+    return plain in names or plain.lstrip("@#") in names or any(f"{marker}{plain}" in names for marker in "@#")
+
+
+def closest(invented: Sequence[str], names: set[str], count: int = 3) -> str:
+    """For each invented name, the real names that look like it: the model corrects the spelling, or learns that the
+    name does not exist and must not be cited."""
+    by_bare: dict[str, str] = {}
+    for known in sorted(names):
+        by_bare.setdefault(known.lstrip("@#"), known)
+    parts = []
+    for name in invented:
+        found = difflib.get_close_matches(_normal(name).lstrip("@#"), list(by_bare), n=count, cutoff=0.6)
+        parts.append(
+            f"{name} -> {', '.join(by_bare[f] for f in found) if found else 'nothing similar: do not cite it'}"
+        )
+    return "; ".join(parts)
+
+
 def _invented(design: Design, names: set[str]) -> list[str]:
     """Legacy names of the design that do not exist in the legacy code (the design cannot cite what is not there)."""
     cited = [f.legacy for e in design.entities for f in e.fields]
@@ -105,12 +138,16 @@ def _invented(design: Design, names: set[str]) -> list[str]:
     cited += [u.legacy_program for u in design.use_cases] + list(design.infrastructure)
     missing = []
     for name in cited:
-        if name and name.rsplit(".", 1)[-1].lower() not in names:
+        if name and not _known(name, names):
             missing.append(name)
     return sorted(set(missing))
 
 
-def design_problems(design: Design, rules: Sequence[Rule], names: set[str] | None = None) -> list[str]:
+def design_problems(
+    design: Design, rules: Sequence[Rule], names: set[str] | None = None, *, hints: bool = False
+) -> list[str]:
+    """What is wrong with a design, for the model to correct. With `hints` (guided extraction, ADR-0033) an invented
+    legacy name comes with the closest real names."""
     missing = sorted({r.id for r in rules} - design.rules())
     unknown = sorted(design.rules() - {r.id for r in rules})
     problems = []
@@ -139,6 +176,8 @@ def design_problems(design: Design, rules: Sequence[Rule], names: set[str] | Non
     if invented:
         problems.append(f"these legacy names are not in the legacy code (check the exact spelling): "
                         f"{', '.join(invented)}")  # fmt: skip
+        if hints and names:
+            problems.append(f"closest names in the legacy code: {closest(invented, names)}")
     return problems
 
 
@@ -153,6 +192,7 @@ def _rules_text(rules: Sequence[Rule]) -> str:
 async def propose_design(
     caller: ModelCaller, rules: Sequence[Rule], inventory: str, *, max_iterations: int = 3,
     names: set[str] | None = None, source: str = "", system: str = ARCHITECT, label: str = "Inventory",
+    hints: bool = False,
 ) -> tuple[Design, list[Usage]]:  # fmt: skip
     """The design from the rules. Flow 1 gives the inventory of the legacy; Flow 2 gives the approved screens and
     stories (`label`) and its own prompt (`system`), with no legacy to map."""
@@ -172,7 +212,7 @@ async def propose_design(
         try:
             data = parse_json(reply.content)
             design = Design.model_validate(data)
-            problems = design_problems(design, rules, names)
+            problems = design_problems(design, rules, names, hints=hints)
             if problems:
                 raise ReplyError("\n".join(problems))
             return design, usage
@@ -209,6 +249,7 @@ class GenerationPhases:
                         self.port.models, rules, await self.port.inventory_digest(),
                         max_iterations=ctx.run.max_iterations, names=legacy_names(files),
                         source="\n\n".join(f"// {f.path}\n{f.text}" for f in files),
+                        hints=guided_enabled(ctx.run.options),
                     )  # fmt: skip
             except ReplyError as exc:
                 raise PhaseFailedError(str(exc)[:1500]) from exc

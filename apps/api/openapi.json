@@ -15975,6 +15975,60 @@
         ]
       }
     },
+    "/api/v1/projects/{project_id}/runs/{run_id}:retry": {
+      "post": {
+        "description": "A failed run goes on from the phase that failed (ADR-0034): the phases before it keep their results, the\nfailed one runs again (its agents are called again). Only a failed run, and one run at a time per project.",
+        "operationId": "retry_run_api_v1_projects__project_id__runs__run_id__retry_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Retry Run",
+        "tags": [
+          "runs"
+        ]
+      }
+    },
     "/api/v1/projects/{project_id}/screens": {
       "get": {
         "operationId": "list_screens_api_v1_projects__project_id__screens_get",

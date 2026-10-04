@@ -6,6 +6,7 @@ finishes or waits for a person again.
     interrupted by questions  -> resume with the answers that arrived
     waiting for a phase       -> resume when this version has an executor for it
     checkpoint mid-way        -> continue (the worker died; LangGraph restarts the interrupted node)
+    failed, queued again      -> retry from the phase that failed (ADR-0034)
 """
 
 import uuid
@@ -71,6 +72,11 @@ async def _resume_value(
 ) -> Any | None:
     kind = waiting.get("type")
     async with scoped_connection(engine, DbScope(tenant_id=tenant_id)) as conn:
+        if kind == "failed":  # a failed run waits for a retry: the API queues it again
+            status = (
+                await conn.execute(text("SELECT status FROM run WHERE id = :run"), {"run": run_id})
+            ).scalar_one_or_none()
+            return {"retry": True} if status == "queued" else None
         if kind == "gate":
             row = (
                 await conn.execute(
@@ -158,6 +164,11 @@ async def execute_run(runtime: Runtime, run_id: uuid.UUID, tenant_id: uuid.UUID)
             elif snapshot.next:
                 log.info("run.continue", run_id=str(run_id), next=list(snapshot.next))
                 await graph.ainvoke(None, config)
+            elif await store.status() == "queued":  # a retry of a run that finished before retries existed
+                reason = ("This run cannot be retried: it finished before retries from the failed phase existed; "
+                          "launch a new run")  # fmt: skip
+                await store.run_finished("failed", reason)
+                await store.event("runFinished", "failed", reason)
             else:
                 return "nothing to do"
     return str(await store.status())
