@@ -92,4 +92,5 @@ async def coverage_warnings(request: Request, conn: AsyncConnection, project_id:
         if count:
             shown = ", ".join(lines[:15]) + ("…" if len(lines) > 15 else "")
             warnings.append(f"{count} of {found.get('business', 0)} business statement(s) {what} (lines {shown})")
-    return warnings
+    # Guided extraction (ADR-0033): too many P0 rules, instruction-shaped text in the source.
+    return warnings + [str(w) for w in found.get("warnings", [])]

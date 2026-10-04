@@ -33,6 +33,11 @@ class RunIn(ApiModel):
         description="Pipeline runs: model-written descriptions, observations and business scenarios (ADR-0032); "
         "on unless false",
     )
+    guided_extraction: bool | None = Field(
+        default=None,
+        description="Pipeline runs: rules extracted with the program map, small programs whole, citations corrected "
+        "by the verifier, P0 judged through two lenses and rules consolidated by meaning (ADR-0033); on unless false",
+    )
 
     @model_validator(mode="after")
     def options_only_for_demo(self) -> "RunIn":

@@ -110,7 +110,8 @@ async def test_a_pipeline_a_person_starts_reads_the_inventory_in_depth_unless_th
     await reconcile(app_engine, fga)
     started = api.post(f"/api/v1/projects/{deep}/runs", json={"kind": "pipeline"}, headers=headers)
     assert started.status_code == 201, started.text
-    assert started.json()["options"] == {"deep_inventory": True}
-    opted_out = api.post(f"/api/v1/projects/{shallow}/runs", json={"kind": "pipeline", "deepInventory": False},
+    assert started.json()["options"] == {"deep_inventory": True, "guided_extraction": True}
+    opted_out = api.post(f"/api/v1/projects/{shallow}/runs",
+                         json={"kind": "pipeline", "deepInventory": False, "guidedExtraction": False},
                          headers=headers)  # fmt: skip
-    assert opted_out.json()["options"] == {"deep_inventory": False}
+    assert opted_out.json()["options"] == {"deep_inventory": False, "guided_extraction": False}

@@ -15,8 +15,8 @@ from nexti_adapter_aspx import AspxAdapter
 from nexti_adapter_cobol import CobolAdapter
 from nexti_adapter_sybase import SybaseAdapter
 from nexti_core.adapters import Inventory, Node, SliceView, SourceAdapter, SourceFile
-from nexti_core.spec.model import Rule
-from nexti_orchestration import insights
+from nexti_core.spec.model import Rule, SourceRef
+from nexti_orchestration import guided, insights
 from nexti_orchestration.context import Attempt, NeedsAnswer, PhaseContext
 from nexti_orchestration.extraction import EXTRACTOR, VERIFIER, ModelCaller, ReplyError, consolidate, extract, review
 from nexti_orchestration.model import Option, PhaseFailedError, PhaseResult, QuestionSpec
@@ -265,6 +265,11 @@ class ModernizationPhases:
         views = without_contained(adapter.slices(files), business)
         if statements is not None:
             views += uncovered_slices(statements, views)
+        guided_on = guided.enabled(ctx.run.options)
+        maps: dict[str, str] = {}
+        if guided_on:  # ADR-0033: small programs whole, every slice with the map of its program
+            views = guided.whole_programs(files, views)
+            maps = guided.program_maps(adapter.inventory(files), await self._descriptions())
         types = adapter.types(files)
         sources = {f.path: f.text for f in files}
         extractor = _agent(ctx, EXTRACTOR)
@@ -274,8 +279,9 @@ class ModernizationPhases:
 
             async def work() -> Attempt:
                 try:
+                    guide = guided.Guide(maps.get(view.file, "")) if guided_on else None
                     found = await extract(self.port.models, view, sources[view.file], types,
-                                          max_iterations=ctx.run.max_iterations)  # fmt: skip
+                                          max_iterations=ctx.run.max_iterations, guide=guide)  # fmt: skip
                 except ReplyError as exc:
                     raise PhaseFailedError(str(exc)[:1500]) from exc
                 return Attempt([r.model_dump(mode="json") for r in found.rules],
@@ -296,18 +302,50 @@ class ModernizationPhases:
         if failed and len(failed) == len(views):
             raise PhaseFailedError(f"No slice gave valid rules ({len(failed)} failed); see the activity for why")
         rules = consolidate([Rule.model_validate(r) for batch in found for r in batch if "failed" not in r])
-        rules = await self._review(ctx, rules, sources)
+        if guided_on:
+            rules = await self._consolidate_meaning(ctx, rules)
+        rules = await self._review(ctx, rules, sources, guided_on=guided_on)
         await self.port.save_rules(rules)
-        if statements is not None and hasattr(self.port, "save_artifacts"):
-            document = json.dumps(coverage(statements, views, rules), indent=1)
-            await self.port.save_artifacts({COVERAGE: document}, {COVERAGE: "docs"}, {})
+        warnings: list[str] = []
+        if guided_on:  # by code, for the review before C1
+            found_warnings = (guided.p0_warning(rules), guided.injection_warning(guided.injection_suspects(files)))
+            warnings = [w for w in found_warnings if w]
+            for warning in warnings:
+                await ctx.store.event("info", "running", warning[:2000], phase=ctx.phase.key)
+        if (statements is not None or warnings) and hasattr(self.port, "save_artifacts"):
+            report = coverage(statements or [], views, rules)
+            if warnings:
+                report["warnings"] = warnings
+            await self.port.save_artifacts({COVERAGE: json.dumps(report, indent=1)}, {COVERAGE: "docs"}, {})
         p0 = sum(1 for r in rules if r.priority == "P0")
         summary = f"{len(rules)} rule(s), {p0} P0, from {len(views)} slice(s)"
         if failed:
             summary += f"; {len(failed)} slice(s) gave no valid rules: {', '.join(failed[:5])}"
         return PhaseResult(summary=summary)
 
-    async def _review(self, ctx: PhaseContext, rules: list[Rule], sources: dict[str, str]) -> list[Rule]:
+    async def _descriptions(self) -> dict[str, str]:
+        """The deep inventory's descriptions of units and blocks, when the run wrote them (ADR-0032)."""
+        if not hasattr(self.port, "load_artifact"):
+            return {}
+        stored = await self.port.load_artifact(insights.DESCRIPTIONS)
+        return dict(json.loads(stored).get("descriptions") or {}) if stored else {}
+
+    async def _consolidate_meaning(self, ctx: PhaseContext, rules: list[Rule]) -> list[Rule]:
+        """Guided extraction (ADR-0033): rules stating the same behaviour from different places, merged."""
+        verifier = _agent(ctx, VERIFIER)
+
+        async def work() -> Attempt:
+            merged, usage = await guided.consolidate_meaning(self.port.models, verifier, ctx.phase.key, rules,
+                                                             max_iterations=ctx.run.max_iterations)  # fmt: skip
+            return Attempt([r.model_dump(mode="json") for r in merged],
+                           f"{len(rules)} rule(s) consolidated into {len(merged)}", total(usage))  # fmt: skip
+
+        attempt = await ctx.for_shard("consolidate").invoke(verifier, work, what="Rules consolidated by meaning")
+        return [Rule.model_validate(r) for r in attempt.artifact]
+
+    async def _review(
+        self, ctx: PhaseContext, rules: list[Rule], sources: dict[str, str], *, guided_on: bool = False
+    ) -> list[Rule]:
         verifier = _agent(ctx, VERIFIER)
         outcomes: dict[str, list[dict[str, Any]]] = {}
         for number, rule in enumerate(rules, start=1):
@@ -316,10 +354,14 @@ class ModernizationPhases:
             for judge in range(judges):
 
                 async def work(rule: Rule = rule, judge: int = judge) -> Attempt:
-                    verdict = await review(self.port.models, rule, sources[rule.sources[0].file], judge=judge)
-                    return Attempt({"supported": verdict.supported, "problems": list(verdict.problems),
-                                    "corrected": verdict.corrected_statement},
-                                   "supported" if verdict.supported else "not supported", verdict.usage)  # fmt: skip
+                    verdict = await review(self.port.models, rule, sources[rule.sources[0].file], judge=judge,
+                                           guided=guided_on)  # fmt: skip
+                    found: dict[str, Any] = {"supported": verdict.supported, "problems": list(verdict.problems),
+                                             "corrected": verdict.corrected_statement}  # fmt: skip
+                    if guided_on:
+                        moved = verdict.corrected_source
+                        found |= {"source": moved.model_dump() if moved else None, "critical": verdict.critical}
+                    return Attempt(found, "supported" if verdict.supported else "not supported", verdict.usage)
 
                 attempt = await ctx.invoke(verifier, work, what=f"Review of {rule.id}", iteration=number * 10 + judge)
                 outcomes[rule.id].append(dict(attempt.artifact))
@@ -329,8 +371,12 @@ class ModernizationPhases:
             verdicts = outcomes[rule.id]
             supported = [v["supported"] for v in verdicts]
             problems = [p for v in verdicts for p in v["problems"]]
+            moved = next((v["source"] for v in verdicts if v.get("source")), None)
+            if moved:  # guided extraction: the rule stays where the verifier found it, with less confidence
+                rule = guided.with_citation(rule, SourceRef.model_validate(moved))
             if all(supported):
-                final.append(rule)
+                not_critical = rule.priority == "P0" and any(v.get("critical") is False for v in verdicts)
+                final.append(guided.demoted(rule) if not_critical else rule)
                 continue
             corrected = next((v["corrected"] for v in verdicts if v["corrected"]), None)
             disagree = len(set(supported)) > 1
