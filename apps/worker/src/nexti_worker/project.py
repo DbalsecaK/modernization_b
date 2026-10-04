@@ -69,7 +69,9 @@ class GatewayCaller:
             completion = await self.gateway.complete(ctx, list(messages))
         usage = Usage(completion.model or None, completion.usage.input_tokens, completion.usage.output_tokens,
                       completion.cost_usd)  # fmt: skip
-        return ModelReply(completion.content, usage)
+        limit = completion.output_limit
+        cut = limit if limit and completion.usage.output_tokens >= limit else None
+        return ModelReply(completion.content, usage, cut)
 
 
 def read_zip(data: bytes, prefix: str = "") -> list[SourceFile]:
