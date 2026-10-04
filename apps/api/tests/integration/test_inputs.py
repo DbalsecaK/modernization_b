@@ -15,7 +15,7 @@ import pytest
 import respx
 from fastapi.testclient import TestClient
 from PIL import Image
-from sqlalchemy import func, insert, select
+from sqlalchemy import func, insert, select, text
 from sqlalchemy.ext.asyncio import AsyncEngine
 
 from nexti_api.authz.fga import OpenFga
@@ -396,3 +396,22 @@ async def test_loose_code_files_are_packed_validated_and_versioned(
     two_docs = api.post(url, data={"kind": "document"}, headers=admin, files=[
         ("file", ("a.md", b"# a\n", "text/markdown")), ("file", ("b.md", b"# b\n", "text/markdown"))])  # fmt: skip
     assert (two_docs.status_code, two_docs.json()["code"]) == (422, "one_file_only")
+
+
+async def test_a_rejected_upload_can_be_dismissed_from_the_list(
+    api: TestClient, admin: dict[str, str], owner_engine: AsyncEngine, world: World
+) -> None:
+    """Nothing was stored for a rejected upload: deleting it hides it from the list; the rejection and the dismissal
+    stay in the audit log."""
+    url = f"/api/v1/projects/{world.project_a}/inputs"
+    refused = upload(api, admin, world.project_a, f"tool-{uuid.uuid4().hex[:6]}.exe", b"MZ\x90\x00", "source_archive")
+    assert refused.status_code == 422
+    input_id = refused.json()["inputId"]
+    assert input_id in {i["id"] for i in api.get(url, headers=admin).json()}
+    assert api.delete(f"{url}/{input_id}", headers=admin).status_code == 204
+    assert input_id not in {i["id"] for i in api.get(url, headers=admin).json()}
+    async with owner_engine.connect() as conn:
+        query = text("SELECT action FROM audit_log WHERE details->>'input_id' = :i ORDER BY id")
+        rows = (await conn.execute(query, {"i": input_id})).all()
+    actions = [str(row.action) for row in rows]
+    assert actions == ["input.reject", "input.dismiss"]

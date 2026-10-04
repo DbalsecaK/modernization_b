@@ -450,6 +450,7 @@
     "archiveOnly": "One zip, or one or more code files (packed into one input); validated before it is stored.",
     "deleteInput": "Delete {{name}}",
     "confirmDelete": "Delete \"{{name}}\"? The stored file is removed; the record stays in the history.",
+    "confirmDismiss": "Remove \"{{name}}\" from the list? Nothing was stored; the rejection stays in the audit log.",
     "deleted": "\"{{name}}\" deleted.",
     "repository": "Git repository",
     "repositoryHint": "The platform checks it can read the branch; the clone happens in the preflight of the pipeline.",

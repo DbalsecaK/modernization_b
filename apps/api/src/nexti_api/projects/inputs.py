@@ -122,7 +122,7 @@ async def list_inputs(request: Request, project_id: uuid.UUID, auth: ViewProject
         rows = (
             await conn.execute(
                 _query()
-                .where(InputArtifact.project_id == project_id)
+                .where(InputArtifact.project_id == project_id, InputArtifact.dismissed_at.is_(None))
                 .order_by(InputArtifact.kind, InputArtifact.name, InputArtifact.created_at.desc())
             )
         ).all()
@@ -248,9 +248,16 @@ async def input_content(
 
 @router.delete("/{input_id}", status_code=204)
 async def delete_input(request: Request, project_id: uuid.UUID, input_id: uuid.UUID, auth: UploadInputs) -> None:
-    """Remove the stored file (verifiable deletion, 15.3); the record stays, marked deleted, for the audit trail."""
+    """Remove the stored file (verifiable deletion, 15.3); the record stays, marked deleted, for the audit trail. A
+    rejected upload (nothing was stored) is dismissed from the list; its rejection stays in the audit log."""
     async with transaction(request, auth) as conn:
         found = await _load(conn, project_id, input_id)
+        if found.status == "rejected":
+            await conn.execute(update(InputArtifact).where(InputArtifact.id == input_id)
+                               .values(dismissed_at=datetime.now(UTC)))  # fmt: skip
+            await audit(conn, auth, "input.dismiss", f"project:{project_id}",
+                        {"input_id": str(input_id), "kind": found.kind, "name": found.name})  # fmt: skip
+            return
         if found.status != "accepted":
             raise ProblemError(409, "input_not_active", "Only an accepted input can be deleted.")
         key = (await conn.execute(select(InputArtifact.object_key).where(InputArtifact.id == input_id))).scalar()
