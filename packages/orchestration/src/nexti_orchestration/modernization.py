@@ -6,6 +6,7 @@ implements. Everything a phase computes goes through `ctx.step`/`ctx.invoke`, so
 phase never repeats a model call when the phase resumes.
 """
 
+import json
 from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Any, Protocol
@@ -23,6 +24,8 @@ from nexti_orchestration.usage import total
 
 ADAPTERS: tuple[SourceAdapter, ...] = (SybaseAdapter(), CobolAdapter(), AspxAdapter())
 DETECT_THRESHOLD = 0.5
+CLASSIFICATION = "inventory/classification.json"  # the statements with their class, for the Inventory tab
+MAX_CLASSIFIED = 20000
 
 
 class ProjectPort(Protocol):
@@ -113,8 +116,15 @@ class ModernizationPhases:
     async def classification(self, ctx: PhaseContext) -> PhaseResult:
         async def work() -> Attempt:
             files = await self.files()
-            counts = pick_adapter(files).classification(files)
+            adapter = pick_adapter(files)
+            counts = adapter.classification(files)
             summary = ", ".join(f"{n} {label.replace('_', ' ')}" for label, n in sorted(counts.items()))
+            # The detail, statement by statement, for the Inventory tab (when the adapter gives it and the port keeps
+            # artifacts): what is business logic, control flow or infrastructure, and why.
+            detail = adapter.classified(files) if hasattr(adapter, "classified") else []
+            if hasattr(self.port, "save_artifacts"):
+                document = json.dumps({"counts": counts, "statements": detail[:MAX_CLASSIFIED]}, indent=1)
+                await self.port.save_artifacts({CLASSIFICATION: document}, {CLASSIFICATION: "docs"}, {})
             return Attempt(counts, f"statements: {summary}")
 
         attempt = await ctx.invoke(_agent(ctx, "legacy-analyst"), work, what="Classification of the statements")

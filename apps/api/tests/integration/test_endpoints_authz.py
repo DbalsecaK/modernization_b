@@ -66,6 +66,7 @@ from .run_support import (
     make_project,
     make_run,
     seed_architecture,
+    seed_classification,
     seed_delta,
     seed_graph,
     seed_ivv,
@@ -560,6 +561,13 @@ class Ctx:
         await self.sync_authz()
         return project_id
 
+    async def classified_project(self) -> uuid.UUID:
+        """A fresh project of tenant A after the classification phase (the fictitious stored procedure)."""
+        project_id = await make_project(self.owner, self.world.tenant_a)
+        await seed_classification(self.owner, object_store(), self.world.tenant_a, project_id)
+        await self.sync_authz()
+        return project_id
+
     async def spec_project(self) -> uuid.UUID:
         """A fresh project of tenant A with rules, stories (US-003 discarded), dependencies and a plan."""
         project_id = await make_project(self.owner, self.world.tenant_a)
@@ -901,6 +909,13 @@ def _ivv(suffix: str, body: dict[str, Any] | None = None) -> Callable[[Ctx], Awa
 def _delta(suffix: str) -> Callable[[Ctx], Awaitable[Request]]:
     async def make(ctx: Ctx) -> Request:
         return f"/api/v1/projects/{await ctx.delta_project()}{suffix}", None
+
+    return make
+
+
+def _classified(suffix: str) -> Callable[[Ctx], Awaitable[Request]]:
+    async def make(ctx: Ctx) -> Request:
+        return f"/api/v1/projects/{await ctx.classified_project()}{suffix}", None
 
     return make
 
@@ -1276,6 +1291,7 @@ CASES = [
     Case("POST", "/api/v1/projects/{project_id}/code:push", "member", "outsider", _pushable("/code:push")),
     Case("GET", "/api/v1/projects/{project_id}/ivv", "admin", "outsider", _ivv("/ivv")),
     Case("GET", "/api/v1/projects/{project_id}/delta", "admin", "outsider", _delta("/delta")),
+    Case("GET", "/api/v1/projects/{project_id}/classification", "admin", "outsider", _classified("/classification")),
     Case(
         "PUT", "/api/v1/projects/{project_id}/ivv/mapping", "admin", "member",
         _ivv("/ivv/mapping", {"mapping": (IVV_TARGET / "ivv-mapping.yaml").read_text(encoding="utf-8")}),

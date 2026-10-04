@@ -537,6 +537,25 @@
       "Copybook": "Copybooks",
       "Table": "Tablas",
       "File": "Archivos"
+    },
+    "classification": {
+      "title": "Clasificación de las sentencias",
+      "hint": "Qué sentencias son lógica de negocio (lo que leen los extractores de reglas), control de flujo o infraestructura (manejo de errores, logs, tablas de trabajo), y por qué.",
+      "labels": {
+        "business": "Lógica de negocio",
+        "control_flow": "Control de flujo",
+        "infrastructure": "Infraestructura"
+      },
+      "share": "{{pct}}% de las sentencias",
+      "noDetail": "Este adaptador de fuente da solo los totales, no el detalle sentencia por sentencia.",
+      "filter": "Filtrar por clase",
+      "all": "Todas",
+      "unit": "Unidad",
+      "lines": "Líneas",
+      "statement": "Sentencia",
+      "class": "Clase",
+      "reason": "Por qué",
+      "more": "Mostrar {{count}} más"
     }
   },
   "spec": {

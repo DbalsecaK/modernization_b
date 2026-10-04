@@ -106,6 +106,9 @@ def test_slices_classification_and_data_of_a_range() -> None:
     counts = adapter.classification(files)
     assert set(counts) == {"infrastructure", "control_flow", "business"}
     assert all(counts.values())
+    detail = adapter.classified(files)  # the statements behind the counts, for the Inventory tab
+    assert {label: sum(1 for d in detail if d["label"] == label) for label in counts} == counts
+    assert all(d["unit"] and d["file"].endswith(".cbl") and d["line_start"] <= d["line_end"] for d in detail)
     reads, writes = adapter.data_of(files, "cbl/PAGOORD.cbl", [(129, 138)])
     assert reads == {"ORD-VALOR", "CANALI", "WS-COMISION"}
     assert writes == {"WS-COMISION", "WS-TOTAL"}

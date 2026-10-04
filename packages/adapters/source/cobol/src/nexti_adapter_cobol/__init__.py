@@ -7,6 +7,7 @@ range of lines reads and writes. It never uses a model and never executes anythi
 import json
 import re
 from pathlib import PurePosixPath
+from typing import Any
 
 from nexti_adapter_bms import BmsAdapter
 from nexti_adapter_cobol.parser import (
@@ -221,6 +222,19 @@ class CobolAdapter:
         for statement in (s for p in programs for s in p.statements()):
             counts[_kind(statement)] += 1
         return counts
+
+    def classified(self, files: list[SourceFile]) -> list[dict[str, Any]]:
+        """Every statement with its class and why (the detail behind `classification`, for the Inventory tab)."""
+        programs, _ = self._programs(files)
+        found: list[dict[str, Any]] = []
+        for program in programs:
+            for statement in program.statements():
+                label = _kind(statement)
+                verb = f"EXEC CICS {statement.cics.command}" if statement.cics is not None else statement.verb
+                found.append({"unit": program.name, "file": program.file, "line_start": statement.line_start,
+                              "line_end": statement.line_end, "statement": verb, "label": label,
+                              "reason": f"{verb} statement"})  # fmt: skip
+        return found
 
     def slices(self, files: list[SourceFile]) -> list[SliceView]:
         """One slice per program: the paragraphs with business or control statements (pure screen handling is left

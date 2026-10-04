@@ -6,6 +6,7 @@ import { impactOf, useGraph } from '@/api/graph'
 import type { ProjectDetail } from '@/api/projects'
 import { Button, EmptyState } from '@/components/ui/primitives'
 import { KnowledgeGraph } from '../graph/KnowledgeGraph'
+import { ClassificationPanel } from './ClassificationPanel'
 
 // Inventario tab (spec 5.2.1), connected to the API: the knowledge graph the inventory phase wrote, with the rules,
 // the migration state and the business flows the server computes. A rule opens the Source ↔ target view.
@@ -49,12 +50,18 @@ export function ProjectInventory({ project, onOpenRuns }: { project: ProjectDeta
     )
   }
   return (
-    <KnowledgeGraph
-      data={graph.data}
-      onImpact={(node) => impactOf(project.id, node)}
-      onCompare={(rule) =>
-        void navigate({ to: '.', search: (prev: Record<string, unknown>) => ({ ...prev, tab: 'traceability', rule }) })
-      }
-    />
+    <div className="space-y-6">
+      <KnowledgeGraph
+        data={graph.data}
+        onImpact={(node) => impactOf(project.id, node)}
+        onCompare={(rule) =>
+          void navigate({
+            to: '.',
+            search: (prev: Record<string, unknown>) => ({ ...prev, tab: 'traceability', rule }),
+          })
+        }
+      />
+      <ClassificationPanel projectId={project.id} />
+    </div>
   )
 }
