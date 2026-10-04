@@ -816,6 +816,17 @@ def _run_path(suffix: str = "", body: dict[str, Any] | None = None) -> Callable[
     return make
 
 
+async def _failed_run_retry(ctx: Ctx) -> Request:
+    """A failed run (ADR-0034): only one can be retried."""
+    project_id, run_id = await ctx.run_project()
+    async with ctx.owner.begin() as conn:
+        await conn.execute(
+            text("UPDATE run SET status = 'failed', waiting_reason = NULL, finished_at = now() WHERE id = :r"),
+            {"r": run_id},
+        )
+    return f"/api/v1/projects/{project_id}/runs/{run_id}:retry", None
+
+
 async def _runs(ctx: Ctx) -> Request:
     project_id, _ = await ctx.run_project()
     return f"/api/v1/projects/{project_id}/runs", None
@@ -1160,6 +1171,7 @@ CASES = [
     Case("POST", "/api/v1/projects/{project_id}/runs", "admin", "member", _new_run),
     Case("GET", "/api/v1/projects/{project_id}/runs/{run_id}", "admin", "outsider", _run_path()),
     Case("POST", "/api/v1/projects/{project_id}/runs/{run_id}:cancel", "admin", "member", _run_path(":cancel")),
+    Case("POST", "/api/v1/projects/{project_id}/runs/{run_id}:retry", "admin", "member", _failed_run_retry),
     Case(
         "POST", "/api/v1/projects/{project_id}/runs/{run_id}/gates/{gate}:approve", "admin", "member",
         _run_path("/gates/C1:approve", {}),
