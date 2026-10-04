@@ -1834,7 +1834,9 @@
       "failure": "Fallo",
       "allowed": "Permitido",
       "denied": "Denegado"
-    }
+    },
+    "removeRole": "Quitar el rol {{role}} a {{name}}",
+    "confirmRemoveRole": "¿Quitar el rol {{role}} a {{name}}?"
   },
   "platform": {
     "title": "Operación de plataforma",
@@ -2075,7 +2077,19 @@
     "memberUpdated": "Miembro actualizado.",
     "memberRemoved": "Miembro quitado.",
     "roleDeleted": "Rol eliminado.",
-    "invitePartial": "{{sent}} enviadas; no enviadas: {{errors}}"
+    "invitePartial": "{{sent}} enviadas; no enviadas: {{errors}}",
+    "editTenant": "Editar {{name}}",
+    "editTenantShort": "Editar",
+    "editTenantHint": "El identificador no cambia: identifica al cliente en las URL y en el proveedor de identidad.",
+    "tenantStatusHint": "Un cliente suspendido conserva sus datos, pero su gente no puede iniciar sesión.",
+    "tenantUpdated": "{{name}} actualizado.",
+    "assignRole": "Asignar rol",
+    "assignRoleTitle": "Asignar un rol a {{name}}",
+    "assignRoleHint": "Una persona puede tener varios roles: en todo el cliente o en un proyecto.",
+    "roleAssigned": "Rol asignado a {{name}}.",
+    "roleRemoved": "Rol quitado.",
+    "renameRole": "Renombrar rol",
+    "roleRenamed": "Rol renombrado a {{name}}."
   },
   "inputForms": {
     "hint": "Cada insumo se valida y analiza antes de que un agente lo lea.",

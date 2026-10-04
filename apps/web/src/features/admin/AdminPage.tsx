@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Check, Download, Plus, RotateCw, ShieldCheck, Trash2 } from 'lucide-react'
+import { Check, Download, Pencil, Plus, RotateCw, ShieldCheck, Trash2, UserPlus, X } from 'lucide-react'
 import { useTab } from '@/lib/useTab'
 import { formatDateTime } from '@/lib/format'
 import { can, useMe } from '@/api/session'
@@ -12,6 +12,7 @@ import {
   useInvitations,
   useMembers,
   usePermissions,
+  useRemoveAssignment,
   useRemoveMember,
   useResendInvitation,
   useRevokeInvitation,
@@ -22,10 +23,20 @@ import {
   verifyAuditChain,
   type AuditEntry,
   type ChainStatus,
+  type Member,
   type Role,
+  type Tenant,
 } from '@/api/admin'
 import { toast } from '@/components/ui/overlay'
-import { errorMessage, InviteForm, RoleForm, TenantForm } from './AdminForms'
+import {
+  AssignRoleForm,
+  errorMessage,
+  InviteForm,
+  RoleForm,
+  RoleRenameForm,
+  TenantEditForm,
+  TenantForm,
+} from './AdminForms'
 import { Authentication } from './Authentication'
 import { IDENTITY_MANAGE } from '@/api/identity'
 import { Integrations } from './Integrations'
@@ -102,9 +113,11 @@ function Tenants() {
   const [open, setOpen] = useState(false)
   // A fresh form on every opening; closing does not remount, so focus returns to the opener.
   const [opened, setOpened] = useState(0)
+  const [editing, setEditing] = useState<Tenant | null>(null)
   return (
     <Card>
       <TenantForm key={opened} open={open} onClose={() => setOpen(false)} />
+      {editing && <TenantEditForm key={editing.id} open onClose={() => setEditing(null)} tenant={editing} />}
       <CardHeader
         title={t('admin.tenantsTitle')}
         action={
@@ -128,6 +141,7 @@ function Tenants() {
             <Th>{t('admin.deployment')}</Th>
             <Th>{t('admin.defaultLanguage')}</Th>
             <Th>{t('admin.status')}</Th>
+            <Th className="text-right" />
           </tr>
         </thead>
         <tbody>
@@ -141,6 +155,16 @@ function Tenants() {
               <Td>{languageName(x.defaultLanguage)}</Td>
               <Td>
                 <Badge tone={x.status === 'active' ? 'good' : 'neutral'}>{t(`admin.tenantStatus.${x.status}`)}</Badge>
+              </Td>
+              <Td className="text-right">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  aria-label={`${t('adminForms.editTenantShort')} ${x.name}`}
+                  onClick={() => setEditing(x)}
+                >
+                  <Pencil size={14} />
+                </Button>
               </Td>
             </tr>
           ))}
@@ -159,6 +183,8 @@ function Users() {
   const roles = useRoles().data ?? []
   const setStatus = useSetMemberStatus()
   const remove = useRemoveMember()
+  const unassign = useRemoveAssignment()
+  const [assigning, setAssigning] = useState<Member | null>(null)
   const [open, setOpen] = useState(false)
   // A fresh form on every opening; closing does not remount, so focus returns to the opener.
   const [opened, setOpened] = useState(0)
@@ -167,6 +193,7 @@ function Users() {
     <div className="space-y-6">
       <Card>
         <InviteForm key={opened} open={open} onClose={() => setOpen(false)} />
+        {assigning && <AssignRoleForm key={assigning.id} open onClose={() => setAssigning(null)} member={assigning} />}
         <CardHeader
           title={t('admin.usersTitle')}
           action={
@@ -204,7 +231,32 @@ function Users() {
                     {u.roles.map((r) => {
                       const role = roles.find((x) => x.id === r.roleId)
                       const label = role ? roleLabel(t, role) : r.roleKey
-                      return <Badge key={r.assignmentId}>{r.projectName ? `${label} · ${r.projectName}` : label}</Badge>
+                      const text = r.projectName ? `${label} · ${r.projectName}` : label
+                      return (
+                        <Badge key={r.assignmentId}>
+                          <span className="inline-flex items-center gap-1">
+                            {text}
+                            {u.status !== 'invited' && (
+                              <button
+                                type="button"
+                                className="rounded text-muted hover:text-critical"
+                                aria-label={t('admin.removeRole', { role: text, name: u.displayName })}
+                                disabled={unassign.isPending}
+                                onClick={() => {
+                                  if (window.confirm(t('admin.confirmRemoveRole', { role: text, name: u.displayName })))
+                                    void run(
+                                      () => unassign.mutateAsync(r.assignmentId),
+                                      t('adminForms.roleRemoved'),
+                                      failed,
+                                    )
+                                }}
+                              >
+                                <X size={12} />
+                              </button>
+                            )}
+                          </span>
+                        </Badge>
+                      )
                     })}
                   </div>
                 </Td>
@@ -213,6 +265,16 @@ function Users() {
                   <Badge tone={STATUS_TONE[u.status]}>{t(`admin.userStatus.${u.status}`)}</Badge>
                 </Td>
                 <Td className="text-right whitespace-nowrap">
+                  {u.status !== 'invited' && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      aria-label={`${t('adminForms.assignRole')} ${u.displayName}`}
+                      onClick={() => setAssigning(u)}
+                    >
+                      <UserPlus size={14} />
+                    </Button>
+                  )}
                   {u.id !== me?.user.id && u.status !== 'invited' && (
                     <>
                       <Button
@@ -338,6 +400,7 @@ function Roles() {
   const permissions = usePermissions().data ?? []
   const save = useSetRolePermissions()
   const deleteRole = useDeleteRole()
+  const [renaming, setRenaming] = useState<Role | null>(null)
   const [open, setOpen] = useState(false)
   // A fresh form on every opening; closing does not remount, so focus returns to the opener.
   const [opened, setOpened] = useState(0)
@@ -358,6 +421,7 @@ function Roles() {
   return (
     <div className="space-y-6">
       <RoleForm key={opened} open={open} onClose={() => setOpen(false)} permissions={permissions} roles={roles} />
+      {renaming && <RoleRenameForm key={renaming.id} open onClose={() => setRenaming(null)} role={renaming} />}
       <Card>
         <CardHeader
           title={t('admin.rolesTitle')}
@@ -393,7 +457,17 @@ function Roles() {
                 </Td>
                 <Td className="text-right tabular">{r.members}</Td>
                 <Td className="text-right tabular">{r.permissions.length}</Td>
-                <Td className="text-right">
+                <Td className="text-right whitespace-nowrap">
+                  {!r.isSystem && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      aria-label={`${t('adminForms.renameRole')} ${roleLabel(t, r)}`}
+                      onClick={() => setRenaming(r)}
+                    >
+                      <Pencil size={14} />
+                    </Button>
+                  )}
                   {!r.isSystem && (
                     <Button
                       size="sm"

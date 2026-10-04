@@ -1834,7 +1834,9 @@
       "failure": "Failure",
       "allowed": "Allowed",
       "denied": "Denied"
-    }
+    },
+    "removeRole": "Remove the role {{role}} from {{name}}",
+    "confirmRemoveRole": "Remove the role {{role}} from {{name}}?"
   },
   "platform": {
     "title": "Platform operations",
@@ -2075,7 +2077,19 @@
     "memberUpdated": "Member updated.",
     "memberRemoved": "Member removed.",
     "roleDeleted": "Role deleted.",
-    "invitePartial": "{{sent}} sent; not sent: {{errors}}"
+    "invitePartial": "{{sent}} sent; not sent: {{errors}}",
+    "editTenant": "Edit {{name}}",
+    "editTenantShort": "Edit",
+    "editTenantHint": "The slug cannot change: it identifies the customer in URLs and in the identity provider.",
+    "tenantStatusHint": "A suspended customer keeps its data, but its people cannot sign in.",
+    "tenantUpdated": "{{name}} updated.",
+    "assignRole": "Assign role",
+    "assignRoleTitle": "Assign a role to {{name}}",
+    "assignRoleHint": "A person can hold several roles: on the whole customer or on one project.",
+    "roleAssigned": "Role assigned to {{name}}.",
+    "roleRemoved": "Role removed.",
+    "renameRole": "Rename role",
+    "roleRenamed": "Role renamed to {{name}}."
   },
   "inputForms": {
     "hint": "Every input is validated and scanned before any agent reads it.",

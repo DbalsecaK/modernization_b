@@ -2,13 +2,18 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   roleLabel,
+  useAssignRole,
   useCreateRole,
   useCreateTenant,
   useInvite,
   useProjects,
+  useRenameRole,
   useRoles,
+  useUpdateTenant,
+  type Member,
   type Permission,
   type Role,
+  type Tenant,
 } from '@/api/admin'
 import { ApiError } from '@/api/client'
 import { Button, Field, Input, Select } from '@/components/ui/primitives'
@@ -331,6 +336,191 @@ export function RoleForm({
         />
       </Field>
       <Notice tone="info">{t('admin.segregation')}</Notice>
+    </Drawer>
+  )
+}
+
+export function TenantEditForm({ open, onClose, tenant }: { open: boolean; onClose: () => void; tenant: Tenant }) {
+  const { t } = useTranslation()
+  const update = useUpdateTenant()
+  const [name, setName] = useState(tenant.name)
+  const [deployment, setDeployment] = useState<Deployment>(tenant.deploymentModel as Deployment)
+  const [language, setLanguage] = useState<'en' | 'es'>(tenant.defaultLanguage as 'en' | 'es')
+  const [status, setStatus] = useState<'active' | 'suspended'>(tenant.status as 'active' | 'suspended')
+  return (
+    <Drawer
+      open={open}
+      onClose={onClose}
+      title={t('adminForms.editTenant', { name: tenant.name })}
+      description={t('adminForms.editTenantHint')}
+      footer={
+        <>
+          <Button variant="ghost" onClick={onClose}>
+            {t('common.cancel')}
+          </Button>
+          <Button
+            variant="primary"
+            disabled={!name.trim() || update.isPending}
+            onClick={async () => {
+              try {
+                await update.mutateAsync({
+                  id: tenant.id,
+                  name: name.trim(),
+                  deploymentModel: deployment,
+                  defaultLanguage: language,
+                  status,
+                })
+                toast(t('adminForms.tenantUpdated', { name: name.trim() }))
+                onClose()
+              } catch (error) {
+                toast(t('adminForms.actionFailed', { message: errorMessage(error) }))
+              }
+            }}
+          >
+            {t('common.save')}
+          </Button>
+        </>
+      }
+    >
+      <Field label={t('adminForms.tenantName')}>
+        <Input value={name} onChange={(e) => setName(e.target.value)} />
+      </Field>
+      <Field label={t('admin.deployment')} hint={t(`adminForms.deploymentHint.${deployment}`)}>
+        <Select value={deployment} onChange={(e) => setDeployment(e.target.value as Deployment)}>
+          {DEPLOYMENTS.map((d) => (
+            <option key={d} value={d}>
+              {t(`deployment.${d}`)}
+            </option>
+          ))}
+        </Select>
+      </Field>
+      <Field label={t('admin.defaultLanguage')}>
+        <Select value={language} onChange={(e) => setLanguage(e.target.value as 'en' | 'es')}>
+          <option value="en">English</option>
+          <option value="es">Español</option>
+        </Select>
+      </Field>
+      <Field label={t('admin.status')} hint={t('adminForms.tenantStatusHint')}>
+        <Select value={status} onChange={(e) => setStatus(e.target.value as 'active' | 'suspended')}>
+          <option value="active">{t('admin.tenantStatus.active')}</option>
+          <option value="suspended">{t('admin.tenantStatus.suspended')}</option>
+        </Select>
+      </Field>
+    </Drawer>
+  )
+}
+
+export function AssignRoleForm({ open, onClose, member }: { open: boolean; onClose: () => void; member: Member }) {
+  const { t } = useTranslation()
+  const roles = useRoles().data ?? []
+  const projects = useProjects().data ?? []
+  const assign = useAssignRole()
+  const [roleId, setRoleId] = useState('')
+  const [projectId, setProjectId] = useState('')
+  const role = roles.find((r) => r.id === roleId)
+  const needsProject = role?.scope === 'project'
+  const valid = !!role && (!needsProject || !!projectId)
+  return (
+    <Drawer
+      open={open}
+      onClose={onClose}
+      title={t('adminForms.assignRoleTitle', { name: member.displayName })}
+      description={t('adminForms.assignRoleHint')}
+      footer={
+        <>
+          <Button variant="ghost" onClick={onClose}>
+            {t('common.cancel')}
+          </Button>
+          <Button
+            variant="primary"
+            disabled={!valid || assign.isPending}
+            onClick={async () => {
+              try {
+                await assign.mutateAsync({ userId: member.id, roleId, projectId: needsProject ? projectId : null })
+                toast(t('adminForms.roleAssigned', { name: member.displayName }))
+                onClose()
+              } catch (error) {
+                toast(t('adminForms.actionFailed', { message: errorMessage(error) }))
+              }
+            }}
+          >
+            {t('adminForms.assignRole')}
+          </Button>
+        </>
+      }
+    >
+      <Field label={t('adminForms.role')}>
+        <Select value={roleId} onChange={(e) => setRoleId(e.target.value)}>
+          <option value="" disabled>
+            —
+          </option>
+          {(['tenant', 'project'] as const).map((scope) => (
+            <optgroup key={scope} label={t(`admin.scopes.${scope}`)}>
+              {roles
+                .filter((r) => r.scope === scope)
+                .map((r) => (
+                  <option key={r.id} value={r.id}>
+                    {roleLabel(t, r)}
+                  </option>
+                ))}
+            </optgroup>
+          ))}
+        </Select>
+      </Field>
+      {needsProject && (
+        <Field label={t('adminForms.project')}>
+          <Select value={projectId} onChange={(e) => setProjectId(e.target.value)}>
+            <option value="" disabled>
+              —
+            </option>
+            {projects.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </Select>
+        </Field>
+      )}
+      <Notice tone="info">{t('admin.segregation')}</Notice>
+    </Drawer>
+  )
+}
+
+export function RoleRenameForm({ open, onClose, role }: { open: boolean; onClose: () => void; role: Role }) {
+  const { t } = useTranslation()
+  const rename = useRenameRole()
+  const [name, setName] = useState(role.name)
+  return (
+    <Drawer
+      open={open}
+      onClose={onClose}
+      title={t('adminForms.renameRole')}
+      footer={
+        <>
+          <Button variant="ghost" onClick={onClose}>
+            {t('common.cancel')}
+          </Button>
+          <Button
+            variant="primary"
+            disabled={!name.trim() || name.trim() === role.name || rename.isPending}
+            onClick={async () => {
+              try {
+                await rename.mutateAsync({ id: role.id, name: name.trim() })
+                toast(t('adminForms.roleRenamed', { name: name.trim() }))
+                onClose()
+              } catch (error) {
+                toast(t('adminForms.actionFailed', { message: errorMessage(error) }))
+              }
+            }}
+          >
+            {t('common.save')}
+          </Button>
+        </>
+      }
+    >
+      <Field label={t('adminForms.roleName')}>
+        <Input value={name} onChange={(e) => setName(e.target.value)} />
+      </Field>
     </Drawer>
   )
 }
