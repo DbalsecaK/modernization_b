@@ -1,15 +1,38 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { hierarchy, pack } from 'd3-hierarchy'
 import { useTranslation } from 'react-i18next'
-import { ChevronLeft, ChevronRight, Maximize2, Minus, Plus, Search, X } from 'lucide-react'
+import { ChevronDown, ChevronLeft, ChevronRight, Layers, Maximize2, Minus, Plus, Search, X } from 'lucide-react'
 import { cn } from '@/lib/cn'
-import type { GraphData, GraphEdge, GraphFlow, GraphNode, GraphNodeType, MigrationState } from '@/api/graph'
+import type {
+  GraphData,
+  GraphEdge,
+  GraphFlow,
+  GraphInsights,
+  GraphNode,
+  GraphNodeType,
+  MigrationState,
+} from '@/api/graph'
 import { Badge, Button, Card, CardBody, CardHeader, StatTile } from '@/components/ui/primitives'
+import {
+  SCENARIO_PREFIX,
+  childrenOf,
+  flowOptions,
+  groupKeyOf,
+  isDrawable,
+  parentsOf,
+  phaseOf,
+  summaryOf,
+  topLevel,
+  unitForStep,
+  unitView,
+} from './graphModel'
 
 // Interactive knowledge graph (spec 5.2.1): relation filters, orphan/isolated filter, business-flow walkthrough,
 // business-rule focus, search, zoom and pan, over the project's real graph (GET /graph). Same view as the prototype.
+// Deep inventory (ADR-0032) adds on top: entering a unit to see its blocks, grouping by transactional phase, model
+// descriptions, flows by scenario, architect observations, a summary header and a marker on tables without DDL.
 
-type Relation = 'calls' | 'reads' | 'writes' | 'includes'
+type Relation = 'calls' | 'reads' | 'writes' | 'includes' | 'follows' | 'jumps' | 'onError'
 type Visibility = 'all' | 'orphans' | 'hideOrphans' | 'external' | 'hideExternal'
 
 const TYPES: GraphNodeType[] = ['transaction', 'program', 'map', 'copybook', 'file']
@@ -21,8 +44,12 @@ const edgeGroup: Record<string, Relation> = {
   WRITES: 'writes',
   COPIES: 'includes',
   USES_MAP: 'includes',
+  // Between the blocks of a unit (ADR-0032). CONTAINS is structure and is never drawn.
+  NEXT: 'follows',
+  GOTO: 'jumps',
+  ON_ERROR: 'onError',
 }
-const RELATIONS: Relation[] = ['calls', 'reads', 'writes', 'includes']
+const RELATIONS: Relation[] = ['calls', 'reads', 'writes', 'includes', 'follows', 'jumps', 'onError']
 // The order of the tiles: units of code first, then screens and shared layouts, then data.
 const KIND_ORDER = ['StoredProcedure', 'Program', 'Class', 'Transaction', 'Page', 'BmsMap', 'Copybook', 'Table', 'File']
 const relationStyle: Record<Relation, { color: string; dash?: string }> = {
@@ -30,6 +57,9 @@ const relationStyle: Record<Relation, { color: string; dash?: string }> = {
   reads: { color: 'var(--series-1)' },
   writes: { color: 'var(--series-2)' },
   includes: { color: 'var(--text-muted)', dash: '4 3' },
+  follows: { color: 'var(--series-3)' },
+  jumps: { color: 'var(--warning)', dash: '7 3' },
+  onError: { color: 'var(--critical)', dash: '2 3' },
 }
 const PALETTE = [
   'var(--series-1)',
@@ -48,6 +78,8 @@ const stateColor: Record<MigrationState, string> = {
 const NODE_W = 140
 const NODE_H = 36
 
+type Walk = { name: string; steps: { title: string; nodes: string[]; rule: string | null }[] }
+
 function layout(nodes: GraphNode[]) {
   const cols: Record<number, GraphNode[]> = {}
   nodes.forEach((n) => (cols[COLUMNS[n.type]] ??= []).push(n))
@@ -63,18 +95,25 @@ function layout(nodes: GraphNode[]) {
 type PackGroup = { id: string; label: string; x: number; y: number; r: number; depth: number }
 const PACK_SIZE = 760
 
-function packLayout(nodes: GraphNode[], dataLabel: string, systemLabel: string) {
+// `groupOf` picks the circle of each non-data node (by default its domain; inside a unit, optionally its phase).
+function packLayout(
+  nodes: GraphNode[],
+  dataLabel: string,
+  systemLabel: string,
+  groupOf: (n: GraphNode) => { key: string; label: string } = (n) => ({ key: n.domain, label: n.domain }),
+) {
   type Datum = { id: string; label: string; value?: number; children?: Datum[] }
   const size = (n: GraphNode) =>
     n.loc ? Math.max(60, n.loc / 12) : n.type === 'file' ? 70 : n.type === 'copybook' ? 55 : 60
-  const domains = [...new Set(nodes.filter((n) => n.type !== 'file').map((n) => n.domain))]
-  const children: Datum[] = domains.map((d) => ({
-    id: `group:${d}`,
-    label: d,
-    children: nodes
-      .filter((n) => n.domain === d && n.type !== 'file')
-      .map((n) => ({ id: n.id, label: n.name, value: size(n) })),
-  }))
+  const byGroup = new Map<string, Datum>()
+  nodes
+    .filter((n) => n.type !== 'file')
+    .forEach((n) => {
+      const g = groupOf(n)
+      if (!byGroup.has(g.key)) byGroup.set(g.key, { id: `group:${g.key}`, label: g.label, children: [] })
+      byGroup.get(g.key)!.children!.push({ id: n.id, label: n.name, value: size(n) })
+    })
+  const children: Datum[] = [...byGroup.values()]
   const files = nodes.filter((n) => n.type === 'file')
   if (files.length)
     children.push({
@@ -105,15 +144,26 @@ function classify(node: GraphNode, edges: GraphEdge[]) {
 
 export function KnowledgeGraph({
   data,
+  insights,
   onCompare,
   onImpact,
 }: {
   data: GraphData
+  /** Model-written reading aids (descriptions, observations, scenarios); absent or empty without deep inventory. */
+  insights?: GraphInsights
   onCompare: (ruleId: string) => void
   onImpact: (nodeId: string) => Promise<string[]>
 }) {
   const { t } = useTranslation()
   const { nodes: graphNodes, edges: graphEdges, rules, flows: businessFlows } = data
+  const scenarios = insights?.scenarios ?? []
+  const observations = insights?.observations ?? []
+  // Blocks (children of a unit) are hidden at the top level and shown when the user enters their unit.
+  const parents = useMemo(() => parentsOf(graphNodes, graphEdges), [graphNodes, graphEdges])
+  const topNodes = useMemo(() => topLevel(graphNodes, parents), [graphNodes, parents])
+  const drawableEdges = useMemo(() => graphEdges.filter(isDrawable), [graphEdges])
+  const summary = summaryOf(data, parents)
+  const options = flowOptions(businessFlows, scenarios)
   const domains = useMemo(() => [...new Set(graphNodes.map((n) => n.domain))].sort(), [graphNodes])
   const domainColor: Record<string, string> = Object.fromEntries(
     domains.map((d, i) => [d, PALETTE[i % PALETTE.length]]),
@@ -135,6 +185,9 @@ export function KnowledgeGraph({
   const [ruleId, setRuleId] = useState('')
   const [step, setStep] = useState(0)
   const [selected, setSelected] = useState<string | null>(null)
+  const [unit, setUnit] = useState<string | null>(null)
+  const [groupBy, setGroupBy] = useState<'domain' | 'phase'>('domain')
+  const [observationsOpen, setObservationsOpen] = useState(true)
   const [view, setView] = useState({ k: 1, x: 0, y: 0 })
   const svgRef = useRef<SVGSVGElement>(null)
   const boxRef = useRef<HTMLDivElement>(null)
@@ -144,12 +197,31 @@ export function KnowledgeGraph({
   const [boxWidth, setBoxWidth] = useState(800)
 
   const flow = businessFlows.find((f) => f.id === flowId)
+  const scenario = scenarios.find((s) => `${SCENARIO_PREFIX}${s.id}` === flowId)
   const rule = rules.find((r) => r.id === ruleId)
+  // The walkthrough on the right: an entry-point flow or a scenario, both as titled steps over graph nodes.
+  const walk: Walk | undefined = flow
+    ? { name: flow.name, steps: flow.steps.map((s) => ({ title: stepTitle(s), nodes: s.nodes, rule: s.rule })) }
+    : scenario
+      ? { name: scenario.name, steps: scenario.steps.map((s) => ({ ...s, rule: s.rule ?? null })) }
+      : undefined
+  const stepNodesOf = (value: string) =>
+    (
+      businessFlows.find((f) => f.id === value)?.steps ??
+      scenarios.find((s) => `${SCENARIO_PREFIX}${s.id}` === value)?.steps ??
+      []
+    ).map((s) => s.nodes)
+  const unitNode = unit ? graphNodes.find((n) => n.id === unit) : undefined
+  const unitNodes = useMemo(
+    () => (unit ? unitView(unit, graphNodes, graphEdges, parents) : null),
+    [unit, graphNodes, graphEdges, parents],
+  )
+  const childCount = (id: string) => childrenOf(id, parents).length
 
-  // Visible nodes after type and orphan filters.
-  const nodes = graphNodes.filter((n) => {
+  // Visible nodes after type and orphan filters: the top level, or the blocks of the entered unit and what they touch.
+  const nodes = (unitNodes ?? topNodes).filter((n) => {
     if (!types.includes(n.type)) return false
-    if (domain !== 'all' && n.domain !== domain) return false
+    if (!unitNodes && domain !== 'all' && n.domain !== domain) return false
     const kind = classify(n, graphEdges)
     if (visibility === 'orphans') return kind !== null
     if (visibility === 'hideOrphans') return kind === null
@@ -158,10 +230,19 @@ export function KnowledgeGraph({
     return true
   })
   const ids = new Set(nodes.map((n) => n.id))
-  const edges = graphEdges.filter(
+  const edges = drawableEdges.filter(
     (e) => ids.has(e.from) && ids.has(e.to) && relations.includes(edgeGroup[e.kind] ?? 'calls'),
   )
-  const packed = packLayout(nodes, t('graph.dataStores'), t('graph.system'))
+  const groupLabel = (key: string) =>
+    key === 'outside'
+      ? t('graph.outsideUnit')
+      : key.startsWith('phase:')
+        ? t(`graph.phases.${key.slice('phase:'.length)}`)
+        : key
+  const packed = packLayout(nodes, t('graph.dataStores'), unitNode ? unitNode.name : t('graph.system'), (n) => {
+    const key = groupKeyOf(n, unit ? groupBy : 'domain', parents)
+    return { key, label: groupLabel(key) }
+  })
   const layered = layout(nodes)
   const pos: Record<string, { x: number; y: number; r?: number }> = mode === 'circles' ? packed.pos : layered
   const height = mode === 'circles' ? PACK_SIZE : Math.max(0, ...Object.values(pos).map((p) => p.y)) + 60
@@ -174,14 +255,14 @@ export function KnowledgeGraph({
   // Flow highlight: nodes in order of first appearance get a step number; edges between consecutive nodes.
   const flowNodes = new Map<string, number>()
   const flowEdges = new Set<string>()
-  flow?.steps.forEach((s, i) => {
+  walk?.steps.forEach((s, i) => {
     s.nodes.forEach((n) => !flowNodes.has(n) && flowNodes.set(n, i + 1))
     s.nodes.slice(1).forEach((n, j) => {
       flowEdges.add(`${s.nodes[j]}>${n}`)
       flowEdges.add(`${n}>${s.nodes[j]}`)
     })
   })
-  const stepNodes = new Set(flow?.steps[step]?.nodes ?? [])
+  const stepNodes = new Set(walk?.steps[step]?.nodes ?? [])
 
   // Rule focus: nodes implementing the rule plus their direct neighbours.
   const ruleNodes = new Set<string>()
@@ -206,9 +287,9 @@ export function KnowledgeGraph({
   }
 
   const q = query.trim().toLowerCase()
-  const focusActive = !!flow || !!rule || q.length > 1 || !!selected
+  const focusActive = !!walk || !!rule || q.length > 1 || !!selected
   const isFocused = (id: string) =>
-    flow
+    walk
       ? flowNodes.has(id)
       : rule
         ? ruleNodes.has(id)
@@ -237,7 +318,7 @@ export function KnowledgeGraph({
   // Suggested migration order: data and shared layouts first, then programs by fewest dependents, entry points last.
   function migrationOrder() {
     const rank: Record<GraphNodeType, number> = { file: 0, copybook: 1, map: 2, program: 3, transaction: 4 }
-    return graphNodes
+    return topNodes
       .filter((n) => classify(n, graphEdges) === null && !n.external)
       .sort((a, b) => rank[a.type] - rank[b.type] || impactOf(a.id).length - impactOf(b.id).length)
       .map((n) => n.id)
@@ -278,23 +359,50 @@ export function KnowledgeGraph({
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setView({ k: fitK, x: 0, y: 0 })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode])
+  }, [mode, unit])
+
+  // Enter a unit (its blocks) or go back to the system (null).
+  function enterUnit(id: string | null) {
+    setUnit(id)
+    setSelected(null)
+    setImpact([])
+  }
+  // Select a node from a list: a block opens its unit, a node outside the entered unit goes back to the system.
+  function select(id: string) {
+    const p = parents.get(id)
+    if (p && p !== unit) enterUnit(p)
+    else if (!p && unitNodes && !unitNodes.some((n) => n.id === id)) enterUnit(null)
+    setSelected(id)
+  }
+  // Move the walkthrough to a step; a step over the blocks of a unit enters that unit, a top-level step leaves it.
+  function goToStep(i: number, steps: string[][] = walk?.steps.map((s) => s.nodes) ?? []) {
+    setStep(i)
+    const nodesOfStep = steps[i] ?? []
+    if (nodesOfStep.length === 0) return
+    const target = unitForStep(nodesOfStep, parents)
+    if (target !== unit) enterUnit(target)
+  }
+  function pickWalk(value: string) {
+    setFlowId(value)
+    setRuleId('')
+    goToStep(0, stepNodesOf(value))
+  }
 
   const node = graphNodes.find((n) => n.id === selected)
   // What the inventory found, by what each unit is (a stored procedure, a table, a COBOL program...): only the kinds
   // present get a tile, and the units the code calls but the inputs do not bring are counted apart (dependencies).
   const kindCounts = Object.entries(
-    graphNodes
+    topNodes
       .filter((n) => !n.external)
       .reduce<Record<string, number>>(
         (acc, n) => ({ ...acc, [n.kind || n.type]: (acc[n.kind || n.type] ?? 0) + 1 }),
         {},
       ),
   ).sort(([a], [b]) => KIND_ORDER.indexOf(a) - KIND_ORDER.indexOf(b))
-  const externalCount = graphNodes.filter((n) => n.external).length
+  const externalCount = topNodes.filter((n) => n.external).length
   const kindLabel = (k: string) => t(`inventory.kinds.${k}`, { defaultValue: k })
-  const presentTypes = TYPES.filter((ty) => graphNodes.some((n) => n.type === ty))
-  const presentRelations = RELATIONS.filter((r) => graphEdges.some((e) => (edgeGroup[e.kind] ?? 'calls') === r))
+  const presentTypes = TYPES.filter((ty) => (unitNodes ?? topNodes).some((n) => n.type === ty))
+  const presentRelations = RELATIONS.filter((r) => drawableEdges.some((e) => (edgeGroup[e.kind] ?? 'calls') === r))
   const includedKinds = [
     ...new Set(
       graphEdges
@@ -308,8 +416,8 @@ export function KnowledgeGraph({
     r === 'includes' && includedKinds.length
       ? `${t('graph.relationNames.includesShort')} (${includedKinds.join(', ')})`
       : t(`graph.relationNames.${r}`)
-  const orphanCount = graphNodes.filter((n) => classify(n, graphEdges) !== null).length
-  const topCopybook = graphNodes
+  const orphanCount = topNodes.filter((n) => classify(n, graphEdges) !== null).length
+  const topCopybook = topNodes
     .filter((n) => n.type === 'copybook' || n.type === 'file')
     .sort((a, b) => impactOf(b.id).length - impactOf(a.id).length)[0]
   const color = (n: GraphNode) =>
@@ -335,152 +443,207 @@ export function KnowledgeGraph({
         </button>
       </div>
 
+      <p className="text-sm text-text-2" aria-label={t('graph.summary.label')}>
+        {[
+          t('graph.summary.modules', { count: summary.modules }),
+          t('graph.summary.stores', { count: summary.stores }),
+          t('graph.summary.relations', { count: summary.relations }),
+          t('graph.summary.entryPoints', { count: summary.entryPoints }),
+        ].join(' · ')}
+      </p>
+
       <div className="grid gap-6 xl:grid-cols-[260px_minmax(0,1fr)_320px]">
-        {/* Filters */}
-        <Card className="h-fit">
-          <CardBody className="space-y-5">
-            <div className="relative">
-              <Search size={14} className="absolute top-1/2 left-2.5 -translate-y-1/2 text-muted" />
-              <input
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder={t('graph.search')}
-                aria-label={t('graph.search')}
-                className="h-9 w-full rounded-md border border-border bg-surface pr-3 pl-8 text-sm text-text placeholder:text-muted focus:outline-none"
-              />
-            </div>
+        <div className="h-fit space-y-6">
+          {/* Filters */}
+          <Card className="h-fit">
+            <CardBody className="space-y-5">
+              <div className="relative">
+                <Search size={14} className="absolute top-1/2 left-2.5 -translate-y-1/2 text-muted" />
+                <input
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder={t('graph.search')}
+                  aria-label={t('graph.search')}
+                  className="h-9 w-full rounded-md border border-border bg-surface pr-3 pl-8 text-sm text-text placeholder:text-muted focus:outline-none"
+                />
+              </div>
 
-            <FilterGroup title={t('graph.flow')}>
-              <select
-                value={flowId}
-                onChange={(e) => (setFlowId(e.target.value), setRuleId(''))}
-                className="h-9 w-full rounded-md border border-border bg-surface px-2 text-sm text-text"
-                aria-label={t('graph.flow')}
-              >
-                <option value="">{t('graph.none')}</option>
-                {businessFlows.map((f) => (
-                  <option key={f.id} value={f.id}>
-                    {f.name}
-                  </option>
-                ))}
-              </select>
-              <p className="text-xs text-muted">{t('graph.flowHint', { count: businessFlows.length })}</p>
-            </FilterGroup>
+              <FilterGroup title={t('graph.flow')}>
+                <select
+                  value={flowId}
+                  onChange={(e) => pickWalk(e.target.value)}
+                  className="h-9 w-full rounded-md border border-border bg-surface px-2 text-sm text-text"
+                  aria-label={t('graph.flow')}
+                >
+                  <option value="">{t('graph.none')}</option>
+                  {options.entry.length > 0 && (
+                    <optgroup label={t('graph.flowGroups.entry')}>
+                      {options.entry.map((o) => (
+                        <option key={o.value} value={o.value}>
+                          {o.label}
+                        </option>
+                      ))}
+                    </optgroup>
+                  )}
+                  {options.scenario.length > 0 && (
+                    <optgroup label={t('graph.flowGroups.scenario')}>
+                      {options.scenario.map((o) => (
+                        <option key={o.value} value={o.value}>
+                          {o.label}
+                        </option>
+                      ))}
+                    </optgroup>
+                  )}
+                </select>
+                <p className="text-xs text-muted">{t('graph.flowHint', { count: businessFlows.length })}</p>
+                {scenarios.length > 0 && (
+                  <p className="text-xs text-muted">{t('graph.scenarioHint', { count: scenarios.length })}</p>
+                )}
+              </FilterGroup>
 
-            <FilterGroup title={t('graph.rule')}>
-              <select
-                value={ruleId}
-                onChange={(e) => (setRuleId(e.target.value), setFlowId(''))}
-                className="h-9 w-full rounded-md border border-border bg-surface px-2 text-sm text-text"
-                aria-label={t('graph.rule')}
-              >
-                <option value="">{t('graph.none')}</option>
-                {rules.map((r) => (
-                  <option key={r.id} value={r.id}>
-                    {r.id} · {r.name}
-                  </option>
-                ))}
-              </select>
-            </FilterGroup>
+              <FilterGroup title={t('graph.rule')}>
+                <select
+                  value={ruleId}
+                  onChange={(e) => (setRuleId(e.target.value), setFlowId(''))}
+                  className="h-9 w-full rounded-md border border-border bg-surface px-2 text-sm text-text"
+                  aria-label={t('graph.rule')}
+                >
+                  <option value="">{t('graph.none')}</option>
+                  {rules.map((r) => (
+                    <option key={r.id} value={r.id}>
+                      {r.id} · {r.name}
+                    </option>
+                  ))}
+                </select>
+              </FilterGroup>
 
-            <FilterGroup title={t('graph.relations')}>
-              {presentRelations.map((r) => (
-                <label key={r} className="flex cursor-pointer items-center gap-2 text-sm text-text">
-                  <input
-                    type="checkbox"
-                    checked={relations.includes(r)}
-                    onChange={() => toggle(relations, r, setRelations)}
-                    className="accent-[var(--series-1)]"
-                  />
-                  <svg width="22" height="6" aria-hidden>
-                    <line
-                      x1="0"
-                      y1="3"
-                      x2="22"
-                      y2="3"
-                      stroke={relationStyle[r].color}
-                      strokeWidth="2.5"
-                      strokeDasharray={relationStyle[r].dash}
+              <FilterGroup title={t('graph.relations')}>
+                {presentRelations.map((r) => (
+                  <label key={r} className="flex cursor-pointer items-center gap-2 text-sm text-text">
+                    <input
+                      type="checkbox"
+                      checked={relations.includes(r)}
+                      onChange={() => toggle(relations, r, setRelations)}
+                      className="accent-[var(--series-1)]"
                     />
-                  </svg>
-                  {relationLabel(r)}
-                </label>
-              ))}
-            </FilterGroup>
+                    <svg width="22" height="6" aria-hidden>
+                      <line
+                        x1="0"
+                        y1="3"
+                        x2="22"
+                        y2="3"
+                        stroke={relationStyle[r].color}
+                        strokeWidth="2.5"
+                        strokeDasharray={relationStyle[r].dash}
+                      />
+                    </svg>
+                    {relationLabel(r)}
+                  </label>
+                ))}
+              </FilterGroup>
 
-            <FilterGroup title={t('graph.nodes')}>
-              <select
-                value={visibility}
-                onChange={(e) => setVisibility(e.target.value as Visibility)}
-                className="h-9 w-full rounded-md border border-border bg-surface px-2 text-sm text-text"
-                aria-label={t('graph.nodes')}
-              >
-                <option value="all">{t('graph.visibility.all')}</option>
-                <option value="orphans">{t('graph.visibility.orphans')}</option>
-                <option value="hideOrphans">{t('graph.visibility.hideOrphans')}</option>
-                {externalCount > 0 && <option value="external">{t('graph.visibility.external')}</option>}
-                {externalCount > 0 && <option value="hideExternal">{t('graph.visibility.hideExternal')}</option>}
-              </select>
-              <select
-                value={domain}
-                onChange={(e) => setDomain(e.target.value as typeof domain)}
-                className="h-9 w-full rounded-md border border-border bg-surface px-2 text-sm text-text"
-                aria-label={t('inventory.domain')}
-              >
-                <option value="all">{t('inventory.allDomains')}</option>
-                {domains.map((d) => (
-                  <option key={d}>{d}</option>
-                ))}
-              </select>
-              <div className="mt-2 flex flex-wrap gap-1.5">
-                {presentTypes.map((ty) => (
-                  <button
-                    key={ty}
-                    onClick={() => toggle(types, ty, setTypes)}
-                    aria-pressed={types.includes(ty)}
-                    className={cn(
-                      'rounded-full border px-2 py-0.5 text-xs',
-                      types.includes(ty) ? 'border-series-1 bg-series-1/10 text-text' : 'border-border text-muted',
-                    )}
-                  >
-                    {t(`inventory.types.${ty}`)}
-                  </button>
-                ))}
-              </div>
-            </FilterGroup>
+              <FilterGroup title={t('graph.nodes')}>
+                <select
+                  value={visibility}
+                  onChange={(e) => setVisibility(e.target.value as Visibility)}
+                  className="h-9 w-full rounded-md border border-border bg-surface px-2 text-sm text-text"
+                  aria-label={t('graph.nodes')}
+                >
+                  <option value="all">{t('graph.visibility.all')}</option>
+                  <option value="orphans">{t('graph.visibility.orphans')}</option>
+                  <option value="hideOrphans">{t('graph.visibility.hideOrphans')}</option>
+                  {externalCount > 0 && <option value="external">{t('graph.visibility.external')}</option>}
+                  {externalCount > 0 && <option value="hideExternal">{t('graph.visibility.hideExternal')}</option>}
+                </select>
+                <select
+                  value={domain}
+                  onChange={(e) => setDomain(e.target.value as typeof domain)}
+                  className="h-9 w-full rounded-md border border-border bg-surface px-2 text-sm text-text"
+                  aria-label={t('inventory.domain')}
+                >
+                  <option value="all">{t('inventory.allDomains')}</option>
+                  {domains.map((d) => (
+                    <option key={d}>{d}</option>
+                  ))}
+                </select>
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {presentTypes.map((ty) => (
+                    <button
+                      key={ty}
+                      onClick={() => toggle(types, ty, setTypes)}
+                      aria-pressed={types.includes(ty)}
+                      className={cn(
+                        'rounded-full border px-2 py-0.5 text-xs',
+                        types.includes(ty) ? 'border-series-1 bg-series-1/10 text-text' : 'border-border text-muted',
+                      )}
+                    >
+                      {t(`inventory.types.${ty}`)}
+                    </button>
+                  ))}
+                </div>
+              </FilterGroup>
 
-            <FilterGroup title={t('inventory.colorBy')}>
-              <div className="flex rounded-md border border-border p-0.5 text-xs" role="group">
-                {(['domain', 'state'] as const).map((c) => (
-                  <button
-                    key={c}
-                    onClick={() => setColorBy(c)}
-                    aria-pressed={colorBy === c}
-                    className={cn(
-                      'flex-1 rounded px-2 py-1',
-                      colorBy === c ? 'bg-brand text-brand-contrast' : 'text-muted',
-                    )}
-                  >
-                    {t(`inventory.colorModes.${c}`)}
-                  </button>
-                ))}
-              </div>
-              <div className="mt-2 space-y-1 text-xs text-text-2">
-                {(colorBy === 'domain' ? Object.entries(domainColor) : Object.entries(stateColor)).map(([k, c]) => (
-                  <div key={k} className="flex items-center gap-2">
-                    <span className="h-2.5 w-2.5 rounded-full" style={{ background: c }} />
-                    {colorBy === 'domain' ? k : t(`inventory.states.${k}`)}
-                  </div>
-                ))}
-              </div>
-            </FilterGroup>
-          </CardBody>
-        </Card>
+              <FilterGroup title={t('inventory.colorBy')}>
+                <div className="flex rounded-md border border-border p-0.5 text-xs" role="group">
+                  {(['domain', 'state'] as const).map((c) => (
+                    <button
+                      key={c}
+                      onClick={() => setColorBy(c)}
+                      aria-pressed={colorBy === c}
+                      className={cn(
+                        'flex-1 rounded px-2 py-1',
+                        colorBy === c ? 'bg-brand text-brand-contrast' : 'text-muted',
+                      )}
+                    >
+                      {t(`inventory.colorModes.${c}`)}
+                    </button>
+                  ))}
+                </div>
+                <div className="mt-2 space-y-1 text-xs text-text-2">
+                  {(colorBy === 'domain' ? Object.entries(domainColor) : Object.entries(stateColor)).map(([k, c]) => (
+                    <div key={k} className="flex items-center gap-2">
+                      <span className="h-2.5 w-2.5 rounded-full" style={{ background: c }} />
+                      {colorBy === 'domain' ? k : t(`inventory.states.${k}`)}
+                    </div>
+                  ))}
+                </div>
+              </FilterGroup>
+            </CardBody>
+          </Card>
+
+          {/* Architect observations (model-written reading aid); hidden when there are none. */}
+          {observations.length > 0 && (
+            <Card className="h-fit">
+              <button
+                onClick={() => setObservationsOpen((o) => !o)}
+                aria-expanded={observationsOpen}
+                aria-controls="graph-observations"
+                className="flex w-full items-center justify-between gap-2 px-5 py-4 text-left text-sm font-semibold text-text"
+              >
+                {t('graph.observations', { count: observations.length })}
+                <ChevronDown
+                  size={16}
+                  className={cn('shrink-0 text-muted transition-transform', observationsOpen && 'rotate-180')}
+                />
+              </button>
+              {observationsOpen && (
+                <CardBody className="space-y-2 border-t border-border text-sm">
+                  <ul id="graph-observations" className="list-disc space-y-1.5 pl-4 text-text-2">
+                    {observations.map((o, i) => (
+                      <li key={i}>{o}</li>
+                    ))}
+                  </ul>
+                  <p className="text-xs text-muted">{t('graph.writtenByModel')}</p>
+                </CardBody>
+              )}
+            </Card>
+          )}
+        </div>
 
         {/* Canvas */}
         <Card className="min-w-0">
           <CardHeader
-            title={flow ? flow.name : rule ? `${rule.id} · ${rule.name}` : t('inventory.map')}
+            title={walk ? walk.name : rule ? `${rule.id} · ${rule.name}` : t('inventory.map')}
             subtitle={t('graph.stats', { nodes: nodes.length, edges: edges.length })}
             action={
               <div className="flex items-center gap-1">
@@ -518,6 +681,50 @@ export function KnowledgeGraph({
               </div>
             }
           />
+          {unitNode && (
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-5 py-2">
+              <nav aria-label={t('graph.breadcrumb')} className="flex min-w-0 items-center gap-1 text-sm">
+                <button
+                  onClick={() => enterUnit(null)}
+                  className="flex items-center gap-1 rounded px-1 text-info hover:underline"
+                  title={t('graph.backToSystem')}
+                >
+                  <ChevronLeft size={14} aria-hidden />
+                  {t('graph.breadcrumbSystem')}
+                </button>
+                <span className="text-muted" aria-hidden>
+                  ›
+                </span>
+                <span className="truncate font-mono text-text" aria-current="page">
+                  {unitNode.name}
+                </span>
+              </nav>
+              {mode === 'circles' && (
+                <div className="flex items-center gap-2 text-xs text-muted">
+                  <span id="graph-group-by">{t('graph.groupBy')}</span>
+                  <div
+                    className="flex rounded-md border border-border p-0.5"
+                    role="group"
+                    aria-labelledby="graph-group-by"
+                  >
+                    {(['domain', 'phase'] as const).map((g) => (
+                      <button
+                        key={g}
+                        onClick={() => setGroupBy(g)}
+                        aria-pressed={groupBy === g}
+                        className={cn(
+                          'rounded px-2 py-1',
+                          groupBy === g ? 'bg-brand text-brand-contrast' : 'text-muted',
+                        )}
+                      >
+                        {t(`graph.groupModes.${g}`)}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
           <div ref={boxRef} className="relative overflow-hidden bg-surface-2/40">
             <svg
               ref={svgRef}
@@ -536,10 +743,13 @@ export function KnowledgeGraph({
                 if (start) setView((v) => ({ ...v, x: e.clientX - start.x, y: e.clientY - start.y }))
               }}
               onPointerUp={() => (drag.current = null)}
-              onClick={() => !flow && !rule && setSelected(null)}
+              onClick={() => !walk && !rule && setSelected(null)}
               onKeyDown={(e) =>
                 e.key === 'Escape' &&
-                ((touched.current = false), setView(fit), setFlowId(''), setRuleId(''), setSelected(null))
+                // Inside a unit, Esc first goes back to the system; at the top level it resets the view.
+                (unit
+                  ? enterUnit(null)
+                  : ((touched.current = false), setView(fit), setFlowId(''), setRuleId(''), setSelected(null)))
               }
               tabIndex={0}
             >
@@ -581,9 +791,11 @@ export function KnowledgeGraph({
                         fill={
                           g.id === 'group:data'
                             ? 'color-mix(in srgb, var(--series-3) 6%, transparent)'
-                            : g.depth === 0
-                              ? 'transparent'
-                              : 'color-mix(in srgb, var(--text) 3%, transparent)'
+                            : g.id === 'group:phase:error'
+                              ? 'color-mix(in srgb, var(--critical) 6%, transparent)'
+                              : g.depth === 0
+                                ? 'transparent'
+                                : 'color-mix(in srgb, var(--text) 3%, transparent)'
                         }
                         stroke="var(--border)"
                         strokeWidth={g.depth === 0 ? 1.5 : 1}
@@ -606,7 +818,7 @@ export function KnowledgeGraph({
                   const b = pos[e.to]
                   const rel = edgeGroup[e.kind] ?? 'calls'
                   const inFlow = flowEdges.has(`${e.from}>${e.to}`)
-                  const touchesSelected = !flow && !rule && !!selected && (e.from === selected || e.to === selected)
+                  const touchesSelected = !walk && !rule && !!selected && (e.from === selected || e.to === selected)
                   const dim =
                     focusActive && !inFlow && !touchesSelected && !(isFocused(e.from) && isFocused(e.to) && !selected)
                   const sameCol = a.x === b.x
@@ -664,6 +876,8 @@ export function KnowledgeGraph({
                       onClick={(e) => (e.stopPropagation(), setSelected(n.id))}
                       onDoubleClick={(e) => {
                         e.stopPropagation()
+                        // A unit with blocks opens them; any other node zooms in as before.
+                        if (childCount(n.id) > 0) return enterUnit(n.id)
                         touched.current = true
                         const k = Math.min(2.5, Math.max(view.k, 1.6))
                         setView({ k, x: boxWidth / 2 - p.x * k, y: 180 - p.y * k })
@@ -671,7 +885,7 @@ export function KnowledgeGraph({
                       onPointerDown={(e) => e.stopPropagation()}
                       role="button"
                       tabIndex={0}
-                      aria-label={`${n.name} · ${t(`inventory.types.${n.type}`)}`}
+                      aria-label={`${n.name} · ${t(`inventory.types.${n.type}`)}${n.schemaKnown === false ? ` · ${t('graph.noDdl')}` : ''}`}
                       onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && setSelected(n.id)}
                     >
                       {mode === 'circles' ? (
@@ -682,6 +896,8 @@ export function KnowledgeGraph({
                           strong={selected === n.id || inStep}
                           dashed={!!orphanKind || n.external}
                           stepNo={stepNo}
+                          noDdl={n.schemaKnown === false}
+                          noDdlLabel={t('graph.noDdlHint')}
                         />
                       ) : (
                         <>
@@ -717,6 +933,13 @@ export function KnowledgeGraph({
                                 ? t('graph.externalShort')
                                 : t(`inventory.types.${n.type}`)}
                           </text>
+                          {n.schemaKnown === false && (
+                            <NoDdlMarker
+                              x={p.x + NODE_W / 2 - 2}
+                              y={p.y - NODE_H / 2 - 2}
+                              label={t('graph.noDdlHint')}
+                            />
+                          )}
                           {stepNo && (
                             <g>
                               <circle
@@ -754,11 +977,11 @@ export function KnowledgeGraph({
 
         {/* Side panel: flow walkthrough, rule focus or node detail */}
         <Card className="h-fit">
-          {flow ? (
+          {walk ? (
             <>
               <CardHeader
-                title={flow.name}
-                subtitle={t('graph.entryPoint', { entry: nameOf(flow.entry) })}
+                title={walk.name}
+                subtitle={flow ? t('graph.entryPoint', { entry: nameOf(flow.entry) }) : t('graph.scenario')}
                 action={
                   <button
                     onClick={() => setFlowId('')}
@@ -770,15 +993,28 @@ export function KnowledgeGraph({
                 }
               />
               <CardBody className="space-y-4 text-sm">
-                <p className="text-text-2">
-                  {t('graph.flowSummary', { steps: flow.steps.length, rules: flow.rules.length })}
-                </p>
+                {flow && (
+                  <p className="text-text-2">
+                    {t('graph.flowSummary', { steps: flow.steps.length, rules: flow.rules.length })}
+                  </p>
+                )}
+                {scenario && (
+                  <div className="space-y-1">
+                    {scenario.persona && (
+                      <p className="text-xs font-medium text-text">
+                        {t('graph.persona', { persona: scenario.persona })}
+                      </p>
+                    )}
+                    {scenario.summary && <p className="text-text-2">{scenario.summary}</p>}
+                    <p className="text-xs text-muted">{t('graph.writtenByModel')}</p>
+                  </div>
+                )}
                 <div className="text-xs font-medium tracking-wide text-muted uppercase">{t('graph.steps')}</div>
                 <ol className="space-y-1">
-                  {flow.steps.map((s, i) => (
+                  {walk.steps.map((s, i) => (
                     <li key={i}>
                       <button
-                        onClick={() => setStep(i)}
+                        onClick={() => goToStep(i)}
                         className={cn(
                           'flex w-full gap-3 rounded-md p-2 text-left',
                           step === i ? 'bg-brand/10 dark:bg-accent/10' : 'hover:bg-surface-2',
@@ -793,7 +1029,7 @@ export function KnowledgeGraph({
                           {i + 1}
                         </span>
                         <span className="min-w-0">
-                          <span className="block text-text">{stepTitle(s)}</span>
+                          <span className="block text-text">{s.title || '—'}</span>
                           <span className="block font-mono text-xs text-muted">{s.nodes.map(nameOf).join(' → ')}</span>
                           {s.rule && (
                             <span
@@ -812,10 +1048,10 @@ export function KnowledgeGraph({
                   ))}
                 </ol>
                 <div className="flex justify-between border-t border-border pt-3">
-                  <Button size="sm" variant="ghost" disabled={step === 0} onClick={() => setStep(step - 1)}>
+                  <Button size="sm" variant="ghost" disabled={step === 0} onClick={() => goToStep(step - 1)}>
                     <ChevronLeft size={14} /> {t('common.back')}
                   </Button>
-                  <Button size="sm" disabled={step === flow.steps.length - 1} onClick={() => setStep(step + 1)}>
+                  <Button size="sm" disabled={step >= walk.steps.length - 1} onClick={() => goToStep(step + 1)}>
                     {t('common.next')} <ChevronRight size={14} />
                   </Button>
                 </div>
@@ -832,7 +1068,7 @@ export function KnowledgeGraph({
                     .map((n) => (
                       <button
                         key={n.id}
-                        onClick={() => setSelected(n.id)}
+                        onClick={() => select(n.id)}
                         className="rounded border border-border px-2 py-0.5 font-mono text-xs text-text hover:bg-surface-2"
                       >
                         {n.name}
@@ -846,10 +1082,22 @@ export function KnowledgeGraph({
                     .map((f) => (
                       <li key={f.id}>
                         <button
-                          onClick={() => (setRuleId(''), setFlowId(f.id))}
+                          onClick={() => (setRuleId(''), pickWalk(f.id))}
                           className="text-left text-info hover:underline"
                         >
                           {f.name}
+                        </button>
+                      </li>
+                    ))}
+                  {scenarios
+                    .filter((sc) => sc.rules.includes(rule.id))
+                    .map((sc) => (
+                      <li key={`${SCENARIO_PREFIX}${sc.id}`}>
+                        <button
+                          onClick={() => pickWalk(`${SCENARIO_PREFIX}${sc.id}`)}
+                          className="text-left text-info hover:underline"
+                        >
+                          {sc.name}
                         </button>
                       </li>
                     ))}
@@ -862,9 +1110,12 @@ export function KnowledgeGraph({
           ) : node ? (
             <NodeDetail
               node={node}
-              edges={graphEdges}
+              edges={drawableEdges}
               nameOf={nameOf}
-              onSelect={setSelected}
+              onSelect={select}
+              description={insights?.descriptions[node.id]}
+              blocks={childCount(node.id)}
+              onEnter={() => enterUnit(node.id)}
               onCompare={onCompare}
               impact={impact}
               onImpact={() => showImpact(node.id)}
@@ -874,7 +1125,7 @@ export function KnowledgeGraph({
             <CardBody className="space-y-3 text-sm text-text-2">
               <p>{t('graph.emptyPanel')}</p>
               {businessFlows.length > 0 && (
-                <Button size="sm" onClick={() => setFlowId(businessFlows[0].id)}>
+                <Button size="sm" onClick={() => pickWalk(businessFlows[0].id)}>
                   {t('graph.tryFlow')}
                 </Button>
               )}
@@ -890,7 +1141,7 @@ export function KnowledgeGraph({
             <Button
               size="sm"
               disabled={!topCopybook}
-              onClick={() => topCopybook && (setSelected(topCopybook.id), showImpact(topCopybook.id), setOrder(null))}
+              onClick={() => topCopybook && (select(topCopybook.id), showImpact(topCopybook.id), setOrder(null))}
             >
               {t('inventory.impactCopybook', { name: topCopybook?.name ?? '—' })}
             </Button>
@@ -925,7 +1176,7 @@ export function KnowledgeGraph({
                 {order.map((id, i) => (
                   <li key={id}>
                     <button
-                      onClick={() => setSelected(id)}
+                      onClick={() => select(id)}
                       className="rounded-md border border-border px-2 py-1 font-mono text-text hover:bg-surface-2"
                     >
                       {i + 1}. {nameOf(id)}
@@ -951,6 +1202,9 @@ function NodeDetail({
   impact,
   onImpact,
   onClearImpact,
+  description,
+  blocks = 0,
+  onEnter,
 }: {
   node: GraphNode
   edges: GraphEdge[]
@@ -960,6 +1214,11 @@ function NodeDetail({
   impact: string[]
   onImpact: () => void
   onClearImpact: () => void
+  /** The model-written description (ADR-0032), when the run had the deep inventory. */
+  description?: string
+  /** How many blocks the unit has: with any, the panel offers to enter it. */
+  blocks?: number
+  onEnter?: () => void
 }) {
   const { t } = useTranslation()
   const outgoing = edges.filter((e) => e.from === node.id)
@@ -977,7 +1236,15 @@ function NodeDetail({
         action={kind ? <Badge tone="warning">{t(`graph.kind.${kind}`)}</Badge> : undefined}
       />
       <CardBody className="space-y-4 text-sm">
-        <p className="text-xs text-muted">{t('graph.noDescription')}</p>
+        {description ? (
+          <div className="space-y-1">
+            <p className="whitespace-pre-line text-text-2">{description}</p>
+            <p className="text-xs text-muted">{t('graph.writtenByModel')}</p>
+          </div>
+        ) : (
+          <p className="text-xs text-muted">{t('graph.noDescription')}</p>
+        )}
+        {node.schemaKnown === false && <p className="text-xs text-warning-ink">{t('graph.noDdlHint')}</p>}
         {kind && <p className="text-xs text-warning-ink">{t(`graph.kindHint.${kind}`)}</p>}
         <div className="flex flex-wrap gap-1.5">
           <Badge>{t('graph.fanIn', { count: incoming.length })}</Badge>
@@ -986,7 +1253,14 @@ function NodeDetail({
             {t(`inventory.states.${node.state}`)}
           </Badge>
           {node.loc && <Badge>{t('graph.loc', { count: node.loc })}</Badge>}
+          {node.schemaKnown === false && <Badge tone="warning">{t('graph.noDdl')}</Badge>}
+          {node.phase && <Badge>{t(`graph.phases.${phaseOf(node)}`)}</Badge>}
         </div>
+        {blocks > 0 && onEnter && (
+          <Button size="sm" className="w-full" onClick={onEnter}>
+            <Layers size={14} /> {t('graph.viewBlocks', { count: blocks })}
+          </Button>
+        )}
         {node.source && (
           <div>
             <div className="mb-1 text-xs font-medium tracking-wide text-muted uppercase">{t('graph.source')}</div>
@@ -1158,6 +1432,8 @@ function CircleNode({
   strong,
   dashed,
   stepNo,
+  noDdl = false,
+  noDdlLabel = '',
 }: {
   node: GraphNode
   p: Circle
@@ -1165,6 +1441,9 @@ function CircleNode({
   strong: boolean
   dashed: boolean
   stepNo?: number
+  /** A table known only from the code (no DDL in the inputs) gets a small marker. */
+  noDdl?: boolean
+  noDdlLabel?: string
 }) {
   const inside = p.r >= 26
   const maxChars = Math.max(4, Math.floor((p.r * 2) / 7))
@@ -1213,6 +1492,20 @@ function CircleNode({
           </text>
         </g>
       )}
+      {noDdl && <NoDdlMarker x={p.x + p.r * 0.72} y={p.y - p.r * 0.72} label={noDdlLabel} />}
     </>
+  )
+}
+
+// The marker of a table without DDL: a small warning dot with a question mark and the explanation as a tooltip.
+function NoDdlMarker({ x, y, label }: { x: number; y: number; label: string }) {
+  return (
+    <g>
+      <title>{label}</title>
+      <circle cx={x} cy={y} r={8} fill="var(--warning)" stroke="var(--surface)" strokeWidth={2} />
+      <text x={x} y={y + 3.5} textAnchor="middle" fontSize={10} fontWeight={700} fill="var(--surface)">
+        ?
+      </text>
+    </g>
   )
 }

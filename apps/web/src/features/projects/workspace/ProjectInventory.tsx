@@ -2,7 +2,7 @@ import { useNavigate } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
 import { Loader2 } from 'lucide-react'
 import { ApiError } from '@/api/client'
-import { impactOf, useGraph } from '@/api/graph'
+import { impactOf, useGraph, useGraphInsights } from '@/api/graph'
 import type { ProjectDetail } from '@/api/projects'
 import { Button, EmptyState } from '@/components/ui/primitives'
 import { KnowledgeGraph } from '../graph/KnowledgeGraph'
@@ -14,6 +14,8 @@ export function ProjectInventory({ project, onOpenRuns }: { project: ProjectDeta
   const { t } = useTranslation()
   const navigate = useNavigate()
   const graph = useGraph(project.id)
+  // Model-written reading aids (ADR-0032): optional, the graph never waits for them nor fails without them.
+  const insights = useGraphInsights(project.id)
 
   if (graph.isLoading) {
     return (
@@ -53,6 +55,7 @@ export function ProjectInventory({ project, onOpenRuns }: { project: ProjectDeta
     <div className="space-y-6">
       <KnowledgeGraph
         data={graph.data}
+        insights={insights.data}
         onImpact={(node) => impactOf(project.id, node)}
         onCompare={(rule) =>
           void navigate({

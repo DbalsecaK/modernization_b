@@ -2197,7 +2197,10 @@
       "reads": "Reads",
       "writes": "Writes",
       "includes": "Includes (copybooks, maps)",
-      "includesShort": "Includes"
+      "includesShort": "Includes",
+      "follows": "Follows",
+      "jumps": "Jumps to",
+      "onError": "Exits on error"
     },
     "nodes": "Nodes",
     "visibility": {
@@ -2211,7 +2214,7 @@
     "zoomIn": "Zoom in",
     "zoomOut": "Zoom out",
     "reset": "Reset view",
-    "help": "Scroll to zoom · drag to pan · click a node · double-click to zoom in · Esc to reset",
+    "help": "Scroll to zoom · drag to pan · click a node · double-click to enter · Esc to go back",
     "persona": "Persona: {{persona}}",
     "steps": "Steps",
     "implementedIn": "Implemented in",
@@ -2248,7 +2251,11 @@
       "READS": "reads",
       "WRITES": "writes",
       "COPIES": "copies",
-      "USES_MAP": "uses map"
+      "USES_MAP": "uses map",
+      "NEXT": "follows",
+      "GOTO": "jumps to",
+      "ON_ERROR": "exits on error",
+      "CONTAINS": "contains"
     },
     "orderTitle": "Suggested migration order",
     "orderHint": "Data and shared layouts first, then programs with the fewest dependents, entry points last. Orphans are left out until confirmed.",
@@ -2278,7 +2285,48 @@
     "externalHint": "Called by the code but not in the inputs: dependencies (ports), not modernized",
     "externalShort": "external call",
     "flowHint_one": "One flow per entry point; pick it to walk its steps on the right.",
-    "flowHint_other": "{{count}} flows, one per entry point; pick one to walk its steps on the right."
+    "flowHint_other": "{{count}} flows, one per entry point; pick one to walk its steps on the right.",
+    "summary": {
+      "label": "Inventory summary",
+      "modules_one": "{{count}} module",
+      "modules_other": "{{count}} modules",
+      "stores_one": "{{count}} store",
+      "stores_other": "{{count}} stores",
+      "relations_one": "{{count}} relation",
+      "relations_other": "{{count}} relations",
+      "entryPoints_one": "{{count}} entry point",
+      "entryPoints_other": "{{count}} entry points"
+    },
+    "flowGroups": {
+      "entry": "By entry point",
+      "scenario": "By scenario"
+    },
+    "scenarioHint_one": "One business scenario proposed from the rules, with its persona and steps.",
+    "scenarioHint_other": "{{count}} business scenarios proposed from the rules, each with its persona and steps.",
+    "scenario": "Business scenario",
+    "observations_one": "Architect observation ({{count}})",
+    "observations_other": "Architect observations ({{count}})",
+    "writtenByModel": "Written by a model from the code",
+    "outsideUnit": "Outside the unit",
+    "phases": {
+      "pre": "Before the transaction",
+      "transaction": "Inside the transaction",
+      "post": "After the transaction",
+      "error": "Error exits",
+      "none": "No phase"
+    },
+    "breadcrumb": "Location in the graph",
+    "breadcrumbSystem": "System",
+    "backToSystem": "Back to the system (Esc)",
+    "groupBy": "Group by",
+    "groupModes": {
+      "domain": "Domain",
+      "phase": "Phase"
+    },
+    "noDdl": "no DDL",
+    "noDdlHint": "Known from the code only: no DDL in the inputs",
+    "viewBlocks_one": "View blocks ({{count}})",
+    "viewBlocks_other": "View blocks ({{count}})"
   },
   "protoChat": {
     "title": "Ask for prototype changes",
