@@ -77,7 +77,8 @@ def cited_text(source: str, ref: SourceRef) -> str:
     return "\n".join(f"{n:>5}  {lines[n - 1]}" for n in range(ref.line_start, min(ref.line_end, len(lines)) + 1))
 
 
-NAMED_PIECES = 20  # a slice in more pieces than this is fragmented: whole-block citations, lines named in problems
+NAMED_PIECES = 12  # a slice in more than a dozen pieces is fragmented: whole-block citations, lines named in problems
+OUTSIDE = "is outside the slice you were given"
 SHOWN_SHARE = 0.6  # of the cited lines with code, how many the agent must have been shown
 
 
@@ -144,8 +145,11 @@ def _context(view: SliceView, types: dict[str, str]) -> str:
     )
 
 
-def parse_rules(content: str, view: SliceView, source: str) -> list[Rule]:
-    """Validate a reply of the extractor; raise ReplyError with every problem found."""
+def parse_rules(content: str, view: SliceView, source: str, *, salvage: bool = False) -> list[Rule]:
+    """Validate a reply of the extractor; raise ReplyError with every problem found. With `salvage` (the last attempt),
+    a rule whose only problem is a citation outside the slice is kept with low confidence and a question: the verifier
+    reads the cited lines from the whole file, so a true rule cited across the gaps of a backward slice is not lost
+    with its slice."""
     data = parse_json(content)
     items = data.get("rules") if isinstance(data, dict) else None
     if not isinstance(items, list):
@@ -162,7 +166,14 @@ def parse_rules(content: str, view: SliceView, source: str) -> list[Rule]:
             detail = "; ".join(f"{'.'.join(map(str, e['loc']))}: {e['msg']}" for e in exc.errors()[:6])
             problems.append(f"rule {index} ({item.get('name', 'no name')}): {detail}")
             continue
-        problems += check_citations(rule, view, source)
+        found = check_citations(rule, view, source)
+        if found and salvage and all(OUTSIDE in p for p in found):
+            cited = ", ".join(str(s) for s in rule.sources)
+            question = (f"The extractor cited lines outside the slice it read ({cited}); the verifier checked them "
+                        f"against the file. {rule.sme_question or ''}").strip()  # fmt: skip
+            rules.append(rule.model_copy(update={"confidence": "low", "sme_question": question[:1000]}))
+            continue
+        problems += found
         rules.append(rule)
     if problems:
         raise ReplyError("\n".join(problems))
@@ -247,6 +258,12 @@ async def _extract(
             if reply.cut_at:  # asking again gives the same cut answer: the profile must allow longer replies
                 raise CutReplyError(cut_message(view.unit, reply.cut_at)) from exc
             last_error = str(exc)
+            if iteration == max_iterations:  # the last answer: keep what only cites across the gaps of the slice
+                try:
+                    result.rules = parse_rules(reply.content, view, source, salvage=True)
+                    return result
+                except ReplyError:
+                    break
             messages += [
                 {"role": "assistant", "content": reply.content},
                 {"role": "user", "content": f"Your answer has these problems; fix them and answer again:\n{exc}"},

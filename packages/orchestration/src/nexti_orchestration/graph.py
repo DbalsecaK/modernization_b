@@ -40,6 +40,8 @@ class RunState(TypedDict, total=False):
     pending: list[str]  # the question ids the current phase is waiting for
     artifacts: dict[str, str]  # name -> object key
     outcome: str  # why the run failed
+    failed_phase: str  # the phase a failed run may be retried from (ADR-0034)
+    retries: dict[str, int]  # phase -> how many times it was retried (its questions and invocations get new ids)
 
 
 def phase_node_name(phase: str) -> str:
@@ -89,7 +91,8 @@ def build_graph(
             if await store.phase_started(phase.key):
                 await store.event("phaseStarted", "running", f"Phase {phase.key} started", phase=phase.key)
             await store.run_running(phase.key)
-            ctx = PhaseContext(run, store, phase, sandbox, journal=journal, answers=dict(state.get("answers") or {}))
+            ctx = PhaseContext(run, store, phase, sandbox, journal=journal, answers=dict(state.get("answers") or {}),
+                               retry=int((state.get("retries") or {}).get(phase.key, 0)))  # fmt: skip
             executor = executors.get(phase.key)
             try:
                 if executor is None:
@@ -118,7 +121,7 @@ def build_graph(
             except (RunStoppedError, PhaseFailedError) as stopped:
                 await store.phase_finished(phase.key, "failed", str(stopped)[:2000], _iterations(journal))
                 await store.event("failed", "failed", f"Phase {phase.key} failed: {stopped}"[:2000], phase=phase.key)
-                return Command(goto="fail", update={"outcome": str(stopped)[:2000]})
+                return Command(goto="fail", update={"outcome": str(stopped)[:2000], "failed_phase": phase.key})
             await store.phase_finished(phase.key, "succeeded", result.summary, _iterations(journal))
             await store.event(
                 "phaseCompleted", "succeeded", f"{phase.key}: {result.summary}"[:2000], phase=phase.key,
@@ -190,9 +193,8 @@ def build_graph(
             )  # fmt: skip
             if not approved:
                 comment = str(decision.get("comment") or "").strip()
-                return Command(
-                    goto="fail", update={"outcome": f"Gate {gate} rejected" + (f": {comment}" if comment else "")}
-                )
+                outcome = f"Gate {gate} rejected" + (f": {comment}" if comment else "")
+                return Command(goto="fail", update={"outcome": outcome, "failed_phase": phase.key})
             await store.run_running(phase.key)
             return Command(goto=after_gate(index))
 
@@ -207,7 +209,22 @@ def build_graph(
         outcome = state.get("outcome") or "Run failed"
         await store.run_finished("failed", outcome)
         await store.event("runFinished", "failed", outcome[:2000])
-        return Command(goto=END)
+        return Command(goto="retry" if state.get("failed_phase") else END)
+
+    async def retry(state: RunState) -> Command[str]:
+        """A failed run waits here (ADR-0034): a person may retry it from the phase that failed, and the phases
+        before it keep their results. Without a retry it stays failed."""
+        phase_key = str(state.get("failed_phase") or "")
+        decision: Memo = interrupt({"type": "failed", "phase": phase_key})
+        if not decision.get("retry") or await store.is_cancelled():
+            return Command(goto=END)
+        await store.run_running(phase_key)
+        await store.event("info", "running", f"Retrying from phase {phase_key}", phase=phase_key)
+        # The phase starts over: its journal and the answers to its questions do not carry into the new attempt.
+        journals = {k: v for k, v in (state.get("journal") or {}).items() if k != phase_key}
+        retries = {**(state.get("retries") or {}), phase_key: int((state.get("retries") or {}).get(phase_key, 0)) + 1}
+        return Command(goto=phase_node_name(phase_key), update={"outcome": "", "failed_phase": "", "journal": journals,
+                                                                "pending": [], "retries": retries})  # fmt: skip
 
     graph.add_node("start", start)
     graph.add_edge(START, "start")
@@ -219,6 +236,7 @@ def build_graph(
             graph.add_node(f"gate.{phase.key}", make_gate(index, phase, phase.gate))
     graph.add_node("finish", finish)
     graph.add_node("fail", fail)
+    graph.add_node("retry", retry)
     return graph
 
 

@@ -2831,7 +2831,9 @@
       "phaseCompleted": "Phase done",
       "runFinished": "Run finished",
       "info": "Info"
-    }
+    },
+    "retry": "Retry from the failed phase",
+    "retried": "Run queued again: it goes on from the phase that failed."
   },
   "questions": {
     "recorded": "Answer recorded. The run resumes when no other question is open.",

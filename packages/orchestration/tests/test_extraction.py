@@ -191,3 +191,18 @@ async def test_a_cut_slice_is_halved_and_each_half_extracted() -> None:
     assert len(model.calls) == 3
     assert [r.sources[0].line_start for r in result.rules] == [70, 85]
     assert "77" in model.calls[2][1][1]["content"]  # the second half starts after the middle of 61-92
+
+
+async def test_on_the_last_attempt_a_rule_cited_across_the_gaps_is_kept_for_the_verifier() -> None:
+    far = tuple((n, n) for n in range(200, 236, 3))  # 12 more pieces: a fragmented slice
+    pieces = SliceView("dbo.sp_pago_orden#web", "sp_pago_orden.sp", ((61, 62), (91, 92), *far))
+    model = ScriptedModel(json.dumps({"rules": [rule_json(61, 92)]}), json.dumps({"rules": [rule_json(61, 92)]}))
+    result = await extract(model, pieces, SOURCE, {}, max_iterations=2)
+    (rule,) = result.rules
+    assert (rule.confidence, len(model.calls)) == ("low", 2)
+    assert "outside the slice it read" in (rule.sme_question or "")
+    assert "outside the slice" in model.calls[1][1][-1]["content"]  # the first answer was still sent back
+    # Any other problem still fails the slice.
+    bad = ScriptedModel("no json", json.dumps({"rules": [rule_json(61, 92, inputs=[{"name": "x", "type": "money"}])]}))
+    with pytest.raises(ReplyError, match="after 2 attempts"):
+        await extract(bad, pieces, SOURCE, {}, max_iterations=2)

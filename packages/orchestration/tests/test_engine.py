@@ -161,7 +161,8 @@ async def test_a_required_gate_stops_the_run_until_it_is_approved() -> None:
 async def test_a_rejected_gate_fails_the_run_with_the_comment() -> None:
     h = Harness(context())
     await h.start()
-    assert await h.resume({"decision": "rejected", "comment": "Rules incomplete"}) == []
+    waiting = await h.resume({"decision": "rejected", "comment": "Rules incomplete"})
+    assert waiting == [{"type": "failed", "phase": "ruleReview"}]  # a retry would redo the phase before the gate
     assert h.store.status == "failed"
     assert h.store.error == "Gate C1 rejected: Rules incomplete"
     assert "design" not in h.store.phases
@@ -212,7 +213,7 @@ async def test_verification_that_never_passes_escalates_after_exactly_max_iterat
     assert h.store.invocation_starts == len(h.store.invocations)
 
     # Stop: the run fails, and the phase never advances half done.
-    assert await h.answer_all("stop") == []
+    assert await h.answer_all("stop") == [{"type": "failed", "phase": "design"}]
     assert h.store.status == "failed"
     assert h.store.phases["design"]["status"] == "failed"
     assert "generation" not in h.store.phases
@@ -273,9 +274,31 @@ async def test_a_failing_preflight_asks_and_checks_again_after_the_fix() -> None
 async def test_a_failing_preflight_stopped_by_a_person_fails_the_run() -> None:
     h = Harness(context("pipeline"), probe=FakeProbe(failing={"repository"}))
     await h.start()
-    assert await h.answer_all("stop") == []
+    assert await h.answer_all("stop") == [{"type": "failed", "phase": "preflight"}]
     assert h.store.status == "failed"
     assert "repository missing" in (h.store.error or "")
+
+
+async def test_a_failed_run_is_retried_from_the_failed_phase_without_repeating_the_rest() -> None:
+    probe = FakeProbe(failing={"repository"})
+    h = Harness(context("pipeline"), probe=probe)
+    await h.start()
+    assert await h.answer_all("stop") == [{"type": "failed", "phase": "preflight"}]
+    assert h.store.status == "failed"
+    # A person fixes the cause and retries: the API queues the run again and the worker resumes it with the retry.
+    probe.failing = set()
+    h.store.status = "queued"
+    (waiting,) = await h.resume({"retry": True})
+    assert waiting["type"] == "phaseUnavailable"  # the preflight passed; the next phase has no executor here
+    assert h.store.phases["preflight"]["status"] == "succeeded"
+    assert h.store.kinds().count("runStarted") == 1  # not started again
+    assert "Retrying from phase preflight" in [e.message for e in h.store.events]
+    # Without a retry (the person launches a new run instead) the failed run stays as it is.
+    other = Harness(context("pipeline"), probe=FakeProbe(failing={"repository"}))
+    await other.start()
+    await other.answer_all("stop")
+    assert await other.resume({"retry": False}) == []
+    assert other.store.status == "failed"
 
 
 async def test_the_preflight_rejects_an_archive_that_looks_like_a_zip_bomb() -> None:

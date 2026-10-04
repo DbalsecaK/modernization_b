@@ -235,3 +235,37 @@ async def test_design_then_generation_by_layers_corrects_the_service_until_the_t
     assert set(port.layers.values()) >= {"contracts", "domain", "adapters", "orchestration", "tests"}
     service = next(p for p in port.artifacts if p.endswith("application/PayOrderService.java"))
     assert "RoundingMode.HALF_UP" in port.artifacts[service]
+
+
+def test_legacy_names_are_compared_without_markers_or_invisible_characters_and_hints_name_the_closest() -> None:
+    from nexti_core.adapters import SourceFile as File
+    from nexti_core.spec.design import Design
+    from nexti_core.spec.model import Rule as SpecRule
+    from nexti_orchestration.generation import design_problems, legacy_names
+
+    names = legacy_names(
+        [
+            File(
+                "p.sp",
+                "create proc sp_p @i_cta int, @o_trn int output as\n"
+                "select @o_trn = tr_valor from db_x..tr_transaccion where tr_cta = @i_cta",
+            )
+        ]
+    )
+    rule = SpecRule.model_validate({"id": "RULE-001", "name": "rule name", "category": "validation", "priority": "P1",
+                                    "statement": "a statement long enough",
+                                    "sources": [{"file": "p.sp", "line_start": 1, "line_end": 1}]})  # fmt: skip
+
+    def design(legacy: str) -> Design:
+        return Design.model_validate({"context": "x", "base_package": "com.x.y", "use_cases": [
+            {"name": "Uc", "rules": ["RULE-001"], "legacy_program": "sp_p",
+             "outputs": [{"name": "trn", "type": "integer(32,signed)", "legacy": legacy}]}]})  # fmt: skip
+
+    for spelled in ("@o_trn", "@O_TRN", "o_trn", "sp_p.@o_trn", "@o_trn\u200b", " @o_trn "):
+        assert design_problems(design(spelled), [rule], names) == [], spelled
+    problems = design_problems(design("@o_trx"), [rule], names)
+    assert problems == ["these legacy names are not in the legacy code (check the exact spelling): @o_trx"]
+    hinted = design_problems(design("@o_trx"), [rule], names, hints=True)
+    assert hinted[1] == "closest names in the legacy code: @o_trx -> @o_trn"
+    (_, nothing) = design_problems(design("valor_por_transaccion"), [rule], names, hints=True)
+    assert nothing.startswith("closest names in the legacy code: valor_por_transaccion -> ")

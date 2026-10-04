@@ -284,3 +284,23 @@ async def test_the_event_stream_of_a_run_of_another_project_is_not_found(
     sign_in(api, world.a_user)
     assert api.get(f"/api/v1/projects/{project_id}/runs/{run_id}/events", params={"follow": "false"}).status_code == 404
     assert api.get(f"/api/v1/projects/{project_id}/runs/{run_id}").status_code == 404
+
+
+async def test_a_failed_run_is_queued_again_to_retry_from_its_failed_phase(
+    api: TestClient, app_engine: AsyncEngine, owner_engine: AsyncEngine, fga: OpenFga, world: World
+) -> None:
+    headers = sign_in(api, world.a_user)
+    project_id = await configured_project(owner_engine, world)
+    await reconcile(app_engine, fga)
+    run = api.post(f"/api/v1/projects/{project_id}/runs", json={"kind": "pipeline"}, headers=headers).json()
+    early = api.post(f"/api/v1/projects/{project_id}/runs/{run['id']}:retry", headers=headers)
+    assert (early.status_code, early.json()["code"]) == (409, "run_not_failed")
+    await execute(owner_engine, "UPDATE run SET status = 'failed', error = 'no valid design', finished_at = now(), "
+                                "current_phase = 'design' WHERE id = :r", r=uuid.UUID(run["id"]))  # fmt: skip
+    # The worker consumed the first job before the run failed; the retry enqueues a new one.
+    await execute(owner_engine, "UPDATE procrastinate_jobs SET status = 'succeeded' WHERE args->>'run_id' = :r",
+                  r=run["id"])  # fmt: skip
+    retried = api.post(f"/api/v1/projects/{project_id}/runs/{run['id']}:retry", headers=headers)
+    assert retried.status_code == 200, retried.text
+    assert (retried.json()["status"], retried.json()["error"]) == ("queued", None)
+    assert [j["status"] for j in await jobs_of(owner_engine, uuid.UUID(run["id"]))] == ["succeeded", "todo"]

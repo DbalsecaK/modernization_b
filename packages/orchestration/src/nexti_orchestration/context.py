@@ -80,6 +80,7 @@ class PhaseContext:
         journal: dict[str, Memo] | None = None,
         answers: dict[str, Memo] | None = None,
         shard: str | None = None,
+        retry: int = 0,
     ) -> None:
         self.run = run
         self.store = store
@@ -88,20 +89,26 @@ class PhaseContext:
         self.journal = journal if journal is not None else {}
         self.answers = answers if answers is not None else {}
         self.shard = shard
+        self.retry = retry  # how many times the phase was retried after failing (ADR-0034): new ids each time
 
     def for_shard(self, shard: str) -> "PhaseContext":
         return PhaseContext(
-            self.run, self.store, self.phase, self.sandbox, journal=self.journal, answers=self.answers, shard=shard
-        )
+            self.run, self.store, self.phase, self.sandbox, journal=self.journal, answers=self.answers, shard=shard,
+            retry=self.retry,
+        )  # fmt: skip
+
+    def _attempt_parts(self) -> tuple[object, ...]:
+        return (f"retry{self.retry}",) if self.retry else ()
 
     def _key(self, *parts: object) -> str:
         return "/".join([self.shard or "", *map(str, parts)])
 
     def invocation_id(self, agent: str, iteration: int) -> uuid.UUID:
-        return self.run.stable_id("invocation", self.phase.key, agent, self.shard or "", iteration)
+        return self.run.stable_id("invocation", self.phase.key, agent, self.shard or "", iteration,
+                                  *self._attempt_parts())  # fmt: skip
 
     def question_id(self, key: str) -> uuid.UUID:
-        return self.run.stable_id("question", self.phase.key, self.shard or "", key)
+        return self.run.stable_id("question", self.phase.key, self.shard or "", key, *self._attempt_parts())
 
     async def step(self, key: str, fn: Callable[[], Awaitable[Memo]]) -> Memo:
         """Run `fn` once per phase: on a replay the journaled result comes back without running it again."""
