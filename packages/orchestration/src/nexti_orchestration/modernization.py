@@ -191,15 +191,28 @@ class ModernizationPhases:
                 return Attempt([r.model_dump(mode="json") for r in found.rules],
                                f"{len(found.rules)} candidate rule(s)", total(found.usage))  # fmt: skip
 
-            attempt = await shard_ctx.invoke(extractor, work, what=f"Rules of {view.unit}")
+            try:
+                attempt = await shard_ctx.invoke(extractor, work, what=f"Rules of {view.unit}")
+            except PhaseFailedError as exc:
+                # One slice that keeps failing does not throw away the rules of the others: it is reported, and the
+                # review before C1 shows the code that has no rule.
+                await shard_ctx.store.event("info", "running", f"{view.unit}: no rules ({str(exc)[:300]})",
+                                            phase=ctx.phase.key)  # fmt: skip
+                return [{"failed": view.unit}]
             return list(attempt.artifact)
 
         found = await ctx.fan_out([v.unit for v in views], one)
-        rules = consolidate([Rule.model_validate(r) for batch in found for r in batch])
+        failed = [r["failed"] for batch in found for r in batch if "failed" in r]
+        if failed and len(failed) == len(views):
+            raise PhaseFailedError(f"No slice gave valid rules ({len(failed)} failed); see the activity for why")
+        rules = consolidate([Rule.model_validate(r) for batch in found for r in batch if "failed" not in r])
         rules = await self._review(ctx, rules, sources)
         await self.port.save_rules(rules)
         p0 = sum(1 for r in rules if r.priority == "P0")
-        return PhaseResult(summary=f"{len(rules)} rule(s), {p0} P0, from {len(views)} slice(s)")
+        summary = f"{len(rules)} rule(s), {p0} P0, from {len(views)} slice(s)"
+        if failed:
+            summary += f"; {len(failed)} slice(s) gave no valid rules: {', '.join(failed[:5])}"
+        return PhaseResult(summary=summary)
 
     async def _review(self, ctx: PhaseContext, rules: list[Rule], sources: dict[str, str]) -> list[Rule]:
         verifier = _agent(ctx, VERIFIER)

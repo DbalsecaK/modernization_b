@@ -174,6 +174,30 @@ async def test_a_real_pipeline_reaches_c1_with_rules_stories_and_a_plan() -> Non
     assert store.phases["ui"]["status"] == "succeeded"
 
 
+async def test_a_slice_that_keeps_failing_does_not_throw_away_the_rules_of_the_others() -> None:
+    failing = pick_adapter([SourceFile("sp_pago_orden.sp", SOURCE)]).slices([SourceFile("sp_pago_orden.sp", SOURCE)])[0]
+
+    class OneSliceFails(AnsweringModel):
+        async def complete(
+            self, agent: str, phase: str, messages: list[dict[str, str]], *, iteration: int = 1, judge: int = 0
+        ) -> ModelReply:
+            request = messages[1]["content"]
+            if agent == "rules-extractor" and "Slice:" in request and f"Unit: {failing.unit}" in request:
+                self.calls.append((agent, phase, iteration, judge))
+                return ModelReply("no rules here", Usage(model="stand-in"))
+            return await super().complete(agent, phase, messages, iteration=iteration, judge=judge)
+
+    run, store, port = context(), MemoryStore(), MemoryPort()
+    port.models = OneSliceFails()
+    graph = compile_graph(run, store, executors_for(run, OkProbe(), port), InMemorySaver())  # type: ignore[arg-type]
+    (waiting,) = await run_until_wait(graph, run)
+    if waiting["type"] == "questions":
+        (waiting,) = await run_until_wait(graph, run, {qid: {"option": "keep"} for qid in waiting["question_ids"]})
+    assert waiting == {"type": "gate", "gate": "C1", "phase": "ruleReview"}
+    assert port.rules
+    assert "slice(s) gave no valid rules" in store.phases["ruleExtraction"]["detail"]
+
+
 def test_procedures_writing_the_same_table_form_one_domain() -> None:
     from nexti_core.adapters import Edge, Node
 
