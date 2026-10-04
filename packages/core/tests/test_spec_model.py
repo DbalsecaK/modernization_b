@@ -91,3 +91,21 @@ def test_an_entity_key_written_with_the_legacy_column_means_its_field() -> None:
     with pytest.raises(ValidationError, match=r"key fields not declared: or_secuencial \(the key lists names of its "
                                               r"fields, one of: amount, orderBank"):  # fmt: skip
         Entity.model_validate({"name": "Order", "key": ["or_secuencial"], "fields": fields})
+
+
+def test_a_port_method_returning_void_returns_nothing_and_a_scalar_is_explained() -> None:
+    import pytest
+    from pydantic import ValidationError
+
+    from nexti_core.spec.design import Design
+
+    def design(returns: str) -> dict[str, object]:
+        return {"context": "payments", "base_package": "com.example.payments", "entities": [],
+                "ports": [{"name": "CommissionGateway", "methods": [{"name": "calculate", "returns": returns}]}],
+                "use_cases": [{"name": "PayOrder", "rules": ["RULE-001"], "ports": ["CommissionGateway"]}]}  # fmt: skip
+
+    assert Design.model_validate(design("void")).ports[0].methods[0].returns is None
+    assert Design.model_validate(design("long")).ports[0].methods[0].returns == "long"
+    with pytest.raises(ValidationError, match=r"returns unknown type decimal\(19,4,signed\) \(a port method returns an "
+                                              r"entity of the design, boolean, int, long or null"):  # fmt: skip
+        Design.model_validate(design("decimal(19,4,signed)"))
