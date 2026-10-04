@@ -153,3 +153,12 @@ def test_the_classified_statements_are_the_detail_behind_the_counts() -> None:
     writes = [d for d in detail if d["label"] == "business" and d["reason"].startswith("writes ")]
     assert writes
     assert all(d["line_start"] <= d["line_end"] for d in writes)
+
+
+def test_a_slice_in_many_pieces_reads_as_blocks_and_a_short_one_is_left_as_it_is() -> None:
+    from nexti_adapter_sybase import readable
+
+    pieces = [(n, n + 1) for n in range(1, 200, 4)]  # 50 pieces with gaps of 2 lines
+    assert readable(pieces) == ((1, 198),)
+    few = [(1, 2), (10, 12)]
+    assert readable(few) == ((1, 2), (10, 12))

@@ -183,7 +183,11 @@ async def test_c1_is_blocked_until_the_stories_and_the_plan_are_ready(
                        headers=headers).status_code == 200  # fmt: skip
     await execute(owner_engine, "UPDATE question SET status = 'cancelled' WHERE project_id = :p", p=project_id)
     assert api.post(f"/api/v1/projects/{project_id}/plan:reset", headers=headers).status_code == 200
-    assert api.get(f"/api/v1/projects/{project_id}/c1-check").json() == {"canApprove": True, "blockers": []}
+    assert api.get(f"/api/v1/projects/{project_id}/c1-check").json() == {
+        "canApprove": True,
+        "blockers": [],
+        "warnings": [],
+    }
     approved = api.post(f"/api/v1/projects/{project_id}/runs/{run_id}/gates/C1:approve", json={}, headers=headers)
     assert approved.status_code == 200, approved.text
     assert {s["status"] for s in api.get(base).json()} == {"approved"}

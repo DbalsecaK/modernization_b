@@ -73,6 +73,27 @@ def _procedures(files: list[SourceFile]) -> list[tuple[SourceFile, Procedure]]:
     return found
 
 
+FRAGMENTED = 40  # a slice in more pieces than this is shown with its small gaps filled
+SMALL_GAP = 3
+
+
+def readable(lines: list[tuple[int, int]] | tuple[tuple[int, int], ...]) -> tuple[tuple[int, int], ...]:
+    """The ranges of a backward slice as the agent reads them. A slice in a hundred pieces (a late statement of a
+    long procedure depends on much of it) hides the flow between them; gaps of a few lines are filled so it reads as
+    blocks. Slices in few pieces are left exactly as they are."""
+    ranges = sorted(lines)
+    if len(ranges) <= FRAGMENTED:
+        return tuple(ranges)
+    merged = [ranges[0]]
+    for start, end in ranges[1:]:
+        last_start, last_end = merged[-1]
+        if start - last_end - 1 <= SMALL_GAP:
+            merged[-1] = (last_start, max(last_end, end))
+        else:
+            merged.append((start, end))
+    return tuple(merged)
+
+
 class SybaseAdapter:
     name = "sybase-ase"
 
@@ -217,8 +238,8 @@ class SybaseAdapter:
         for file, proc in _procedures(files):
             for target in slice_targets(proc):
                 cut = backward_slice(proc, target)
-                views.append(SliceView(f"{proc.name}#{target}", file.path, tuple(cut.lines), tuple(cut.parameters),
-                                       tuple(cut.tables)))  # fmt: skip
+                views.append(SliceView(f"{proc.name}#{target}", file.path, readable(cut.lines),
+                                       tuple(cut.parameters), tuple(cut.tables)))  # fmt: skip
         return views
 
     def digest(self, files: list[SourceFile]) -> str:

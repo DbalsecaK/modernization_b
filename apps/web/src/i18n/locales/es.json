@@ -555,7 +555,13 @@
       "statement": "Sentencia",
       "class": "Clase",
       "reason": "Por qué",
-      "more": "Mostrar {{count}} más"
+      "more": "Mostrar {{count}} más",
+      "uncited": "Negocio sin regla",
+      "coverage": "Cubierta",
+      "cited": "regla",
+      "notCited": "sin regla",
+      "notSliced": "no leída",
+      "coverageSummary": "{{business}} sentencias de negocio: {{notSliced}} sin slice, {{notCited}} sin ninguna regla que las cite."
     }
   },
   "spec": {
@@ -640,7 +646,8 @@
     },
     "c1": {
       "ready": "Las historias y el plan pueden aprobarse en la compuerta C1 (en la pestaña Ejecuciones).",
-      "blocked": "La compuerta C1 aún no puede aprobarse:"
+      "blocked": "La compuerta C1 aún no puede aprobarse:",
+      "coverageWarning": "Código de negocio que ninguna regla cubre (no bloquea; revisá que no falte lógica):"
     },
     "noScreens": "Este legacy no tiene pantallas",
     "noScreensHint": "Las pantallas vienen de mapas BMS u otras fuentes de pantallas; un conjunto de procedimientos almacenados no tiene.",

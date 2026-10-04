@@ -78,6 +78,24 @@ def test_a_citation_outside_the_slice_is_caught_by_code() -> None:
     assert check_citations(Rule.model_validate({**rule_json(80, 83), "id": "RULE-001"}), VIEW, SOURCE) == []
 
 
+def test_a_citation_across_the_gaps_of_a_slice_in_pieces_is_accepted_when_its_lines_were_shown() -> None:
+    """A backward slice skips the statements its target does not depend on; an agent cites a whole block that spans
+    a few skipped lines. It is accepted when it starts and ends on shown lines and most of its code was shown."""
+    far = tuple((n, n) for n in range(200, 260, 3))  # 20 more pieces: a fragmented slice
+    pieces = SliceView("dbo.sp_pago_orden#web", "sp_pago_orden.sp", ((61, 70), (73, 92), *far))
+    across = Rule.model_validate({**rule_json(65, 80), "id": "RULE-001"})
+    assert check_citations(across, pieces, SOURCE) == []
+    # in a slice of few pieces the agent cites the pieces themselves
+    few = SliceView("dbo.sp_pago_orden#web", "sp_pago_orden.sp", ((61, 70), (73, 92)))
+    assert check_citations(across, few, SOURCE) == [
+        f"{across.name}: sp_pago_orden.sp:65-80 is outside the slice you were given"
+    ]
+    sparse = SliceView("dbo.sp_pago_orden#web", "sp_pago_orden.sp", ((61, 62), (91, 92), *far))
+    (problem,) = check_citations(Rule.model_validate({**rule_json(61, 92), "id": "RULE-001"}), sparse, SOURCE)
+    assert "outside the slice" in problem
+    assert "61-62, 91-92" in problem  # the agent is told which lines it was shown
+
+
 async def test_an_invalid_answer_is_corrected_with_the_concrete_error() -> None:
     model = ScriptedModel(
         json.dumps({"rules": [rule_json(34, 39, inputs=[{"name": "x", "type": "money"}])]}),

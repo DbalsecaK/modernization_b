@@ -127,6 +127,7 @@ class PlanIn(ApiModel):
 class C1CheckOut(ApiModel):
     can_approve: bool
     blockers: list[str]
+    warnings: list[str] = Field(default_factory=list)  # not blocking: business code no rule covers
 
 
 class CheckOut(ApiModel):

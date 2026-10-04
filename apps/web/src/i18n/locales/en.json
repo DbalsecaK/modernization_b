@@ -555,7 +555,13 @@
       "statement": "Statement",
       "class": "Class",
       "reason": "Why",
-      "more": "Show {{count}} more"
+      "more": "Show {{count}} more",
+      "uncited": "Business without a rule",
+      "coverage": "Covered",
+      "cited": "rule",
+      "notCited": "no rule",
+      "notSliced": "not read",
+      "coverageSummary": "{{business}} business statements: {{notSliced}} reached no slice, {{notCited}} are cited by no rule."
     }
   },
   "spec": {
@@ -640,7 +646,8 @@
     },
     "c1": {
       "ready": "The stories and the plan can be approved at gate C1 (in the Runs tab).",
-      "blocked": "Gate C1 cannot be approved yet:"
+      "blocked": "Gate C1 cannot be approved yet:",
+      "coverageWarning": "Business code no rule covers (not blocking; check it holds no missing logic):"
     },
     "noScreens": "This legacy has no screens",
     "noScreensHint": "Screens come from BMS maps or other screen sources; a stored-procedure estate has none.",

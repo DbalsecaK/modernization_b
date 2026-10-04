@@ -3066,6 +3066,8 @@ export interface components {
             blockers: string[];
             /** Canapprove */
             canApprove: boolean;
+            /** Warnings */
+            warnings?: string[];
         };
         /** CaseOut */
         CaseOut: {
@@ -3179,13 +3181,18 @@ export interface components {
             counts: {
                 [key: string]: number;
             };
+            coverage?: components["schemas"]["StatementCoverageOut"] | null;
             /** Statements */
             statements: components["schemas"]["ClassifiedStatementOut"][];
         };
         /** ClassifiedStatementOut */
         ClassifiedStatementOut: {
+            /** Cited */
+            cited?: boolean | null;
             /** File */
             file: string;
+            /** Inslice */
+            inSlice?: boolean | null;
             /**
              * Label
              * @enum {string}
@@ -5941,6 +5948,15 @@ export interface components {
             links?: string[];
             /** Title */
             title: string;
+        };
+        /** StatementCoverageOut */
+        StatementCoverageOut: {
+            /** Business */
+            business: number;
+            /** Notcited */
+            notCited: number;
+            /** Notsliced */
+            notSliced: number;
         };
         /** StoryIn */
         StoryIn: {

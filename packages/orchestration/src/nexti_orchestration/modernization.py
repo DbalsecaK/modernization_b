@@ -14,7 +14,7 @@ from typing import Any, Protocol
 from nexti_adapter_aspx import AspxAdapter
 from nexti_adapter_cobol import CobolAdapter
 from nexti_adapter_sybase import SybaseAdapter
-from nexti_core.adapters import Inventory, Node, SourceAdapter, SourceFile
+from nexti_core.adapters import Inventory, Node, SliceView, SourceAdapter, SourceFile
 from nexti_core.spec.model import Rule
 from nexti_orchestration import insights
 from nexti_orchestration.context import Attempt, NeedsAnswer, PhaseContext
@@ -27,6 +27,89 @@ ADAPTERS: tuple[SourceAdapter, ...] = (SybaseAdapter(), CobolAdapter(), AspxAdap
 DETECT_THRESHOLD = 0.5
 CLASSIFICATION = "inventory/classification.json"  # the statements with their class, for the Inventory tab
 MAX_CLASSIFIED = 20000
+COVERAGE = "inventory/coverage.json"  # business statements in no slice, or cited by no rule
+LARGE_SLICE = (200, 20)  # lines and pieces of a slice that may duplicate a larger one
+CONTAINED = 0.9
+
+
+def _line_set(view: SliceView) -> set[int]:
+    return {n for start, end in view.lines for n in range(start, end + 1)}
+
+
+def without_contained(views: Sequence[SliceView], business: set[tuple[str, int]] | None = None) -> list[SliceView]:
+    """The slices to extract: a large, fragmented slice whose lines are almost all (90%) in a larger slice of the
+    same file, with every business statement of it inside that larger slice too, gives the same rules again, so it is
+    left out. Without the business lines (an adapter that does not classify statement by statement) nothing is left
+    out. Small slices are always kept."""
+    if business is None:
+        return list(views)
+    large = [v for v in views if len(_line_set(v)) >= LARGE_SLICE[0] and len(v.lines) >= LARGE_SLICE[1]]
+    lines = {v.unit: _line_set(v) for v in large}
+
+    def contains(o: SliceView, v: SliceView) -> bool:
+        mine, theirs = lines[v.unit], lines[o.unit]
+        own_business = {n for f, n in business if f == v.file and n in mine}
+        return (o.unit != v.unit and o.file == v.file and len(theirs) > len(mine)
+                and len(mine & theirs) >= CONTAINED * len(mine) and own_business <= theirs)  # fmt: skip
+
+    dropped = {v.unit for v in large if any(contains(o, v) for o in large)}
+    return [v for v in views if v.unit not in dropped]
+
+
+def uncovered_slices(
+    statements: Sequence[dict[str, Any]], views: Sequence[SliceView], context: int = 2
+) -> list[SliceView]:
+    """One extra slice per unit with the business statements no slice reached (a statement that feeds no business
+    outcome is left out of every backward slice), each with a couple of lines around it: no business line goes
+    unread."""
+    sliced = {(v.file, n) for v in views for start, end in v.lines for n in range(start, end + 1)}
+    by_unit: dict[tuple[str, str], list[tuple[int, int]]] = {}
+    for st in statements:
+        if st.get("label") != "business":
+            continue
+        start, end = int(st["line_start"]), int(st["line_end"])
+        if any((st["file"], n) in sliced for n in range(start, end + 1)):
+            continue
+        by_unit.setdefault((str(st.get("unit", "")), str(st["file"])), []).append(
+            (max(1, start - context), end + context)
+        )
+    found = []
+    for (unit, file), ranges in sorted(by_unit.items()):
+        merged: list[tuple[int, int]] = []
+        for start, end in sorted(ranges):
+            if merged and start <= merged[-1][1] + 1:
+                merged[-1] = (merged[-1][0], max(merged[-1][1], end))
+            else:
+                merged.append((start, end))
+        found.append(SliceView(f"{unit}#uncovered", file, tuple(merged)))
+    return found
+
+
+def coverage(statements: Sequence[dict[str, Any]], views: Sequence[SliceView], rules: Sequence[Rule]) -> dict[str, Any]:
+    """Which business statements reached no slice (no agent read them) and which no rule cites (read, but no rule
+    came out): the check against leaving business logic out of the specification."""
+    sliced = {(v.file, n) for v in views for start, end in v.lines for n in range(start, end + 1)}
+    cited = {(s.file, n) for r in rules for s in r.sources for n in range(s.line_start, s.line_end + 1)}
+
+    def name(path: str) -> str:
+        return path.rsplit("/", 1)[-1].lower()
+
+    sliced_by_name = {(name(f), n) for f, n in sliced}
+    cited_by_name = {(name(f), n) for f, n in cited}
+    business = [s for s in statements if s.get("label") == "business"]
+    out: list[dict[str, Any]] = []
+    for s in business:
+        lines = range(int(s["line_start"]), int(s["line_end"]) + 1)
+        in_slice = any((name(s["file"]), n) in sliced_by_name for n in lines)
+        is_cited = any((name(s["file"]), n) in cited_by_name for n in lines)
+        out.append({"file": s["file"], "line_start": s["line_start"], "line_end": s["line_end"],
+                    "unit": s.get("unit", ""), "in_slice": in_slice, "cited": is_cited})  # fmt: skip
+    return {
+        "business": len(business),
+        "not_sliced": sum(1 for s in out if not s["in_slice"]),
+        "not_cited": sum(1 for s in out if s["in_slice"] and not s["cited"]),
+        "statements": out,
+    }
 
 
 class ProjectPort(Protocol):
@@ -174,7 +257,14 @@ class ModernizationPhases:
     async def rule_extraction(self, ctx: PhaseContext) -> PhaseResult:
         files = await self.files()
         adapter = pick_adapter(files)
-        views = adapter.slices(files)
+        statements = adapter.classified(files) if hasattr(adapter, "classified") else None
+        business = None if statements is None else {
+            (str(st["file"]), n) for st in statements if st["label"] == "business"
+            for n in range(int(st["line_start"]), int(st["line_end"]) + 1)
+        }  # fmt: skip
+        views = without_contained(adapter.slices(files), business)
+        if statements is not None:
+            views += uncovered_slices(statements, views)
         types = adapter.types(files)
         sources = {f.path: f.text for f in files}
         extractor = _agent(ctx, EXTRACTOR)
@@ -191,15 +281,31 @@ class ModernizationPhases:
                 return Attempt([r.model_dump(mode="json") for r in found.rules],
                                f"{len(found.rules)} candidate rule(s)", total(found.usage))  # fmt: skip
 
-            attempt = await shard_ctx.invoke(extractor, work, what=f"Rules of {view.unit}")
+            try:
+                attempt = await shard_ctx.invoke(extractor, work, what=f"Rules of {view.unit}")
+            except PhaseFailedError as exc:
+                # One slice that keeps failing does not throw away the rules of the others: it is reported, and the
+                # review before C1 shows the code that has no rule.
+                await shard_ctx.store.event("info", "running", f"{view.unit}: no rules ({str(exc)[:300]})",
+                                            phase=ctx.phase.key)  # fmt: skip
+                return [{"failed": view.unit}]
             return list(attempt.artifact)
 
         found = await ctx.fan_out([v.unit for v in views], one)
-        rules = consolidate([Rule.model_validate(r) for batch in found for r in batch])
+        failed = [r["failed"] for batch in found for r in batch if "failed" in r]
+        if failed and len(failed) == len(views):
+            raise PhaseFailedError(f"No slice gave valid rules ({len(failed)} failed); see the activity for why")
+        rules = consolidate([Rule.model_validate(r) for batch in found for r in batch if "failed" not in r])
         rules = await self._review(ctx, rules, sources)
         await self.port.save_rules(rules)
+        if statements is not None and hasattr(self.port, "save_artifacts"):
+            document = json.dumps(coverage(statements, views, rules), indent=1)
+            await self.port.save_artifacts({COVERAGE: document}, {COVERAGE: "docs"}, {})
         p0 = sum(1 for r in rules if r.priority == "P0")
-        return PhaseResult(summary=f"{len(rules)} rule(s), {p0} P0, from {len(views)} slice(s)")
+        summary = f"{len(rules)} rule(s), {p0} P0, from {len(views)} slice(s)"
+        if failed:
+            summary += f"; {len(failed)} slice(s) gave no valid rules: {', '.join(failed[:5])}"
+        return PhaseResult(summary=summary)
 
     async def _review(self, ctx: PhaseContext, rules: list[Rule], sources: dict[str, str]) -> list[Rule]:
         verifier = _agent(ctx, VERIFIER)

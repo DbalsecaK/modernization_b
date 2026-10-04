@@ -180,6 +180,16 @@ function C1Readiness({ check, onOpenRuns }: { check: C1Check; onOpenRuns: () => 
               ))}
             </ul>
           )}
+          {(check.warnings ?? []).length > 0 && (
+            <div className="mt-2">
+              <p className="text-xs font-medium text-warning-ink">{t('spec.c1.coverageWarning')}</p>
+              <ul className="mt-1 list-disc space-y-0.5 pl-5 text-xs text-text-2">
+                {(check.warnings ?? []).map((w) => (
+                  <li key={w}>{w}</li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
         {check.canApprove && (
           <Button size="sm" onClick={onOpenRuns}>

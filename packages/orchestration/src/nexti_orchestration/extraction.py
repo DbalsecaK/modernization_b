@@ -74,10 +74,39 @@ def cited_text(source: str, ref: SourceRef) -> str:
     return "\n".join(f"{n:>5}  {lines[n - 1]}" for n in range(ref.line_start, min(ref.line_end, len(lines)) + 1))
 
 
+NAMED_PIECES = 20  # a slice in more pieces than this is fragmented: whole-block citations, lines named in problems
+SHOWN_SHARE = 0.6  # of the cited lines with code, how many the agent must have been shown
+
+
+def shown_ranges(view: SliceView, limit: int = 12) -> str:
+    """The line ranges of a slice, as a short text for the agent (a backward slice can have a hundred pieces)."""
+    pieces = [f"{a}-{b}" if a != b else str(a) for a, b in view.lines]
+    more = len(pieces) - limit
+    return ", ".join(pieces[:limit]) + (f" and {more} more range(s)" if more > 0 else "")
+
+
+def _within(view: SliceView, ref: SourceRef, lines: list[str]) -> bool:
+    """A citation is inside the slice when it falls in one of its ranges, or, for a slice in pieces (a backward slice
+    skips the statements the target does not depend on), when it starts and ends on shown lines and most of the lines
+    with code it covers were shown: an agent cites a whole IF or block even if the slice skips a few of its lines."""
+    if any(ref.line_start >= a - CITATION_SLACK and ref.line_end <= b + CITATION_SLACK for a, b in view.lines):
+        return True
+    if len(view.lines) <= NAMED_PIECES:
+        return False  # in a slice of few pieces the agent can cite the pieces themselves
+
+    def near(n: int) -> bool:
+        return any(a - CITATION_SLACK <= n <= b + CITATION_SLACK for a, b in view.lines)
+
+    code = [n for n in range(ref.line_start, ref.line_end + 1) if lines[n - 1].strip()]
+    shown = [n for n in code if any(a <= n <= b for a, b in view.lines)]
+    return near(ref.line_start) and near(ref.line_end) and bool(code) and len(shown) / len(code) >= SHOWN_SHARE
+
+
 def check_citations(rule: Rule, view: SliceView, source: str) -> list[str]:
     """Deterministic: the cited file is the slice's, the lines exist and fall inside the slice."""
     problems = []
-    total = len(source.splitlines())
+    lines = source.splitlines()
+    total = len(lines)
     for ref in rule.sources:
         if ref.file != view.file:
             problems.append(f"{rule.name}: cites {ref.file}, but the slice is of {view.file}")
@@ -85,12 +114,13 @@ def check_citations(rule: Rule, view: SliceView, source: str) -> list[str]:
         if ref.line_end > total:
             problems.append(f"{rule.name}: cites line {ref.line_end}, the file has {total} lines")
             continue
-        inside = any(
-            ref.line_start >= start - CITATION_SLACK and ref.line_end <= end + CITATION_SLACK
-            for start, end in view.lines
-        )
-        if not inside:
-            problems.append(f"{rule.name}: {ref} is outside the slice you were given")
+        if not _within(view, ref, lines):
+            shown = (
+                f" (it shows lines {shown_ranges(view)}); cite only lines you were shown"
+                if len(view.lines) > (NAMED_PIECES)
+                else ""
+            )  # a slice in many pieces: say which lines the agent saw
+            problems.append(f"{rule.name}: {ref} is outside the slice you were given{shown}")  # fmt: skip
         if not "".join(source.splitlines()[ref.line_start - 1 : ref.line_end]).strip():
             problems.append(f"{rule.name}: {ref} has no code")
     return problems
