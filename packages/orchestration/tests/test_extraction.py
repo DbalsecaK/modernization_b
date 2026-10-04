@@ -139,9 +139,10 @@ def test_duplicates_from_overlapping_slices_are_merged_and_numbered_by_position(
     assert merged[1].statement.startswith("For the WEB channel")  # the more complete wording wins
 
 
-async def test_an_answer_cut_at_the_output_limit_is_reported_without_retrying() -> None:
-    """A reply that reached the profile's output limit ends mid-JSON; asking again would be cut the same way, so the
-    error says which limit to raise and no second call is paid."""
+async def test_an_answer_cut_at_the_output_limit_is_not_asked_again_and_is_reported_when_halves_are_cut_too() -> None:
+    """A reply that reached the profile's output limit ends mid-JSON; asking again would be cut the same way. The
+    slice (61-92) is halved; its halves (16 lines) are too small to halve again, so the error says which limit to
+    raise after two calls."""
 
     class CutModel(ScriptedModel):
         async def complete(
@@ -153,4 +154,22 @@ async def test_an_answer_cut_at_the_output_limit_is_reported_without_retrying() 
     model = CutModel()
     with pytest.raises(ReplyError, match=r"cut at the output limit of its profile \(4096 tokens\)"):
         await extract(model, VIEW, SOURCE, {}, max_iterations=3)
-    assert len(model.calls) == 1
+    assert len(model.calls) == 2
+
+
+async def test_a_cut_slice_is_halved_and_each_half_extracted() -> None:
+    class HalvingModel(ScriptedModel):
+        async def complete(
+            self, agent: str, phase: str, messages: list[dict[str, str]], *, iteration: int = 1, judge: int = 0
+        ) -> ModelReply:
+            self.calls.append((agent, [dict(m) for m in messages], iteration, judge))
+            if len(self.calls) == 1:
+                return ModelReply('{"rules": [', Usage(model="scripted", output_tokens=4096), cut_at=4096)
+            line = 70 if len(self.calls) == 2 else 85  # each half cites a line of its own
+            return ModelReply(json.dumps({"rules": [rule_json(line, line + 2)]}), Usage(model="scripted"))
+
+    model = HalvingModel()
+    result = await extract(model, VIEW, SOURCE, {}, max_iterations=3)
+    assert len(model.calls) == 3
+    assert [r.sources[0].line_start for r in result.rules] == [70, 85]
+    assert "77" in model.calls[2][1][1]["content"]  # the second half starts after the middle of 61-92

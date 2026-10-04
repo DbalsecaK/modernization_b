@@ -143,10 +143,56 @@ def cut_message(what: str, limit: int) -> str:
     )
 
 
+MIN_SPLIT_LINES = 20  # a slice shorter than this is not split further
+MAX_SPLITS = 2  # a cut slice is halved at most twice (four parts)
+
+
+def halves(view: SliceView) -> tuple[SliceView, SliceView] | None:
+    """The slice in two: its line ranges shared out, or its one range cut in the middle; None when it is too small."""
+    ranges = list(view.lines)
+    if len(ranges) > 1:
+        middle = len(ranges) // 2
+        parts = (tuple(ranges[:middle]), tuple(ranges[middle:]))
+    else:
+        start, end = ranges[0]
+        if end - start + 1 < MIN_SPLIT_LINES:
+            return None
+        middle = (start + end) // 2
+        parts = (((start, middle),), ((middle + 1, end),))
+    return (
+        SliceView(f"{view.unit}.a", view.file, parts[0], view.parameters, view.tables),
+        SliceView(f"{view.unit}.b", view.file, parts[1], view.parameters, view.tables),
+    )
+
+
 async def extract(
+    caller: ModelCaller, view: SliceView, source: str, types: dict[str, str], *, max_iterations: int = 3,
+    splits: int = MAX_SPLITS,
+) -> Extraction:  # fmt: skip
+    """Extract the rules of one slice, correcting with the concrete errors up to `max_iterations` times. A slice whose
+    answer is cut at the model's output limit is halved and each half extracted (up to `splits` times), so a long
+    procedure does not fail on a model that writes long answers."""
+    try:
+        return await _extract(caller, view, source, types, max_iterations=max_iterations)
+    except CutReplyError:
+        parts = halves(view) if splits > 0 else None
+        if parts is None:
+            raise
+        result = Extraction([])
+        for part in parts:
+            found = await extract(caller, part, source, types, max_iterations=max_iterations, splits=splits - 1)
+            result.rules += found.rules
+            result.usage += found.usage
+        return result
+
+
+class CutReplyError(ReplyError):
+    """The model's answer reached the output limit of its profile before it ended."""
+
+
+async def _extract(
     caller: ModelCaller, view: SliceView, source: str, types: dict[str, str], *, max_iterations: int = 3
 ) -> Extraction:
-    """Extract the rules of one slice, correcting with the concrete errors up to `max_iterations` times."""
     messages = [
         {"role": "system", "content": prompt(EXTRACTOR)},
         {"role": "user", "content": f"{_context(view, types)}\n\nSlice:\n{numbered(source, view)}"},
@@ -161,7 +207,7 @@ async def extract(
             return result
         except ReplyError as exc:
             if reply.cut_at:  # asking again gives the same cut answer: the profile must allow longer replies
-                raise ReplyError(cut_message(view.unit, reply.cut_at)) from exc
+                raise CutReplyError(cut_message(view.unit, reply.cut_at)) from exc
             last_error = str(exc)
             messages += [
                 {"role": "assistant", "content": reply.content},
