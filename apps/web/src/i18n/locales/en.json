@@ -2257,7 +2257,9 @@
     },
     "externalCalls": "External calls",
     "externalHint": "Called by the code but not in the inputs: dependencies (ports), not modernized",
-    "externalShort": "external call"
+    "externalShort": "external call",
+    "flowHint_one": "One flow per entry point; pick it to walk its steps on the right.",
+    "flowHint_other": "{{count}} flows, one per entry point; pick one to walk its steps on the right."
   },
   "protoChat": {
     "title": "Ask for prototype changes",

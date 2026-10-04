@@ -2257,7 +2257,9 @@
     },
     "externalCalls": "Llamados externos",
     "externalHint": "El código los llama pero no están en los insumos: dependencias (puertos), no se modernizan",
-    "externalShort": "llamado externo"
+    "externalShort": "llamado externo",
+    "flowHint_one": "Un flujo por punto de entrada; elígelo para recorrer sus pasos a la derecha.",
+    "flowHint_other": "{{count}} flujos, uno por punto de entrada; elige uno para recorrer sus pasos a la derecha."
   },
   "protoChat": {
     "title": "Pedir cambios al prototipo",

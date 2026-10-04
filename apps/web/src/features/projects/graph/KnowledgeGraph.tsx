@@ -364,6 +364,7 @@ export function KnowledgeGraph({
                   </option>
                 ))}
               </select>
+              <p className="text-xs text-muted">{t('graph.flowHint', { count: businessFlows.length })}</p>
             </FilterGroup>
 
             <FilterGroup title={t('graph.rule')}>
@@ -530,10 +531,10 @@ export function KnowledgeGraph({
                 drag.current = { x: e.clientX - view.x, y: e.clientY - view.y }
                 ;(e.target as Element).setPointerCapture?.(e.pointerId)
               }}
-              onPointerMove={(e) =>
-                drag.current &&
-                setView((v) => ({ ...v, x: e.clientX - drag.current!.x, y: e.clientY - drag.current!.y }))
-              }
+              onPointerMove={(e) => {
+                const start = drag.current
+                if (start) setView((v) => ({ ...v, x: e.clientX - start.x, y: e.clientY - start.y }))
+              }}
               onPointerUp={() => (drag.current = null)}
               onClick={() => !flow && !rule && setSelected(null)}
               onKeyDown={(e) =>
@@ -615,19 +616,38 @@ export function KnowledgeGraph({
                       : sameCol
                         ? `M${a.x + NODE_W / 2},${a.y} C${a.x + NODE_W / 2 + 50},${a.y} ${b.x + NODE_W / 2 + 50},${b.y} ${b.x + NODE_W / 2},${b.y}`
                         : `M${a.x + NODE_W / 2},${a.y} C${a.x + 120},${a.y} ${b.x - 120},${b.y} ${b.x - NODE_W / 2 - 4},${b.y}`
+                  const label = relationLabel(rel)
+                  const labelled = inFlow || touchesSelected
                   return (
-                    <path
-                      key={e.from + e.to + e.kind}
-                      d={d}
-                      fill="none"
-                      stroke={inFlow ? 'var(--text)' : relationStyle[rel].color}
-                      strokeWidth={inFlow ? 2.5 : touchesSelected ? 2.2 : 1.3}
-                      strokeDasharray={inFlow ? undefined : relationStyle[rel].dash}
-                      markerEnd={`url(#arrow-${inFlow ? 'flow' : rel})`}
-                      opacity={dim ? 0.12 : 0.9}
-                    >
-                      <title>{`${nameOf(e.from)} ${e.kind} ${nameOf(e.to)}`}</title>
-                    </path>
+                    <g key={e.from + e.to + e.kind}>
+                      <path
+                        d={d}
+                        fill="none"
+                        stroke={inFlow ? 'var(--text)' : relationStyle[rel].color}
+                        strokeWidth={inFlow ? 2.5 : touchesSelected ? 2.2 : 1.3}
+                        strokeDasharray={inFlow ? undefined : relationStyle[rel].dash}
+                        markerEnd={`url(#arrow-${inFlow ? 'flow' : rel})`}
+                        opacity={dim ? 0.12 : 0.9}
+                      >
+                        <title>{`${nameOf(e.from)} → ${label.toLowerCase()} → ${nameOf(e.to)}`}</title>
+                      </path>
+                      {labelled && (
+                        <text
+                          x={(a.x + b.x) / 2}
+                          y={(a.y + b.y) / 2 - 4}
+                          textAnchor="middle"
+                          fontSize={10}
+                          fontWeight={600}
+                          fill="var(--text)"
+                          stroke="var(--surface)"
+                          strokeWidth={3}
+                          paintOrder="stroke"
+                          pointerEvents="none"
+                        >
+                          {label.toLowerCase()}
+                        </text>
+                      )}
+                    </g>
                   )
                 })}
                 {nodes.map((n) => {
