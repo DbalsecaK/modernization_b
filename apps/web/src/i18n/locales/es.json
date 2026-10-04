@@ -526,7 +526,18 @@
     "impactResult_one": "{{count}} elemento depende de esto: {{items}}",
     "impactResult_other": "{{count}} elementos dependen de esto: {{items}}",
     "openCompare": "Comparar origen ↔ destino",
-    "impactUnused": "Programas, copybooks y archivos que nadie usa"
+    "impactUnused": "Programas, copybooks y archivos que nadie usa",
+    "kinds": {
+      "StoredProcedure": "Procedimientos almacenados",
+      "Program": "Programas",
+      "Class": "Clases",
+      "Transaction": "Transacciones",
+      "Page": "Páginas",
+      "BmsMap": "Mapas BMS",
+      "Copybook": "Copybooks",
+      "Table": "Tablas",
+      "File": "Archivos"
+    }
   },
   "spec": {
     "filterStatus": "Filtrar por estado",
@@ -1661,7 +1672,28 @@
       "groupMapping": "Mapeo de grupos a roles",
       "groupMappingHint": "Asocia grupos del proveedor de identidad con roles de la plataforma.",
       "jit": "Crear usuarios en su primer inicio de sesión (JIT)",
-      "scim": "Aprovisionar usuarios con SCIM",
+      "scim": {
+        "title": "Aprovisionamiento (SCIM 2.0)",
+        "hint": "Su proveedor de identidad crea, actualiza y desactiva personas y grupos de este cliente. Los grupos dan roles con el mapeo de grupos de sus proveedores.",
+        "baseUrl": "URL base de SCIM",
+        "bearer": "Token de portador",
+        "enabled": "Activo",
+        "disabled": "Sin configurar",
+        "hintLabel": "Termina en {{hint}}",
+        "createdAt": "Creado el {{date}}",
+        "lastUsed": "Último uso: {{date}}",
+        "neverUsed": "Aún sin uso",
+        "create": "Crear token",
+        "rotate": "Rotar",
+        "revoke": "Revocar",
+        "created": "Token creado",
+        "rotated": "Token rotado: el anterior ya no funciona",
+        "revoked": "Token revocado",
+        "showOnce": "Cópielo ahora en su proveedor de identidad: se muestra una sola vez y la plataforma guarda solo su huella.",
+        "copy": "Copiar",
+        "copied": "Copiado",
+        "done": "Listo"
+      },
       "passwordPolicy": "Política de contraseñas",
       "passwordPolicyHint": "Aplica solo a las cuentas de la plataforma.",
       "minLength": "Longitud mínima",
@@ -1706,28 +1738,6 @@
         "failed": "Guardado, pero Keycloak no lo tomó: vea el error"
       },
       "providerDeleted": "Proveedor eliminado",
-      "scim": {
-        "title": "Aprovisionamiento (SCIM 2.0)",
-        "hint": "Su proveedor de identidad crea, actualiza y desactiva personas y grupos de este cliente. Los grupos dan roles con el mapeo de grupos de sus proveedores.",
-        "baseUrl": "URL base de SCIM",
-        "bearer": "Token de portador",
-        "enabled": "Activo",
-        "disabled": "Sin configurar",
-        "hintLabel": "Termina en {{hint}}",
-        "createdAt": "Creado el {{date}}",
-        "lastUsed": "Último uso: {{date}}",
-        "neverUsed": "Aún sin uso",
-        "create": "Crear token",
-        "rotate": "Rotar",
-        "revoke": "Revocar",
-        "created": "Token creado",
-        "rotated": "Token rotado: el anterior ya no funciona",
-        "revoked": "Token revocado",
-        "showOnce": "Cópielo ahora en su proveedor de identidad: se muestra una sola vez y la plataforma guarda solo su huella.",
-        "copy": "Copiar",
-        "copied": "Copiado",
-        "done": "Listo"
-      },
       "mfaSsoNote": "Quienes entran por un proveedor de identidad usan el segundo factor de ese proveedor.",
       "realmPolicy": "Contraseñas, bloqueo y sesiones",
       "realmPolicyHint": "Se definen para todo el realm de la plataforma; un cliente que necesite otras pasa a un realm dedicado.",
@@ -2167,13 +2177,16 @@
       "calls": "Llama / inicia",
       "reads": "Lee",
       "writes": "Escribe",
-      "includes": "Incluye (copybooks, mapas)"
+      "includes": "Incluye (copybooks, mapas)",
+      "includesShort": "Incluye"
     },
     "nodes": "Nodos",
     "visibility": {
       "all": "Todos los nodos",
       "orphans": "Solo huérfanos y aislados",
-      "hideOrphans": "Ocultar huérfanos y aislados"
+      "hideOrphans": "Ocultar huérfanos y aislados",
+      "external": "Solo llamados externos",
+      "hideExternal": "Ocultar llamados externos"
     },
     "stats": "{{nodes}} nodos · {{edges}} relaciones",
     "zoomIn": "Acercar",
@@ -2241,7 +2254,12 @@
       "write": "{{from}} escribe {{to}}",
       "call": "{{from}} llama a {{to}}",
       "transfer": "{{from}} transfiere el control a {{to}}"
-    }
+    },
+    "externalCalls": "Llamados externos",
+    "externalHint": "El código los llama pero no están en los insumos: dependencias (puertos), no se modernizan",
+    "externalShort": "llamado externo",
+    "flowHint_one": "Un flujo por punto de entrada; elígelo para recorrer sus pasos a la derecha.",
+    "flowHint_other": "{{count}} flujos, uno por punto de entrada; elige uno para recorrer sus pasos a la derecha."
   },
   "protoChat": {
     "title": "Pedir cambios al prototipo",

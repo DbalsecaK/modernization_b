@@ -3604,6 +3604,12 @@
             "title": "Id",
             "type": "string"
           },
+          "kind": {
+            "default": "",
+            "description": "What the unit is: StoredProcedure, Program, Table, Page, ...",
+            "title": "Kind",
+            "type": "string"
+          },
           "lineEnd": {
             "anyOf": [
               {

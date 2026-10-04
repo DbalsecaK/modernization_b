@@ -10,7 +10,7 @@ import { Badge, Button, Card, CardBody, CardHeader, StatTile } from '@/component
 // business-rule focus, search, zoom and pan, over the project's real graph (GET /graph). Same view as the prototype.
 
 type Relation = 'calls' | 'reads' | 'writes' | 'includes'
-type Visibility = 'all' | 'orphans' | 'hideOrphans'
+type Visibility = 'all' | 'orphans' | 'hideOrphans' | 'external' | 'hideExternal'
 
 const TYPES: GraphNodeType[] = ['transaction', 'program', 'map', 'copybook', 'file']
 const COLUMNS: Record<GraphNodeType, number> = { transaction: 0, program: 1, map: 2, copybook: 2, file: 3 }
@@ -23,6 +23,8 @@ const edgeGroup: Record<string, Relation> = {
   USES_MAP: 'includes',
 }
 const RELATIONS: Relation[] = ['calls', 'reads', 'writes', 'includes']
+// The order of the tiles: units of code first, then screens and shared layouts, then data.
+const KIND_ORDER = ['StoredProcedure', 'Program', 'Class', 'Transaction', 'Page', 'BmsMap', 'Copybook', 'Table', 'File']
 const relationStyle: Record<Relation, { color: string; dash?: string }> = {
   calls: { color: 'var(--text-2)' },
   reads: { color: 'var(--series-1)' },
@@ -151,6 +153,8 @@ export function KnowledgeGraph({
     const kind = classify(n, graphEdges)
     if (visibility === 'orphans') return kind !== null
     if (visibility === 'hideOrphans') return kind === null
+    if (visibility === 'external') return n.external
+    if (visibility === 'hideExternal') return !n.external
     return true
   })
   const ids = new Set(nodes.map((n) => n.id))
@@ -277,12 +281,39 @@ export function KnowledgeGraph({
   }, [mode])
 
   const node = graphNodes.find((n) => n.id === selected)
-  const counts = TYPES.map((ty) => [ty, graphNodes.filter((n) => n.type === ty).length] as const)
+  // What the inventory found, by what each unit is (a stored procedure, a table, a COBOL program...): only the kinds
+  // present get a tile, and the units the code calls but the inputs do not bring are counted apart (dependencies).
+  const kindCounts = Object.entries(
+    graphNodes
+      .filter((n) => !n.external)
+      .reduce<Record<string, number>>(
+        (acc, n) => ({ ...acc, [n.kind || n.type]: (acc[n.kind || n.type] ?? 0) + 1 }),
+        {},
+      ),
+  ).sort(([a], [b]) => KIND_ORDER.indexOf(a) - KIND_ORDER.indexOf(b))
+  const externalCount = graphNodes.filter((n) => n.external).length
+  const kindLabel = (k: string) => t(`inventory.kinds.${k}`, { defaultValue: k })
+  const presentTypes = TYPES.filter((ty) => graphNodes.some((n) => n.type === ty))
+  const presentRelations = RELATIONS.filter((r) => graphEdges.some((e) => (edgeGroup[e.kind] ?? 'calls') === r))
+  const includedKinds = [
+    ...new Set(
+      graphEdges
+        .filter((e) => edgeGroup[e.kind] === 'includes')
+        .map((e) => graphNodes.find((n) => n.id === e.to))
+        .filter((n): n is GraphNode => !!n)
+        .map((n) => kindLabel(n.kind || n.type).toLowerCase()),
+    ),
+  ]
+  const relationLabel = (r: Relation) =>
+    r === 'includes' && includedKinds.length
+      ? `${t('graph.relationNames.includesShort')} (${includedKinds.join(', ')})`
+      : t(`graph.relationNames.${r}`)
   const orphanCount = graphNodes.filter((n) => classify(n, graphEdges) !== null).length
   const topCopybook = graphNodes
-    .filter((n) => n.type === 'copybook')
+    .filter((n) => n.type === 'copybook' || n.type === 'file')
     .sort((a, b) => impactOf(b.id).length - impactOf(a.id).length)[0]
-  const color = (n: GraphNode) => (colorBy === 'domain' ? domainColor[n.domain] : stateColor[n.state])
+  const color = (n: GraphNode) =>
+    n.external ? 'var(--text-muted)' : colorBy === 'domain' ? domainColor[n.domain] : stateColor[n.state]
 
   function toggle<T>(list: T[], v: T, set: (x: T[]) => void) {
     set(list.includes(v) ? list.filter((x) => x !== v) : [...list, v])
@@ -291,9 +322,14 @@ export function KnowledgeGraph({
   return (
     <div className="space-y-6">
       <div className="grid gap-4 sm:grid-cols-3 xl:grid-cols-7">
-        {counts.map(([k, v]) => (
-          <StatTile key={k} label={t(`inventory.typesPlural.${k}`)} value={v} />
+        {kindCounts.map(([k, v]) => (
+          <StatTile key={k} label={kindLabel(k)} value={v} />
         ))}
+        {externalCount > 0 && (
+          <button className="text-left" onClick={() => setVisibility('external')}>
+            <StatTile label={t('graph.externalCalls')} value={externalCount} hint={t('graph.externalHint')} />
+          </button>
+        )}
         <button className="text-left" onClick={() => setVisibility('orphans')}>
           <StatTile label={t('graph.orphans')} value={orphanCount} hint={t('graph.orphansHint')} />
         </button>
@@ -328,6 +364,7 @@ export function KnowledgeGraph({
                   </option>
                 ))}
               </select>
+              <p className="text-xs text-muted">{t('graph.flowHint', { count: businessFlows.length })}</p>
             </FilterGroup>
 
             <FilterGroup title={t('graph.rule')}>
@@ -347,7 +384,7 @@ export function KnowledgeGraph({
             </FilterGroup>
 
             <FilterGroup title={t('graph.relations')}>
-              {RELATIONS.map((r) => (
+              {presentRelations.map((r) => (
                 <label key={r} className="flex cursor-pointer items-center gap-2 text-sm text-text">
                   <input
                     type="checkbox"
@@ -366,7 +403,7 @@ export function KnowledgeGraph({
                       strokeDasharray={relationStyle[r].dash}
                     />
                   </svg>
-                  {t(`graph.relationNames.${r}`)}
+                  {relationLabel(r)}
                 </label>
               ))}
             </FilterGroup>
@@ -381,6 +418,8 @@ export function KnowledgeGraph({
                 <option value="all">{t('graph.visibility.all')}</option>
                 <option value="orphans">{t('graph.visibility.orphans')}</option>
                 <option value="hideOrphans">{t('graph.visibility.hideOrphans')}</option>
+                {externalCount > 0 && <option value="external">{t('graph.visibility.external')}</option>}
+                {externalCount > 0 && <option value="hideExternal">{t('graph.visibility.hideExternal')}</option>}
               </select>
               <select
                 value={domain}
@@ -394,7 +433,7 @@ export function KnowledgeGraph({
                 ))}
               </select>
               <div className="mt-2 flex flex-wrap gap-1.5">
-                {TYPES.map((ty) => (
+                {presentTypes.map((ty) => (
                   <button
                     key={ty}
                     onClick={() => toggle(types, ty, setTypes)}
@@ -492,10 +531,10 @@ export function KnowledgeGraph({
                 drag.current = { x: e.clientX - view.x, y: e.clientY - view.y }
                 ;(e.target as Element).setPointerCapture?.(e.pointerId)
               }}
-              onPointerMove={(e) =>
-                drag.current &&
-                setView((v) => ({ ...v, x: e.clientX - drag.current!.x, y: e.clientY - drag.current!.y }))
-              }
+              onPointerMove={(e) => {
+                const start = drag.current
+                if (start) setView((v) => ({ ...v, x: e.clientX - start.x, y: e.clientY - start.y }))
+              }}
               onPointerUp={() => (drag.current = null)}
               onClick={() => !flow && !rule && setSelected(null)}
               onKeyDown={(e) =>
@@ -577,19 +616,38 @@ export function KnowledgeGraph({
                       : sameCol
                         ? `M${a.x + NODE_W / 2},${a.y} C${a.x + NODE_W / 2 + 50},${a.y} ${b.x + NODE_W / 2 + 50},${b.y} ${b.x + NODE_W / 2},${b.y}`
                         : `M${a.x + NODE_W / 2},${a.y} C${a.x + 120},${a.y} ${b.x - 120},${b.y} ${b.x - NODE_W / 2 - 4},${b.y}`
+                  const label = relationLabel(rel)
+                  const labelled = inFlow || touchesSelected
                   return (
-                    <path
-                      key={e.from + e.to + e.kind}
-                      d={d}
-                      fill="none"
-                      stroke={inFlow ? 'var(--text)' : relationStyle[rel].color}
-                      strokeWidth={inFlow ? 2.5 : touchesSelected ? 2.2 : 1.3}
-                      strokeDasharray={inFlow ? undefined : relationStyle[rel].dash}
-                      markerEnd={`url(#arrow-${inFlow ? 'flow' : rel})`}
-                      opacity={dim ? 0.12 : 0.9}
-                    >
-                      <title>{`${nameOf(e.from)} ${e.kind} ${nameOf(e.to)}`}</title>
-                    </path>
+                    <g key={e.from + e.to + e.kind}>
+                      <path
+                        d={d}
+                        fill="none"
+                        stroke={inFlow ? 'var(--text)' : relationStyle[rel].color}
+                        strokeWidth={inFlow ? 2.5 : touchesSelected ? 2.2 : 1.3}
+                        strokeDasharray={inFlow ? undefined : relationStyle[rel].dash}
+                        markerEnd={`url(#arrow-${inFlow ? 'flow' : rel})`}
+                        opacity={dim ? 0.12 : 0.9}
+                      >
+                        <title>{`${nameOf(e.from)} → ${label.toLowerCase()} → ${nameOf(e.to)}`}</title>
+                      </path>
+                      {labelled && (
+                        <text
+                          x={(a.x + b.x) / 2}
+                          y={(a.y + b.y) / 2 - 4}
+                          textAnchor="middle"
+                          fontSize={10}
+                          fontWeight={600}
+                          fill="var(--text)"
+                          stroke="var(--surface)"
+                          strokeWidth={3}
+                          paintOrder="stroke"
+                          pointerEvents="none"
+                        >
+                          {label.toLowerCase()}
+                        </text>
+                      )}
+                    </g>
                   )
                 })}
                 {nodes.map((n) => {
@@ -622,7 +680,7 @@ export function KnowledgeGraph({
                           p={p as Circle}
                           color={impact.includes(n.id) ? 'var(--critical)' : color(n)}
                           strong={selected === n.id || inStep}
-                          dashed={!!orphanKind}
+                          dashed={!!orphanKind || n.external}
                           stepNo={stepNo}
                         />
                       ) : (
@@ -640,7 +698,7 @@ export function KnowledgeGraph({
                             }
                             stroke={impact.includes(n.id) ? 'var(--critical)' : color(n)}
                             strokeWidth={selected === n.id || inStep ? 3.5 : 2}
-                            strokeDasharray={orphanKind ? '5 3' : undefined}
+                            strokeDasharray={orphanKind || n.external ? '5 3' : undefined}
                           />
                           <text
                             x={p.x}
@@ -653,7 +711,11 @@ export function KnowledgeGraph({
                             {n.name}
                           </text>
                           <text x={p.x} y={p.y + 11} textAnchor="middle" fontSize={9} fill="var(--text-muted)">
-                            {orphanKind ? t(`graph.kind.${orphanKind}`) : t(`inventory.types.${n.type}`)}
+                            {orphanKind
+                              ? t(`graph.kind.${orphanKind}`)
+                              : n.external
+                                ? t('graph.externalShort')
+                                : t(`inventory.types.${n.type}`)}
                           </text>
                           {stepNo && (
                             <g>
