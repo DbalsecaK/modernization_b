@@ -75,3 +75,19 @@ def test_a_spec_has_unique_ids() -> None:
     assert Spec(rules=(one,)).rule("RULE-001") == one
     with pytest.raises(ValidationError, match="duplicate rule"):
         Spec(rules=(one, one))
+
+
+def test_an_entity_key_written_with_the_legacy_column_means_its_field() -> None:
+    import pytest
+    from pydantic import ValidationError
+
+    from nexti_core.spec.design import Entity
+
+    fields = [{"name": "orderBank", "type": "integer(32,signed)", "column": "order_bank", "legacy": "or_orden_banco"},
+              {"name": "amount", "type": "decimal(19,4,signed)", "legacy": "or_monto"}]  # fmt: skip
+    assert Entity.model_validate({"name": "Order", "key": ["or_orden_banco"], "fields": fields}).key == ["orderBank"]
+    assert Entity.model_validate({"name": "Order", "key": ["ORDER_BANK"], "fields": fields}).key == ["orderBank"]
+    assert Entity.model_validate({"name": "Order", "key": ["orderBank"], "fields": fields}).key == ["orderBank"]
+    with pytest.raises(ValidationError, match=r"key fields not declared: or_secuencial \(the key lists names of its "
+                                              r"fields, one of: amount, orderBank"):  # fmt: skip
+        Entity.model_validate({"name": "Order", "key": ["or_secuencial"], "fields": fields})
