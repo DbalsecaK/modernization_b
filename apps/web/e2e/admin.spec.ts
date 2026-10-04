@@ -87,3 +87,19 @@ test('the audit log lists the actions and verifies the chain', async ({ page }) 
   await page.getByRole('button', { name: 'Verify chain' }).click()
   await expect(page.getByText(/The chain is intact/)).toBeVisible()
 })
+
+test('a member gets a project role and loses it again', async ({ page }) => {
+  await page.getByRole('button', { name: 'Assign role Carlos Ruiz' }).click()
+  const dialog = page.getByRole('dialog', { name: 'Assign a role to Carlos Ruiz' })
+  await expect(dialog).toBeVisible()
+  await dialog.getByRole('combobox').first().selectOption({ label: 'Business reviewer' })
+  await dialog.getByRole('combobox').nth(1).selectOption({ index: 1 }) // the project, once the role is per project
+  await expectAccessible(page, '[role="dialog"]')
+  await dialog.getByRole('button', { name: 'Assign role' }).click()
+  await expect(page.getByRole('status').filter({ hasText: 'Role assigned to Carlos Ruiz.' })).toBeVisible()
+
+  const remove = page.getByRole('button', { name: /^Remove the role Business reviewer · .+ from Carlos Ruiz$/ }).first()
+  page.once('dialog', (confirm) => void confirm.accept())
+  await remove.click()
+  await expect(page.getByRole('status').filter({ hasText: 'Role removed.' })).toBeVisible()
+})

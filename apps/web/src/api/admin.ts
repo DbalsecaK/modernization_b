@@ -103,6 +103,34 @@ export const useRemoveMember = () =>
     [keys.members, keys.roles],
   )
 
+export const useUpdateTenant = () =>
+  useAdminMutation(
+    ({ id, ...body }: Schemas['TenantUpdate'] & { id: string }) =>
+      unwrap(api.PATCH('/api/v1/tenants/{tenant_id}', { params: { path: { tenant_id: id } }, body })),
+    [keys.tenants, ['me']],
+  )
+
+// Roles of a person who is already a member (an invitation gives the first one).
+export const useAssignRole = () =>
+  useAdminMutation(
+    (body: Schemas['AssignmentCreate']) => unwrap(api.POST('/api/v1/role-assignments', { body })),
+    [keys.members, keys.roles, ['me']],
+  )
+
+export const useRemoveAssignment = () =>
+  useAdminMutation(
+    (id: string) =>
+      unwrap(api.DELETE('/api/v1/role-assignments/{assignment_id}', { params: { path: { assignment_id: id } } })),
+    [keys.members, keys.roles, ['me']],
+  )
+
+export const useRenameRole = () =>
+  useAdminMutation(
+    ({ id, name }: { id: string; name: string }) =>
+      unwrap(api.PATCH('/api/v1/roles/{role_id}', { params: { path: { role_id: id } }, body: { name } })),
+    [keys.roles],
+  )
+
 export const useCreateRole = () =>
   useAdminMutation((body: Schemas['RoleCreate']) => unwrap(api.POST('/api/v1/roles', { body })), [keys.roles])
 
