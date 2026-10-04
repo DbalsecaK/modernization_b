@@ -1129,6 +1129,13 @@
           "canApprove": {
             "title": "Canapprove",
             "type": "boolean"
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Warnings",
+            "type": "array"
           }
         },
         "required": [
@@ -1453,6 +1460,16 @@
             "title": "Counts",
             "type": "object"
           },
+          "coverage": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StatementCoverageOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "statements": {
             "items": {
               "$ref": "#/components/schemas/ClassifiedStatementOut"
@@ -1470,9 +1487,31 @@
       },
       "ClassifiedStatementOut": {
         "properties": {
+          "cited": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cited"
+          },
           "file": {
             "title": "File",
             "type": "string"
+          },
+          "inSlice": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Inslice"
           },
           "label": {
             "enum": [
@@ -9488,6 +9527,29 @@
           "title"
         ],
         "title": "SplitIn",
+        "type": "object"
+      },
+      "StatementCoverageOut": {
+        "properties": {
+          "business": {
+            "title": "Business",
+            "type": "integer"
+          },
+          "notCited": {
+            "title": "Notcited",
+            "type": "integer"
+          },
+          "notSliced": {
+            "title": "Notsliced",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "business",
+          "notSliced",
+          "notCited"
+        ],
+        "title": "StatementCoverageOut",
         "type": "object"
       },
       "StoryIn": {

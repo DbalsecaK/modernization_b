@@ -22,11 +22,13 @@ export function shareOf(data: Classification, label: ClassLabel): number {
 export function ClassificationPanel({ projectId }: { projectId: string }) {
   const { t } = useTranslation()
   const query = useClassification(projectId)
-  const [label, setLabel] = useState<ClassLabel | 'all'>('all')
+  const [label, setLabel] = useState<ClassLabel | 'all' | 'uncited'>('all')
   const [shown, setShown] = useState(PAGE)
   const data = query.data
   if (!data) return null
-  const rows = data.statements.filter((s) => label === 'all' || s.label === label)
+  const rows = data.statements.filter((s) =>
+    label === 'uncited' ? s.label === 'business' && s.cited === false : label === 'all' || s.label === label,
+  )
   return (
     <Card>
       <CardHeader title={t('inventory.classification.title')} subtitle={t('inventory.classification.hint')} />
@@ -42,12 +44,21 @@ export function ClassificationPanel({ projectId }: { projectId: string }) {
             </button>
           ))}
         </div>
+        {data.coverage && (
+          <p className="text-xs text-text-2">
+            {t('inventory.classification.coverageSummary', {
+              business: data.coverage.business,
+              notSliced: data.coverage.notSliced,
+              notCited: data.coverage.notCited,
+            })}
+          </p>
+        )}
         {data.statements.length === 0 ? (
           <p className="text-sm text-muted">{t('inventory.classification.noDetail')}</p>
         ) : (
           <>
             <div className="flex flex-wrap gap-1.5" role="group" aria-label={t('inventory.classification.filter')}>
-              {(['all', ...LABELS] as const).map((l) => (
+              {(['all', ...LABELS, ...(data.coverage ? (['uncited'] as const) : [])] as const).map((l) => (
                 <button
                   key={l}
                   onClick={() => (setLabel(l), setShown(PAGE))}
@@ -57,7 +68,11 @@ export function ClassificationPanel({ projectId }: { projectId: string }) {
                     label === l ? 'border-series-1 bg-series-1/10 text-text' : 'border-border text-muted',
                   )}
                 >
-                  {l === 'all' ? t('inventory.classification.all') : t(`inventory.classification.labels.${l}`)}
+                  {l === 'all'
+                    ? t('inventory.classification.all')
+                    : l === 'uncited'
+                      ? t('inventory.classification.uncited')
+                      : t(`inventory.classification.labels.${l}`)}
                 </button>
               ))}
             </div>
@@ -69,6 +84,7 @@ export function ClassificationPanel({ projectId }: { projectId: string }) {
                   <Th>{t('inventory.classification.statement')}</Th>
                   <Th>{t('inventory.classification.class')}</Th>
                   <Th>{t('inventory.classification.reason')}</Th>
+                  {data.coverage && <Th>{t('inventory.classification.coverage')}</Th>}
                 </tr>
               </thead>
               <tbody>
@@ -83,6 +99,19 @@ export function ClassificationPanel({ projectId }: { projectId: string }) {
                       <Badge tone={TONE[s.label]}>{t(`inventory.classification.labels.${s.label}`)}</Badge>
                     </Td>
                     <Td className="text-xs text-muted">{s.reason}</Td>
+                    {data.coverage && (
+                      <Td className="text-xs whitespace-nowrap">
+                        {s.label !== 'business' || s.cited == null ? (
+                          '—'
+                        ) : s.cited ? (
+                          <Badge tone="good">{t('inventory.classification.cited')}</Badge>
+                        ) : s.inSlice ? (
+                          <Badge tone="warning">{t('inventory.classification.notCited')}</Badge>
+                        ) : (
+                          <Badge tone="critical">{t('inventory.classification.notSliced')}</Badge>
+                        )}
+                      </Td>
+                    )}
                   </tr>
                 ))}
               </tbody>

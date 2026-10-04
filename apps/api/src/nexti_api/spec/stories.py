@@ -381,6 +381,9 @@ async def get_coverage(request: Request, project_id: uuid.UUID, auth: ViewProjec
 
 @router.get("/c1-check", response_model=C1CheckOut)
 async def c1_check(request: Request, project_id: uuid.UUID, auth: ViewProject) -> C1CheckOut:
+    from nexti_api.spec.classification import coverage_warnings
+
     async with transaction(request, auth) as conn:
         blockers = await common.c1_blockers(conn, project_id)
-    return C1CheckOut(can_approve=not blockers, blockers=blockers)
+        warnings = await coverage_warnings(request, conn, project_id)
+    return C1CheckOut(can_approve=not blockers, blockers=blockers, warnings=warnings)

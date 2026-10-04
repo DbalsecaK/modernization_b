@@ -338,7 +338,7 @@ async def test_a_deep_inventory_stores_descriptions_observations_and_checked_sce
 async def test_without_the_option_no_prompt_or_call_changes() -> None:
     deep, plain = await to_c1({"deep_inventory": True}), await to_c1({})
     assert plain.scripted.insight_calls == []
-    assert set(plain.artifacts) == {"inventory/classification.json"}
+    assert set(plain.artifacts) == {"inventory/classification.json", "inventory/coverage.json"}  # no model call
     # Every other call is the same as with the option: the deep inventory only adds calls.
     assert plain.models.calls == deep.models.calls
 
@@ -440,3 +440,42 @@ def test_scenarios_must_use_known_nodes_and_rules_in_order() -> None:
     }
     _, few = insights.check_scenarios(json.dumps({"scenarios": [good]}), nodes, ["RULE-001"])
     assert few == ["propose between 2 and 6 scenarios, not 1"]
+
+
+# -- slices of a long procedure: fewer duplicates, nothing of the business left unread ---------------------------
+def test_a_large_slice_inside_a_larger_one_is_extracted_once_unless_it_has_business_of_its_own() -> None:
+    from nexti_core.adapters import SliceView
+    from nexti_orchestration.modernization import without_contained
+
+    big = SliceView("p#9", "p.sp", tuple((n, n + 3) for n in range(1, 400, 5)))  # 80 pieces, 320 lines
+    inner = SliceView("p#5", "p.sp", tuple((n, n + 3) for n in range(1, 380, 5)))  # 76 pieces, inside big
+    small = SliceView("p#1", "p.sp", ((1, 4),))
+    business = {("p.sp", 2), ("p.sp", 300)}
+    assert [v.unit for v in without_contained([big, inner, small], business)] == ["p#9", "p#1"]
+    # a business line only the inner slice has keeps it
+    own = SliceView("p#6", "p.sp", (*inner.lines, (600, 604)))
+    assert [v.unit for v in without_contained([big, own], business | {("p.sp", 602)})] == ["p#9", "p#6"]
+    # without the statement-by-statement classification nothing is left out
+    assert len(without_contained([big, inner], None)) == 2
+
+
+def test_business_statements_no_slice_reached_get_a_slice_of_their_own_and_coverage_says_so() -> None:
+    from nexti_core.adapters import SliceView
+    from nexti_core.spec.model import Rule as SpecRule
+    from nexti_orchestration.modernization import coverage, uncovered_slices
+
+    statements = [
+        {"unit": "p", "file": "p.sp", "line_start": 10, "line_end": 10, "label": "business"},
+        {"unit": "p", "file": "p.sp", "line_start": 50, "line_end": 51, "label": "business"},
+        {"unit": "p", "file": "p.sp", "line_start": 52, "line_end": 52, "label": "business"},
+        {"unit": "p", "file": "p.sp", "line_start": 70, "line_end": 70, "label": "infrastructure"},
+    ]
+    views = [SliceView("p#1", "p.sp", ((8, 12),))]
+    (extra,) = uncovered_slices(statements, views)
+    assert (extra.unit, extra.lines) == ("p#uncovered", ((48, 54),))
+    rule = SpecRule.model_validate({"id": "RULE-001", "name": "rule name", "category": "validation", "priority": "P0",
+                                    "statement": "a statement long enough", "sources": [{"file": "p.sp",
+                                                                   "line_start": 10, "line_end": 10}]})  # fmt: skip
+    found = coverage(statements, [*views, extra], [rule])
+    assert (found["business"], found["not_sliced"], found["not_cited"]) == (3, 0, 2)
+    assert coverage(statements, views, [])["not_sliced"] == 2
