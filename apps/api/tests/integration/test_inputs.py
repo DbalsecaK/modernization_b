@@ -356,3 +356,43 @@ async def test_the_repository_token_lives_in_the_secrets_store_and_the_check_has
         secrets = SecretStore(SecretsConfig(SETTINGS.secrets_url, SETTINGS.secrets_token.get_secret_value()), http)
         assert await secrets.get(row.vault_path) is None
     assert api.get(url).json() is None
+
+
+async def test_loose_code_files_are_packed_validated_and_versioned(
+    api: TestClient, admin: dict[str, str], world: World
+) -> None:
+    """A code input also takes loose code files (a stored procedure, a few programs): they are packed into one zip
+    and validated like an uploaded archive; re-uploading the same file makes a new version."""
+    url = f"/api/v1/projects/{world.project_a}/inputs"
+    name = f"sp_fic_{uuid.uuid4().hex[:6]}.sp"
+    one = api.post(url, files={"file": (name, b"create procedure dbo.sp_fic as select 1\n", "text/plain")},
+                   data={"kind": "source_archive"}, headers=admin)  # fmt: skip
+    assert one.status_code == 201, one.text
+    assert (one.json()["name"], one.json()["version"], one.json()["findings"]["archive"]["entries"]) == (name, 1, 1)
+    again = api.post(url, files={"file": (name, b"create procedure dbo.sp_fic as select 2\n", "text/plain")},
+                     data={"kind": "source_archive"}, headers=admin)  # fmt: skip
+    assert again.json()["version"] == 2
+    content = api.get(f"{url}/{one.json()['id']}/content", headers=admin).content
+    with zipfile.ZipFile(io.BytesIO(content)) as archive:
+        assert archive.namelist() == [name]
+
+    several = api.post(url, data={"kind": "source_archive"}, headers=admin, files=[
+        ("file", ("PAGO01.cbl", b"       MOVE 1 TO WS-X.\n", "text/plain")),
+        ("file", ("PAGO01.cpy", b"       01 WS-X PIC 9.\n", "text/plain")),
+    ])  # fmt: skip
+    assert several.status_code == 201, several.text
+    assert (several.json()["name"], several.json()["findings"]["archive"]["entries"]) == ("PAGO01.cbl (+1).zip", 2)
+
+    for files, code in (
+        ([("file", ("tool.exe", b"MZ\x90\x00", "application/octet-stream"))], "unsupported_code_file"),
+        ([("file", ("a.sp", b"select 1\n", "text/plain")), ("file", ("a.sp", b"select 2\n", "text/plain"))],
+         "duplicate_file"),
+        ([("file", ("code.zip", zip_bytes({"x.cbl": b"x\n"}), "application/zip")),
+          ("file", ("b.sp", b"select 1\n", "text/plain"))], "mixed_upload"),
+        ([("file", ("bin.sp", b"\x00\x01\x02binary", "text/plain"))], "binary_file"),
+    ):  # fmt: skip
+        refused = api.post(url, data={"kind": "source_archive"}, headers=admin, files=files)
+        assert (refused.status_code, refused.json()["code"]) == (422, code), refused.text
+    two_docs = api.post(url, data={"kind": "document"}, headers=admin, files=[
+        ("file", ("a.md", b"# a\n", "text/markdown")), ("file", ("b.md", b"# b\n", "text/markdown"))])  # fmt: skip
+    assert (two_docs.status_code, two_docs.json()["code"]) == (422, "one_file_only")

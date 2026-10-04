@@ -76,8 +76,8 @@ export function ArchiveSection({
   label,
   prompt,
 }: {
-  value: File | null
-  onChange: (v: File | null) => void
+  value: File[]
+  onChange: (v: File[]) => void
   hint?: string
   label?: string
   prompt?: string
@@ -91,13 +91,13 @@ export function ArchiveSection({
         <span className="text-xs text-muted">{hint ?? t('setup.archiveHint')}</span>
         <input
           type="file"
-          accept=".zip,application/zip"
+          multiple
           className="sr-only"
           aria-label={label ?? t('wizard.uploadZip')}
-          onChange={(e) => onChange(e.target.files?.[0] ?? null)}
+          onChange={(e) => onChange(Array.from(e.target.files ?? []))}
         />
       </label>
-      <FileChips files={value ? [value] : []} onRemove={() => onChange(null)} />
+      <FileChips files={value} onRemove={(f) => onChange(value.filter((v) => v !== f))} />
     </div>
   )
 }

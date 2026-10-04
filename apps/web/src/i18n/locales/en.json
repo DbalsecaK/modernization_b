@@ -447,7 +447,7 @@
     },
     "secretsFound_one": "{{count}} credential found",
     "secretsFound_other": "{{count}} credentials found",
-    "archiveOnly": "One zip with the legacy code; validated before it is stored.",
+    "archiveOnly": "One zip, or one or more code files (packed into one input); validated before it is stored.",
     "deleteInput": "Delete {{name}}",
     "confirmDelete": "Delete \"{{name}}\"? The stored file is removed; the record stays in the history.",
     "deleted": "\"{{name}}\" deleted.",
@@ -466,7 +466,7 @@
     "withToken": "With token",
     "tokenKept": "Leave empty to keep the current token.",
     "branches": "Branches: {{branches}}",
-    "targetArchiveHint": "A zip with the third party's source and its runnable artifact (a Spring Boot jar)."
+    "targetArchiveHint": "A zip with the third party's source and its runnable artifact (a Spring Boot jar), or its loose source files."
   },
   "inventory": {
     "programs": "Programs",
@@ -1120,7 +1120,7 @@
     "inputsHint": "Select what you will provide. Without Figma, the platform proposes a design system and prototypes.",
     "connectGit": "Connect a Git repository",
     "connectGitHint": "Recommended. Keeps versions and lets you re-sync.",
-    "uploadZip": "Upload a zip file",
+    "uploadZip": "Upload a zip or code files",
     "uploadZipHint": "Validated and scanned before anything reads it.",
     "dropInputs": "Drop documents, screenshots or paste Figma links here",
     "untrustedNotice": "Your code is treated as untrusted input and never leaves the data plane of this customer.",
@@ -2285,8 +2285,8 @@
     "autoCreate": "Create features, stories and tasks automatically when the spec is approved (C1)",
     "summaryUi": "{{screens}} screenshots · {{figma}} Figma · {{prototypes}} prototypes",
     "dropDocuments": "Choose documents and user stories",
-    "dropArchive": "Choose the zip with the legacy code",
-    "dropExistingArchive": "Choose the zip with the application's code",
+    "dropArchive": "Choose the zip or the files with the legacy code",
+    "dropExistingArchive": "Choose the zip or the files with the application's code",
     "archiveHint": "Validated (paths, links, size, malware, secrets) before anything reads it.",
     "gitUrl": "Repository URL (https)",
     "gitUrlHint": "The platform checks it can read the branch; the clone happens in the preflight.",

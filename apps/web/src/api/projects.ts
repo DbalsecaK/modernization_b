@@ -130,15 +130,17 @@ export const useInputs = (id: string) =>
     queryFn: () => unwrap(api.GET('/api/v1/projects/{project_id}/inputs', { params: { path: { project_id: id } } })),
   })
 
-/** Upload one file; the server validates it before storing it and answers 422 with the reason if it is rejected. */
-export function uploadInput(projectId: string, file: File, kind: FileKind, notes = '') {
+/** Upload one input; the server validates it before storing it and answers 422 with the reason if it is rejected.
+ * A code input takes one zip or several loose code files, which the server packs into one archive. */
+export function uploadInput(projectId: string, file: File | File[], kind: FileKind, notes = '') {
+  const files = Array.isArray(file) ? file : [file]
   return unwrap(
     api.POST('/api/v1/projects/{project_id}/inputs', {
       params: { path: { project_id: projectId } },
-      body: { file: file as unknown as string, kind, notes },
+      body: { file: files as unknown as string[], kind, notes },
       bodySerializer: (body) => {
         const form = new FormData()
-        form.append('file', body.file as unknown as Blob, file.name)
+        for (const f of files) form.append('file', f, f.name)
         form.append('kind', body.kind)
         form.append('notes', body.notes ?? '')
         return form
@@ -158,7 +160,8 @@ export function addLink(projectId: string, kind: LinkKind, url: string, notes = 
 
 export const useUploadInput = (id: string) =>
   useRefreshing(
-    ({ file, kind, notes }: { file: File; kind: FileKind; notes?: string }) => uploadInput(id, file, kind, notes),
+    ({ file, kind, notes }: { file: File | File[]; kind: FileKind; notes?: string }) =>
+      uploadInput(id, file, kind, notes),
     () => [keys.inputs(id)],
   )
 

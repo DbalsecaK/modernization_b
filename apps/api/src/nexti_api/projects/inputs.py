@@ -21,6 +21,7 @@ from nexti_api.schemas import ApiModel
 from nexti_core.db.models import AppUser, InputArtifact, Project
 from nexti_core.object_store import input_key
 from nexti_ingest import Rejection, ScannerUnavailableError, figma_link, prototype_link, safe_name, validate
+from nexti_ingest.loose import CODE_KINDS, as_upload
 
 router = APIRouter(prefix="/api/v1/projects/{project_id}/inputs", tags=["inputs"])
 ViewProject = Annotated[Authorized, Depends(require_project("project.view"))]
@@ -133,18 +134,26 @@ async def upload_input(
     request: Request,
     project_id: uuid.UUID,
     auth: UploadInputs,
-    file: Annotated[UploadFile, File()],
+    file: Annotated[list[UploadFile], File()],
     kind: Annotated[FileKind, Form()],
     notes: Annotated[str, Form(max_length=2000)] = "",
 ) -> InputOut:
     """Validate (type, size, zip safety, image header, secrets, malware, hash) and store. 422 with the reason on
-    rejection; 503 when the scanner does not answer (fail closed, ADR-0008)."""
+    rejection; 503 when the scanner does not answer (fail closed, ADR-0008). A code input takes one zip or loose
+    code files, which are packed into one zip and validated like an uploaded archive."""
     store, scanner, limits = services.store(request), services.scanner(request), services.services(request).limits
-    name = safe_name(file.filename or "")
+    name = safe_name(file[0].filename or "") if file else ""
     async with transaction(request, auth) as conn:
         await _project(conn, project_id)
     try:
-        accepted = await validate(file.file, name, kind, limits, scanner)
+        if kind in CODE_KINDS:
+            stream, name = as_upload([(safe_name(f.filename or ""), f.file) for f in file], limits, kind)
+            checked_name = name if name.lower().endswith(".zip") else f"{name}.zip"
+        elif len(file) != 1:
+            raise Rejection("one_file_only", "This kind of input takes one file at a time.")
+        else:
+            stream, checked_name = file[0].file, name
+        accepted = await validate(stream, checked_name, kind, limits, scanner)
     except ScannerUnavailableError as exc:
         raise ProblemError(
             503, "malware_scanner_unavailable", "The malware scanner is not available; try later."
@@ -154,7 +163,7 @@ async def upload_input(
 
     input_id = uuid.uuid4()
     key = input_key(auth.tenant_id, project_id, input_id)  # type: ignore[arg-type]
-    await store.put(key, file.file, accepted.size_bytes, accepted.content_type)
+    await store.put(key, stream, accepted.size_bytes, accepted.content_type)
     try:
         async with transaction(request, auth) as conn:
             version = await _next_version(conn, project_id, kind, name)

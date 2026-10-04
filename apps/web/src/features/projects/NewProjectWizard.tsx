@@ -97,8 +97,8 @@ function Wizard({ catalog }: { catalog: Catalog }) {
   const [sources, setSources] = useState<string[]>(DEFAULT_SOURCES.modernization)
   const [delivery, setDelivery] = useState<'git' | 'zip'>('git')
   const [git, setGit] = useState<GitInput>({ url: '', branch: 'main', token: '' })
-  const [archive, setArchive] = useState<File | null>(null)
-  const [targetArchive, setTargetArchive] = useState<File | null>(null)
+  const [archive, setArchive] = useState<File[]>([])
+  const [targetArchive, setTargetArchive] = useState<File[]>([])
   const [documents, setDocuments] = useState<File[]>([])
   const [uiRefs, setUiRefs] = useState<UiReferences>(EMPTY_UI_REFERENCES)
   const [target, setTarget] = useState<Target>(DEFAULT_TARGET)
@@ -181,10 +181,11 @@ function Wizard({ catalog }: { catalog: Catalog }) {
   async function submit() {
     if (!result) return
     const items: { label: string; run: (id: string) => Promise<unknown> }[] = []
-    if (legacyCode && delivery === 'zip' && archive)
-      items.push({ label: archive.name, run: (id) => uploadInput(id, archive, 'source_archive') })
-    if (flow === 'independentValidation' && targetArchive)
-      items.push({ label: targetArchive.name, run: (id) => uploadInput(id, targetArchive, 'target_archive') })
+    const named = (files: File[]) => (files.length === 1 ? files[0].name : `${files[0].name} (+${files.length - 1})`)
+    if (legacyCode && delivery === 'zip' && archive.length > 0)
+      items.push({ label: named(archive), run: (id) => uploadInput(id, archive, 'source_archive') })
+    if (flow === 'independentValidation' && targetArchive.length > 0)
+      items.push({ label: named(targetArchive), run: (id) => uploadInput(id, targetArchive, 'target_archive') })
     if (legacyCode && delivery === 'git' && git.url.trim())
       items.push({
         label: git.url.trim(),

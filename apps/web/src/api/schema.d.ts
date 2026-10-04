@@ -1231,7 +1231,8 @@ export interface paths {
         /**
          * Upload Input
          * @description Validate (type, size, zip safety, image header, secrets, malware, hash) and store. 422 with the reason on
-         *     rejection; 503 when the scanner does not answer (fail closed, ADR-0008).
+         *     rejection; 503 when the scanner does not answer (fail closed, ADR-0008). A code input takes one zip or loose
+         *     code files, which are packed into one zip and validated like an uploaded archive.
          */
         post: operations["upload_input_api_v1_projects__project_id__inputs_post"];
         delete?: never;
@@ -2913,7 +2914,7 @@ export interface components {
         /** Body_upload_input_api_v1_projects__project_id__inputs_post */
         Body_upload_input_api_v1_projects__project_id__inputs_post: {
             /** File */
-            file: string;
+            file: string[];
             /**
              * Kind
              * @enum {string}
