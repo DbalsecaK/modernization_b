@@ -5703,6 +5703,11 @@ export interface components {
              */
             deepInventory?: boolean | null;
             /**
+             * Guidedextraction
+             * @description Pipeline runs: rules extracted with the program map, small programs whole, citations corrected by the verifier, P0 judged through two lenses and rules consolidated by meaning (ADR-0033); on unless false
+             */
+            guidedExtraction?: boolean | null;
+            /**
              * Kind
              * @default pipeline
              * @enum {string}
