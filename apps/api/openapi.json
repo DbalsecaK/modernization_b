@@ -1444,6 +1444,78 @@
         "title": "CheckResult",
         "type": "object"
       },
+      "ClassificationOut": {
+        "properties": {
+          "counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Counts",
+            "type": "object"
+          },
+          "statements": {
+            "items": {
+              "$ref": "#/components/schemas/ClassifiedStatementOut"
+            },
+            "title": "Statements",
+            "type": "array"
+          }
+        },
+        "required": [
+          "counts",
+          "statements"
+        ],
+        "title": "ClassificationOut",
+        "type": "object"
+      },
+      "ClassifiedStatementOut": {
+        "properties": {
+          "file": {
+            "title": "File",
+            "type": "string"
+          },
+          "label": {
+            "enum": [
+              "business",
+              "control_flow",
+              "infrastructure"
+            ],
+            "title": "Label",
+            "type": "string"
+          },
+          "lineEnd": {
+            "title": "Lineend",
+            "type": "integer"
+          },
+          "lineStart": {
+            "title": "Linestart",
+            "type": "integer"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "statement": {
+            "title": "Statement",
+            "type": "string"
+          },
+          "unit": {
+            "title": "Unit",
+            "type": "string"
+          }
+        },
+        "required": [
+          "unit",
+          "file",
+          "lineStart",
+          "lineEnd",
+          "statement",
+          "label",
+          "reason"
+        ],
+        "title": "ClassifiedStatementOut",
+        "type": "object"
+      },
       "CodeExcerptOut": {
         "properties": {
           "firstLine": {
@@ -13490,6 +13562,58 @@
         "summary": "C1 Check",
         "tags": [
           "spec"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/classification": {
+      "get": {
+        "description": "The newest classification, or nothing before the classification phase.",
+        "operationId": "get_classification_api_v1_projects__project_id__classification_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/ClassificationOut"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "title": "Response Get Classification Api V1 Projects  Project Id  Classification Get"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Classification",
+        "tags": [
+          "graph"
         ]
       }
     },

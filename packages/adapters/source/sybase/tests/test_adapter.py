@@ -138,3 +138,18 @@ def test_an_unknown_statement_is_an_inventory_problem_not_a_crash() -> None:
     inventory = SybaseAdapter().inventory([broken])
     assert inventory.problems
     assert inventory.problems[0].startswith("broken.sp:")
+
+
+def test_the_classified_statements_are_the_detail_behind_the_counts() -> None:
+    from nexti_adapter_sybase import SybaseAdapter
+    from nexti_core.adapters import SourceFile
+
+    files = [SourceFile("sp/sp_pago_orden.sp", SOURCE)]
+    adapter = SybaseAdapter()
+    counts = adapter.classification(files)
+    detail = adapter.classified(files)
+    assert {label: sum(1 for d in detail if d["label"] == label) for label in counts} == counts
+    assert {d["unit"] for d in detail} == {"dbo.sp_pago_orden"}
+    writes = [d for d in detail if d["label"] == "business" and d["reason"].startswith("writes ")]
+    assert writes
+    assert all(d["line_start"] <= d["line_end"] for d in writes)

@@ -537,6 +537,25 @@
       "Copybook": "Copybooks",
       "Table": "Tables",
       "File": "Files"
+    },
+    "classification": {
+      "title": "Classification of the statements",
+      "hint": "Which statements are business logic (what the rule extractors read), control flow or infrastructure (error handling, logging, work tables), and why.",
+      "labels": {
+        "business": "Business logic",
+        "control_flow": "Control flow",
+        "infrastructure": "Infrastructure"
+      },
+      "share": "{{pct}}% of the statements",
+      "noDetail": "This source adapter gives the totals only, not the statement-by-statement detail.",
+      "filter": "Filter by class",
+      "all": "All",
+      "unit": "Unit",
+      "lines": "Lines",
+      "statement": "Statement",
+      "class": "Class",
+      "reason": "Why",
+      "more": "Show {{count}} more"
     }
   },
   "spec": {

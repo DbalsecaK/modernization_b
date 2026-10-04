@@ -8,6 +8,8 @@ export type GraphData = Schemas['GraphOut']
 export type GraphNode = Schemas['GraphNodeOut']
 export type GraphEdge = Schemas['GraphEdgeOut']
 export type GraphFlow = Schemas['BusinessFlowOut']
+export type Classification = Schemas['ClassificationOut']
+export type ClassLabel = Schemas['ClassifiedStatementOut']['label']
 export type GraphNodeType = GraphNode['type']
 export type MigrationState = GraphNode['state']
 
@@ -36,3 +38,12 @@ export async function impactOf(projectId: string, node: string, depth = 3): Prom
   )
   return result.impacted
 }
+
+/** The statements of the legacy with their class and why (stored by the classification phase); null before it. */
+export const useClassification = (projectId: string) =>
+  useQuery({
+    queryKey: ['projects', projectId, 'classification'],
+    queryFn: () =>
+      unwrap(api.GET('/api/v1/projects/{project_id}/classification', { params: { path: { project_id: projectId } } })),
+    retry: false,
+  })

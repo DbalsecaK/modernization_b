@@ -953,6 +953,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/projects/{project_id}/classification": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Classification
+         * @description The newest classification, or nothing before the classification phase.
+         */
+        get: operations["get_classification_api_v1_projects__project_id__classification_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/projects/{project_id}/code": {
         parameters: {
             query?: never;
@@ -3132,6 +3152,35 @@ export interface components {
              * @enum {string}
              */
             status: "ok" | "fail";
+        };
+        /** ClassificationOut */
+        ClassificationOut: {
+            /** Counts */
+            counts: {
+                [key: string]: number;
+            };
+            /** Statements */
+            statements: components["schemas"]["ClassifiedStatementOut"][];
+        };
+        /** ClassifiedStatementOut */
+        ClassifiedStatementOut: {
+            /** File */
+            file: string;
+            /**
+             * Label
+             * @enum {string}
+             */
+            label: "business" | "control_flow" | "infrastructure";
+            /** Lineend */
+            lineEnd: number;
+            /** Linestart */
+            lineStart: number;
+            /** Reason */
+            reason: string;
+            /** Statement */
+            statement: string;
+            /** Unit */
+            unit: string;
         };
         /** CodeExcerptOut */
         CodeExcerptOut: {
@@ -8372,6 +8421,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["C1CheckOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_classification_api_v1_projects__project_id__classification_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClassificationOut"] | null;
                 };
             };
             /** @description Validation Error */

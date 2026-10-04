@@ -3,6 +3,7 @@ hints and slices. Parsing never uses a model and never executes the code."""
 
 import json
 import re
+from typing import Any
 
 from nexti_adapter_sybase.analysis import backward_slice, classify, slice_targets
 from nexti_adapter_sybase.lexer import LexError
@@ -122,6 +123,18 @@ class SybaseAdapter:
             for hint in classify(proc):
                 counts[hint.label] = counts.get(hint.label, 0) + 1
         return counts
+
+    def classified(self, files: list[SourceFile]) -> list[dict[str, Any]]:
+        """Every statement with its class and why (the detail behind `classification`, for the Inventory tab)."""
+        found: list[dict[str, Any]] = []
+        for source, proc in _procedures(files):
+            statements = {s.id: s for s in proc.statements()}
+            for hint in classify(proc):
+                stmt = statements[hint.statement]
+                found.append({"unit": proc.name, "file": source.path, "line_start": stmt.line_start,
+                              "line_end": stmt.line_end, "statement": stmt.kind, "label": hint.label,
+                              "reason": hint.reason})  # fmt: skip
+        return found
 
     def data_of(
         self, files: list[SourceFile], file: str, ranges: list[tuple[int, int]]

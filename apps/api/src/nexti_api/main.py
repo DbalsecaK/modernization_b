@@ -36,6 +36,7 @@ from nexti_api.runs import tasks as runs_tasks
 from nexti_api.scim import routes as scim
 from nexti_api.settings import Settings, get_settings
 from nexti_api.spec import architecture as spec_architecture
+from nexti_api.spec import classification as spec_classification
 from nexti_api.spec import code as spec_code
 from nexti_api.spec import delivery as spec_delivery
 from nexti_api.spec import delta as spec_delta
@@ -191,6 +192,7 @@ def create_app(settings: Settings | None = None, health_checks: dict[str, health
         spec_architecture.router,
         spec_ivv.router,
         spec_delta.router,
+        spec_classification.router,
         spec_screens.router,
         graph_router.router,
         dashboard.router,

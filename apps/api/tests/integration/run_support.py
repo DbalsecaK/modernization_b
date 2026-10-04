@@ -519,3 +519,32 @@ async def seed_delta(owner: AsyncEngine, store: Any, tenant_id: uuid.UUID, proje
             t=tenant_id, p=project_id, r=run_id, path=path, k=key, h=hashlib.sha256(data).hexdigest(), s=len(data),
         )  # fmt: skip
     return run_id
+
+
+SYBASE_SP = (
+    Path(__file__).resolve().parents[4] / "packages/adapters/source/sybase/tests/fixtures/pago_orden/sp_pago_orden.sp"
+)
+
+
+async def seed_classification(owner: AsyncEngine, store: Any, tenant_id: uuid.UUID, project_id: uuid.UUID) -> None:
+    """What the classification phase stores for the fictitious stored procedure: the counts and each statement."""
+    import hashlib
+    import io
+
+    from nexti_adapter_sybase import SybaseAdapter
+    from nexti_core.adapters import SourceFile
+
+    files = [SourceFile("sp/sp_pago_orden.sp", SYBASE_SP.read_text(encoding="utf-8"))]
+    adapter = SybaseAdapter()
+    document = json.dumps({"counts": adapter.classification(files), "statements": adapter.classified(files)})
+    version = await make_config(owner, tenant_id, project_id)
+    run_id = await make_run(owner, tenant_id, project_id, version, kind="pipeline")
+    data = document.encode("utf-8")
+    key = f"tenants/{tenant_id}/projects/{project_id}/runs/{run_id}/files/inventory/classification.json"
+    await store.put(key, io.BytesIO(data), len(data), "application/json")
+    await execute(
+        owner,
+        "INSERT INTO generated_artifact (tenant_id, project_id, run_id, layer, path, object_key, sha256, size_bytes) "
+        "VALUES (:t, :p, :r, 'docs', 'inventory/classification.json', :k, :h, :s)",
+        t=tenant_id, p=project_id, r=run_id, k=key, h=hashlib.sha256(data).hexdigest(), s=len(data),
+    )  # fmt: skip
