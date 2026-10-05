@@ -84,8 +84,18 @@ def _request_problems(catalog: Catalog, request: Request) -> list[Problem]:
         if option is None or request.flow not in option.flows:
             problems.append(Problem("unknown_source", key))
     for axis in AXES:
-        if catalog.target_option(axis, request.target.get(axis)) is None:
+        chosen_option = catalog.target_option(axis, request.target.get(axis))
+        if chosen_option is None:
             problems.append(Problem("unknown_target_option", f"{axis}:{request.target.get(axis)}"))
+            continue
+        chosen = request.target.versions.get(axis)
+        if chosen is None:
+            continue
+        version = chosen_option.version(chosen)  # ADR-0037: only a listed version, and only an available one
+        if version is None:
+            problems.append(Problem("unknown_target_version", f"{axis}:{chosen_option.key}:{chosen}"))
+        elif version.level == "planned":
+            problems.append(Problem("target_version_not_available", f"{axis}:{chosen_option.key}:{chosen}"))
     return problems
 
 

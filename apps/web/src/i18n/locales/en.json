@@ -1246,7 +1246,10 @@
       "unknown_flow": "Unknown flow.",
       "unknown_pipeline_template": "Unknown pipeline template: {{subject}}.",
       "unknown_autonomy": "Unknown autonomy level."
-    }
+    },
+    "version": "Version",
+    "versionPlanned": "planned, not available yet",
+    "sourceVersions": "{{source}} · versions of the adapter: {{versions}}"
   },
   "compat": {
     "mongoModeling": "MongoDB needs an extra aggregate modeling step: what is embedded and what is referenced.",
@@ -1601,7 +1604,9 @@
     "maxIterations_one": "{{count}} self-correction iteration",
     "maxIterations_other": "Up to {{count}} self-correction iterations",
     "customLater": "Customer agents and skills arrive later, with an approval and evaluation flow before they are published.",
-    "skillFile": "SKILL.md · {{key}} v{{version}}"
+    "skillFile": "SKILL.md · {{key}} v{{version}}",
+    "versions": "Versions",
+    "planned": "planned"
   },
   "roles": {
     "superAdmin": "Super admin",

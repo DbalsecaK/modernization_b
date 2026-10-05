@@ -6085,6 +6085,41 @@
         "title": "OperationOut",
         "type": "object"
       },
+      "OptionVersionOut": {
+        "properties": {
+          "default": {
+            "title": "Default",
+            "type": "boolean"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "level": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Level"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "name",
+          "level",
+          "default"
+        ],
+        "title": "OptionVersionOut",
+        "type": "object"
+      },
       "PermissionOut": {
         "properties": {
           "description": {
@@ -9516,6 +9551,13 @@
             },
             "title": "Requiredskills",
             "type": "array"
+          },
+          "versions": {
+            "items": {
+              "$ref": "#/components/schemas/OptionVersionOut"
+            },
+            "title": "Versions",
+            "type": "array"
           }
         },
         "required": [
@@ -9821,6 +9863,16 @@
             "minLength": 1,
             "title": "Frontend",
             "type": "string"
+          },
+          "versions": {
+            "additionalProperties": {
+              "maxLength": 64,
+              "minLength": 1,
+              "type": "string"
+            },
+            "description": "axis -> version key (ADR-0037)",
+            "title": "Versions",
+            "type": "object"
           }
         },
         "required": [
@@ -9865,6 +9917,13 @@
             "title": "Name",
             "type": "string"
           },
+          "versions": {
+            "items": {
+              "$ref": "#/components/schemas/OptionVersionOut"
+            },
+            "title": "Versions",
+            "type": "array"
+          },
           "wave": {
             "anyOf": [
               {
@@ -9908,6 +9967,13 @@
           "frontend": {
             "title": "Frontend",
             "type": "string"
+          },
+          "versions": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Versions",
+            "type": "object"
           }
         },
         "required": [

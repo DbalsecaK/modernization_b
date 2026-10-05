@@ -17,9 +17,21 @@ options:
   - {key: cobol-cics, name: "COBOL CICS", flow: [modernization, independentValidation], adapter: cobol-cics-bms, required_skills: [exec-cics]}
   - {key: bms, name: "BMS maps", flow: [modernization, independentValidation], adapter: cobol-cics-bms, required_skills: [bms-parsing]}
   - {key: db2, name: "DB2", flow: [modernization, independentValidation], adapter: cobol-batch}
-  - {key: sybase-sp, name: "Sybase ASE stored procedures", flow: [modernization, independentValidation], adapter: sybase-sp, required_skills: [sybase-tsql]}
+  - key: sybase-sp
+    name: "Sybase ASE stored procedures"
+    flow: [modernization, independentValidation]
+    adapter: sybase-sp
+    required_skills: [sybase-tsql]
+    versions:  # the engine of the golden master (ADR-0037)
+      - {key: "16.0", name: "ASE 16.0", level: certified, default: true}
+      - {key: "15.7", name: "ASE 15.7", level: planned}
   - {key: aspx-webforms, name: "ASP.NET WebForms", flow: [modernization, independentValidation], adapter: aspx-dotnet, required_skills: [webforms]}
-  - {key: dotnet-framework, name: "C# .NET Framework 4.8", flow: [modernization, independentValidation], adapter: aspx-dotnet}
+  - key: dotnet-framework
+    name: "C# .NET Framework 4.8"
+    flow: [modernization, independentValidation]
+    adapter: aspx-dotnet
+    versions:
+      - {key: "4.8", name: ".NET Framework 4.8", level: assisted, default: true}
   - {key: user-stories, name: "User stories (Jira)", flow: [newFeature, extendExisting]}
   - {key: functional-document, name: "Functional document (Word)", flow: [newFeature, extendExisting]}
   - {key: user-manual, name: "User manual (PDF)", flow: [newFeature, extendExisting]}

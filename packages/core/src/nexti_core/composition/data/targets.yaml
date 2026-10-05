@@ -10,15 +10,60 @@ axes:
     - {key: event-driven, name: "Event-driven"}
     - {key: bff-microservices, name: "BFF + microservices"}
   backend:
-    - {key: spring-boot, name: "Java Spring Boot", level: certified, wave: 1}
-    - {key: quarkus, name: "Java Quarkus", level: certified, wave: 2}
-    - {key: dotnet-10, name: ".NET 10", level: certified, wave: 1}
-    - {key: go, name: "Go", level: certified, wave: 3}
-    - {key: nextjs, name: "Next.js", level: assisted, wave: 2}
+    # `versions` (ADR-0037): what a project may choose; `certified` versions are the ones the pack pins and its
+    # sandbox image ships, `planned` ones are listed but not selectable until they have an image and a recording.
+    - key: spring-boot
+      name: "Java Spring Boot"
+      level: certified
+      wave: 1
+      versions:
+        - {key: "3.5", name: "Spring Boot 3.5 (3.5.6)", level: certified, default: true}
+        - {key: "3.4", name: "Spring Boot 3.4", level: planned}
+    - key: quarkus
+      name: "Java Quarkus"
+      level: certified
+      wave: 2
+      versions:
+        - {key: "3.40", name: "Quarkus 3.40 LTS (3.40.1)", level: certified, default: true}
+    - key: dotnet-10
+      name: ".NET 10"
+      level: certified
+      wave: 1
+      versions:
+        - {key: "10.0", name: ".NET 10 (net10.0)", level: certified, default: true}
+    - key: go
+      name: "Go"
+      level: certified
+      wave: 3
+      versions:
+        - {key: "1.26", name: "Go 1.26", level: certified, default: true}
+    - key: nextjs
+      name: "Next.js"
+      level: assisted
+      wave: 2
+      versions:
+        - {key: "16", name: "Next.js 16 (16.3.8) on Node 22", level: assisted, default: true}
   frontend:
-    - {key: react, name: "React", level: certified, wave: 1}
-    - {key: angular, name: "Angular", level: certified, wave: 1}
-    - {key: nextjs, name: "Next.js", level: certified, wave: 2}
+    - key: react
+      name: "React"
+      level: certified
+      wave: 1
+      versions:
+        - {key: "19", name: "React 19 (19.3.0)", level: certified, default: true}
+        - {key: "18", name: "React 18", level: planned}
+    - key: angular
+      name: "Angular"
+      level: certified
+      wave: 1
+      versions:
+        - {key: "22", name: "Angular 22 (22.2.0)", level: certified, default: true}
+        - {key: "21", name: "Angular 21", level: planned}
+    - key: nextjs
+      name: "Next.js"
+      level: certified
+      wave: 2
+      versions:
+        - {key: "16", name: "Next.js 16 (16.3.8) on Node 22", level: certified, default: true}
     - {key: none, name: "No frontend"}
   database:
     - {key: postgresql, name: "PostgreSQL", level: certified, wave: 1}

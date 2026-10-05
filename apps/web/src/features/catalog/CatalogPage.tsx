@@ -216,6 +216,14 @@ function Packs({ catalog }: { catalog: Catalog }) {
                   <span className="flex-1 text-text">{p.name}</span>
                   {p.wave != null && <span className="text-xs text-muted">{t('catalog.wave', { wave: p.wave })}</span>}
                   {p.level && <LevelBadge level={p.level as 'certified' | 'assisted' | 'experimental'} />}
+                  {(p.versions ?? []).length > 0 && (
+                    <div className="mt-1 text-xs text-muted">
+                      {t('catalog.versions')}:{' '}
+                      {(p.versions ?? [])
+                        .map((v) => `${v.name}${v.level === 'planned' ? ` (${t('catalog.planned')})` : ''}`)
+                        .join(' · ')}
+                    </div>
+                  )}
                 </div>
               ))}
           </CardBody>

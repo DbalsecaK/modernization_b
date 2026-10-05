@@ -4,6 +4,7 @@ source adapters and options, target options, compatibility rules, pipeline templ
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, Request
+from pydantic import Field
 
 from nexti_api.admin.common import not_found, transaction
 from nexti_api.authz.require import Authorized, require_tenant
@@ -62,12 +63,20 @@ class AdapterOut(ApiModel):
     validation: str
 
 
+class OptionVersionOut(ApiModel):
+    key: str
+    name: str
+    level: str | None
+    default: bool
+
+
 class SourceOptionOut(ApiModel):
     key: str
     name: str
     flows: list[FlowKey]  # a legacy technology serves Flow 1 and Flow 4; a kind of document, Flow 2 and Flow 3
     adapter: str | None
     required_skills: list[str]
+    versions: list[OptionVersionOut] = Field(default_factory=list)
 
 
 class TargetOptionOut(ApiModel):
@@ -76,6 +85,7 @@ class TargetOptionOut(ApiModel):
     name: str
     level: str | None
     wave: int | None
+    versions: list[OptionVersionOut] = Field(default_factory=list)
 
 
 class RuleOut(ApiModel):

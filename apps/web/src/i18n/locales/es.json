@@ -1246,7 +1246,10 @@
       "unknown_flow": "Flujo desconocido.",
       "unknown_pipeline_template": "Plantilla de pipeline desconocida: {{subject}}.",
       "unknown_autonomy": "Nivel de autonomía desconocido."
-    }
+    },
+    "version": "Versión",
+    "versionPlanned": "planificada, aún no disponible",
+    "sourceVersions": "{{source}} · versiones del adaptador: {{versions}}"
   },
   "compat": {
     "mongoModeling": "MongoDB requiere un paso adicional de modelado de agregados: qué se embebe y qué se referencia.",
@@ -1601,7 +1604,9 @@
     "maxIterations_one": "{{count}} iteración de autocorrección",
     "maxIterations_other": "Hasta {{count}} iteraciones de autocorrección",
     "customLater": "Los agentes y skills propios del cliente llegan después, con un flujo de aprobación y evaluación antes de publicarse.",
-    "skillFile": "SKILL.md · {{key}} v{{version}}"
+    "skillFile": "SKILL.md · {{key}} v{{version}}",
+    "versions": "Versiones",
+    "planned": "planificada"
   },
   "roles": {
     "superAdmin": "Superadministrador",

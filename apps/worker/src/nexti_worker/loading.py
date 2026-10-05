@@ -2,7 +2,9 @@
 and the phases of the project's flow. The same run always rebuilds the same graph, so its checkpoints stay valid."""
 
 import uuid
+from collections.abc import Mapping
 from dataclasses import dataclass
+from typing import Any
 
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine
@@ -73,7 +75,7 @@ async def load_run(engine: AsyncEngine, run_id: uuid.UUID, tenant_id: uuid.UUID)
         max_iterations=run["max_iterations"],
         agents=tuple(AgentSpec(a["key"], a["name"], tuple(a["phases"]), a["mandatory"]) for a in agents),
         options=dict(run["options"] or {}),
-        target={str(k): str(v) for k, v in (run["target"] or {}).items() if v},
+        target=flat_target(run["target"] or {}),
     )
     return LoadedRun(
         context=context,
@@ -82,3 +84,12 @@ async def load_run(engine: AsyncEngine, run_id: uuid.UUID, tenant_id: uuid.UUID)
         config_version=run["config_version"],
         relative_cost=sum(int(a["relative_cost"]) for a in agents),
     )
+
+
+def flat_target(stored: Mapping[str, Any]) -> dict[str, str]:
+    """The target as the run reads it: the axes, and the chosen versions as `<axis>_version` (ADR-0037)."""
+    target = {str(k): str(v) for k, v in stored.items() if v and k != "versions"}
+    versions = stored.get("versions") or {}
+    if isinstance(versions, Mapping):
+        target.update({f"{axis}_version": str(v) for axis, v in versions.items() if v})
+    return target
