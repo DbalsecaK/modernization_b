@@ -21,6 +21,7 @@ from nexti_core.adapters import Edge, Inventory, LegacyRunner, LegacyUnavailable
 from nexti_core.db.session import DbScope, scoped_connection
 from nexti_core.jobs import defer_backlog_sync
 from nexti_core.object_store import ObjectStore
+from nexti_core.run_phase import CURRENT_PHASE
 from nexti_core.secrets import SecretStore
 from nexti_core.spec.characterization import GoldenMaster, Suite
 from nexti_core.spec.model import Capability, Rule
@@ -523,14 +524,18 @@ class WorkerProjectPort:
             await self._put(key, content, "text/plain; charset=utf-8")
             rows.append({"t": self.run.tenant_id, "p": self.run.project_id, "r": self.run.run_id,
                          "l": layers.get(path, "docs"), "path": path, "k": key, "h": digest,
-                         "s": len(content.encode("utf-8")), "ru": json.dumps(rules.get(path, []))})  # fmt: skip
+                         "s": len(content.encode("utf-8")), "ru": json.dumps(rules.get(path, [])),
+                         "ph": CURRENT_PHASE.get() or None})  # fmt: skip
         async with self._db() as conn:
             for row in rows:
+                # A retried phase writes the same paths again (ADR-0035): the row follows the new content.
                 await conn.execute(
                     text(
                         "INSERT INTO generated_artifact (tenant_id, project_id, run_id, layer, path, object_key, "
-                        "sha256, size_bytes, rules) VALUES (:t, :p, :r, :l, :path, :k, :h, :s, CAST(:ru AS jsonb)) "
-                        "ON CONFLICT (run_id, path) DO NOTHING"
+                        "sha256, size_bytes, rules, phase) VALUES (:t, :p, :r, :l, :path, :k, :h, :s, "
+                        "CAST(:ru AS jsonb), :ph) ON CONFLICT (run_id, path) DO UPDATE SET layer = EXCLUDED.layer, "
+                        "object_key = EXCLUDED.object_key, sha256 = EXCLUDED.sha256, size_bytes = EXCLUDED.size_bytes, "
+                        "rules = EXCLUDED.rules, phase = EXCLUDED.phase, created_at = now()"
                     ),
                     row,
                 )
@@ -708,18 +713,28 @@ class WorkerProjectPort:
         return {row.screen_key: await self._get(row.source_key) for row in rows}
 
     async def save_verdict(self, verdict: Verdict, proof_pack: bytes) -> str:
-        key = self._key("runs", str(self.run.run_id), "verification", verdict.module, "proof-pack.zip")
         if self.objects is None:
             raise RuntimeError("the object store is not configured")
-        await self.objects.put(key, io.BytesIO(proof_pack), len(proof_pack), "application/zip")
         checks = [{"key": c.key, "title": c.title, "status": c.status, "detail": c.detail} for c in verdict.checks]
         async with self._db() as conn:
+            # A verdict is evidence, never rewritten: a retried verification (ADR-0035) adds its own attempt, with
+            # its own proof pack, and the newest one is the module's verdict.
+            attempt = (
+                await conn.execute(
+                    text("SELECT COALESCE(MAX(attempt), 0) + 1 FROM verdict WHERE run_id = :r AND module = :m"),
+                    {"r": self.run.run_id, "m": verdict.module},
+                )
+            ).scalar_one()
+            parts = ("runs", str(self.run.run_id), "verification", verdict.module)
+            key = self._key(*parts, "proof-pack.zip" if attempt == 1 else f"attempt-{attempt}/proof-pack.zip")
+            await self.objects.put(key, io.BytesIO(proof_pack), len(proof_pack), "application/zip")
             await conn.execute(
                 text("INSERT INTO verdict (tenant_id, project_id, run_id, module, verdict, checks, not_proven, "
-                     "proof_pack_key) VALUES (:t, :p, :r, :m, :v, CAST(:c AS jsonb), CAST(:n AS jsonb), :k) "
-                     "ON CONFLICT (run_id, module) DO NOTHING"),  # a verdict is evidence: never rewritten
+                     "proof_pack_key, attempt) VALUES (:t, :p, :r, :m, :v, CAST(:c AS jsonb), CAST(:n AS jsonb), "
+                     ":k, :a)"),
                 {"t": self.run.tenant_id, "p": self.run.project_id, "r": self.run.run_id, "m": verdict.module,
-                 "v": verdict.verdict, "c": json.dumps(checks), "n": json.dumps(verdict.not_proven), "k": key},
+                 "v": verdict.verdict, "c": json.dumps(checks), "n": json.dumps(verdict.not_proven), "k": key,
+                 "a": int(attempt)},
             )  # fmt: skip
             # The linked backlog follows the verdict (7.6): verified items to Done, a failed check opens a bug.
             linked = (

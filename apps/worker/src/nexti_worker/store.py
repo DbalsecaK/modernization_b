@@ -156,6 +156,13 @@ class DbRunStore:
             "WHERE run_id = :run AND gate = ANY(:gates)",
             {"gates": list(gates)},
         )
+        # The files the redone phases produced go: they write theirs again. Files from before `phase` was recorded
+        # (migration 0025) go whenever the design is redone, as everything after it is. Verdicts stay: evidence.
+        await self._execute(
+            "DELETE FROM generated_artifact WHERE run_id = :run AND (phase = ANY(:phases) "
+            "OR (phase IS NULL AND :wipe))",
+            {"phases": list(phases), "wipe": "design" in phases},
+        )
 
     async def question_asked(self, question_id: uuid.UUID, phase: str, question: QuestionSpec) -> bool:
         result = await self._execute(

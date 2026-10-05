@@ -301,15 +301,23 @@ def test_a_guided_design_cannot_mask_what_the_rules_use_and_keeps_the_written_ta
         "replaces is still an entity)",
         "sp_comision_grabar is listed as infrastructure, but the rules cite its call (RULE-001): give it a port with "
         "legacy_program",
-        "legacy tables the program writes need an entity with legacy_table (or an explained tables: mask): pg_detalle",
+        # The golden master compares what the program writes: a mask there is never acceptable, reason or not.
+        "the golden master compares the tables the program writes: no mask on them or their columns, keep them as "
+        "entities with legacy_table: tables:db_x..pg_orden_total",
+        "legacy tables the program writes need an entity with legacy_table: pg_detalle, pg_orden_total",
     ]
+    column_masked = Design.model_validate({**design.model_dump(), "masks": [
+        {"path": "tables:db_x..pg_detalle.de_ordenante", "when": "always", "reason": "the target drops this column"}
+    ]})  # fmt: skip
+    assert any(p.startswith("the golden master compares") and "pg_detalle.de_ordenante" in p
+               for p in design_problems(column_masked, [rule], hints=True, files=files, written=written))  # fmt: skip
     # Without the inventory's read set, or when the table is read far from any cited line, the mask stands.
-    assert len(design_problems(design, [rule], hints=True, files=files, written=written)) == 3
+    assert len(design_problems(design, [rule], hints=True, files=files, written=written)) == 4
     far = [File("p.sp", "create proc sp_p as\nselect @cfg = pa_valor from db_a..pg_config\n" + "\n" * 60
                 + "update db_x..pg_orden_total set to_estado = 'P'\nexec sp_comision_grabar 1\n")]  # fmt: skip
     far_rule = rule.model_copy(update={"sources": [rule.sources[0].model_copy(update={"line_start": 63,
                                                                                        "line_end": 64})]})  # fmt: skip
-    assert len(design_problems(design, [far_rule], hints=True, files=far, written=written, read={"pg_config"})) == 3
+    assert len(design_problems(design, [far_rule], hints=True, files=far, written=written, read={"pg_config"})) == 4
     assert (table_of("db..t.col"), table_of("db.dbo.t"), table_of("t")) == ("t", "t", "t")
 
 

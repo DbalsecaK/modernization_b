@@ -206,11 +206,17 @@ def mask_problems(
             problems.append(f"{program} is listed as infrastructure, but the rules cite its call ({', '.join(ids)}): "
                             "give it a port with legacy_program")  # fmt: skip
     kept = {table_of(e.legacy_table) for e in design.entities if e.legacy_table}
-    masked = {table_of(m.path.partition(":")[2]) for m in design.masks if m.path.startswith("tables:")}
-    missing = sorted(t for t in written if t not in kept and t not in masked)
+    # The golden master compares every table the program writes (11.3): a mask on one of them, or on its columns,
+    # guarantees a difference. They are entities, with no mask.
+    masked_written = sorted({m.path for m in design.masks if m.path.startswith("tables:")
+                             and table_of(m.path.partition(":")[2]) in written})  # fmt: skip
+    if masked_written:
+        problems.append("the golden master compares the tables the program writes: no mask on them or their columns, "
+                        f"keep them as entities with legacy_table: {', '.join(masked_written)}")  # fmt: skip
+    missing = sorted(t for t in written if t not in kept)
     if missing:
-        problems.append("legacy tables the program writes need an entity with legacy_table (or an explained "
-                        f"tables: mask): {', '.join(missing)}")  # fmt: skip
+        problems.append("legacy tables the program writes need an entity with legacy_table: "
+                        f"{', '.join(missing)}")  # fmt: skip
     return problems
 
 
