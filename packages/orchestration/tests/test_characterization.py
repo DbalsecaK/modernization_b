@@ -171,12 +171,11 @@ async def test_a_suite_cut_at_the_output_limit_stops_the_phase_at_once_instead_o
     port.runner = Runner()  # type: ignore[assignment]
     with pytest.raises(PhaseFailedError, match=r"cut at the output limit of its profile \(16000 tokens\)"):
         await CharacterizationPhases(port).characterization(ctx)
-    assert len(port.tester.requests) == 1  # not asked again
-    assert [i["status"] for i in store.invocations.values()] == ["failed"]
+    assert len(port.tester.requests) == 2  # one correction (the model may answer shorter), then it stops
+    assert [i["status"] for i in store.invocations.values()] == ["failed", "failed"]
     # A whole reply that happens to reach the limit is used as any other (a recording has one).
-    from nexti_orchestration.characterization import parse_suite as parse
-    from nexti_orchestration.extraction import raise_if_cut
+    from nexti_orchestration.extraction import is_cut, raise_if_cut
 
     whole = ModelReply(SUITE, Usage(model="t", output_tokens=16000), cut_at=16000)
-    raise_if_cut(whole, "x", ReplyError("rules without a case: RULE-001"))  # a content problem, not a cut
-    assert parse(whole.content).program
+    assert not is_cut(whole, ReplyError("rules without a case: RULE-001"))  # a content problem, not a cut
+    raise_if_cut(whole, "x", ReplyError("the JSON is not valid: x"), repeated=False)  # the first cut is retried

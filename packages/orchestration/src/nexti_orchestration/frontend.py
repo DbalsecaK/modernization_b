@@ -113,7 +113,7 @@ async def generate(
             try:
                 code = code_block(reply.content, flavour)
             except ReplyError as exc:
-                raise_if_cut(reply, f"Page of {screen.id}", exc, json_only=False)
+                raise_if_cut(reply, f"Page of {screen.id}", exc, repeated=bool(feedback), json_only=False)
                 return Attempt({"error": str(exc)}, "no page", reply.usage)
             reference = await port.save_file(f"frontend/{pack.screen_path(screen)}", code)
             return Attempt({"file": reference}, f"page of {screen.id}", reply.usage)

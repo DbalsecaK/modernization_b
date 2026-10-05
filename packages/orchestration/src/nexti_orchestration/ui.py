@@ -15,7 +15,7 @@ from nexti_agents import prompt
 from nexti_core.adapters import SourceFile
 from nexti_core.spec.screens import ScreenSpec
 from nexti_orchestration.context import Attempt, PhaseContext, Verification
-from nexti_orchestration.extraction import ModelCaller, ReplyError, raise_if_cut
+from nexti_orchestration.extraction import ModelCaller, ReplyError, is_cut, raise_if_cut
 from nexti_orchestration.model import PhaseResult
 from nexti_sandbox import Sandbox
 from nexti_ui import IMAGE, PrototypeBuild, build
@@ -93,7 +93,7 @@ async def prototype(
         try:
             code = tsx_block(reply.content)
         except ReplyError as exc:
-            raise_if_cut(reply, f"Prototype of {screen.id}", exc, json_only=False)
+            raise_if_cut(reply, f"Prototype of {screen.id}", exc, repeated=bool(feedback), json_only=False)
             return Attempt({"error": str(exc)}, "no component", reply.usage)
         reference = await port.save_file(f"prototypes/{screen.id}.tsx", code)
         return Attempt({"file": reference}, f"prototype of {screen.id}", reply.usage)
@@ -180,13 +180,15 @@ async def change_prototype(
     )
     messages = [{"role": "system", "content": prompt(DESIGNER)}, {"role": "user", "content": request}]
     last = ""
+    cut_before = False
     for iteration in range(1, max_iterations + 1):
         reply = await models.complete(DESIGNER, "ui", messages, iteration=iteration)
         problem = ""
         try:
             code = tsx_block(reply.content)
         except ReplyError as exc:
-            raise_if_cut(reply, "Prototype change", exc, json_only=False)
+            raise_if_cut(reply, "Prototype change", exc, repeated=cut_before, json_only=False)
+            cut_before = is_cut(reply, exc, json_only=False)
             problem, code = str(exc), ""
         if code:
             missing = missing_fields(screen, code)

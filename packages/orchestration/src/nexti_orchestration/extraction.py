@@ -239,16 +239,18 @@ class CutReplyError(ReplyError):
 JSON_ERRORS = ("the JSON is not valid", "the answer has no JSON")
 
 
-def raise_if_cut(reply: ModelReply, what: str, cause: Exception, *, json_only: bool = True) -> None:
-    """A reply that cannot be used and reached the output limit of its profile was cut: asking again gives the same
-    cut answer at the same cost, so it is reported at once for a person to raise the limit (or lower the effort) and
-    retry the phase. A reply at the limit that parses is whole (a recording has one): it is not a cut. With
-    `json_only` the cut is declared only when the JSON itself is broken; code blocks pass `json_only=False`."""
-    if not reply.cut_at:
-        return
-    if json_only and not str(cause).startswith(JSON_ERRORS):
-        return
-    raise CutReplyError(cut_message(what, reply.cut_at)) from cause
+def is_cut(reply: ModelReply, cause: Exception, *, json_only: bool = True) -> bool:
+    """The reply cannot be used and reached the output limit of its profile. A reply at the limit that parses is
+    whole: not a cut. With `json_only` only a broken JSON counts; code blocks pass `json_only=False`."""
+    return bool(reply.cut_at) and (not json_only or str(cause).startswith(JSON_ERRORS))
+
+
+def raise_if_cut(reply: ModelReply, what: str, cause: Exception, *, repeated: bool, json_only: bool = True) -> None:
+    """A cut reply is sent back once with its problem: the model often answers shorter the second time (a recording
+    has such a case). A second cut in a row is reported at once, for a person to raise the limit (or lower the
+    effort) and retry the phase, instead of paying the same cut answer again."""
+    if repeated and is_cut(reply, cause, json_only=json_only):
+        raise CutReplyError(cut_message(what, reply.cut_at or 0)) from cause
 
 
 async def _extract(

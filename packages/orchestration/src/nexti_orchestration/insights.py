@@ -62,17 +62,18 @@ async def converse(
     """Ask, check by code, send the problems back; after `max_iterations` answers the valid part of the last one."""
     messages = list(messages)
     answer = Answer(None)
+    cut_before = False
     for iteration in range(1, max_iterations + 1):
         reply = await caller.complete(agent, phase, messages, iteration=iteration)
         answer.usage.append(reply.usage)
         try:
             value, problems = check(reply.content)
         except ReplyError as exc:
-            if reply.cut_at and str(exc).startswith(
-                JSON_ERRORS
-            ):  # cut: asking again gives the same; keep what there is
-                answer.problems = [cut_message(agent, reply.cut_at)]
+            cut = bool(reply.cut_at) and str(exc).startswith(JSON_ERRORS)
+            if cut and cut_before:  # two cuts in a row: keep what there is and say why it stopped
+                answer.problems = [cut_message(agent, reply.cut_at or 0)]
                 return answer
+            cut_before = cut
             value, problems = None, [str(exc)]
         if value is not None:
             answer.value = value
