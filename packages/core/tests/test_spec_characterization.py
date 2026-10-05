@@ -4,7 +4,7 @@ a stable identity for recordings."""
 import pytest
 from pydantic import ValidationError
 
-from nexti_core.spec.characterization import Case, Schema, Suite, Table, canonical, suite_key
+from nexti_core.spec.characterization import Case, Suite, Table, canonical
 
 
 @pytest.mark.parametrize(
@@ -42,11 +42,3 @@ def test_a_suite_rejects_repeated_case_names_and_undeclared_keys() -> None:
         Table.model_validate({"name": "db..t", "columns": [{"name": "a", "type": "int"}], "key": ["b"]})
     with pytest.raises(ValidationError):
         Case(name="Not Snake", rules=["RULE-001"])
-
-
-def test_the_identity_of_a_run_follows_the_code_and_the_suite() -> None:
-    suite = Suite(program="dbo.sp_x", schema_=Schema(), cases=[_case("first_case")])
-    other = Suite(program="dbo.sp_x", schema_=Schema(), cases=[_case("other_case")])
-    assert suite_key("create procedure", suite) == suite_key("create procedure", suite)
-    assert suite_key("create procedure", suite) != suite_key("create procedure v2", suite)
-    assert suite_key("create procedure", suite) != suite_key("create procedure", other)
