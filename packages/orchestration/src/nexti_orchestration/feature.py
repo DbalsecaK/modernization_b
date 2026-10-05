@@ -26,7 +26,7 @@ from nexti_core.spec.screens import ScreenSpec
 from nexti_ingest import figma
 from nexti_ingest.documents import Document
 from nexti_orchestration.context import Attempt, PhaseContext
-from nexti_orchestration.extraction import ModelCaller, ReplyError, parse_json
+from nexti_orchestration.extraction import ModelCaller, ReplyError, is_cut, parse_json, raise_if_cut
 from nexti_orchestration.model import Option, PhaseFailedError, PhaseResult, QuestionSpec
 from nexti_orchestration.modernization import ask_all
 from nexti_orchestration.store import Usage
@@ -231,12 +231,15 @@ async def normalize(caller: ModelCaller, inputs: dict[str, str], *, agent: str =
     ]
     usage: list[Usage] = []
     last = ""
+    cut_before = False
     for iteration in range(1, max_iterations + 1):
         reply = await caller.complete(agent, "normalization", messages, iteration=iteration)
         usage.append(reply.usage)
         try:
             result = parse_normalized(reply.content, inputs)
         except ReplyError as exc:
+            raise_if_cut(reply, "Normalized specification", exc, repeated=cut_before)
+            cut_before = is_cut(reply, exc)
             last = str(exc)
             messages += [
                 {"role": "assistant", "content": reply.content},
@@ -431,12 +434,15 @@ async def contradictions(
     ]  # fmt: skip
     usage: list[Usage] = []
     last = ""
+    cut_before = False
     for iteration in range(1, max_iterations + 1):
         reply = await caller.complete(agent, "consolidation", messages, iteration=iteration)
         usage.append(reply.usage)
         try:
             return parse_contradictions(reply.content, inputs, known), usage
         except ReplyError as exc:
+            raise_if_cut(reply, "Specification review", exc, repeated=cut_before)
+            cut_before = is_cut(reply, exc)
             last = str(exc)
             messages += [
                 {"role": "assistant", "content": reply.content},

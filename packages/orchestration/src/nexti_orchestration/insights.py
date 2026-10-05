@@ -17,7 +17,7 @@ from typing import Any
 from nexti_agents import prompt
 from nexti_core.adapters import Inventory, Node, SliceView
 from nexti_core.spec.model import Rule
-from nexti_orchestration.extraction import ModelCaller, ReplyError, numbered, parse_json
+from nexti_orchestration.extraction import JSON_ERRORS, ModelCaller, ReplyError, cut_message, numbered, parse_json
 from nexti_orchestration.store import Usage
 
 OPTION = "deep_inventory"
@@ -62,12 +62,18 @@ async def converse(
     """Ask, check by code, send the problems back; after `max_iterations` answers the valid part of the last one."""
     messages = list(messages)
     answer = Answer(None)
+    cut_before = False
     for iteration in range(1, max_iterations + 1):
         reply = await caller.complete(agent, phase, messages, iteration=iteration)
         answer.usage.append(reply.usage)
         try:
             value, problems = check(reply.content)
         except ReplyError as exc:
+            cut = bool(reply.cut_at) and str(exc).startswith(JSON_ERRORS)
+            if cut and cut_before:  # two cuts in a row: keep what there is and say why it stopped
+                answer.problems = [cut_message(agent, reply.cut_at or 0)]
+                return answer
+            cut_before = cut
             value, problems = None, [str(exc)]
         if value is not None:
             answer.value = value

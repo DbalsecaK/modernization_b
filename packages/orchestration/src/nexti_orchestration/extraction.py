@@ -183,7 +183,8 @@ def parse_rules(content: str, view: SliceView, source: str, *, salvage: bool = F
 def cut_message(what: str, limit: int) -> str:
     return (
         f"{what}: the model's answer was cut at the output limit of its profile ({limit} tokens) before it ended; "
-        "raise the maximum output tokens of the model profile (AI configuration -> Profiles) and run again"
+        "raise the maximum output tokens of the model profile (AI configuration -> Profiles), or lower its effort "
+        "when the model reasons at length (reasoning counts against the limit), then retry the phase"
     )
 
 
@@ -233,6 +234,23 @@ async def extract(
 
 class CutReplyError(ReplyError):
     """The model's answer reached the output limit of its profile before it ended."""
+
+
+JSON_ERRORS = ("the JSON is not valid", "the answer has no JSON")
+
+
+def is_cut(reply: ModelReply, cause: Exception, *, json_only: bool = True) -> bool:
+    """The reply cannot be used and reached the output limit of its profile. A reply at the limit that parses is
+    whole: not a cut. With `json_only` only a broken JSON counts; code blocks pass `json_only=False`."""
+    return bool(reply.cut_at) and (not json_only or str(cause).startswith(JSON_ERRORS))
+
+
+def raise_if_cut(reply: ModelReply, what: str, cause: Exception, *, repeated: bool, json_only: bool = True) -> None:
+    """A cut reply is sent back once with its problem: the model often answers shorter the second time (a recording
+    has such a case). A second cut in a row is reported at once, for a person to raise the limit (or lower the
+    effort) and retry the phase, instead of paying the same cut answer again."""
+    if repeated and is_cut(reply, cause, json_only=json_only):
+        raise CutReplyError(cut_message(what, reply.cut_at or 0)) from cause
 
 
 async def _extract(

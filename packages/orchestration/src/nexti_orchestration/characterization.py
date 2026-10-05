@@ -14,7 +14,7 @@ from nexti_core.adapters import LegacyRunner, LegacyUnavailableError, SourceFile
 from nexti_core.spec.characterization import GoldenMaster, Suite
 from nexti_core.spec.model import Rule
 from nexti_orchestration.context import Attempt, PhaseContext, Verification
-from nexti_orchestration.extraction import ModelCaller, ReplyError, parse_json
+from nexti_orchestration.extraction import JSON_ERRORS, ModelCaller, ReplyError, parse_json, raise_if_cut
 from nexti_orchestration.guided import enabled as guided_enabled
 from nexti_orchestration.model import PhaseFailedError, PhaseResult, PhaseUnavailableError
 from nexti_orchestration.scope import scope_files, split_rules
@@ -153,6 +153,8 @@ class CharacterizationPhases:
             try:
                 suite = parse_suite(reply.content, guided=guided_enabled(ctx.run.options))
             except ReplyError as exc:  # verified below: the reply goes back with the reason
+                raise_if_cut(reply, "Characterization suite", exc, repeated=bool(feedback) and
+                             str(feedback).startswith(JSON_ERRORS))  # fmt: skip
                 return Attempt({"error": str(exc)[:3000]}, "suite with format errors", reply.usage)
             reference = await self.port.save_file("characterization/suite.json", suite.model_dump_json(by_alias=True))
             return Attempt({"suite": reference}, f"{len(suite.cases)} case(s)", reply.usage)
