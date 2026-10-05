@@ -26,7 +26,7 @@ from nexti_agents import prompt
 from nexti_core.adapters import SourceFile
 from nexti_ivv.target import TargetInventory, inventory
 from nexti_orchestration.context import Attempt, PhaseContext, Verification
-from nexti_orchestration.extraction import ModelCaller, ReplyError, not_cut, parse_json
+from nexti_orchestration.extraction import ModelCaller, ReplyError, parse_json, raise_if_cut
 from nexti_orchestration.feature import FeatureStory
 from nexti_orchestration.feature_build import proof_pack
 from nexti_orchestration.model import PhaseFailedError, PhaseResult, PhaseUnavailableError
@@ -364,11 +364,11 @@ class ExtensionPhases:
             messages = list(request)
             if feedback:
                 messages.append({"role": "user", "content": f"The design cannot be used:\n{feedback}\nFix it."})
-            reply = not_cut(await self.port.models.complete(ARCHITECT, "design", messages, iteration=iteration),
-                            "Delta design")  # fmt: skip
+            reply = await self.port.models.complete(ARCHITECT, "design", messages, iteration=iteration)
             try:
                 design = DeltaDesign.model_validate(parse_json(reply.content))
             except (ReplyError, ValidationError) as exc:
+                raise_if_cut(reply, "Delta design", exc)
                 return Attempt({"error": str(exc)[:3000]}, "design with format errors", reply.usage)
             reference = await self.port.save_file(DESIGN, design.model_dump_json(indent=1))
             return Attempt({"design": reference}, f"{len(design.changes)} change(s)", reply.usage)
@@ -429,11 +429,11 @@ class ExtensionPhases:
             messages = list(request)
             if feedback:
                 messages.append({"role": "user", "content": f"The tests cannot be used:\n{feedback}\nFix them."})
-            reply = not_cut(await self.port.models.complete(TESTER, "generation", messages, iteration=iteration),
-                            f"Tests for {change.name}")  # fmt: skip
+            reply = await self.port.models.complete(TESTER, "generation", messages, iteration=iteration)
             try:
                 files = parse_files(reply.content)
             except ReplyError as exc:
+                raise_if_cut(reply, f"Tests for {change.name}", exc)
                 return Attempt({"error": str(exc)}, "tests with format errors", reply.usage)
             problems = placement_problems(files, existing, tests=True)
             if problems:
@@ -472,11 +472,11 @@ class ExtensionPhases:
             messages = list(base)
             if feedback:
                 messages.append({"role": "user", "content": f"The previous version failed:\n{feedback}\nFix it."})
-            reply = not_cut(await self.port.models.complete(DEVELOPER, "generation", messages, iteration=iteration),
-                            f"Code for {change.name}")  # fmt: skip
+            reply = await self.port.models.complete(DEVELOPER, "generation", messages, iteration=iteration)
             try:
                 files = parse_files(reply.content)
             except ReplyError as exc:
+                raise_if_cut(reply, f"Code for {change.name}", exc)
                 return Attempt({"error": str(exc)}, "code with format errors", reply.usage)
             problems = placement_problems(files, existing, tests=False)
             if problems:

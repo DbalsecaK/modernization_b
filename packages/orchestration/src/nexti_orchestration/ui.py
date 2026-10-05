@@ -15,7 +15,7 @@ from nexti_agents import prompt
 from nexti_core.adapters import SourceFile
 from nexti_core.spec.screens import ScreenSpec
 from nexti_orchestration.context import Attempt, PhaseContext, Verification
-from nexti_orchestration.extraction import ModelCaller, ReplyError, not_cut
+from nexti_orchestration.extraction import ModelCaller, ReplyError, raise_if_cut
 from nexti_orchestration.model import PhaseResult
 from nexti_sandbox import Sandbox
 from nexti_ui import IMAGE, PrototypeBuild, build
@@ -89,11 +89,11 @@ async def prototype(
         messages = list(base)
         if feedback:
             messages.append({"role": "user", "content": f"The prototype could not be used:\n{feedback}\nFix it."})
-        reply = not_cut(await port.models.complete(DESIGNER, "ui", messages, iteration=iteration),
-                        f"Prototype of {screen.id}")  # fmt: skip
+        reply = await port.models.complete(DESIGNER, "ui", messages, iteration=iteration)
         try:
             code = tsx_block(reply.content)
         except ReplyError as exc:
+            raise_if_cut(reply, f"Prototype of {screen.id}", exc, json_only=False)
             return Attempt({"error": str(exc)}, "no component", reply.usage)
         reference = await port.save_file(f"prototypes/{screen.id}.tsx", code)
         return Attempt({"file": reference}, f"prototype of {screen.id}", reply.usage)
@@ -181,11 +181,12 @@ async def change_prototype(
     messages = [{"role": "system", "content": prompt(DESIGNER)}, {"role": "user", "content": request}]
     last = ""
     for iteration in range(1, max_iterations + 1):
-        reply = not_cut(await models.complete(DESIGNER, "ui", messages, iteration=iteration), "Prototype change")
+        reply = await models.complete(DESIGNER, "ui", messages, iteration=iteration)
         problem = ""
         try:
             code = tsx_block(reply.content)
         except ReplyError as exc:
+            raise_if_cut(reply, "Prototype change", exc, json_only=False)
             problem, code = str(exc), ""
         if code:
             missing = missing_fields(screen, code)

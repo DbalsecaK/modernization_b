@@ -236,12 +236,19 @@ class CutReplyError(ReplyError):
     """The model's answer reached the output limit of its profile before it ended."""
 
 
-def not_cut(reply: ModelReply, what: str) -> ModelReply:
-    """A reply cut at the output limit of its profile is not asked again (the same cut comes back, at the same cost):
-    it is reported at once, so a person raises the limit or lowers the effort and retries the phase."""
-    if reply.cut_at:
-        raise CutReplyError(cut_message(what, reply.cut_at))
-    return reply
+JSON_ERRORS = ("the JSON is not valid", "the answer has no JSON")
+
+
+def raise_if_cut(reply: ModelReply, what: str, cause: Exception, *, json_only: bool = True) -> None:
+    """A reply that cannot be used and reached the output limit of its profile was cut: asking again gives the same
+    cut answer at the same cost, so it is reported at once for a person to raise the limit (or lower the effort) and
+    retry the phase. A reply at the limit that parses is whole (a recording has one): it is not a cut. With
+    `json_only` the cut is declared only when the JSON itself is broken; code blocks pass `json_only=False`."""
+    if not reply.cut_at:
+        return
+    if json_only and not str(cause).startswith(JSON_ERRORS):
+        return
+    raise CutReplyError(cut_message(what, reply.cut_at)) from cause
 
 
 async def _extract(

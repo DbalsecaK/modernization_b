@@ -10,7 +10,7 @@ from typing import Any, Protocol, cast
 from nexti_agents import prompt
 from nexti_core.spec.screens import ScreenSpec
 from nexti_orchestration.context import Attempt, PhaseContext, Verification
-from nexti_orchestration.extraction import ModelCaller, ReplyError, not_cut
+from nexti_orchestration.extraction import ModelCaller, ReplyError, raise_if_cut
 from nexti_orchestration.model import PhaseFailedError, PhaseUnavailableError
 from nexti_pack_frontend import IMAGE, PREFIX, ScreenContract, angular, contract_of, describe, nextjs, openapi, react
 from nexti_pack_frontend.build import Flavour, FrontendRun, build_and_test
@@ -109,11 +109,11 @@ async def generate(
             messages = list(base)
             if feedback:
                 messages.append({"role": "user", "content": f"The page could not be used:\n{feedback}\nFix it."})
-            reply = not_cut(await port.models.complete(DEVELOPER, "generation", messages, iteration=iteration),
-                            f"Page of {screen.id}")  # fmt: skip
+            reply = await port.models.complete(DEVELOPER, "generation", messages, iteration=iteration)
             try:
                 code = code_block(reply.content, flavour)
             except ReplyError as exc:
+                raise_if_cut(reply, f"Page of {screen.id}", exc, json_only=False)
                 return Attempt({"error": str(exc)}, "no page", reply.usage)
             reference = await port.save_file(f"frontend/{pack.screen_path(screen)}", code)
             return Attempt({"file": reference}, f"page of {screen.id}", reply.usage)

@@ -24,7 +24,7 @@ from nexti_core.adapters import SourceFile
 from nexti_core.spec.model import Rule
 from nexti_orchestration import frontend, infrastructure
 from nexti_orchestration.context import Attempt, PhaseContext, Verification
-from nexti_orchestration.extraction import ModelCaller, ReplyError, not_cut, parse_json
+from nexti_orchestration.extraction import ModelCaller, ReplyError, parse_json, raise_if_cut
 from nexti_orchestration.guided import enabled as guided_enabled
 from nexti_orchestration.model import PhaseFailedError, PhaseResult, PhaseUnavailableError
 from nexti_orchestration.packs import BackendPack, backend_pack
@@ -277,7 +277,7 @@ async def propose_design(
     usage: list[Usage] = []
     last = ""
     for iteration in range(1, max_iterations + 1):
-        reply = not_cut(await caller.complete(ARCHITECT, "design", messages, iteration=iteration), "Target design")
+        reply = await caller.complete(ARCHITECT, "design", messages, iteration=iteration)
         usage.append(reply.usage)
         try:
             data = parse_json(reply.content)
@@ -287,6 +287,7 @@ async def propose_design(
                 raise ReplyError("\n".join(problems))
             return design, usage
         except (ReplyError, ValidationError) as exc:
+            raise_if_cut(reply, "Target design", exc)
             detail = str(exc) if isinstance(exc, ReplyError) else "; ".join(
                 f"{'.'.join(map(str, e['loc']))}: {e['msg']}" for e in exc.errors()[:10])  # fmt: skip
             last = detail
@@ -432,9 +433,12 @@ class GenerationPhases:
                 {"role": "system", "content": prompt(pack.tester_prompt)},
                 {"role": "user", "content": request},
             ]
-            reply = not_cut(await self.port.models.complete(TESTER, "generation", messages),
-                            f"Tests of {use_case.name}")  # fmt: skip
-            code = code_block(pack, reply.content)
+            reply = await self.port.models.complete(TESTER, "generation", messages)
+            try:
+                code = code_block(pack, reply.content)
+            except ReplyError as exc:
+                raise_if_cut(reply, f"Tests of {use_case.name}", exc, json_only=False)
+                raise
             reference = await self.port.save_file(pack.test_path(design, use_case), code)
             return Attempt({"file": reference}, f"tests of {use_case.name}", reply.usage)
 
@@ -459,9 +463,12 @@ class GenerationPhases:
             messages = list(base)
             if feedback:
                 messages.append({"role": "user", "content": f"The previous version failed:\n{feedback}\nFix it."})
-            reply = not_cut(await self.port.models.complete(DEVELOPER, "generation", messages, iteration=iteration),
-                            f"{use_case.name}Service")  # fmt: skip
-            code = code_block(pack, reply.content)
+            reply = await self.port.models.complete(DEVELOPER, "generation", messages, iteration=iteration)
+            try:
+                code = code_block(pack, reply.content)
+            except ReplyError as exc:
+                raise_if_cut(reply, f"{use_case.name}Service", exc, json_only=False)
+                raise
             return Attempt({"file": await self.port.save_file(target, code)}, f"{use_case.name}Service", reply.usage)
 
         async def verify(artifact: dict[str, Any]) -> Verification:
@@ -494,9 +501,12 @@ class GenerationPhases:
             messages = list(base)
             if feedback:
                 messages.append({"role": "user", "content": f"The previous version failed:\n{feedback}\nFix it."})
-            reply = not_cut(await self.port.models.complete(DEVELOPER, "generation", messages, iteration=iteration),
-                            str(adapter))  # fmt: skip
-            code = code_block(pack, reply.content)
+            reply = await self.port.models.complete(DEVELOPER, "generation", messages, iteration=iteration)
+            try:
+                code = code_block(pack, reply.content)
+            except ReplyError as exc:
+                raise_if_cut(reply, str(adapter), exc, json_only=False)
+                raise
             return Attempt({"file": await self.port.save_file(target, code)}, adapter, reply.usage)
 
         async def verify(artifact: dict[str, Any]) -> Verification:

@@ -150,6 +150,7 @@ def test_a_key_marked_on_the_columns_becomes_the_table_key_only_when_guided() ->
 
 
 async def test_a_suite_cut_at_the_output_limit_stops_the_phase_at_once_instead_of_paying_the_same_again() -> None:
+    from nexti_orchestration.extraction import ReplyError
     from nexti_orchestration.model import PhaseFailedError
 
     class CutTester(StandInTester):
@@ -172,3 +173,10 @@ async def test_a_suite_cut_at_the_output_limit_stops_the_phase_at_once_instead_o
         await CharacterizationPhases(port).characterization(ctx)
     assert len(port.tester.requests) == 1  # not asked again
     assert [i["status"] for i in store.invocations.values()] == ["failed"]
+    # A whole reply that happens to reach the limit is used as any other (a recording has one).
+    from nexti_orchestration.characterization import parse_suite as parse
+    from nexti_orchestration.extraction import raise_if_cut
+
+    whole = ModelReply(SUITE, Usage(model="t", output_tokens=16000), cut_at=16000)
+    raise_if_cut(whole, "x", ReplyError("rules without a case: RULE-001"))  # a content problem, not a cut
+    assert parse(whole.content).program

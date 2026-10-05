@@ -17,7 +17,7 @@ from typing import Any
 from nexti_agents import prompt
 from nexti_core.adapters import Inventory, Node, SliceView
 from nexti_core.spec.model import Rule
-from nexti_orchestration.extraction import ModelCaller, ReplyError, cut_message, numbered, parse_json
+from nexti_orchestration.extraction import JSON_ERRORS, ModelCaller, ReplyError, cut_message, numbered, parse_json
 from nexti_orchestration.store import Usage
 
 OPTION = "deep_inventory"
@@ -65,12 +65,14 @@ async def converse(
     for iteration in range(1, max_iterations + 1):
         reply = await caller.complete(agent, phase, messages, iteration=iteration)
         answer.usage.append(reply.usage)
-        if reply.cut_at:  # asking again gives the same cut answer: keep what there is and say why it stopped
-            answer.problems = [cut_message(agent, reply.cut_at)]
-            return answer
         try:
             value, problems = check(reply.content)
         except ReplyError as exc:
+            if reply.cut_at and str(exc).startswith(
+                JSON_ERRORS
+            ):  # cut: asking again gives the same; keep what there is
+                answer.problems = [cut_message(agent, reply.cut_at)]
+                return answer
             value, problems = None, [str(exc)]
         if value is not None:
             answer.value = value

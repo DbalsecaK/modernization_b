@@ -13,7 +13,7 @@ from nexti_agents import prompt
 from nexti_core.spec import gherkin
 from nexti_core.spec.model import Priority, Rule
 from nexti_core.spec.plan import Dependency, StoryInfo, suggest
-from nexti_orchestration.extraction import ModelCaller, ReplyError, not_cut, parse_json
+from nexti_orchestration.extraction import ModelCaller, ReplyError, parse_json, raise_if_cut
 from nexti_orchestration.store import Usage
 
 STORY_WRITER = "functional-analyst"
@@ -150,11 +150,12 @@ async def derive(
     usage: list[Usage] = []
     last = ""
     for iteration in range(1, max_iterations + 1):
-        reply = not_cut(await caller.complete(writer, "ruleReview", messages, iteration=iteration), "User stories")
+        reply = await caller.complete(writer, "ruleReview", messages, iteration=iteration)
         usage.append(reply.usage)
         try:
             drafts = parse(reply.content, rules)
         except ReplyError as exc:
+            raise_if_cut(reply, "User stories", exc)
             last = str(exc)
             messages += [
                 {"role": "assistant", "content": reply.content},
