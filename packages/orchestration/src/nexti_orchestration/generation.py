@@ -14,7 +14,7 @@ import difflib
 import json
 import re
 import unicodedata
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from typing import Any, Protocol, cast
 
 from pydantic import ValidationError
@@ -160,32 +160,47 @@ def table_of(target: str) -> str:
     return (parts[-2] if len(parts) >= 4 else parts[-1]).lower()  # db.dbo.tabla, db.dbo.tabla.col, tabla
 
 
-def mask_problems(design: Design, rules: Sequence[Rule], files: Sequence[SourceFile], written: set[str]) -> list[str]:
+# A table read within this many lines before a line a rule cites feeds that rule (the SELECT that loads the values
+# the cited IF tests): masking it hides business (ADR-0035, precision of 2026-10-05).
+FEEDING_WINDOW = 40
+
+
+def mask_problems(
+    design: Design, rules: Sequence[Rule], files: Sequence[SourceFile], written: set[str], read: set[str] | None = None
+) -> list[str]:
     """Guided design (ADR-0035): a mask or an `infrastructure` entry cannot hide business. A table the approved rules
-    read or write stays as an entity; a program called from lines a rule cites is a port, not infrastructure; every
-    table the program writes is kept by an entity or masked with a reason."""
+    read or write stays as an entity, and so does a table the program reads just before the lines a rule cites (its
+    values feed the rule); a program called from lines a rule cites is a port, not infrastructure; every table the
+    program writes is kept by an entity or masked with a reason."""
     lines = {f.path.rsplit("/", 1)[-1].lower(): f.text.splitlines() for f in files}
 
-    def cited(rule: Rule) -> str:
+    def cited(rule: Rule, before: int = 0) -> str:
         parts = []
         for ref in rule.sources:
             text = lines.get(ref.file.rsplit("/", 1)[-1].lower())
             if text:
-                parts.append("\n".join(text[ref.line_start - 1 : ref.line_end]))
+                parts.append("\n".join(text[max(ref.line_start - 1 - before, 0) : ref.line_end]))
         return "\n".join(parts).lower()
 
     cited_by = {r.id: cited(r) for r in rules}
+    feeding = {r.id: cited(r, FEEDING_WINDOW) for r in rules}
 
-    def users(name: str) -> list[str]:
+    def users(name: str, texts: Mapping[str, str] | None = None) -> list[str]:
         pattern = re.compile(rf"(?<![a-z0-9_]){re.escape(name)}(?![a-z0-9_])")
-        return sorted(rid for rid, text in cited_by.items() if pattern.search(text))
+        return sorted(rid for rid, text in (texts or cited_by).items() if pattern.search(text))
 
     problems = []
     for mask in design.masks:
         kind, _, target = mask.path.partition(":")
-        if kind == "tables" and (ids := users(table_of(target))):
+        if kind != "tables":
+            continue
+        if ids := users(table_of(target)):
             problems.append(f"mask {mask.path} hides a table the rules use ({', '.join(ids)}): keep it as an entity "
                             "with its legacy_table")  # fmt: skip
+        elif table_of(target) in (read or set()) and (ids := users(table_of(target), feeding)):
+            problems.append(f"mask {mask.path} hides a table the program reads right before lines the rules cite "
+                            f"({', '.join(ids)}): the values it loads feed those rules, so keep it as an entity with "
+                            "its legacy_table (a lookup the target replaces is still an entity)")  # fmt: skip
     for program in design.infrastructure:
         if ids := users(_normal(program)):
             problems.append(f"{program} is listed as infrastructure, but the rules cite its call ({', '.join(ids)}): "
@@ -202,6 +217,7 @@ def mask_problems(design: Design, rules: Sequence[Rule], files: Sequence[SourceF
 def design_problems(
     design: Design, rules: Sequence[Rule], names: set[str] | None = None, *, hints: bool = False,
     files: Sequence[SourceFile] = (), written: set[str] | None = None, package_root: str | None = None,
+    read: set[str] | None = None,
 ) -> list[str]:  # fmt: skip
     """What is wrong with a design, for the model to correct. With `hints` (guided extraction, ADR-0033) an invented
     legacy name comes with the closest real names, and the masks are checked against the rules (ADR-0035)."""
@@ -236,22 +252,31 @@ def design_problems(
         if hints and names:
             problems.append(f"closest names in the legacy code: {closest(invented, names)}")
     if hints:
-        problems += mask_problems(design, rules, files, written or set())
+        problems += mask_problems(design, rules, files, written or set(), read)
         root = (package_root or "").strip().lower()
         if root and not (design.base_package == root or design.base_package.startswith(root + ".")):
             problems.append(f"base_package must be {root} or start with {root}. (the pack profile of the project)")
     return problems
 
 
-def written_tables(files: Sequence[SourceFile]) -> set[str]:
-    """The tables the legacy writes, from the inventory of the source adapter (bare names, lowercase)."""
+def _tables(files: Sequence[SourceFile], edge_type: str) -> set[str]:
     from nexti_orchestration.modernization import pick_adapter
 
     try:
         inventory = pick_adapter(list(files)).inventory(list(files))
     except Exception:
         return set()
-    return {table_of(e.target.split(":", 1)[-1]) for e in inventory.edges if str(e.type) == "WRITES"}
+    return {table_of(e.target.split(":", 1)[-1]) for e in inventory.edges if str(e.type) == edge_type}
+
+
+def written_tables(files: Sequence[SourceFile]) -> set[str]:
+    """The tables the legacy writes, from the inventory of the source adapter (bare names, lowercase)."""
+    return _tables(files, "WRITES")
+
+
+def read_tables(files: Sequence[SourceFile]) -> set[str]:
+    """The tables the legacy reads, from the inventory of the source adapter (bare names, lowercase)."""
+    return _tables(files, "READS")
 
 
 def _rules_text(rules: Sequence[Rule]) -> str:
@@ -266,7 +291,7 @@ async def propose_design(
     caller: ModelCaller, rules: Sequence[Rule], inventory: str, *, max_iterations: int = 3,
     names: set[str] | None = None, source: str = "", system: str = ARCHITECT, label: str = "Inventory",
     hints: bool = False, files: Sequence[SourceFile] = (), written: set[str] | None = None, guidance: str = "",
-    package_root: str | None = None,
+    package_root: str | None = None, read: set[str] | None = None,
 ) -> tuple[Design, list[Usage]]:  # fmt: skip
     """The design from the rules. Flow 1 gives the inventory of the legacy; Flow 2 gives the approved screens and
     stories (`label`) and its own prompt (`system`), with no legacy to map."""
@@ -290,7 +315,7 @@ async def propose_design(
             data = parse_json(reply.content)
             design = Design.model_validate(data)
             problems = design_problems(design, rules, names, hints=hints, files=files, written=written,
-                                       package_root=package_root)  # fmt: skip
+                                       package_root=package_root, read=read)  # fmt: skip
             if problems:
                 raise ReplyError("\n".join(problems))
             return design, usage
@@ -330,7 +355,8 @@ class GenerationPhases:
                         max_iterations=ctx.run.max_iterations, names=legacy_names(files),
                         source="\n\n".join(f"// {f.path}\n{f.text}" for f in files),
                         hints=guided_enabled(ctx.run.options), files=files, written=written_tables(files),
-                        guidance=stack_guidance(ctx.run.target), package_root=ctx.run.target.get("package_root"),
+                        read=read_tables(files), guidance=stack_guidance(ctx.run.target),
+                        package_root=ctx.run.target.get("package_root"),
                     )  # fmt: skip
             except ReplyError as exc:
                 raise PhaseFailedError(str(exc)[:1500]) from exc
