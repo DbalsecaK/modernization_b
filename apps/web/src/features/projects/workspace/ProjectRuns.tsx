@@ -158,8 +158,8 @@ function RunView({ project, run }: { project: ProjectDetail; run: RunDetail }) {
   const me = useMe()
   const cancel = useCancelRun(project.id)
   const retry = useRetryRun(project.id)
-  // A failed run may start again from the failed phase or an earlier one (ADR-0035).
-  const failedAt = run.phases.findIndex((p) => p.phase === run.currentPhase)
+  // A failed run may start again from the failed phase or an earlier one; a finished run, from any phase (ADR-0035).
+  const failedAt = run.status === 'failed' ? run.phases.findIndex((p) => p.phase === run.currentPhase) : -1
   const retryable = failedAt >= 0 ? run.phases.slice(0, failedAt + 1) : run.phases
   const [retryFrom, setRetryFrom] = useState<string>('')
   const live = ACTIVE_STATUSES.includes(run.status)
@@ -188,7 +188,8 @@ function RunView({ project, run }: { project: ProjectDetail; run: RunDetail }) {
               >
                 <Square size={14} /> {t('runsPage.cancel')}
               </Button>
-            ) : run.status === 'failed' && project.permissions.includes('pipeline.run') ? (
+            ) : (run.status === 'failed' || run.status === 'succeeded') &&
+              project.permissions.includes('pipeline.run') ? (
               <div className="flex items-center gap-2">
                 <Select
                   aria-label={t('runsPage.retryFrom')}

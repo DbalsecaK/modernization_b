@@ -2900,7 +2900,7 @@
       "info": "Info"
     },
     "retry": "Retry from this phase",
-    "retried": "Run queued again: it goes on from the phase that failed.",
+    "retried": "Run queued again: it goes on from the chosen phase.",
     "retryFrom": "Retry from phase"
   },
   "questions": {
