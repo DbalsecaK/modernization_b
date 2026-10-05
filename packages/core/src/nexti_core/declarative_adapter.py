@@ -277,6 +277,23 @@ class DeclarativeAdapter:
         return "\n".join(lines)
 
 
+def first_json(content: str) -> Any:
+    """The first JSON value in a model's reply (it may wrap it in ``` fences or add a sentence); ValueError when
+    there is none. Here and not in the orchestration so the API, which never runs agents, can read a draft."""
+    text = content.strip()
+    fenced = re.search(r"```(?:json)?\s*(.*?)```", text, re.DOTALL)
+    if fenced:
+        text = fenced.group(1).strip()
+    start = min((i for i in (text.find("{"), text.find("[")) if i >= 0), default=-1)
+    if start < 0:
+        raise ValueError("the answer has no JSON object")
+    try:
+        value, _ = json.JSONDecoder().raw_decode(text[start:])
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"the JSON is not valid: {exc.msg} at character {exc.pos}") from exc
+    return value
+
+
 def summary(adapter: DeclarativeAdapter, files: list[SourceFile]) -> dict[str, Any]:
     """What the studio shows after trying a specification on sample files."""
     inventory = adapter.inventory(files)
@@ -286,7 +303,7 @@ def summary(adapter: DeclarativeAdapter, files: list[SourceFile]) -> dict[str, A
         "metrics": inventory.metrics,
         "programs": [
             {"name": n.name, "file": n.file, "line_start": n.line_start, "line_end": n.line_end} for n in programs
-        ][:50],  # fmt: skip
+        ][:50],
         "tables": sorted(n.name for n in inventory.nodes if n.label == "Table")[:100],
         "calls": sorted({e.target.split(":", 1)[1] for e in inventory.edges if e.type == "CALLS"})[:100],
         "classification": adapter.classification(files),

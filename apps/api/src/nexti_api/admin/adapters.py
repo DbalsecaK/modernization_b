@@ -21,9 +21,8 @@ from nexti_api.schemas import ApiModel
 from nexti_core.adapters import SourceFile
 from nexti_core.composition.loader import core_data
 from nexti_core.db.models import TenantAdapter
-from nexti_core.declarative_adapter import AdapterSpec, DeclarativeAdapter, summary
+from nexti_core.declarative_adapter import AdapterSpec, DeclarativeAdapter, first_json, summary
 from nexti_model_gateway.gateway import CallContext, GatewayError
-from nexti_orchestration.extraction import parse_json
 
 router = APIRouter(prefix="/api/v1/adapters", tags=["admin"])
 ManageCatalog = Annotated[Authorized, Depends(require_tenant("models.configure"))]
@@ -221,7 +220,7 @@ async def _draft(request: Request, context: CallContext, messages: list[dict[str
         return DraftOut(spec=None, summary=None, problems=[f"the model could not be called: {type(exc).__name__}"])
     data: Any = None
     try:
-        data = parse_json(result.content)
+        data = first_json(result.content)
         if body.key and isinstance(data, dict):
             data["key"] = body.key
         spec = _spec(data if isinstance(data, dict) else {})

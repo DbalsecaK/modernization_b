@@ -88,3 +88,12 @@ def test_a_file_without_a_unit_line_is_one_unit_named_after_the_file() -> None:
     inventory = adapter.inventory([SourceFile("jobs/nightly.toy", "SELECT x FROM db.jobs\nUPDATE db.jobs\n")])
     (program,) = [n for n in inventory.nodes if n.label == "Program"]
     assert (program.name, program.line_start, program.line_end) == ("nightly", 1, 2)
+
+
+def test_first_json_reads_a_fenced_or_wrapped_reply() -> None:
+    from nexti_core.declarative_adapter import first_json
+
+    assert first_json('Here it is:\n```json\n{"key": "x"}\n```') == {"key": "x"}
+    assert first_json("[1, 2] and more") == [1, 2]
+    with pytest.raises(ValueError, match="no JSON object"):
+        first_json("no json here")
