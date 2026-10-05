@@ -4,20 +4,23 @@ isolated engine and what it did is frozen as the golden master, before anything 
 expected behaviour comes from a model: the model only chooses the inputs."""
 
 import json
-from collections.abc import Sequence
+import re
+from collections.abc import Mapping, Sequence
 from typing import Any, Protocol
 
 from pydantic import ValidationError
 
 from nexti_agents import prompt
 from nexti_core.adapters import LegacyRunner, LegacyUnavailableError, SourceFile
-from nexti_core.spec.characterization import GoldenMaster, Suite
+from nexti_core.spec.characterization import Case, GoldenMaster, Schema, Suite
 from nexti_core.spec.model import Rule
 from nexti_orchestration.context import Attempt, PhaseContext, Verification
 from nexti_orchestration.extraction import JSON_ERRORS, ModelCaller, ReplyError, parse_json, raise_if_cut
 from nexti_orchestration.guided import enabled as guided_enabled
 from nexti_orchestration.model import PhaseFailedError, PhaseResult, PhaseUnavailableError
 from nexti_orchestration.scope import scope_files, split_rules
+from nexti_orchestration.store import Usage
+from nexti_orchestration.usage import total
 
 TESTER = "test-engineer"
 
@@ -94,6 +97,66 @@ def table_keys_from_columns(data: Any) -> Any:
     return {**data, "schema": {**data["schema"], "tables": fixed}}
 
 
+GROUP = 6  # rules per request of cases in the guided suite (ADR-0036): every answer stays small
+SCHEMA_REQUEST = (
+    'Answer now with the `program` and the `schema` only, as {"program": "...", "schema": {"tables": [...]}, '
+    '"cases": []}. The cases come in later requests, a few rules at a time.'
+)
+CASES_REQUEST = (
+    "The schema above is agreed: do not repeat it and use its table and column names. Answer with the cases for the "
+    'rules listed below only, as {"cases": [...]}: at least one case per rule listed, one per branch of a P0 rule.'
+)
+RULE_ID = re.compile(r"RULE-\d{3,}")
+
+
+def parse_schema(content: str) -> tuple[str, Schema]:
+    """The first piece of a guided suite: the program and its schema."""
+    data = table_keys_from_columns(parse_json(content))
+    if not isinstance(data, dict) or not str(data.get("program") or "").strip():
+        raise ReplyError('the answer must be {"program": "...", "schema": {"tables": [...]}, "cases": []}')
+    try:
+        return str(data["program"]).strip(), Schema.model_validate(data.get("schema") or {})
+    except ValidationError as exc:
+        raise ReplyError(f"the schema does not follow the format: {format_problems(exc)}") from exc
+
+
+def parse_cases(content: str) -> list[Case]:
+    """A piece of cases of a guided suite."""
+    data = parse_json(content)
+    items = data.get("cases") if isinstance(data, dict) else data
+    if not isinstance(items, list) or not items:
+        raise ReplyError('the answer must be {"cases": [...]} with at least one case')
+    try:
+        return [Case.model_validate(item) for item in items]
+    except ValidationError as exc:
+        raise ReplyError(f"the cases do not follow the format: {format_problems(exc)}") from exc
+
+
+def groups_of(rules: Sequence[Rule], size: int = GROUP) -> list[list[Rule]]:
+    """The rules in groups of `size`, by id: each group is one request of cases."""
+    ordered = sorted(rules, key=lambda r: r.id)
+    return [ordered[i : i + size] for i in range(0, len(ordered), size)] or [[]]
+
+
+def affected_groups(feedback: str, groups: Sequence[Sequence[Rule]], cases: Mapping[int, Sequence[Case]]) -> set[int]:
+    """The groups a diagnostic points at (by rule id or case name); every group when it points at none."""
+    ids = set(RULE_ID.findall(feedback))
+    found = {i for i, group in enumerate(groups) if any(r.id in ids for r in group)}
+    found |= {i for i, items in cases.items() if any(re.search(rf"\b{re.escape(c.name)}\b", feedback) for c in items)}
+    return found or set(range(len(groups)))
+
+
+def unique_names(cases: Sequence[Case]) -> list[Case]:
+    """Cases from different requests may repeat a name: the later ones get a suffix."""
+    seen: dict[str, int] = {}
+    out = []
+    for case in cases:
+        n = seen.get(case.name, 0)
+        seen[case.name] = n + 1
+        out.append(case if n == 0 else case.model_copy(update={"name": f"{case.name}_{n + 1}"[:80]}))
+    return out
+
+
 def parse_suite(content: str, *, guided: bool = False) -> Suite:
     """The suite of the reply. With `guided` (guided extraction, ADR-0033) a key marked on the columns is read as
     the table's key, and the format errors go back in words instead of the validator's raw records. Without it the
@@ -144,8 +207,9 @@ class CharacterizationPhases:
                 f"Source:\n{_sources(files)}")},
         ]  # fmt: skip
         master: dict[str, GoldenMaster] = {}
+        guided = guided_enabled(ctx.run.options)
 
-        async def work(iteration: int, feedback: str | None) -> Attempt:
+        async def work_single(iteration: int, feedback: str | None) -> Attempt:
             messages = list(request)
             if feedback:
                 messages.append({"role": "user", "content": f"The suite could not be used:\n{feedback}\nFix it."})
@@ -182,6 +246,63 @@ class CharacterizationPhases:
             master["run"] = recorded
             return Verification(True)
 
+        # Guided (ADR-0036): the schema first, then the cases a few rules at a time, so a long program never needs
+        # one answer the size of its whole suite; a diagnostic re-asks only the pieces it points at.
+        groups = groups_of(rules)
+        draft: dict[str, Any] = {"program": None, "schema": None, "cases": {}}
+        cut_before: dict[str, bool] = {}
+        inventory = await self.port.inventory_digest()
+
+        def rules_json(items: Sequence[Rule]) -> str:
+            return json.dumps([r.model_dump(mode="json") for r in items], ensure_ascii=False, indent=1)
+
+        async def ask(key: str, user: str, feedback: str | None, iteration: int, what: str) -> tuple[Any, Usage]:
+            messages = [request[0], {"role": "user", "content": user}]
+            if feedback:
+                messages.append({"role": "user", "content": f"The suite could not be used:\n{feedback}\nFix it."})
+            reply = await self.port.models.complete(TESTER, "characterization", messages, iteration=iteration)
+            try:
+                value = parse_schema(reply.content) if key == "schema" else parse_cases(reply.content)
+            except ReplyError as exc:
+                raise_if_cut(reply, what, exc, repeated=cut_before.get(key, False))
+                cut_before[key] = bool(reply.cut_at)
+                raise
+            cut_before[key] = False
+            return value, reply.usage
+
+        async def work_guided(iteration: int, feedback: str | None) -> Attempt:
+            usage: list[Usage] = []
+            source = _sources(files)
+            redo = affected_groups(feedback, groups, draft["cases"]) if feedback else set(range(len(groups)))
+            try:
+                if draft["schema"] is None or (feedback and "schema" in feedback.lower()):
+                    user = (f"Inventory:\n{inventory}\n\nRules:\n{rules_json(rules)}\n\nSource:\n{source}\n\n"
+                            f"{SCHEMA_REQUEST}")  # fmt: skip
+                    (program, schema), used = await ask("schema", user, feedback, iteration,
+                                                        "Characterization schema")  # fmt: skip
+                    usage.append(used)
+                    draft.update(program=program, schema=schema)
+                schema_json = draft["schema"].model_dump_json(by_alias=True, indent=1)
+                for index in sorted(redo | {i for i in range(len(groups)) if i not in draft["cases"]}):
+                    ids = ", ".join(r.id for r in groups[index]) or "none"
+                    user = (f"Inventory:\n{inventory}\n\nAgreed schema:\n{schema_json}\n\nRules for this request "
+                            f"({ids}):\n{rules_json(groups[index])}\n\nSource:\n{source}\n\n"
+                            f"{CASES_REQUEST}")  # fmt: skip
+                    cases, used = await ask(f"cases:{index}", user, feedback, iteration,
+                                            f"Characterization cases ({ids})")  # fmt: skip
+                    usage.append(used)
+                    draft["cases"][index] = cases
+            except ReplyError as exc:  # verified below: the reply goes back with the reason
+                return Attempt({"error": str(exc)[:3000]}, "suite with format errors", total(usage))
+            cases = unique_names([c for i in sorted(draft["cases"]) for c in draft["cases"][i]])
+            try:
+                suite = Suite(program=draft["program"], schema_=draft["schema"], cases=cases)
+            except ValidationError as exc:
+                return Attempt({"error": format_problems(exc)[:3000]}, "suite with format errors", total(usage))
+            reference = await self.port.save_file("characterization/suite.json", suite.model_dump_json(by_alias=True))
+            return Attempt({"suite": reference}, f"{len(cases)} case(s) in {len(groups)} request(s)", total(usage))
+
+        work = work_guided if guided else work_single
         attempt = await ctx.do_verify_correct(TESTER, work, verify, what="Characterization suite")
         recorded = master.get("run")
         cases = attempt.summary

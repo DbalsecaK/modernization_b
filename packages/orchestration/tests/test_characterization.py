@@ -4,6 +4,7 @@ frozen; without an engine or a recording the phase waits instead of inventing ex
 
 import hashlib
 import json
+import re
 import uuid
 from pathlib import Path
 
@@ -11,7 +12,7 @@ import pytest
 
 from nexti_adapter_sybase.ase import RecordedRunner
 from nexti_core.adapters import LegacyRunner, SourceFile
-from nexti_core.spec.characterization import GoldenMaster
+from nexti_core.spec.characterization import GoldenMaster, Suite
 from nexti_core.spec.model import Rule
 from nexti_orchestration import PhaseSpec, RunContext
 from nexti_orchestration.characterization import CharacterizationPhases, coverage_problems, parse_suite
@@ -179,3 +180,70 @@ async def test_a_suite_cut_at_the_output_limit_stops_the_phase_at_once_instead_o
     whole = ModelReply(SUITE, Usage(model="t", output_tokens=16000), cut_at=16000)
     assert not is_cut(whole, ReplyError("rules without a case: RULE-001"))  # a content problem, not a cut
     raise_if_cut(whole, "x", ReplyError("the JSON is not valid: x"), repeated=False)  # the first cut is retried
+
+
+# -- the guided suite in pieces (ADR-0036) ---------------------------------------------------------------------------
+class GuidedTester(StandInTester):
+    """Answers the schema request with the fixture's schema and each request of cases with the fixture's cases of
+    the rules listed; the first time, it forgets the case of RULE-001 so one group is asked again."""
+
+    def __init__(self) -> None:
+        super().__init__([SUITE])
+        self.forgot = False
+
+    async def complete(
+        self, agent: str, phase: str, messages: list[dict[str, str]], *, iteration: int = 1, judge: int = 0
+    ) -> ModelReply:
+        from nexti_orchestration.characterization import SCHEMA_REQUEST
+
+        self.requests.append(messages)
+        data = json.loads(SUITE)
+        user = messages[1]["content"]
+        if SCHEMA_REQUEST in user:
+            content = {"program": data["program"], "schema": data["schema"], "cases": []}
+        else:
+            ids = set(re.findall(r"RULE-\d{3}", user.split("Rules for this request")[1].split("\n")[0]))
+            cases = [c for c in data["cases"] if set(c["rules"]) & ids]
+            if len(messages) == 2:  # the first round forgets the only case of RULE-001 in every request
+                self.forgot = True
+                cases = [c for c in cases if c["name"] != "account_type_not_allowed"]
+            content = {"cases": cases}
+        return ModelReply(json.dumps(content), Usage(model="t", input_tokens=5, output_tokens=50))
+
+
+class EchoRunner:
+    """A legacy engine for the test: it observes nothing, it only freezes the suite it was given."""
+
+    engine = "test"
+
+    async def run(self, files: list[SourceFile], suite: Suite) -> GoldenMaster:
+        from nexti_core.spec.characterization import Observation, Recorded
+
+        return GoldenMaster(program=suite.program, source_sha256="0" * 64, engine="test", schema_=suite.schema_,
+                            results=[Recorded(case=c, observation=Observation()) for c in suite.cases])  # fmt: skip
+
+
+async def test_the_guided_suite_comes_in_pieces_and_a_diagnostic_re_asks_only_its_group() -> None:
+    from nexti_orchestration.characterization import GROUP
+
+    port = MemoryPort(EchoRunner(), [SUITE])
+    port.tester = GuidedTester()
+    port.models = port.tester
+    phase = PhaseSpec("characterization", None, True)
+    run = RunContext(uuid.uuid4(), uuid.uuid4(), uuid.uuid4(), "pipeline", "modernization", (phase,), ("C1",),
+                     "balanced", 3, (), target={"backend": "spring-boot"},
+                     options={"guided_extraction": True})  # fmt: skip
+    store = MemoryStore()
+    ctx = PhaseContext(run, store, phase, None)
+    result = await CharacterizationPhases(port).characterization(ctx)
+    groups = -(-len(RULES) // GROUP)
+    # One schema request, one request per group, and one group asked again after "rules without a case".
+    assert len(port.tester.requests) == 1 + groups + 1
+    again = port.tester.requests[-1]
+    assert "RULE-001" in again[1]["content"].split("Rules for this request")[1].split("\n")[0]
+    assert "rules without a case: RULE-001" in again[-1]["content"]
+    assert "Agreed schema" in again[1]["content"]
+    assert port.master is not None
+    covered = {r for recorded in port.master.results for r in recorded.case.rules}
+    assert covered >= {r.id for r in RULES}
+    assert "case(s) frozen" in result.summary
