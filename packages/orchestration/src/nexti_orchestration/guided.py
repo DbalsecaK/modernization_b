@@ -307,6 +307,22 @@ PRACTICE_NOTES = {
 }
 
 
+def preference_guidance(target: Mapping[str, Any]) -> str:
+    """Only the project's preferences (ADR-0038), for the planner of the user stories: the stack itself is not
+    repeated, so a guided run without preferences sends exactly the recorded request (M18)."""
+    lines = []
+    strategy = str(target.get("strategy") or "")
+    if strategy in STRATEGY_NOTES:
+        lines.append(f"Migration strategy {strategy}: {STRATEGY_NOTES[strategy]}.")
+    artifact = str(target.get("artifact") or "")
+    if artifact in ARTIFACT_NOTES:
+        lines.append(f"Deployment artifact: {ARTIFACT_NOTES[artifact]}.")
+    architecture = str(target.get("architecture") or "")
+    if architecture == "preserve-topology":
+        lines.append(f"Architecture {architecture}: {ARCHITECTURE_NOTES[architecture]}.")
+    return "\n".join(lines)
+
+
 def stack_guidance(target: Mapping[str, Any]) -> str:
     """The target stack and the project's preferences in words, for the architect, the developer and the planner.
     Empty when the run has no target: the recorded runs ask nothing more."""

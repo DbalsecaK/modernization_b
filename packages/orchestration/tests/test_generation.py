@@ -300,9 +300,12 @@ def test_a_guided_design_cannot_mask_what_the_rules_use_and_keeps_the_written_ta
 
 
 def test_the_stack_and_the_preferences_become_guidance_only_when_the_run_has_them() -> None:
-    from nexti_orchestration.guided import stack_guidance
+    from nexti_orchestration.guided import preference_guidance, stack_guidance
 
     assert stack_guidance({}) == ""
+    # The planner of the stories gets the preferences alone: a guided run without them asks exactly as recorded.
+    assert preference_guidance({"backend": "spring-boot", "backend_version": "3.5", "database": "postgresql"}) == ""
+    assert preference_guidance({"strategy": "strangler-fig"}).startswith("Migration strategy strangler-fig:")
     text = stack_guidance({"architecture": "preserve-topology", "backend": "spring-boot", "backend_version": "3.5",
                            "frontend": "none", "database": "postgresql", "cloud": "aws", "strategy": "strangler-fig",
                            "artifact": "container", "practices": "solid,tdd,unknown"})  # fmt: skip
