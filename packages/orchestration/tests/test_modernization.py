@@ -617,3 +617,24 @@ def test_guided_checks_by_code_p0_share_instructions_in_the_source_groups_and_mo
     assert guided.corrected_source({"corrected_source": {"line_start": 150, "line_end": 151}}, target, SOURCE) is None
     assert guided.corrected_source({"corrected_source": {"line_start": 60, "line_end": 61}}, target, SOURCE) is None
     assert guided.corrected_source({"corrected_source": "60"}, target, SOURCE) is None
+
+
+def test_a_declared_adapter_of_the_tenant_is_picked_for_its_files_and_only_while_registered() -> None:
+    from nexti_core.declarative_adapter import AdapterSpec, DeclarativeAdapter
+    from nexti_orchestration.modernization import EXTRA_ADAPTERS
+
+    toy = DeclarativeAdapter(AdapterSpec.model_validate({
+        "key": "toy-lang", "name": "Toy", "extensions": [".toy"], "unit": r"^\s*PROCEDURE\s+(?P<name>\w+)",
+    }))  # fmt: skip
+    files = [SourceFile("pay.toy", "PROCEDURE pay\n  x = 1\n")]
+    token = EXTRA_ADAPTERS.set((toy,))
+    try:
+        assert pick_adapter(files).name == "toy-lang"
+    finally:
+        EXTRA_ADAPTERS.reset(token)
+    import pytest
+
+    from nexti_orchestration.model import PhaseFailedError
+
+    with pytest.raises(PhaseFailedError):
+        pick_adapter(files)

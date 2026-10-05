@@ -41,6 +41,85 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/adapters": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Adapters */
+        get: operations["list_adapters_api_v1_adapters_get"];
+        put?: never;
+        /** Create Adapter */
+        post: operations["create_adapter_api_v1_adapters_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/adapters/{adapter_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Update Adapter */
+        put: operations["update_adapter_api_v1_adapters__adapter_id__put"];
+        post?: never;
+        /** Delete Adapter */
+        delete: operations["delete_adapter_api_v1_adapters__adapter_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/adapters:draft": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Draft Adapter
+         * @description A model drafts the declaration from the samples (through the gateway, with the tenant's profile for the
+         *     `catalog` phase); code validates it and tries it on the same samples. A model that cannot answer is a problem
+         *     shown to the person, never a failure of the studio. The samples went to a model: audited whatever the outcome.
+         */
+        post: operations["draft_adapter_api_v1_adapters_draft_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/adapters:try": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Try Adapter
+         * @description Run the declaration on the samples: nothing is saved, nothing calls a model. The samples are code, so the
+         *     attempt is audited (counts only).
+         */
+        post: operations["try_adapter_api_v1_adapters_try_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/ai/assignment-options": {
         parameters: {
             query?: never;
@@ -2730,6 +2809,13 @@ export interface components {
             /** Tokens */
             tokens: number;
         };
+        /** AdapterCreate */
+        AdapterCreate: {
+            /** Spec */
+            spec: {
+                [key: string]: unknown;
+            };
+        };
         /** AdapterOut */
         AdapterOut: {
             /** Key */
@@ -2742,6 +2828,13 @@ export interface components {
             validation: string;
             /** Version */
             version: string;
+        };
+        /** AdapterUpdate */
+        AdapterUpdate: {
+            /** Spec */
+            spec: {
+                [key: string]: unknown;
+            };
         };
         /** AdminSummary */
         AdminSummary: {
@@ -3855,6 +3948,28 @@ export interface components {
             outOfScope: boolean;
             /** Reason */
             reason: string;
+        };
+        /** DraftIn */
+        DraftIn: {
+            /** Description */
+            description: string;
+            /** Key */
+            key?: string | null;
+            /** Samples */
+            samples: components["schemas"]["SampleIn"][];
+        };
+        /** DraftOut */
+        DraftOut: {
+            /** Problems */
+            problems: string[];
+            /** Spec */
+            spec: {
+                [key: string]: unknown;
+            } | null;
+            /** Summary */
+            summary: {
+                [key: string]: unknown;
+            } | null;
         };
         /** EffortMappingIn */
         EffortMappingIn: {
@@ -5821,6 +5936,13 @@ export interface components {
             /** Waitingreason */
             waitingReason: string | null;
         };
+        /** SampleIn */
+        SampleIn: {
+            /** Path */
+            path: string;
+            /** Text */
+            text: string;
+        };
         /** ScenarioOut */
         ScenarioOut: {
             /** Id */
@@ -6243,6 +6365,34 @@ export interface components {
             /** Requiredgates */
             requiredGates: string[];
         };
+        /** TenantAdapterOut */
+        TenantAdapterOut: {
+            /**
+             * Createdat
+             * Format: date-time
+             */
+            createdAt: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Key */
+            key: string;
+            /** Level */
+            level: string;
+            /** Name */
+            name: string;
+            /** Spec */
+            spec: {
+                [key: string]: unknown;
+            };
+            /**
+             * Updatedat
+             * Format: date-time
+             */
+            updatedAt: string;
+        };
         /** TenantCreate */
         TenantCreate: {
             /**
@@ -6349,6 +6499,24 @@ export interface components {
              * @description None until a verification ran
              */
             verified: boolean | null;
+        };
+        /** TryIn */
+        TryIn: {
+            /** Samples */
+            samples: components["schemas"]["SampleIn"][];
+            /** Spec */
+            spec: {
+                [key: string]: unknown;
+            };
+        };
+        /** TryOut */
+        TryOut: {
+            /** Digest */
+            digest: string;
+            /** Summary */
+            summary: {
+                [key: string]: unknown;
+            };
         };
         /** UsageRow */
         UsageRow: {
@@ -6625,6 +6793,189 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ActivityEventOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_adapters_api_v1_adapters_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TenantAdapterOut"][];
+                };
+            };
+        };
+    };
+    create_adapter_api_v1_adapters_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdapterCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TenantAdapterOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_adapter_api_v1_adapters__adapter_id__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                adapter_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdapterUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TenantAdapterOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_adapter_api_v1_adapters__adapter_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                adapter_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    draft_adapter_api_v1_adapters_draft_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DraftIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DraftOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    try_adapter_api_v1_adapters_try_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TryIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TryOut"];
                 };
             };
             /** @description Validation Error */

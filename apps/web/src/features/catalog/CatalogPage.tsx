@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { TenantAdapters } from './AdapterStudio'
+import { can, useMe } from '@/api/session'
 import { useTab } from '@/lib/useTab'
 import { useCatalog, useSkill, type Catalog, type CatalogSkill } from '@/api/projects'
 import { Badge, Card, CardBody, CardHeader, PageHeader, Select, Table, Tabs, Td, Th } from '@/components/ui/primitives'
@@ -164,9 +166,15 @@ function SkillDrawer({ skill, onClose }: { skill: CatalogSkill | null; onClose: 
 
 function Adapters({ catalog }: { catalog: Catalog }) {
   const { t } = useTranslation()
+  const me = useMe()
   return (
     <Card>
       <CardHeader title={t('catalog.adaptersTitle')} subtitle={t('catalog.adaptersHint')} />
+      {can(me, 'models.configure') && (
+        <CardBody>
+          <TenantAdapters />
+        </CardBody>
+      )}
       <Table>
         <thead>
           <tr>

@@ -1602,7 +1602,8 @@
     "validation": {
       "goldenMasterLocal": "Golden master, corre localmente",
       "traces": "Trazas grabadas (máximo PARTLY PROVEN)",
-      "windowsRunner": "Golden master en un runner Windows"
+      "windowsRunner": "Golden master en un runner Windows",
+      "none": "Sin motor todavía (adaptador declarado)"
     },
     "wave": "Ola {{wave}}",
     "compatTitle": "Reglas de compatibilidad",
@@ -1613,7 +1614,38 @@
     "customLater": "Los agentes y skills propios del cliente llegan después, con un flujo de aprobación y evaluación antes de publicarse.",
     "skillFile": "SKILL.md · {{key}} v{{version}}",
     "versions": "Versiones",
-    "planned": "planificada"
+    "planned": "planificada",
+    "studio": {
+      "title": "Adaptadores declarados por tu equipo",
+      "hint": "Adaptadores que tu equipo declaró para tecnologías sin adaptador en la plataforma. Experimentales: sin golden master hasta que exista un motor.",
+      "create": "Crear adaptador con IA",
+      "drawerHint": "Describe la tecnología y pega código de muestra. Un modelo redacta los patrones; la plataforma los ejecuta, tú ajustas y guardas el resultado como adaptador experimental.",
+      "description": "Tecnología",
+      "key": "Clave",
+      "keyHint": "Minúsculas, dígitos y guiones.",
+      "samplePath": "Nombre del archivo de muestra",
+      "sample": "Código de muestra",
+      "sampleHint": "La muestra viaja al perfil de modelo de tu cliente. Usa código ficticio o anonimizado.",
+      "draft": "Redactar con IA",
+      "drafting": "Redactando…",
+      "try": "Probar sobre la muestra",
+      "trying": "Probando…",
+      "spec": "Declaración (JSON)",
+      "specHint": "Los patrones son expresiones regulares línea a línea; los grupos nombrados name, callee y table son obligatorios.",
+      "result": "Resultado sobre la muestra",
+      "resultLine": "Detección {{detect}} · {{programs}} programa(s), {{statements}} sentencias, {{tables}} tabla(s) · negocio {{business}}, control {{control}}, infraestructura {{infra}}",
+      "programs": "Programas",
+      "save": "Guardar como adaptador experimental",
+      "saved": "Adaptador {{name}} guardado.",
+      "delete": "Borrar adaptador",
+      "confirmDelete": "¿Borrar el adaptador {{name}}? Los proyectos que lo usan conservan sus resultados.",
+      "extensions": "Extensiones",
+      "invalidJson": "La declaración no es JSON válido.",
+      "needSample": "Pega primero una muestra de código.",
+      "defaultDescription": "Un lenguaje de programación legado",
+      "experimentalNotice": "Los adaptadores declarados son experimentales: inventarían, clasifican y extraen reglas, pero no hay motor para ejecutar el legado, así que un veredicto no pasa de PARTLY PROVEN.",
+      "experimental": "Experimental"
+    }
   },
   "roles": {
     "superAdmin": "Superadministrador",

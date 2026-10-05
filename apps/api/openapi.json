@@ -169,6 +169,20 @@
         "title": "ActivityEventOut",
         "type": "object"
       },
+      "AdapterCreate": {
+        "properties": {
+          "spec": {
+            "additionalProperties": true,
+            "title": "Spec",
+            "type": "object"
+          }
+        },
+        "required": [
+          "spec"
+        ],
+        "title": "AdapterCreate",
+        "type": "object"
+      },
       "AdapterOut": {
         "properties": {
           "key": {
@@ -200,6 +214,20 @@
           "validation"
         ],
         "title": "AdapterOut",
+        "type": "object"
+      },
+      "AdapterUpdate": {
+        "properties": {
+          "spec": {
+            "additionalProperties": true,
+            "title": "Spec",
+            "type": "object"
+          }
+        },
+        "required": [
+          "spec"
+        ],
+        "title": "AdapterUpdate",
         "type": "object"
       },
       "AdminSummary": {
@@ -3357,6 +3385,85 @@
           "reason"
         ],
         "title": "DiscardIn",
+        "type": "object"
+      },
+      "DraftIn": {
+        "properties": {
+          "description": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Description",
+            "type": "string"
+          },
+          "key": {
+            "anyOf": [
+              {
+                "maxLength": 40,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Key"
+          },
+          "samples": {
+            "items": {
+              "$ref": "#/components/schemas/SampleIn"
+            },
+            "maxItems": 20,
+            "minItems": 1,
+            "title": "Samples",
+            "type": "array"
+          }
+        },
+        "required": [
+          "description",
+          "samples"
+        ],
+        "title": "DraftIn",
+        "type": "object"
+      },
+      "DraftOut": {
+        "properties": {
+          "problems": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Problems",
+            "type": "array"
+          },
+          "spec": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Spec"
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary"
+          }
+        },
+        "required": [
+          "spec",
+          "summary",
+          "problems"
+        ],
+        "title": "DraftOut",
         "type": "object"
       },
       "EffortMappingIn": {
@@ -9064,6 +9171,28 @@
         "title": "RunOut",
         "type": "object"
       },
+      "SampleIn": {
+        "properties": {
+          "path": {
+            "maxLength": 400,
+            "minLength": 1,
+            "title": "Path",
+            "type": "string"
+          },
+          "text": {
+            "maxLength": 60000,
+            "minLength": 1,
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "path",
+          "text"
+        ],
+        "title": "SampleIn",
+        "type": "object"
+      },
       "ScenarioOut": {
         "properties": {
           "id": {
@@ -10238,6 +10367,53 @@
         "title": "TemplateOut",
         "type": "object"
       },
+      "TenantAdapterOut": {
+        "properties": {
+          "createdAt": {
+            "format": "date-time",
+            "title": "Createdat",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "level": {
+            "title": "Level",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "spec": {
+            "additionalProperties": true,
+            "title": "Spec",
+            "type": "object"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "title": "Updatedat",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "key",
+          "name",
+          "level",
+          "spec",
+          "createdAt",
+          "updatedAt"
+        ],
+        "title": "TenantAdapterOut",
+        "type": "object"
+      },
       "TenantCreate": {
         "properties": {
           "defaultLanguage": {
@@ -10546,6 +10722,49 @@
           "verified"
         ],
         "title": "TraceRuleOut",
+        "type": "object"
+      },
+      "TryIn": {
+        "properties": {
+          "samples": {
+            "items": {
+              "$ref": "#/components/schemas/SampleIn"
+            },
+            "maxItems": 20,
+            "minItems": 1,
+            "title": "Samples",
+            "type": "array"
+          },
+          "spec": {
+            "additionalProperties": true,
+            "title": "Spec",
+            "type": "object"
+          }
+        },
+        "required": [
+          "spec",
+          "samples"
+        ],
+        "title": "TryIn",
+        "type": "object"
+      },
+      "TryOut": {
+        "properties": {
+          "digest": {
+            "title": "Digest",
+            "type": "string"
+          },
+          "summary": {
+            "additionalProperties": true,
+            "title": "Summary",
+            "type": "object"
+          }
+        },
+        "required": [
+          "summary",
+          "digest"
+        ],
+        "title": "TryOut",
         "type": "object"
       },
       "UsageRow": {
@@ -11199,6 +11418,241 @@
         "summary": "Export Event",
         "tags": [
           "activity"
+        ]
+      }
+    },
+    "/api/v1/adapters": {
+      "get": {
+        "operationId": "list_adapters_api_v1_adapters_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/TenantAdapterOut"
+                  },
+                  "title": "Response List Adapters Api V1 Adapters Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Adapters",
+        "tags": [
+          "admin"
+        ]
+      },
+      "post": {
+        "operationId": "create_adapter_api_v1_adapters_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdapterCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantAdapterOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Adapter",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/adapters/{adapter_id}": {
+      "delete": {
+        "operationId": "delete_adapter_api_v1_adapters__adapter_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "adapter_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Adapter Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Adapter",
+        "tags": [
+          "admin"
+        ]
+      },
+      "put": {
+        "operationId": "update_adapter_api_v1_adapters__adapter_id__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "adapter_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Adapter Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdapterUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantAdapterOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Adapter",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/adapters:draft": {
+      "post": {
+        "description": "A model drafts the declaration from the samples (through the gateway, with the tenant's profile for the\n`catalog` phase); code validates it and tries it on the same samples. A model that cannot answer is a problem\nshown to the person, never a failure of the studio. The samples went to a model: audited whatever the outcome.",
+        "operationId": "draft_adapter_api_v1_adapters_draft_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DraftIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DraftOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Draft Adapter",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/adapters:try": {
+      "post": {
+        "description": "Run the declaration on the samples: nothing is saved, nothing calls a model. The samples are code, so the\nattempt is audited (counts only).",
+        "operationId": "try_adapter_api_v1_adapters_try_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TryIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TryOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Try Adapter",
+        "tags": [
+          "admin"
         ]
       }
     },
