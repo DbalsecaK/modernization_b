@@ -133,6 +133,24 @@ def test_format_errors_go_back_in_words_only_when_guided() -> None:
     assert "extra_forbidden" not in message
 
 
+def test_the_guided_suite_takes_case_names_as_the_model_writes_them() -> None:
+    from nexti_orchestration.characterization import case_name, parse_cases
+    from nexti_orchestration.extraction import ReplyError
+
+    assert case_name("Batch-Flag COBIS (S)") == "batch_flag_cobis_s"
+    assert case_name("  01 fresh / unit  ") == "case_01_fresh_unit"
+    assert case_name("ok_name") == "ok_name"
+    assert case_name("x" * 100) == "x" * 80
+    assert case_name("ab") == "ab"  # too short to be a name: the validator says so
+    assert case_name(7) == 7
+    data = json.loads(SUITE)
+    case = {**data["cases"][0], "name": "Batch-Flag COBIS (S)"}
+    (parsed,) = parse_cases(json.dumps({"cases": [case]}))
+    assert parsed.name == "batch_flag_cobis_s"
+    with pytest.raises(ReplyError, match="string_pattern_mismatch"):  # the recorded strict form is untouched
+        parse_suite(json.dumps({**data, "cases": [case]}))
+
+
 def test_a_key_marked_on_the_columns_becomes_the_table_key_only_when_guided() -> None:
     from nexti_orchestration.extraction import ReplyError
 
