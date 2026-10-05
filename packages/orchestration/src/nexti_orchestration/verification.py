@@ -8,7 +8,7 @@ import io
 import json
 import zipfile
 from collections.abc import Mapping, Sequence
-from typing import Any, Protocol
+from typing import Any, Protocol, cast
 
 from nexti_adapter_sybase.golden import parameter_defaults
 from nexti_core.adapters import LegacyRunner, LegacyUnavailableError, SourceFile
@@ -19,6 +19,8 @@ from nexti_core.spec.model import Rule
 from nexti_core.spec.screens import ScreenSpec
 from nexti_orchestration import frontend, infrastructure
 from nexti_orchestration.context import Attempt, PhaseContext
+from nexti_orchestration.correction import CorrectionPort, Round, correct, differing
+from nexti_orchestration.guided import enabled as guided_enabled
 from nexti_orchestration.model import PhaseFailedError, PhaseResult
 from nexti_orchestration.packs import BackendPack, backend_pack
 from nexti_orchestration.scope import scope_files, split_rules
@@ -122,6 +124,18 @@ class VerificationPhases:
                               phase=ctx.phase.key)  # fmt: skip
         golden_run = await backend.run_equivalence(sandbox, files, design, use_case, master, defaults)
         golden = outcomes(golden_run, case_rules)
+        rounds: list[Round] = []
+        if (
+            guided_enabled(ctx.run.options)
+            and not golden_run.problem
+            and differing(golden)
+            and hasattr(self.port, "models")
+        ):
+            # The developer sees the differences and corrects, at most twice, before the verdict (ADR-0041).
+            files, golden_run, golden, rounds = await correct(
+                ctx, cast(CorrectionPort, self.port), backend, sandbox, design, use_case, master, defaults, files,
+                traced, lambda run: outcomes(run, case_rules), golden_run, golden, source, rules,
+            )  # fmt: skip
         found: list[Any] = [
             checks.tests_ran(golden_run.build.passed, golden_run.build.failed, bool(golden_run.build.junit_xml)),
         ]
@@ -154,6 +168,7 @@ class VerificationPhases:
         found.append(checks.source_intact(master.source_sha256, source_digest(source)))
 
         not_proven = [f"Declared mask {m}" for m in masks] + optional
+        not_proven += [f"Correction round {r.number} ({', '.join(r.changed) or 'no file'}): {r.note}" for r in rounds]
         not_proven += [f"{r.id} is outside {master.program} and its golden master: it is verified with the module "
                        "that runs its code" for r in outside]  # fmt: skip
         not_proven.append("External programs are replaced by stubs that answer as the case says; their own logic "
