@@ -827,6 +827,33 @@ async def _failed_run_retry(ctx: Ctx) -> Request:
     return f"/api/v1/projects/{project_id}/runs/{run_id}:retry", None
 
 
+ADAPTER_SPEC = {
+    "key": "toy-authz", "name": "Toy", "extensions": [".toy"], "unit": r"^\s*PROCEDURE\s+(?P<name>\w+)",
+    "reads": [], "writes": [], "infrastructure_keywords": [], "control_keywords": [], "type_map": {},
+}  # fmt: skip
+ADAPTER_SPEC_BODY = {"spec": ADAPTER_SPEC}
+ADAPTER_TRY_BODY = {"spec": ADAPTER_SPEC, "samples": [{"path": "a.toy", "text": "PROCEDURE a\n  x\n"}]}
+ADAPTER_DRAFT_BODY = {"description": "toy", "samples": [{"path": "a.toy", "text": "PROCEDURE a\n  x\n"}]}
+
+
+async def _new_adapter(ctx: Ctx) -> Request:
+    return "/api/v1/adapters", {"spec": {**ADAPTER_SPEC, "key": f"toy-{uuid.uuid4().hex[:8]}"}}
+
+
+def _adapter_path(suffix: str, body: dict[str, Any] | None = None) -> Callable[[Ctx], Awaitable[Request]]:
+    async def make(ctx: Ctx) -> Request:
+        key = f"toy-{uuid.uuid4().hex[:8]}"
+        async with ctx.owner.begin() as conn:
+            adapter_id: uuid.UUID = (await conn.execute(text(
+                "INSERT INTO tenant_adapter (tenant_id, key, name, spec) VALUES (:t, :k, 'Toy', CAST(:s AS jsonb)) "
+                "RETURNING id"), {"t": ctx.world.tenant_a, "k": key, "s": json.dumps({**ADAPTER_SPEC, "key": key})},
+            )).scalar_one()  # fmt: skip
+        payload = {**body, "spec": {**body["spec"], "key": key}} if body else None
+        return f"/api/v1/adapters/{adapter_id}{suffix}", payload
+
+    return make
+
+
 async def _runs(ctx: Ctx) -> Request:
     project_id, _ = await ctx.run_project()
     return f"/api/v1/projects/{project_id}/runs", None
@@ -1024,6 +1051,13 @@ CASES = [
         _with("local_connection", "/api/v1/ai/connections/{id}/models", {"slug": "llama-3.1-8b-instruct"}),
     ),
     # Integrations of the tenant (M7): integrations.manage.
+    # The adapter studio (ADR-0039): models.configure.
+    Case("GET", "/api/v1/adapters", "admin", "member", fixed("/api/v1/adapters")),
+    Case("POST", "/api/v1/adapters", "admin", "member", _new_adapter),
+    Case("PUT", "/api/v1/adapters/{adapter_id}", "admin", "member", _adapter_path("", ADAPTER_SPEC_BODY)),
+    Case("DELETE", "/api/v1/adapters/{adapter_id}", "admin", "member", _adapter_path("")),
+    Case("POST", "/api/v1/adapters:try", "admin", "member", fixed("/api/v1/adapters:try", ADAPTER_TRY_BODY)),
+    Case("POST", "/api/v1/adapters:draft", "admin", "member", fixed("/api/v1/adapters:draft", ADAPTER_DRAFT_BODY)),
     Case("GET", "/api/v1/integrations", "admin", "member", fixed("/api/v1/integrations")),
     Case("POST", "/api/v1/integrations", "admin", "member", _new_integration),
     Case(

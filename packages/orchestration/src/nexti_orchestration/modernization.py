@@ -8,6 +8,7 @@ phase never repeats a model call when the phase resumes.
 
 import json
 from collections.abc import Sequence
+from contextvars import ContextVar
 from dataclasses import dataclass
 from typing import Any, Protocol
 
@@ -24,6 +25,9 @@ from nexti_orchestration.stories import FALLBACK_WRITER, STORY_WRITER, RuleData,
 from nexti_orchestration.usage import total
 
 ADAPTERS: tuple[SourceAdapter, ...] = (SybaseAdapter(), CobolAdapter(), AspxAdapter())
+# The adapters a tenant declared (ADR-0039), set by the worker for the run it executes (a context variable: runs of
+# other tenants in the same process never see them).
+EXTRA_ADAPTERS: ContextVar[tuple[SourceAdapter, ...]] = ContextVar("nexti_extra_adapters", default=())
 DETECT_THRESHOLD = 0.5
 CLASSIFICATION = "inventory/classification.json"  # the statements with their class, for the Inventory tab
 MAX_CLASSIFIED = 20000
@@ -129,7 +133,8 @@ class ProjectPort(Protocol):
 
 
 def pick_adapter(files: list[SourceFile]) -> SourceAdapter:
-    scored = sorted(((a.detect(files), a.name, a) for a in ADAPTERS), key=lambda t: (-t[0], t[1]))
+    candidates = (*ADAPTERS, *EXTRA_ADAPTERS.get())
+    scored = sorted(((a.detect(files), a.name, a) for a in candidates), key=lambda t: (-t[0], t[1]))
     if not scored or scored[0][0] < DETECT_THRESHOLD:
         raise PhaseFailedError(
             "No source adapter recognises these inputs (supported in this version: Sybase ASE "

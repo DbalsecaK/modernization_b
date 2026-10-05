@@ -23,14 +23,16 @@ from psycopg.rows import dict_row
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine
 
-from nexti_core.adapters import LegacyRunner
+from nexti_core.adapters import LegacyRunner, SourceAdapter
 from nexti_core.db.session import DbScope, scoped_connection
+from nexti_core.declarative_adapter import AdapterSpec, DeclarativeAdapter
 from nexti_core.object_store import ObjectStore
 from nexti_core.secrets import SecretStore
 from nexti_graph import GraphStore
 from nexti_ingest.figma import FigmaReader
 from nexti_model_gateway.service import GatewayService
-from nexti_orchestration import Executor, compile_graph, executors_for, pending_interrupts, thread_config
+from nexti_orchestration import Executor, RunContext, compile_graph, executors_for, pending_interrupts, thread_config
+from nexti_orchestration.modernization import EXTRA_ADAPTERS
 from nexti_sandbox import Sandbox
 from nexti_worker.backlog import TrackerFactory
 from nexti_worker.loading import load_run
@@ -143,6 +145,34 @@ async def execute_run(runtime: Runtime, run_id: uuid.UUID, tenant_id: uuid.UUID)
         else None
     )
     executors = executors_for(run, probe, port)
+    extra_token = EXTRA_ADAPTERS.set(await declared_adapters(runtime.engine, tenant_id))
+    try:
+        return await _execute(runtime, run, run_id, tenant_id, store, executors)
+    finally:
+        EXTRA_ADAPTERS.reset(extra_token)
+
+
+async def declared_adapters(engine: AsyncEngine, tenant_id: uuid.UUID) -> tuple[SourceAdapter, ...]:
+    """The source adapters the tenant declared (ADR-0039), as adapters the run can pick."""
+    async with scoped_connection(engine, DbScope(tenant_id=tenant_id)) as conn:
+        rows = (await conn.execute(text("SELECT spec FROM tenant_adapter ORDER BY created_at"))).all()
+    found: list[SourceAdapter] = []
+    for row in rows:
+        try:
+            found.append(DeclarativeAdapter(AdapterSpec.model_validate(dict(row.spec))))
+        except ValueError as exc:  # a declaration the API would not accept today: skipped, never fatal
+            log.warning("run.adapter_skipped", tenant_id=str(tenant_id), error=str(exc)[:200])
+    return tuple(found)
+
+
+async def _execute(
+    runtime: Runtime,
+    run: RunContext,
+    run_id: uuid.UUID,
+    tenant_id: uuid.UUID,
+    store: DbRunStore,
+    executors: Mapping[str, Executor],
+) -> str:
     async with await AsyncConnection.connect(
         runtime.dsn, autocommit=True, prepare_threshold=0, row_factory=dict_row
     ) as conn:

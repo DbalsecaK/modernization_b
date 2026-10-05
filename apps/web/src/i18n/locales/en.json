@@ -1602,7 +1602,8 @@
     "validation": {
       "goldenMasterLocal": "Golden master, runs locally",
       "traces": "Recorded traces (max PARTLY PROVEN)",
-      "windowsRunner": "Golden master on a Windows runner"
+      "windowsRunner": "Golden master on a Windows runner",
+      "none": "No engine yet (declared adapter)"
     },
     "wave": "Wave {{wave}}",
     "compatTitle": "Compatibility rules",
@@ -1613,7 +1614,38 @@
     "customLater": "Customer agents and skills arrive later, with an approval and evaluation flow before they are published.",
     "skillFile": "SKILL.md · {{key}} v{{version}}",
     "versions": "Versions",
-    "planned": "planned"
+    "planned": "planned",
+    "studio": {
+      "title": "Your declared adapters",
+      "hint": "Adapters your team declared for technologies the platform has no adapter for. Experimental: no golden master until an engine exists.",
+      "create": "Create adapter with AI",
+      "drawerHint": "Describe the technology and paste sample code. A model drafts the patterns; the platform runs them, you adjust, and you keep the result as an experimental adapter.",
+      "description": "Technology",
+      "key": "Key",
+      "keyHint": "Lowercase letters, digits and dashes.",
+      "samplePath": "Sample file name",
+      "sample": "Sample code",
+      "sampleHint": "The sample goes to the model profile of your tenant. Use fictitious or anonymised code.",
+      "draft": "Draft with AI",
+      "drafting": "Drafting…",
+      "try": "Try on the sample",
+      "trying": "Trying…",
+      "spec": "Declaration (JSON)",
+      "specHint": "Patterns are regular expressions matched line by line; named groups name, callee and table are required.",
+      "result": "Result on the sample",
+      "resultLine": "Detection {{detect}} · {{programs}} program(s), {{statements}} statements, {{tables}} table(s) · business {{business}}, control {{control}}, infrastructure {{infra}}",
+      "programs": "Programs",
+      "save": "Save as experimental adapter",
+      "saved": "Adapter {{name}} saved.",
+      "delete": "Delete adapter",
+      "confirmDelete": "Delete the adapter {{name}}? Projects that use it keep their results.",
+      "extensions": "Extensions",
+      "invalidJson": "The declaration is not valid JSON.",
+      "needSample": "Paste a code sample first.",
+      "defaultDescription": "A legacy programming language",
+      "experimentalNotice": "Declared adapters are experimental: they inventory, classify and extract rules, but there is no engine to run the legacy, so a verdict cannot pass PARTLY PROVEN.",
+      "experimental": "Experimental"
+    }
   },
   "roles": {
     "superAdmin": "Super admin",

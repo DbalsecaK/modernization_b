@@ -44,5 +44,6 @@ reemplaza y se marca el anterior como "Reemplazado por ADR-NNNN".
 | [0036](0036-suite-de-caracterizacion-por-piezas.md) | La suite de caracterización en piezas acotadas | Aceptada |
 | [0037](0037-versiones-por-eje.md) | Versiones por eje en el catálogo y en el proyecto | Aceptada |
 | [0038](0038-preferencias-del-proyecto.md) | Preferencias del proyecto: arquitectura, estrategia, artefacto y prácticas | Aceptada |
+| [0039](0039-estudio-de-adaptadores.md) | Estudio de adaptadores: adaptadores de origen declarados por el cliente | Aceptada |
 
 Plantilla: contexto, decisión, alternativas consideradas, consecuencias y cómo se valida.

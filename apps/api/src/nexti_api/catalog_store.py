@@ -24,6 +24,7 @@ from nexti_core.db.models import (
     SourceAdapterDefinition,
     SourceOptionDefinition,
     TargetOptionDefinition,
+    TenantAdapter,
 )
 
 
@@ -214,13 +215,21 @@ async def load_catalog(conn: AsyncConnection) -> Catalog:
         .mappings()
         .all()
     )
+    declared = (await conn.execute(select(TenantAdapter).order_by(TenantAdapter.created_at))).mappings().all()
     data = dict(core_data())
     data["sources"] = {
-        "adapters": [dict(a) for a in adapters],
+        "adapters": [dict(a) for a in adapters] + [
+            {"key": d["key"], "name": d["name"], "level": d["level"], "version": "0.1.0", "validation": "none"}
+            for d in declared  # the tenant's declared adapters (ADR-0039), under RLS of the connection
+        ],
         "options": [
             {"key": o["key"], "name": o["name"], "flow": list(o["flows"]), "adapter": o["adapter_key"],
              "required_skills": o["required_skills"], "versions": list(o["versions"] or [])}
             for o in options
+        ] + [
+            {"key": d["key"], "name": d["name"], "flow": ["modernization", "independentValidation"],
+             "adapter": d["key"], "required_skills": []}
+            for d in declared
         ],
     }  # fmt: skip
     data["targets"] = {

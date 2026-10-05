@@ -718,6 +718,21 @@ class TenantIntegration(Base):
     updated_at: Mapped[datetime] = _now()
 
 
+# A source adapter the tenant declared (migration 0023, ADR-0039): patterns the platform runs, never code.
+class TenantAdapter(Base):
+    __tablename__ = "tenant_adapter"
+    __table_args__ = (UniqueConstraint("tenant_id", "key"),)
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    tenant_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("tenant.id", ondelete="CASCADE"), nullable=False)
+    key: Mapped[str] = mapped_column(Text, nullable=False)
+    name: Mapped[str] = mapped_column(Text, nullable=False)
+    level: Mapped[str] = mapped_column(Text, nullable=False, server_default="experimental")
+    spec: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    created_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("app_user.id"))
+    created_at: Mapped[datetime] = _now()
+    updated_at: Mapped[datetime] = _now()
+
+
 # The backlog of a project in Jira or Azure DevOps (migration 0012, ADR-0019).
 class ProjectBacklog(Base):
     __tablename__ = "project_backlog"
