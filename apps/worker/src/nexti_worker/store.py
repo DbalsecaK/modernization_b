@@ -150,7 +150,12 @@ class DbRunStore:
             "finished_at = NULL WHERE run_id = :run AND phase = ANY(:phases)",
             {"phases": list(phases)},
         )
-        await self._execute("DELETE FROM gate WHERE run_id = :run AND gate = ANY(:gates)", {"gates": list(gates)})
+        # The app role may not delete: the gate goes back to pending (the decision stays in the audit log).
+        await self._execute(
+            "UPDATE gate SET status = 'pending', decided_by = NULL, decided_at = NULL, comment = NULL "
+            "WHERE run_id = :run AND gate = ANY(:gates)",
+            {"gates": list(gates)},
+        )
 
     async def question_asked(self, question_id: uuid.UUID, phase: str, question: QuestionSpec) -> bool:
         result = await self._execute(
