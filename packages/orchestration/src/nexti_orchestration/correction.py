@@ -4,6 +4,7 @@ touch the tables and programs named in them, and the files involved; it returns 
 is rebuilt and the golden master runs again. At most `ROUNDS` rounds, before the verdict. Without the option
 nothing changes: the recorded runs ask exactly what they asked."""
 
+import json
 import re
 from collections import Counter, OrderedDict
 from collections.abc import Mapping, Sequence
@@ -34,6 +35,8 @@ FILE_HEADER = re.compile(
     re.I,
 )
 FENCE = re.compile(r"^\s*```(.*)$")
+VARIABLE = re.compile(r"@\w+")  # a parameter or variable of the legacy (Sybase/T-SQL)
+EXAMPLES = 2  # failing cases shown whole (inputs, rows given, what each side did)
 FENCE_PATH = re.compile(r"((?:[\w-]+/)+[\w-]+\.[A-Za-z0-9]+)")
 TABLE_PATH = re.compile(r"^tables:([^\[]+?)(?:\[|$)")  # tables:db..t[0].col, tables:db..t
 CALL_PATH = re.compile(r"^calls(?:\[\d+\])?:(.+?)(?:\.@|$)")  # calls[1]:db..p.@arg, calls[1]:db..p
@@ -120,6 +123,15 @@ def legacy_excerpts(
             for ref in rule.sources:
                 if ref.file.rsplit("/", 1)[-1].lower() == short:
                     picked.update(range(ref.line_start, min(len(lines), ref.line_end) + 1))
+        # The parameters and variables those lines use are set elsewhere (a default, a lookup): show where. A
+        # real run failed on `isnull(@p_deb, @p)` 1 600 lines above the UPDATE that used @p_deb.
+        used = {v.lower() for n in picked for v in VARIABLE.findall(lines[n - 1])}
+        if used:
+            assigned = re.compile(r"^\s*(?:select|set)\s+(@\w+)\s*=", re.I)
+            for number, line in enumerate(lines, 1):
+                found = assigned.match(line)
+                if found and found.group(1).lower() in used and number not in picked:
+                    picked.update(range(max(1, number - 1), min(len(lines), number + 1) + 1))
         if picked:
             wanted[file.path] = picked
     out: list[str] = []
@@ -140,6 +152,28 @@ def legacy_excerpts(
             out.append(f"{number:>5}  {lines[number - 1]}")
             previous = number
             budget -= 1
+    return "\n".join(out)
+
+
+def case_examples(master: GoldenMaster | None, outcomes: Sequence[CaseOutcome], at_most: int = EXAMPLES) -> str:
+    """Failing cases shown whole, the ones with the most differences first: the inputs, the rows given for the
+    tables that differ, and what each side did; so the developer can trace which branch of the legacy applied."""
+    if master is None:
+        return ""
+    recorded = {r.case.name: r for r in master.results}
+    failing = sorted((o for o in outcomes if o.differences and o.name in recorded),
+                     key=lambda o: -len(o.differences))  # fmt: skip
+    out: list[str] = []
+    for outcome in failing[:at_most]:
+        case = recorded[outcome.name].case
+        tables = set(named_in([outcome]))
+        out.append(f"Case {outcome.name} (rules {', '.join(outcome.rules) or '-'}):")
+        out.append(f"  inputs: {json.dumps(case.inputs, default=str)[:600]}")
+        for table, rows in case.setup.items():
+            if table.rsplit(".", 1)[-1].lower() in tables:
+                out.append(f"  rows given in {table}: {json.dumps(rows, default=str)[:400]}")
+        for d in outcome.differences[:6]:
+            out.append(f"  {d.path}: legacy {str(d.expected)[:120]!r}, target {str(d.actual)[:120]!r}")
     return "\n".join(out)
 
 
@@ -236,11 +270,16 @@ def files_from_reply(content: str, known: Mapping[str, str]) -> dict[str, str]:
     return found
 
 
-def request_text(use_case: UseCase, digest: str, excerpts: str, files: Mapping[str, str], feedback: str | None) -> str:
+def request_text(
+    use_case: UseCase, digest: str, excerpts: str, files: Mapping[str, str], feedback: str | None, examples: str = ""
+) -> str:
     shown = "\n\n".join(f"### {path}\n```\n{code}\n```" for path, code in files.items())
+    whole = (f"\n\nFailing cases, whole (trace which branch of the legacy applies to these inputs and rows, and "
+             f"what the target did instead):\n{examples}" if examples else "")  # fmt: skip
     text = (
         f"The generated code of {use_case.name} does not reproduce the legacy on the golden master. The legacy ran "
         f"the same cases: where it differs, the legacy is right.\n\nDifferences, grouped by what differs:\n{digest}"
+        f"{whole}"
         f"\n\nThe legacy lines that touch what differs (numbered):\n{excerpts}\n\nThe files involved:\n{shown}\n\n"
         "Change only what makes the target behave as the legacy in these cases: same predicates in the SQL the "
         "legacy uses (every column of a WHERE, the same IN lists, the same parameters), the same order of the "
@@ -287,9 +326,10 @@ async def correct(
             break
         excerpts = legacy_excerpts(source, names, rules, case_rules)
         digest = difference_digest(outcomes)
+        examples = case_examples(master, outcomes)
         messages = [
             {"role": "system", "content": prompt(pack.developer_prompt)},
-            {"role": "user", "content": request_text(use_case, digest, excerpts, involved, feedback)},
+            {"role": "user", "content": request_text(use_case, digest, excerpts, involved, feedback, examples)},
         ]
 
         async def work(
