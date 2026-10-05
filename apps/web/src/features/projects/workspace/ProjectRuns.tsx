@@ -31,7 +31,18 @@ import {
 } from '@/api/runs'
 import { useMe } from '@/api/session'
 import { useIvv } from '@/api/ivv'
-import { Badge, Button, Card, CardBody, CardHeader, EmptyState, Table, Td, Th } from '@/components/ui/primitives'
+import {
+  Badge,
+  Button,
+  Card,
+  CardBody,
+  CardHeader,
+  EmptyState,
+  Select,
+  Table,
+  Td,
+  Th,
+} from '@/components/ui/primitives'
 import { Textarea, toast } from '@/components/ui/overlay'
 import { QuestionList } from '@/features/decisions/QuestionCard'
 
@@ -147,6 +158,10 @@ function RunView({ project, run }: { project: ProjectDetail; run: RunDetail }) {
   const me = useMe()
   const cancel = useCancelRun(project.id)
   const retry = useRetryRun(project.id)
+  // A failed run may start again from the failed phase or an earlier one (ADR-0035).
+  const failedAt = run.phases.findIndex((p) => p.phase === run.currentPhase)
+  const retryable = failedAt >= 0 ? run.phases.slice(0, failedAt + 1) : run.phases
+  const [retryFrom, setRetryFrom] = useState<string>('')
   const live = ACTIVE_STATUSES.includes(run.status)
   const { events } = useActivityStream({ projectId: project.id, runId: run.id }, true)
   const canAnswer = project.permissions.includes('question.answer')
@@ -174,19 +189,35 @@ function RunView({ project, run }: { project: ProjectDetail; run: RunDetail }) {
                 <Square size={14} /> {t('runsPage.cancel')}
               </Button>
             ) : run.status === 'failed' && project.permissions.includes('pipeline.run') ? (
-              <Button
-                size="sm"
-                variant="primary"
-                disabled={retry.isPending}
-                onClick={() =>
-                  retry.mutate(run.id, {
-                    onSuccess: () => toast(t('runsPage.retried')),
-                    onError: (e) => toast(errorText(e, t('common.error'))),
-                  })
-                }
-              >
-                <RotateCw size={14} /> {t('runsPage.retry')}
-              </Button>
+              <div className="flex items-center gap-2">
+                <Select
+                  aria-label={t('runsPage.retryFrom')}
+                  value={retryFrom || run.currentPhase || ''}
+                  onChange={(e) => setRetryFrom(e.target.value)}
+                >
+                  {retryable.map((p) => (
+                    <option key={p.phase} value={p.phase}>
+                      {t(`phases.${p.phase}`, { defaultValue: p.phase })}
+                    </option>
+                  ))}
+                </Select>
+                <Button
+                  size="sm"
+                  variant="primary"
+                  disabled={retry.isPending}
+                  onClick={() =>
+                    retry.mutate(
+                      { runId: run.id, phase: retryFrom || null },
+                      {
+                        onSuccess: () => toast(t('runsPage.retried')),
+                        onError: (e) => toast(errorText(e, t('common.error'))),
+                      },
+                    )
+                  }
+                >
+                  <RotateCw size={14} /> {t('runsPage.retry')}
+                </Button>
+              </div>
             ) : undefined
           }
         />

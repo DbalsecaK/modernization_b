@@ -218,13 +218,22 @@ def build_graph(
         decision: Memo = interrupt({"type": "failed", "phase": phase_key})
         if not decision.get("retry") or await store.is_cancelled():
             return Command(goto=END)
-        await store.run_running(phase_key)
-        await store.event("info", "running", f"Retrying from phase {phase_key}", phase=phase_key)
-        # The phase starts over: its journal and the answers to its questions do not carry into the new attempt.
-        journals = {k: v for k, v in (state.get("journal") or {}).items() if k != phase_key}
-        retries = {**(state.get("retries") or {}), phase_key: int((state.get("retries") or {}).get(phase_key, 0)) + 1}
-        return Command(goto=phase_node_name(phase_key), update={"outcome": "", "failed_phase": "", "journal": journals,
-                                                                "pending": [], "retries": retries})  # fmt: skip
+        # A person may start again from an earlier phase (a design to redo after a failed verification): the phases
+        # from it on start over, with their gates asked again; what came before keeps its results.
+        keys = [p.key for p in phases]
+        target = str(decision.get("phase") or phase_key)
+        if target not in keys or keys.index(target) > keys.index(phase_key):
+            target = phase_key
+        redo = keys[keys.index(target) :]
+        await store.reset_for_retry(redo, [p.gate for p in phases[keys.index(target) :] if p.gate])
+        await store.run_running(target)
+        await store.event("info", "running", f"Retrying from phase {target}", phase=target)
+        # The redone phases start over: their journals and the answers to their questions do not carry over.
+        journals = {k: v for k, v in (state.get("journal") or {}).items() if k not in redo}
+        previous = dict(state.get("retries") or {})
+        retries = {**previous, **{k: int(previous.get(k, 0)) + 1 for k in redo}}
+        return Command(goto=phase_node_name(target), update={"outcome": "", "failed_phase": "", "journal": journals,
+                                                             "pending": [], "retries": retries})  # fmt: skip
 
     graph.add_node("start", start)
     graph.add_edge(START, "start")

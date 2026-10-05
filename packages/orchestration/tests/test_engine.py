@@ -293,6 +293,19 @@ async def test_a_failed_run_is_retried_from_the_failed_phase_without_repeating_t
     assert h.store.phases["preflight"]["status"] == "succeeded"
     assert h.store.kinds().count("runStarted") == 1  # not started again
     assert "Retrying from phase preflight" in [e.message for e in h.store.events]
+    # A retry may start from an earlier phase: the phases from it on run again and their gates are asked again.
+    h2 = Harness(context(gates=("C1",), max_iterations=1, options={"fail_verification": "design"}))
+    (waiting,) = await h2.start()
+    assert waiting["type"] == "gate"  # C1 after ruleReview
+    await h2.resume({"decision": "approved", "by": "reviewer"})
+    assert (await h2.answer_all("stop")) == [{"type": "failed", "phase": "design"}]
+    before = len(h2.invocations("ruleExtraction"))
+    h2.store.status = "queued"
+    (again,) = await h2.resume({"retry": True, "phase": "ruleExtraction"})
+    assert again == {"type": "gate", "gate": "C1", "phase": "ruleReview"}  # asked again after the redo
+    assert len(h2.invocations("ruleExtraction")) > before
+    assert h2.store.gates["C1"]["status"] == "pending"
+    assert "preflight" in h2.store.phases  # what came before kept its results
     # Without a retry (the person launches a new run instead) the failed run stays as it is.
     other = Harness(context("pipeline"), probe=FakeProbe(failing={"repository"}))
     await other.start()

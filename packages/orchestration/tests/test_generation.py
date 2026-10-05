@@ -269,3 +269,31 @@ def test_legacy_names_are_compared_without_markers_or_invisible_characters_and_h
     assert hinted[1] == "closest names in the legacy code: @o_trx -> @o_trn"
     (_, nothing) = design_problems(design("valor_por_transaccion"), [rule], names, hints=True)
     assert nothing.startswith("closest names in the legacy code: valor_por_transaccion -> ")
+
+
+def test_a_guided_design_cannot_mask_what_the_rules_use_and_keeps_the_written_tables() -> None:
+    from nexti_core.adapters import SourceFile as File
+    from nexti_core.spec.design import Design
+    from nexti_core.spec.model import Rule as SpecRule
+    from nexti_orchestration.generation import design_problems, table_of
+
+    source = "create proc sp_p as\nupdate db_x..pg_orden_total set to_estado = 'P'\nexec sp_comision_grabar 1\n"
+    files = [File("p.sp", source)]
+    rule = SpecRule.model_validate({"id": "RULE-001", "name": "rule name", "category": "validation", "priority": "P1",
+                                    "statement": "a statement long enough",
+                                    "sources": [{"file": "p.sp", "line_start": 2, "line_end": 3}]})  # fmt: skip
+    design = Design.model_validate({
+        "context": "x", "base_package": "com.x.y", "use_cases": [{"name": "Uc", "rules": ["RULE-001"]}],
+        "masks": [{"path": "tables:db_x..pg_orden_total", "reason": "no entity keeps this legacy table"}],
+        "infrastructure": ["sp_comision_grabar"],
+    })  # fmt: skip
+    assert design_problems(design, [rule], files=files, written={"pg_orden_total", "pg_detalle"}) == []
+    found = design_problems(design, [rule], hints=True, files=files, written={"pg_orden_total", "pg_detalle"})
+    assert found == [
+        "mask tables:db_x..pg_orden_total hides a table the rules use (RULE-001): keep it as an entity with its "
+        "legacy_table",
+        "sp_comision_grabar is listed as infrastructure, but the rules cite its call (RULE-001): give it a port with "
+        "legacy_program",
+        "legacy tables the program writes need an entity with legacy_table (or an explained tables: mask): pg_detalle",
+    ]
+    assert (table_of("db..t.col"), table_of("db.dbo.t"), table_of("t")) == ("t", "t", "t")

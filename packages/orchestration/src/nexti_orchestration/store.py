@@ -3,6 +3,7 @@ it on PostgreSQL (tenant-scoped, redacted); tests use an in-memory one. Every wr
 takes a stable id, so a resumed run updates the same rows instead of duplicating them."""
 
 import uuid
+from collections.abc import Sequence
 from dataclasses import dataclass
 from decimal import Decimal
 from typing import Any, Literal, Protocol
@@ -65,6 +66,11 @@ class RunStore(Protocol):
 
     async def gate_requested(self, gate: str, required: bool) -> bool:
         """Record the gate; False when it was already recorded (a replay)."""
+        ...
+
+    async def reset_for_retry(self, phases: Sequence[str], gates: Sequence[str]) -> None:
+        """A retry from a phase (ADR-0035): the phases from it on are pending again and their gates are asked again
+        (the decisions stay in the audit log)."""
         ...
 
     async def question_asked(self, question_id: uuid.UUID, phase: str, question: QuestionSpec) -> bool:

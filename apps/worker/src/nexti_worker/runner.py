@@ -73,10 +73,12 @@ async def _resume_value(
     kind = waiting.get("type")
     async with scoped_connection(engine, DbScope(tenant_id=tenant_id)) as conn:
         if kind == "failed":  # a failed run waits for a retry: the API queues it again
-            status = (
-                await conn.execute(text("SELECT status FROM run WHERE id = :run"), {"run": run_id})
-            ).scalar_one_or_none()
-            return {"retry": True} if status == "queued" else None
+            row = (
+                await conn.execute(text("SELECT status, retry_from FROM run WHERE id = :run"), {"run": run_id})
+            ).one_or_none()
+            if row is None or row.status != "queued":
+                return None
+            return {"retry": True, "phase": row.retry_from}
         if kind == "gate":
             row = (
                 await conn.execute(

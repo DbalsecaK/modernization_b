@@ -4,6 +4,7 @@ API and the activity panel see progress as it happens. Texts and payloads are re
 
 import json
 import uuid
+from collections.abc import Sequence
 from dataclasses import asdict
 from typing import Any
 
@@ -142,6 +143,14 @@ class DbRunStore:
             {"gate": gate, "required": required},
         )
         return result.scalar_one_or_none() is not None
+
+    async def reset_for_retry(self, phases: Sequence[str], gates: Sequence[str]) -> None:
+        await self._execute(
+            "UPDATE phase_run SET status = 'pending', detail = NULL, iterations = 0, started_at = NULL, "
+            "finished_at = NULL WHERE run_id = :run AND phase = ANY(:phases)",
+            {"phases": list(phases)},
+        )
+        await self._execute("DELETE FROM gate WHERE run_id = :run AND gate = ANY(:gates)", {"gates": list(gates)})
 
     async def question_asked(self, question_id: uuid.UUID, phase: str, question: QuestionSpec) -> bool:
         result = await self._execute(
