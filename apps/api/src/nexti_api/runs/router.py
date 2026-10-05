@@ -22,6 +22,7 @@ from nexti_api.runs.schemas import (
     InvocationOut,
     PhaseRunOut,
     QuestionOut,
+    RetryIn,
     RunDetail,
     RunIn,
     RunOut,
@@ -191,15 +192,28 @@ async def cancel_run(request: Request, project_id: uuid.UUID, run_id: uuid.UUID,
 
 
 @router.post("/{run_id}:retry", response_model=RunOut)
-async def retry_run(request: Request, project_id: uuid.UUID, run_id: uuid.UUID, auth: RunPipeline) -> RunOut:
-    """A failed run goes on from the phase that failed (ADR-0034): the phases before it keep their results, the
-    failed one runs again (its agents are called again). Only a failed run, and one run at a time per project."""
+async def retry_run(
+    request: Request, project_id: uuid.UUID, run_id: uuid.UUID, auth: RunPipeline, body: RetryIn | None = None
+) -> RunOut:
+    """A failed run goes on from the phase that failed, or from an earlier phase a person chooses (ADR-0034,
+    ADR-0035): what comes before keeps its results, the rest runs again with its gates asked again. Only a failed run,
+    and one run at a time per project."""
     assert auth.tenant_id is not None  # noqa: S101 - require_project guarantees it
     await license_gate.ensure_writable(request, auth, "run.retry", f"project:{project_id}")
     async with transaction(request, auth) as conn:
         run = await load_run(conn, project_id, run_id, lock=True)
         if run["status"] != "failed":
             raise ProblemError(409, "run_not_failed", "Only a failed run can be retried.")
+        chosen = body.phase if body else None
+        if chosen is not None:
+            rows = await conn.execute(
+                select(PhaseRun.phase).where(PhaseRun.run_id == run_id).order_by(PhaseRun.position)
+            )
+            order = list(rows.scalars().all())
+            failed_at = run["current_phase"]
+            if chosen not in order or (failed_at in order and order.index(chosen) > order.index(failed_at)):
+                raise ProblemError(422, "phase_not_retryable",
+                                   "The phase to retry from must be the failed phase or an earlier one.")  # fmt: skip
         active = (
             await conn.execute(select(Run.id).where(Run.project_id == project_id, Run.status.in_(ACTIVE)).limit(1))
         ).first()
@@ -208,11 +222,11 @@ async def retry_run(request: Request, project_id: uuid.UUID, run_id: uuid.UUID, 
         await conn.execute(
             update(Run)
             .where(Run.id == run_id)
-            .values(status="queued", error=None, finished_at=None, waiting_reason=None)
+            .values(status="queued", error=None, finished_at=None, waiting_reason=None, retry_from=chosen)
         )
         await defer_run(conn, run_id, auth.tenant_id)
         await audit(conn, auth, "run.retry", f"project:{project_id}",
-                    {"run_id": str(run_id), "phase": run["current_phase"]})  # fmt: skip
+                    {"run_id": str(run_id), "failed_phase": run["current_phase"], "from": chosen})  # fmt: skip
         return RunOut.model_validate(dict(await load_run(conn, project_id, run_id)))
 
 

@@ -2832,8 +2832,9 @@
       "runFinished": "Ejecución terminada",
       "info": "Info"
     },
-    "retry": "Reintentar desde la fase fallida",
-    "retried": "Ejecución encolada de nuevo: sigue desde la fase que falló."
+    "retry": "Reintentar desde esta fase",
+    "retried": "Ejecución encolada de nuevo: sigue desde la fase que falló.",
+    "retryFrom": "Reintentar desde la fase"
   },
   "questions": {
     "recorded": "Respuesta registrada. La ejecución se reanuda cuando no quede otra pregunta abierta.",

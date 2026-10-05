@@ -143,11 +143,67 @@ def _invented(design: Design, names: set[str]) -> list[str]:
     return sorted(set(missing))
 
 
+GUIDED_DESIGN = (
+    "Design constraints, checked by code: every legacy table the program writes needs an entity with its "
+    "legacy_table; a `tables:` mask is refused when an approved rule reads or writes that table; a legacy program "
+    "called from lines an approved rule cites is business, not infrastructure: give it a port with legacy_program; "
+    "list in `infrastructure` only programs that implement no rule (error and event logging, auditing)."
+)
+
+
+def table_of(target: str) -> str:
+    """The table in a mask target or a legacy name: `db..tabla.col` -> `tabla`, `db.dbo.tabla` -> `tabla`."""
+    parts = [p for p in target.split("..")[-1].split(".") if p]
+    if ".." in target:  # db..tabla or db..tabla.col
+        return parts[0].lower()
+    return (parts[-2] if len(parts) >= 4 else parts[-1]).lower()  # db.dbo.tabla, db.dbo.tabla.col, tabla
+
+
+def mask_problems(design: Design, rules: Sequence[Rule], files: Sequence[SourceFile], written: set[str]) -> list[str]:
+    """Guided design (ADR-0035): a mask or an `infrastructure` entry cannot hide business. A table the approved rules
+    read or write stays as an entity; a program called from lines a rule cites is a port, not infrastructure; every
+    table the program writes is kept by an entity or masked with a reason."""
+    lines = {f.path.rsplit("/", 1)[-1].lower(): f.text.splitlines() for f in files}
+
+    def cited(rule: Rule) -> str:
+        parts = []
+        for ref in rule.sources:
+            text = lines.get(ref.file.rsplit("/", 1)[-1].lower())
+            if text:
+                parts.append("\n".join(text[ref.line_start - 1 : ref.line_end]))
+        return "\n".join(parts).lower()
+
+    cited_by = {r.id: cited(r) for r in rules}
+
+    def users(name: str) -> list[str]:
+        pattern = re.compile(rf"(?<![a-z0-9_]){re.escape(name)}(?![a-z0-9_])")
+        return sorted(rid for rid, text in cited_by.items() if pattern.search(text))
+
+    problems = []
+    for mask in design.masks:
+        kind, _, target = mask.path.partition(":")
+        if kind == "tables" and (ids := users(table_of(target))):
+            problems.append(f"mask {mask.path} hides a table the rules use ({', '.join(ids)}): keep it as an entity "
+                            "with its legacy_table")  # fmt: skip
+    for program in design.infrastructure:
+        if ids := users(_normal(program)):
+            problems.append(f"{program} is listed as infrastructure, but the rules cite its call ({', '.join(ids)}): "
+                            "give it a port with legacy_program")  # fmt: skip
+    kept = {table_of(e.legacy_table) for e in design.entities if e.legacy_table}
+    masked = {table_of(m.path.partition(":")[2]) for m in design.masks if m.path.startswith("tables:")}
+    missing = sorted(t for t in written if t not in kept and t not in masked)
+    if missing:
+        problems.append("legacy tables the program writes need an entity with legacy_table (or an explained "
+                        f"tables: mask): {', '.join(missing)}")  # fmt: skip
+    return problems
+
+
 def design_problems(
-    design: Design, rules: Sequence[Rule], names: set[str] | None = None, *, hints: bool = False
-) -> list[str]:
+    design: Design, rules: Sequence[Rule], names: set[str] | None = None, *, hints: bool = False,
+    files: Sequence[SourceFile] = (), written: set[str] | None = None,
+) -> list[str]:  # fmt: skip
     """What is wrong with a design, for the model to correct. With `hints` (guided extraction, ADR-0033) an invented
-    legacy name comes with the closest real names."""
+    legacy name comes with the closest real names, and the masks are checked against the rules (ADR-0035)."""
     missing = sorted({r.id for r in rules} - design.rules())
     unknown = sorted(design.rules() - {r.id for r in rules})
     problems = []
@@ -178,7 +234,20 @@ def design_problems(
                         f"{', '.join(invented)}")  # fmt: skip
         if hints and names:
             problems.append(f"closest names in the legacy code: {closest(invented, names)}")
+    if hints:
+        problems += mask_problems(design, rules, files, written or set())
     return problems
+
+
+def written_tables(files: Sequence[SourceFile]) -> set[str]:
+    """The tables the legacy writes, from the inventory of the source adapter (bare names, lowercase)."""
+    from nexti_orchestration.modernization import pick_adapter
+
+    try:
+        inventory = pick_adapter(list(files)).inventory(list(files))
+    except Exception:
+        return set()
+    return {table_of(e.target.split(":", 1)[-1]) for e in inventory.edges if str(e.type) == "WRITES"}
 
 
 def _rules_text(rules: Sequence[Rule]) -> str:
@@ -192,7 +261,7 @@ def _rules_text(rules: Sequence[Rule]) -> str:
 async def propose_design(
     caller: ModelCaller, rules: Sequence[Rule], inventory: str, *, max_iterations: int = 3,
     names: set[str] | None = None, source: str = "", system: str = ARCHITECT, label: str = "Inventory",
-    hints: bool = False,
+    hints: bool = False, files: Sequence[SourceFile] = (), written: set[str] | None = None,
 ) -> tuple[Design, list[Usage]]:  # fmt: skip
     """The design from the rules. Flow 1 gives the inventory of the legacy; Flow 2 gives the approved screens and
     stories (`label`) and its own prompt (`system`), with no legacy to map."""
@@ -201,7 +270,8 @@ async def propose_design(
         {
             "role": "user",
             "content": f"{label}:\n{inventory}\n\nApproved rules:\n{_rules_text(rules)}"
-            + (f"\n\nLegacy source (the columns and parameters to map):\n{source}" if source else ""),
+            + (f"\n\nLegacy source (the columns and parameters to map):\n{source}" if source else "")
+            + (f"\n\n{GUIDED_DESIGN}" if hints else ""),
         },
     ]
     usage: list[Usage] = []
@@ -212,7 +282,7 @@ async def propose_design(
         try:
             data = parse_json(reply.content)
             design = Design.model_validate(data)
-            problems = design_problems(design, rules, names, hints=hints)
+            problems = design_problems(design, rules, names, hints=hints, files=files, written=written)
             if problems:
                 raise ReplyError("\n".join(problems))
             return design, usage
@@ -249,7 +319,7 @@ class GenerationPhases:
                         self.port.models, rules, await self.port.inventory_digest(),
                         max_iterations=ctx.run.max_iterations, names=legacy_names(files),
                         source="\n\n".join(f"// {f.path}\n{f.text}" for f in files),
-                        hints=guided_enabled(ctx.run.options),
+                        hints=guided_enabled(ctx.run.options), files=files, written=written_tables(files),
                     )  # fmt: skip
             except ReplyError as exc:
                 raise PhaseFailedError(str(exc)[:1500]) from exc

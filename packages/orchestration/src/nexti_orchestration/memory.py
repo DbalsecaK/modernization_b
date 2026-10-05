@@ -1,6 +1,7 @@
 """An in-memory RunStore with the same idempotency as the PostgreSQL one: for tests of the engine."""
 
 import uuid
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -91,6 +92,12 @@ class MemoryStore:
             return False
         self.gates[gate] = {"required": required, "status": "pending"}
         return True
+
+    async def reset_for_retry(self, phases: Sequence[str], gates: Sequence[str]) -> None:
+        for phase in phases:
+            self.phases.pop(phase, None)
+        for gate in gates:
+            self.gates.pop(gate, None)
 
     async def question_asked(self, question_id: uuid.UUID, phase: str, question: QuestionSpec) -> bool:
         if question_id in self.questions:

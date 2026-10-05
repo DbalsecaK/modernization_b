@@ -804,6 +804,7 @@ class Run(Base):
     max_iterations: Mapped[int] = mapped_column(Integer, nullable=False)
     options: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))
     error: Mapped[str | None] = mapped_column(Text)
+    retry_from: Mapped[str | None] = mapped_column(Text)  # the phase a retry starts from (ADR-0035)
     started_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("app_user.id"))
     created_at: Mapped[datetime] = _now()
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

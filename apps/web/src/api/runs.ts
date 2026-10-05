@@ -87,10 +87,11 @@ export function useCancelRun(projectId: string) {
 export function useRetryRun(projectId: string) {
   const invalidate = useInvalidate()
   return useMutation({
-    mutationFn: (runId: string) =>
+    mutationFn: ({ runId, phase }: { runId: string; phase?: string | null }) =>
       unwrap(
         api.POST('/api/v1/projects/{project_id}/runs/{run_id}:retry', {
           params: { path: { project_id: projectId, run_id: runId } },
+          body: phase ? { phase } : {},
         }),
       ),
     onSuccess: () => invalidate(projectId),

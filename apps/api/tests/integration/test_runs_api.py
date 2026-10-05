@@ -300,7 +300,18 @@ async def test_a_failed_run_is_queued_again_to_retry_from_its_failed_phase(
     # The worker consumed the first job before the run failed; the retry enqueues a new one.
     await execute(owner_engine, "UPDATE procrastinate_jobs SET status = 'succeeded' WHERE args->>'run_id' = :r",
                   r=run["id"])  # fmt: skip
-    retried = api.post(f"/api/v1/projects/{project_id}/runs/{run['id']}:retry", headers=headers)
+    # The phases the worker registered when the run started (it failed at design).
+    for position, phase in enumerate(("preflight", "ruleExtraction", "design", "verification")):
+        await execute(owner_engine, "INSERT INTO phase_run (tenant_id, run_id, phase, position) VALUES "
+                                    "(:t, :r, :ph, :pos)", t=world.tenant_a, r=uuid.UUID(run["id"]), ph=phase,
+                      pos=position)  # fmt: skip
+    later = api.post(f"/api/v1/projects/{project_id}/runs/{run['id']}:retry", json={"phase": "verification"},
+                     headers=headers)  # fmt: skip
+    assert (later.status_code, later.json()["code"]) == (422, "phase_not_retryable")
+    retried = api.post(f"/api/v1/projects/{project_id}/runs/{run['id']}:retry", json={"phase": "ruleExtraction"},
+                       headers=headers)  # fmt: skip
     assert retried.status_code == 200, retried.text
     assert (retried.json()["status"], retried.json()["error"]) == ("queued", None)
     assert [j["status"] for j in await jobs_of(owner_engine, uuid.UUID(run["id"]))] == ["succeeded", "todo"]
+    (row,) = await fetch(owner_engine, "SELECT retry_from FROM run WHERE id = :r", r=uuid.UUID(run["id"]))
+    assert row["retry_from"] == "ruleExtraction"

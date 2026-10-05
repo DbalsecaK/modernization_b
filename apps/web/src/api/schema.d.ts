@@ -1649,8 +1649,9 @@ export interface paths {
         put?: never;
         /**
          * Retry Run
-         * @description A failed run goes on from the phase that failed (ADR-0034): the phases before it keep their results, the
-         *     failed one runs again (its agents are called again). Only a failed run, and one run at a time per project.
+         * @description A failed run goes on from the phase that failed, or from an earlier phase a person chooses (ADR-0034,
+         *     ADR-0035): what comes before keeps its results, the rest runs again with its gates asked again. Only a failed run,
+         *     and one run at a time per project.
          */
         post: operations["retry_run_api_v1_projects__project_id__runs__run_id__retry_post"];
         delete?: never;
@@ -5559,6 +5560,14 @@ export interface components {
         ResolvedOut: {
             /** Profileid */
             profileId: string | null;
+        };
+        /** RetryIn */
+        RetryIn: {
+            /**
+             * Phase
+             * @description Retry from this phase instead of the failed one; it must be the failed phase or an earlier one (ADR-0035). The phases from it on run again; what came before keeps its results.
+             */
+            phase?: string | null;
         };
         /** RoleCreate */
         RoleCreate: {
@@ -9925,7 +9934,11 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["RetryIn"] | null;
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {

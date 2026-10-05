@@ -9,6 +9,15 @@ from pydantic import Field, model_validator
 
 from nexti_api.schemas import ApiModel
 
+
+class RetryIn(ApiModel):
+    phase: str | None = Field(
+        default=None,
+        description="Retry from this phase instead of the failed one; it must be the failed phase or an earlier one "
+        "(ADR-0035). The phases from it on run again; what came before keeps its results.",
+    )
+
+
 RunStatus = Literal["queued", "running", "waiting", "succeeded", "failed", "cancelled"]
 ACTIVE = ("queued", "running", "waiting")
 FINAL = ("succeeded", "failed", "cancelled")

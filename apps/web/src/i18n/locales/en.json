@@ -2832,8 +2832,9 @@
       "runFinished": "Run finished",
       "info": "Info"
     },
-    "retry": "Retry from the failed phase",
-    "retried": "Run queued again: it goes on from the phase that failed."
+    "retry": "Retry from this phase",
+    "retried": "Run queued again: it goes on from the phase that failed.",
+    "retryFrom": "Retry from phase"
   },
   "questions": {
     "recorded": "Answer recorded. The run resumes when no other question is open.",
