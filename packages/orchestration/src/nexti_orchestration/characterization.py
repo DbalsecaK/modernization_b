@@ -15,6 +15,7 @@ from nexti_core.spec.characterization import GoldenMaster, Suite
 from nexti_core.spec.model import Rule
 from nexti_orchestration.context import Attempt, PhaseContext, Verification
 from nexti_orchestration.extraction import ModelCaller, ReplyError, parse_json
+from nexti_orchestration.guided import enabled as guided_enabled
 from nexti_orchestration.model import PhaseFailedError, PhaseResult, PhaseUnavailableError
 from nexti_orchestration.scope import scope_files, split_rules
 
@@ -41,11 +42,38 @@ class CharacterizationPort(Protocol):
     async def save_golden_master(self, master: GoldenMaster) -> None: ...
 
 
-def parse_suite(content: str) -> Suite:
+FORMAT = (
+    'The format: {"program": name, "schema": {"tables": [{"name", "columns": [{"name", "type", '
+    '"nullable"}], "key": [column names]}]}, "cases": [...]}; a column has only name, type and nullable; the '
+    "key is a list of column names on the table"
+)
+
+
+def format_problems(exc: ValidationError, limit: int = 8) -> str:
+    """The validation errors as the model can act on them: where, what, and what the format allows there."""
+    lines = []
+    for error in exc.errors()[:limit]:
+        path = ".".join(str(part) for part in error["loc"])
+        if error["type"] == "extra_forbidden":
+            lines.append(
+                f"{path}: '{error['loc'][-1]}' is not a field here; remove it or put it where the format has it"
+            )
+        elif error["type"] == "missing":
+            lines.append(f"{path}: required and missing")
+        else:
+            lines.append(f"{path}: {error['msg']}")
+    more = len(exc.errors()) - limit
+    return "; ".join(lines) + (f"; and {more} more" if more > 0 else "") + f". {FORMAT}"
+
+
+def parse_suite(content: str, *, readable: bool = False) -> Suite:
+    """The suite of the reply. With `readable` (guided extraction, ADR-0033) the format errors go back in words
+    instead of the validator's raw records."""
     try:
         return Suite.model_validate(parse_json(content))
     except ValidationError as exc:
-        raise ReplyError(f"the suite does not follow the format: {exc.errors()[:5]}") from exc
+        detail = format_problems(exc) if readable else str(exc.errors()[:5])
+        raise ReplyError(f"the suite does not follow the format: {detail}") from exc
 
 
 def coverage_problems(suite: Suite, rules: Sequence[Rule], required: Sequence[Rule] | None = None) -> list[str]:
@@ -93,7 +121,7 @@ class CharacterizationPhases:
                 messages.append({"role": "user", "content": f"The suite could not be used:\n{feedback}\nFix it."})
             reply = await self.port.models.complete(TESTER, "characterization", messages, iteration=iteration)
             try:
-                suite = parse_suite(reply.content)
+                suite = parse_suite(reply.content, readable=guided_enabled(ctx.run.options))
             except ReplyError as exc:  # verified below: the reply goes back with the reason
                 return Attempt({"error": str(exc)[:3000]}, "suite with format errors", reply.usage)
             reference = await self.port.save_file("characterization/suite.json", suite.model_dump_json(by_alias=True))

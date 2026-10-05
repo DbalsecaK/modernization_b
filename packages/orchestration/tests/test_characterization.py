@@ -113,3 +113,20 @@ async def test_without_an_engine_or_a_recording_the_phase_waits() -> None:
     port = MemoryPort(RecordedRunner(FIXTURES / "golden", "replay"), [json.dumps(changed)])
     with pytest.raises(PhaseUnavailableError, match="no golden master recorded"):
         await CharacterizationPhases(port).characterization(ctx)
+
+
+def test_format_errors_go_back_in_words_only_when_guided() -> None:
+    from nexti_orchestration.extraction import ReplyError
+
+    bad = json.dumps({"program": "dbo.sp_x", "schema": {"tables": [{"name": "db..t", "columns": [
+        {"name": "a", "type": "int", "size": 4}]}]}, "cases": [{"rules": ["RULE-001"]}]})  # fmt: skip
+    with pytest.raises(ReplyError) as raw:
+        parse_suite(bad)
+    assert "extra_forbidden" in str(raw.value)  # the recorded form stays as it is
+    with pytest.raises(ReplyError) as worded:
+        parse_suite(bad, readable=True)
+    message = str(worded.value)
+    assert "schema.tables.0.columns.0.size: 'size' is not a field here" in message
+    assert "cases.0.name: required and missing" in message
+    assert "a column has only name, type and nullable" in message
+    assert "extra_forbidden" not in message

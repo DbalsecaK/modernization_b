@@ -44,6 +44,19 @@ def test_a_suite_rejects_repeated_case_names_and_undeclared_keys() -> None:
         Case(name="Not Snake", rules=["RULE-001"])
 
 
+def test_a_key_marked_on_the_columns_becomes_the_table_key() -> None:
+    table = Table.model_validate({"name": "db..t", "columns": [
+        {"name": "a", "type": "int", "key": True}, {"name": "b", "type": "char(3)", "key": False},
+        {"name": "c", "type": "int", "primary_key": True}]})  # fmt: skip
+    assert table.key == ["a", "c"]
+    assert [c.name for c in table.columns] == ["a", "b", "c"]
+    both = Table.model_validate({"name": "db..t", "key": ["b"], "columns": [
+        {"name": "a", "type": "int", "pk": True}, {"name": "b", "type": "int", "key": False}]})  # fmt: skip
+    assert both.key == ["b", "a"]
+    with pytest.raises(ValidationError, match="other"):  # anything else on a column is still rejected
+        Table.model_validate({"name": "db..t", "columns": [{"name": "a", "type": "int", "other": 1}]})
+
+
 def test_the_identity_of_a_run_follows_the_code_and_the_suite() -> None:
     suite = Suite(program="dbo.sp_x", schema_=Schema(), cases=[_case("first_case")])
     other = Suite(program="dbo.sp_x", schema_=Schema(), cases=[_case("other_case")])
