@@ -461,6 +461,57 @@ function Wizard({ catalog }: { catalog: Catalog }) {
                     )
                   })}
                 </div>
+                <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                  {(['strategy', 'artifact'] as const).map((group) => (
+                    <Field key={group} label={t(`wizard.preferences.${group}`)}>
+                      <Select
+                        value={
+                          (target.preferences?.[group] as string | undefined) ??
+                          (catalog.preferences ?? []).find((p) => p.group === group && p.default)?.key ??
+                          ''
+                        }
+                        onChange={(e) => {
+                          setTarget({
+                            ...target,
+                            preferences: { ...(target.preferences ?? {}), [group]: e.target.value },
+                          })
+                          resetComposition()
+                        }}
+                      >
+                        {(catalog.preferences ?? [])
+                          .filter((p) => p.group === group)
+                          .map((p) => (
+                            <option key={p.key} value={p.key}>
+                              {p.name}
+                            </option>
+                          ))}
+                      </Select>
+                    </Field>
+                  ))}
+                </div>
+                <Field label={t('wizard.preferences.practices')} hint={t('wizard.preferences.practicesHint')}>
+                  <div className="flex flex-wrap gap-2">
+                    {(catalog.preferences ?? [])
+                      .filter((p) => p.group === 'practices')
+                      .map((p) => {
+                        const chosen = (target.preferences?.practices as string[] | undefined) ?? []
+                        const selected = chosen.includes(p.key)
+                        return (
+                          <Chip
+                            key={p.key}
+                            selected={selected}
+                            onClick={() => {
+                              const next = selected ? chosen.filter((k) => k !== p.key) : [...chosen, p.key]
+                              setTarget({ ...target, preferences: { ...(target.preferences ?? {}), practices: next } })
+                              resetComposition()
+                            }}
+                          >
+                            {p.name}
+                          </Chip>
+                        )
+                      })}
+                  </div>
+                </Field>
                 {result && result.warnings.length > 0 ? (
                   <div className="space-y-2">
                     {result.warnings.map((w) => (

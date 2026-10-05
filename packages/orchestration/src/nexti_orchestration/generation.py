@@ -26,6 +26,7 @@ from nexti_orchestration import frontend, infrastructure
 from nexti_orchestration.context import Attempt, PhaseContext, Verification
 from nexti_orchestration.extraction import ModelCaller, ReplyError, is_cut, parse_json, raise_if_cut
 from nexti_orchestration.guided import enabled as guided_enabled
+from nexti_orchestration.guided import stack_guidance
 from nexti_orchestration.model import PhaseFailedError, PhaseResult, PhaseUnavailableError
 from nexti_orchestration.packs import BackendPack, backend_pack
 from nexti_orchestration.store import Usage
@@ -261,7 +262,7 @@ def _rules_text(rules: Sequence[Rule]) -> str:
 async def propose_design(
     caller: ModelCaller, rules: Sequence[Rule], inventory: str, *, max_iterations: int = 3,
     names: set[str] | None = None, source: str = "", system: str = ARCHITECT, label: str = "Inventory",
-    hints: bool = False, files: Sequence[SourceFile] = (), written: set[str] | None = None,
+    hints: bool = False, files: Sequence[SourceFile] = (), written: set[str] | None = None, guidance: str = "",
 ) -> tuple[Design, list[Usage]]:  # fmt: skip
     """The design from the rules. Flow 1 gives the inventory of the legacy; Flow 2 gives the approved screens and
     stories (`label`) and its own prompt (`system`), with no legacy to map."""
@@ -271,7 +272,8 @@ async def propose_design(
             "role": "user",
             "content": f"{label}:\n{inventory}\n\nApproved rules:\n{_rules_text(rules)}"
             + (f"\n\nLegacy source (the columns and parameters to map):\n{source}" if source else "")
-            + (f"\n\n{GUIDED_DESIGN}" if hints else ""),
+            + (f"\n\n{GUIDED_DESIGN}" if hints else "")
+            + (f"\n\n{guidance}" if hints and guidance else ""),
         },
     ]
     usage: list[Usage] = []
@@ -323,6 +325,7 @@ class GenerationPhases:
                         max_iterations=ctx.run.max_iterations, names=legacy_names(files),
                         source="\n\n".join(f"// {f.path}\n{f.text}" for f in files),
                         hints=guided_enabled(ctx.run.options), files=files, written=written_tables(files),
+                        guidance=stack_guidance(ctx.run.target),
                     )  # fmt: skip
             except ReplyError as exc:
                 raise PhaseFailedError(str(exc)[:1500]) from exc
@@ -457,7 +460,8 @@ class GenerationPhases:
                 f"Write the application service of {use_case.name}.\n\nDesign:\n{design.model_dump_json(indent=1)}\n\n"
                 f"Rules:\n{_rules_text([rules[r] for r in use_case.rules if r in rules])}\n\n"
                 f"Existing files:\n{pack.existing(files, design)}\n\nThe tests it must pass:\n"
-                f"{files[pack.test_path(design, use_case)]}")},
+                f"{files[pack.test_path(design, use_case)]}"
+                + (f"\n\n{stack_guidance(ctx.run.target)}" if guided_enabled(ctx.run.options) else ""))},
         ]  # fmt: skip
         target = pack.service_path(design, use_case)
 

@@ -31,6 +31,16 @@ def _axes(value: Any) -> Mapping[str, frozenset[str]]:
 
 
 @dataclass(frozen=True)
+class Preference:
+    """An option of a preference group (ADR-0038)."""
+
+    group: str
+    key: str
+    name: str
+    default: bool = False
+
+
+@dataclass(frozen=True)
 class Version:
     """A version a project may choose for an option (ADR-0037): `certified` ones are pinned by the pack and its
     sandbox image; `planned` ones are listed but not selectable yet."""
@@ -49,6 +59,8 @@ class Target:
     database: str
     cloud: str
     versions: Mapping[str, str] = field(default_factory=dict, compare=False, hash=False)  # axis -> version key
+    # strategy, artifact and practices (ADR-0038): a key, or a list of keys for `practices`
+    preferences: Mapping[str, Any] = field(default_factory=dict, compare=False, hash=False)
 
     def get(self, axis: str) -> str:
         value: str = getattr(self, axis)
@@ -277,6 +289,7 @@ class Catalog:
     flows: tuple[Flow, ...]
     templates: tuple[PipelineTemplate, ...]
     cost_unit_usd: int
+    preferences: tuple[Preference, ...] = ()
 
     def agent(self, key: str) -> Agent | None:
         return next((a for a in self.agents if a.key == key), None)
@@ -289,6 +302,9 @@ class Catalog:
 
     def source(self, key: str) -> SourceOption | None:
         return next((s for s in self.sources if s.key == key), None)
+
+    def preference_keys(self, group: str) -> set[str]:
+        return {p.key for p in self.preferences if p.group == group}
 
     def target_option(self, axis: str, key: str) -> TargetOption | None:
         return next((t for t in self.targets if t.axis == axis and t.key == key), None)

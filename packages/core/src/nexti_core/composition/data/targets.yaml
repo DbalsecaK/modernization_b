@@ -9,6 +9,8 @@ axes:
     - {key: serverless, name: "Serverless", wave: 2}
     - {key: event-driven, name: "Event-driven"}
     - {key: bff-microservices, name: "BFF + microservices"}
+    - {key: preserve-topology, name: "Preserve topology (one service per legacy program)"}
+
   backend:
     # `versions` (ADR-0037): what a project may choose; `certified` versions are the ones the pack pins and its
     # sandbox image ships, `planned` ones are listed but not selectable until they have an image and a recording.
@@ -76,3 +78,19 @@ axes:
     - {key: azure, name: "Azure", level: certified, wave: 1}
     - {key: gcp, name: "GCP", level: certified, wave: 2}
     - {key: kubernetes, name: "Kubernetes (on-prem)"}
+# Preferences a project may state (ADR-0038). They are given to the agents as guidance and checked where code can
+# check them; what code cannot verify stays advisory and the catalog says so.
+preferences:
+  strategy:
+    - {key: big-bang, name: "Replace at once", default: true}
+    - {key: strangler-fig, name: "Strangler fig (legacy and target coexist by waves)"}
+    - {key: anti-corruption-layer, name: "Anti-corruption layer in front of the legacy"}
+  artifact:
+    - {key: container, name: "Container image", default: true}
+    - {key: serverless-function, name: "Serverless function"}
+    - {key: service-package, name: "Service package (JAR, assembly, binary)"}
+  practices:  # several may be chosen; advisory: the reviewer and the developer are told, tools check what they can
+    - {key: clean-code, name: "Clean Code"}
+    - {key: solid, name: "SOLID"}
+    - {key: dependency-injection, name: "Dependency injection"}
+    - {key: tdd, name: "Test-driven development (tests from the scenarios first)"}

@@ -19,6 +19,9 @@ rules:
   - key: goConventions
     when: {target: {backend: [go]}}
     message: "Go uses its own idiomatic pack, not a translation of the Java pack."
+  - key: preserveTopologyWaves
+    when: {target: {architecture: [preserve-topology]}}
+    message: "Preserve topology keeps one service per legacy program: the plan migrates program by program and the design does not merge programs into aggregates."
   - key: upliftOption
     when: {target: {backend: [dotnet-10]}, sources_any: [dotnet-framework]}
     message: ".NET Framework to .NET 10 can be an uplift (same structure) or a rewrite. Choose before generation."

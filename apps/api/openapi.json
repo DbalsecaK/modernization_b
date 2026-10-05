@@ -1224,6 +1224,13 @@
             "title": "Pipelinetemplates",
             "type": "array"
           },
+          "preferences": {
+            "items": {
+              "$ref": "#/components/schemas/PreferenceOut"
+            },
+            "title": "Preferences",
+            "type": "array"
+          },
           "skills": {
             "items": {
               "$ref": "#/components/schemas/SkillOut"
@@ -6555,6 +6562,34 @@
         "title": "PolicyOut",
         "type": "object"
       },
+      "PreferenceOut": {
+        "properties": {
+          "default": {
+            "title": "Default",
+            "type": "boolean"
+          },
+          "group": {
+            "title": "Group",
+            "type": "string"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "group",
+          "key",
+          "name",
+          "default"
+        ],
+        "title": "PreferenceOut",
+        "type": "object"
+      },
       "PriceOut": {
         "properties": {
           "cacheReadPerMtok": {
@@ -9864,6 +9899,28 @@
             "title": "Frontend",
             "type": "string"
           },
+          "preferences": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "maxLength": 64,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                {
+                  "items": {
+                    "maxLength": 64,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "type": "array"
+                }
+              ]
+            },
+            "description": "strategy, artifact and practices (ADR-0038): catalog keys",
+            "title": "Preferences",
+            "type": "object"
+          },
           "versions": {
             "additionalProperties": {
               "maxLength": 64,
@@ -9967,6 +10024,23 @@
           "frontend": {
             "title": "Frontend",
             "type": "string"
+          },
+          "preferences": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                }
+              ]
+            },
+            "title": "Preferences",
+            "type": "object"
           },
           "versions": {
             "additionalProperties": {

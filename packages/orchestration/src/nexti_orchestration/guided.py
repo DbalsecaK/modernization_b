@@ -275,3 +275,60 @@ async def consolidate_meaning(
         merged += [r for r in chunk if r.id not in grouped]
     merged.sort(key=lambda r: (r.sources[0].file, r.sources[0].line_start, r.name))
     return [r.model_copy(update={"id": f"RULE-{i:03d}"}) for i, r in enumerate(merged, start=1)], usage
+
+
+# -- the target stack and the preferences, as guidance (ADR-0038) ----------------------------------------------------
+ARCHITECTURE_NOTES = {
+    "preserve-topology": "one service per legacy program, entities mirroring the legacy tables; do not merge programs "
+    "into aggregates",
+    "modular-monolith": "one deployable with hexagonal modules per bounded context",
+    "microservices-hexagonal": "one service per bounded context, hexagonal inside",
+    "serverless": "stateless functions; long-running work goes to batch or workflow services",
+    "event-driven": "commands and events between contexts; idempotent handlers",
+    "bff-microservices": "a backend-for-frontend in front of the domain services",
+}
+STRATEGY_NOTES = {
+    "strangler-fig": "the legacy and the target coexist: every wave leaves a working system, with a façade that routes "
+    "each capability to the old or the new side; name those façade stories",
+    "anti-corruption-layer": "every call to a legacy program goes through a port that translates models; nothing "
+    "of the legacy's shape leaks into the domain",
+    "big-bang": "the target replaces the legacy at once",
+}
+ARTIFACT_NOTES = {
+    "container": "packaged as a container image",
+    "serverless-function": "packaged as serverless functions (cold start and statelessness matter)",
+    "service-package": "packaged as a service package (JAR, assembly or binary) run by a process manager",
+}
+PRACTICE_NOTES = {
+    "clean-code": "small functions, intention-revealing names, no duplication",
+    "solid": "single responsibility per class, dependencies on abstractions (the ports)",
+    "dependency-injection": "collaborators injected through constructors, never located or instantiated inside",
+    "tdd": "the tests from the scenarios exist before the code and the code makes them pass without changing them",
+}
+
+
+def stack_guidance(target: Mapping[str, Any]) -> str:
+    """The target stack and the project's preferences in words, for the architect, the developer and the planner.
+    Empty when the run has no target: the recorded runs ask nothing more."""
+    lines = []
+    axes = [(axis, target.get(axis)) for axis in ("architecture", "backend", "frontend", "database", "cloud")]
+    stack = ", ".join(
+        f"{axis} {value}" + (f" {target[f'{axis}_version']}" if target.get(f"{axis}_version") else "")
+        for axis, value in axes
+        if value and value != "none"
+    )
+    if stack:
+        lines.append(f"Target stack: {stack}.")
+    architecture = str(target.get("architecture") or "")
+    if architecture in ARCHITECTURE_NOTES:
+        lines.append(f"Architecture {architecture}: {ARCHITECTURE_NOTES[architecture]}.")
+    strategy = str(target.get("strategy") or "")
+    if strategy in STRATEGY_NOTES:
+        lines.append(f"Migration strategy {strategy}: {STRATEGY_NOTES[strategy]}.")
+    artifact = str(target.get("artifact") or "")
+    if artifact in ARTIFACT_NOTES:
+        lines.append(f"Deployment artifact: {ARTIFACT_NOTES[artifact]}.")
+    practices = [p for p in str(target.get("practices") or "").split(",") if p in PRACTICE_NOTES]
+    if practices:
+        lines.append("Coding practices: " + "; ".join(f"{p}: {PRACTICE_NOTES[p]}" for p in practices) + ".")
+    return "\n".join(lines)
