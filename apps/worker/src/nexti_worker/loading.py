@@ -88,8 +88,14 @@ async def load_run(engine: AsyncEngine, run_id: uuid.UUID, tenant_id: uuid.UUID)
 
 def flat_target(stored: Mapping[str, Any]) -> dict[str, str]:
     """The target as the run reads it: the axes, and the chosen versions as `<axis>_version` (ADR-0037)."""
-    target = {str(k): str(v) for k, v in stored.items() if v and k != "versions"}
+    target = {str(k): str(v) for k, v in stored.items() if v and k not in ("versions", "preferences")}
     versions = stored.get("versions") or {}
     if isinstance(versions, Mapping):
         target.update({f"{axis}_version": str(v) for axis, v in versions.items() if v})
+    preferences = stored.get("preferences") or {}
+    if isinstance(preferences, Mapping):  # ADR-0038: strategy, artifact, practices (comma-joined)
+        for group, value in preferences.items():
+            text = ",".join(str(v) for v in value) if isinstance(value, (list, tuple)) else str(value)
+            if text:
+                target[str(group)] = text
     return target

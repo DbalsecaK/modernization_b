@@ -75,6 +75,8 @@ async def write_config(
     }
     if config.target.versions:
         target["versions"] = dict(config.target.versions)
+    if config.target.preferences:
+        target["preferences"] = dict(config.target.preferences)
     await conn.execute(
         insert(ProjectConfig).values(
             tenant_id=tenant_id,

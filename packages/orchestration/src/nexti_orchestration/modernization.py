@@ -423,9 +423,10 @@ class ModernizationPhases:
         writer = STORY_WRITER if any(a.key == STORY_WRITER for a in ctx.run.agents) else FALLBACK_WRITER
 
         async def work() -> Attempt:
+            guidance = guided.preference_guidance(ctx.run.target) if guided.enabled(ctx.run.options) else ""
             try:
                 stories = await derive(self.port.models, rules, data, writer=writer,
-                                       max_iterations=ctx.run.max_iterations)  # fmt: skip
+                                       max_iterations=ctx.run.max_iterations, guidance=guidance)  # fmt: skip
             except ReplyError as exc:
                 raise PhaseFailedError(str(exc)[:1500]) from exc
             await self.port.save_stories(stories)

@@ -3116,6 +3116,8 @@ export interface components {
             flows: components["schemas"]["FlowOut"][];
             /** Pipelinetemplates */
             pipelineTemplates: components["schemas"]["TemplateOut"][];
+            /** Preferences */
+            preferences?: components["schemas"]["PreferenceOut"][];
             /** Skills */
             skills: components["schemas"]["SkillOut"][];
             /** Sources */
@@ -4906,6 +4908,17 @@ export interface components {
             /** Requirezdr */
             requireZdr: boolean;
         };
+        /** PreferenceOut */
+        PreferenceOut: {
+            /** Default */
+            default: boolean;
+            /** Group */
+            group: string;
+            /** Key */
+            key: string;
+            /** Name */
+            name: string;
+        };
         /** PriceOut */
         PriceOut: {
             /** Cachereadpermtok */
@@ -6097,6 +6110,13 @@ export interface components {
             /** Frontend */
             frontend: string;
             /**
+             * Preferences
+             * @description strategy, artifact and practices (ADR-0038): catalog keys
+             */
+            preferences?: {
+                [key: string]: string | string[];
+            };
+            /**
              * Versions
              * @description axis -> version key (ADR-0037)
              */
@@ -6134,6 +6154,10 @@ export interface components {
             database: string;
             /** Frontend */
             frontend: string;
+            /** Preferences */
+            preferences?: {
+                [key: string]: string | string[];
+            };
             /** Versions */
             versions?: {
                 [key: string]: string;

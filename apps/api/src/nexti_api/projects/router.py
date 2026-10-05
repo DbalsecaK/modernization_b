@@ -71,10 +71,14 @@ class TargetIn(ApiModel):
     database: Key
     cloud: Key
     versions: dict[str, Key] = Field(default_factory=dict, description="axis -> version key (ADR-0037)")
+    preferences: dict[str, Key | list[Key]] = Field(
+        default_factory=dict, description="strategy, artifact and practices (ADR-0038): catalog keys"
+    )
 
     def to_target(self) -> Target:
         return Target(self.architecture, self.backend, self.frontend, self.database, self.cloud,
-                      {k: v for k, v in self.versions.items() if v})  # fmt: skip
+                      {k: v for k, v in self.versions.items() if v},
+                      {k: v for k, v in self.preferences.items() if v})  # fmt: skip
 
 
 class ComposeIn(ApiModel):
@@ -175,6 +179,7 @@ class TargetOut(ApiModel):
     database: str
     cloud: str
     versions: dict[str, str] = Field(default_factory=dict)
+    preferences: dict[str, str | list[str]] = Field(default_factory=dict)
 
 
 class ProjectOut(ApiModel):

@@ -1249,7 +1249,14 @@
     },
     "version": "Version",
     "versionPlanned": "planned, not available yet",
-    "sourceVersions": "{{source}} · versions of the adapter: {{versions}}"
+    "sourceVersions": "{{source}} · versions of the adapter: {{versions}}",
+    "preferencesTitle": "Preferences",
+    "preferences": {
+      "strategy": "Migration strategy",
+      "artifact": "Deployment artifact",
+      "practices": "Coding practices",
+      "practicesHint": "Advisory: the developer and the reviewer are told; tools check what they can."
+    }
   },
   "compat": {
     "mongoModeling": "MongoDB needs an extra aggregate modeling step: what is embedded and what is referenced.",

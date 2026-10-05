@@ -297,3 +297,22 @@ def test_a_guided_design_cannot_mask_what_the_rules_use_and_keeps_the_written_ta
         "legacy tables the program writes need an entity with legacy_table (or an explained tables: mask): pg_detalle",
     ]
     assert (table_of("db..t.col"), table_of("db.dbo.t"), table_of("t")) == ("t", "t", "t")
+
+
+def test_the_stack_and_the_preferences_become_guidance_only_when_the_run_has_them() -> None:
+    from nexti_orchestration.guided import preference_guidance, stack_guidance
+
+    assert stack_guidance({}) == ""
+    # The planner of the stories gets the preferences alone: a guided run without them asks exactly as recorded.
+    assert preference_guidance({"backend": "spring-boot", "backend_version": "3.5", "database": "postgresql"}) == ""
+    assert preference_guidance({"strategy": "strangler-fig"}).startswith("Migration strategy strangler-fig:")
+    text = stack_guidance({"architecture": "preserve-topology", "backend": "spring-boot", "backend_version": "3.5",
+                           "frontend": "none", "database": "postgresql", "cloud": "aws", "strategy": "strangler-fig",
+                           "artifact": "container", "practices": "solid,tdd,unknown"})  # fmt: skip
+    assert text.startswith("Target stack: architecture preserve-topology, backend spring-boot 3.5, database postgresql")
+    assert "one service per legacy program" in text
+    assert "Migration strategy strangler-fig" in text
+    assert "Deployment artifact: packaged as a container image" in text
+    assert "solid:" in text
+    assert "tdd:" in text
+    assert "unknown" not in text

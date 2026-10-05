@@ -266,6 +266,25 @@ def test_a_version_must_be_listed_and_available(catalog: Catalog) -> None:
     assert [v.key for v in spring.versions if v.default] == ["3.5"]
 
 
+def test_preferences_come_from_the_catalog(catalog: Catalog) -> None:
+    def codes(preferences: dict[str, object]) -> set[tuple[str, str | None]]:
+        target = Target("preserve-topology", "spring-boot", "react", "postgresql", "aws", {}, preferences)
+        return {(p.code, p.subject) for p in evaluate(catalog, Request("modernization", ("cobol",), target)).problems}
+
+    assert codes({"strategy": "strangler-fig", "practices": ["solid", "tdd"], "artifact": "container"}) == set()
+    assert ("unknown_preference", "strategy:rewrite") in codes({"strategy": "rewrite"})
+    assert ("unknown_preference", "colour") in codes({"colour": "blue"})
+    assert (
+        "preserveTopologyWaves"
+        in evaluate(
+            catalog,
+            Request(
+                "modernization", ("cobol",), Target("preserve-topology", "spring-boot", "react", "postgresql", "aws")
+            ),
+        ).warnings
+    )
+
+
 def test_invalid_requests_are_problems_not_crashes(catalog: Catalog) -> None:
     request = Request("modernization", ("figma", "zos-assembler"), Target("mvc", "cobol", "react", "postgresql", "aws"))
     codes = {(p.code, p.subject) for p in evaluate(catalog, request).problems}

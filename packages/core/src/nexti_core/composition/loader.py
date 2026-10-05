@@ -18,6 +18,7 @@ from nexti_core.composition.model import (
     Flow,
     Phase,
     PipelineTemplate,
+    Preference,
     Skill,
     SourceAdapter,
     SourceOption,
@@ -49,6 +50,15 @@ def option_flows(value: Any) -> tuple[str, ...]:
     if not found or unknown:
         raise ValueError(f"a source option needs known flows, got {value!r}")
     return found
+
+
+def preferences(data: Mapping[str, Any]) -> tuple[Preference, ...]:
+    """The preference groups of the targets file (ADR-0038)."""
+    return tuple(
+        Preference(group, str(o["key"]), str(o["name"]), bool(o.get("default", False)))
+        for group, options in (data.get("preferences") or {}).items()
+        for o in options
+    )
 
 
 def versions(option: Mapping[str, Any]) -> tuple[Version, ...]:
@@ -124,6 +134,7 @@ def build_catalog(
         adapters=adapters(data),
         sources=sources(data),
         targets=targets(data),
+        preferences=preferences(data["targets"]),
         rules=rules(data),
         flows=flows(data),
         templates=templates(data),

@@ -112,12 +112,20 @@ class FlowOut(ApiModel):
     phases: list[PhaseOut]
 
 
+class PreferenceOut(ApiModel):
+    group: str
+    key: str
+    name: str
+    default: bool
+
+
 class CatalogOut(ApiModel):
     agents: list[AgentOut]
     skills: list[SkillOut]
     adapters: list[AdapterOut]
     sources: list[SourceOptionOut]
     targets: list[TargetOptionOut]
+    preferences: list[PreferenceOut] = Field(default_factory=list)
     compatibility_rules: list[RuleOut]
     pipeline_templates: list[TemplateOut]
     flows: list[FlowOut]
@@ -148,6 +156,7 @@ async def get_catalog(request: Request, auth: TenantMember) -> CatalogOut:
         adapters=[AdapterOut.model_validate(a, from_attributes=True) for a in catalog.adapters],
         sources=[SourceOptionOut.model_validate(s, from_attributes=True) for s in catalog.sources],
         targets=[TargetOptionOut.model_validate(t, from_attributes=True) for t in catalog.targets],
+        preferences=[PreferenceOut.model_validate(p, from_attributes=True) for p in catalog.preferences],
         compatibility_rules=[RuleOut(key=r.key, message=r.message) for r in catalog.rules],
         pipeline_templates=[TemplateOut.model_validate(t, from_attributes=True) for t in catalog.templates],
         flows=[

@@ -96,6 +96,13 @@ def _request_problems(catalog: Catalog, request: Request) -> list[Problem]:
             problems.append(Problem("unknown_target_version", f"{axis}:{chosen_option.key}:{chosen}"))
         elif version.level == "planned":
             problems.append(Problem("target_version_not_available", f"{axis}:{chosen_option.key}:{chosen}"))
+    for group, value in request.target.preferences.items():  # ADR-0038: only catalog keys
+        known = catalog.preference_keys(group)
+        values = value if isinstance(value, (list, tuple)) else [value]
+        if not known:
+            problems.append(Problem("unknown_preference", group))
+            continue
+        problems += [Problem("unknown_preference", f"{group}:{v}") for v in values if v not in known]
     return problems
 
 

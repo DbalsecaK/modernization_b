@@ -1249,7 +1249,14 @@
     },
     "version": "Versión",
     "versionPlanned": "planificada, aún no disponible",
-    "sourceVersions": "{{source}} · versiones del adaptador: {{versions}}"
+    "sourceVersions": "{{source}} · versiones del adaptador: {{versions}}",
+    "preferencesTitle": "Preferencias",
+    "preferences": {
+      "strategy": "Estrategia de migración",
+      "artifact": "Artefacto de despliegue",
+      "practices": "Prácticas de código",
+      "practicesHint": "Orientativas: se le indican al desarrollador y al revisor; las herramientas verifican lo que pueden."
+    }
   },
   "compat": {
     "mongoModeling": "MongoDB requiere un paso adicional de modelado de agregados: qué se embebe y qué se referencia.",

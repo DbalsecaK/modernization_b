@@ -141,11 +141,17 @@ async def derive(
     *,
     writer: str = STORY_WRITER,
     max_iterations: int = 3,
+    guidance: str = "",
 ) -> Stories:
-    """Stories, their dependencies and the suggested plan. Raises ReplyError after `max_iterations` invalid answers."""
+    """Stories, their dependencies and the suggested plan. Raises ReplyError after `max_iterations` invalid answers.
+    `guidance` (the migration strategy and the target, ADR-0038) is added only when given: the recorded runs give
+    none."""
     messages = [
         {"role": "system", "content": prompt(STORY_WRITER)},
-        {"role": "user", "content": f"Business rules:\n{rules_digest(rules)}"},
+        {
+            "role": "user",
+            "content": f"Business rules:\n{rules_digest(rules)}" + (f"\n\n{guidance}" if guidance else ""),
+        },
     ]
     usage: list[Usage] = []
     last = ""

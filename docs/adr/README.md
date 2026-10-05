@@ -43,5 +43,6 @@ reemplaza y se marca el anterior como "Reemplazado por ADR-NNNN".
 | [0035](0035-reintento-por-fase-y-mascaras-del-diseno.md) | Reintento desde una fase elegida y máscaras del diseño verificadas contra las reglas | Aceptada |
 | [0036](0036-suite-de-caracterizacion-por-piezas.md) | La suite de caracterización en piezas acotadas | Aceptada |
 | [0037](0037-versiones-por-eje.md) | Versiones por eje en el catálogo y en el proyecto | Aceptada |
+| [0038](0038-preferencias-del-proyecto.md) | Preferencias del proyecto: arquitectura, estrategia, artefacto y prácticas | Aceptada |
 
 Plantilla: contexto, decisión, alternativas consideradas, consecuencias y cómo se valida.
