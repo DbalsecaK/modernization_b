@@ -4763,6 +4763,17 @@ export interface components {
             /** Summary */
             summary: string;
         };
+        /** OptionVersionOut */
+        OptionVersionOut: {
+            /** Default */
+            default: boolean;
+            /** Key */
+            key: string;
+            /** Level */
+            level: string | null;
+            /** Name */
+            name: string;
+        };
         /** PermissionOut */
         PermissionOut: {
             /** Description */
@@ -5968,6 +5979,8 @@ export interface components {
             name: string;
             /** Requiredskills */
             requiredSkills: string[];
+            /** Versions */
+            versions?: components["schemas"]["OptionVersionOut"][];
         };
         /** SplitIn */
         SplitIn: {
@@ -6083,6 +6096,13 @@ export interface components {
             database: string;
             /** Frontend */
             frontend: string;
+            /**
+             * Versions
+             * @description axis -> version key (ADR-0037)
+             */
+            versions?: {
+                [key: string]: string;
+            };
         };
         /** TargetOptionOut */
         TargetOptionOut: {
@@ -6097,6 +6117,8 @@ export interface components {
             level: string | null;
             /** Name */
             name: string;
+            /** Versions */
+            versions?: components["schemas"]["OptionVersionOut"][];
             /** Wave */
             wave: number | null;
         };
@@ -6112,6 +6134,10 @@ export interface components {
             database: string;
             /** Frontend */
             frontend: string;
+            /** Versions */
+            versions?: {
+                [key: string]: string;
+            };
         };
         /** TaskOut */
         TaskOut: {

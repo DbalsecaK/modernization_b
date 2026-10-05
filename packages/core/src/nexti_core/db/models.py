@@ -554,6 +554,7 @@ class SourceOptionDefinition(Base):
     flows: Mapped[list[str]] = mapped_column(ARRAY(Text), nullable=False)
     adapter_key: Mapped[str | None] = mapped_column(ForeignKey("source_adapter.key"))
     required_skills: Mapped[list[str]] = mapped_column(ARRAY(Text), nullable=False, server_default=text("'{}'"))
+    versions: Mapped[list[dict[str, Any]]] = mapped_column(JSONB, nullable=False, server_default=text("'[]'::jsonb"))
 
 
 class TargetOptionDefinition(Base):
@@ -564,6 +565,7 @@ class TargetOptionDefinition(Base):
     name: Mapped[str] = mapped_column(Text, nullable=False)
     level: Mapped[str | None] = mapped_column(Text)
     wave: Mapped[int | None] = mapped_column(Integer)
+    versions: Mapped[list[dict[str, Any]]] = mapped_column(JSONB, nullable=False, server_default=text("'[]'::jsonb"))
 
 
 class CompatibilityRuleDefinition(Base):

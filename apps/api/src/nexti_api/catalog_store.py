@@ -150,6 +150,7 @@ async def sync_catalog(conn: AsyncConnection) -> SyncReport:
                 "flows": list(option_flows(o["flow"])),
                 "adapter_key": o.get("adapter"),
                 "required_skills": list(o.get("required_skills") or []),
+                "versions": list(o.get("versions") or []),
             }
             for i, o in enumerate(src["options"])
         ],
@@ -160,7 +161,7 @@ async def sync_catalog(conn: AsyncConnection) -> SyncReport:
         TargetOptionDefinition,
         [
             {"axis": axis, "key": o["key"], "position": i, "name": o["name"], "level": o.get("level"),
-             "wave": o.get("wave")}
+             "wave": o.get("wave"), "versions": list(o.get("versions") or [])}
             for axis in AXES
             for i, o in enumerate(data["targets"]["axes"][axis])
         ],
@@ -218,14 +219,20 @@ async def load_catalog(conn: AsyncConnection) -> Catalog:
         "adapters": [dict(a) for a in adapters],
         "options": [
             {"key": o["key"], "name": o["name"], "flow": list(o["flows"]), "adapter": o["adapter_key"],
-             "required_skills": o["required_skills"]}
+             "required_skills": o["required_skills"], "versions": list(o["versions"] or [])}
             for o in options
         ],
     }  # fmt: skip
     data["targets"] = {
         "axes": {
             axis: [
-                {"key": t["key"], "name": t["name"], "level": t["level"], "wave": t["wave"]}
+                {
+                    "key": t["key"],
+                    "name": t["name"],
+                    "level": t["level"],
+                    "wave": t["wave"],
+                    "versions": list(t["versions"] or []),
+                }
                 for t in targets
                 if t["axis"] == axis
             ]

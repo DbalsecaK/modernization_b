@@ -350,6 +350,18 @@ function Wizard({ catalog }: { catalog: Catalog }) {
                       </Chip>
                     ))}
                 </div>
+                {catalog.sources
+                  .filter((s) => sources.includes(s.key) && (s.versions ?? []).length > 0)
+                  .map((s) => (
+                    <p key={s.key} className="text-xs text-text-2">
+                      {t('wizard.sourceVersions', {
+                        source: t(`sourceOptions.${s.key}`, { defaultValue: s.name }),
+                        versions: (s.versions ?? [])
+                          .map((v) => `${v.name}${v.level === 'planned' ? ` (${t('wizard.versionPlanned')})` : ''}`)
+                          .join(', '),
+                      })}
+                    </p>
+                  ))}
                 {legacyCode ? (
                   <>
                     <div className="grid gap-3 sm:grid-cols-2">
@@ -401,25 +413,53 @@ function Wizard({ catalog }: { catalog: Catalog }) {
               <>
                 <StepTitle title={t('wizard.targetTitle')} hint={t('wizard.targetHint')} />
                 <div className="grid gap-4 sm:grid-cols-2">
-                  {AXES.map((axis) => (
-                    <Field key={axis} label={t(`target.${axis}`)}>
-                      <Select
-                        value={target[axis]}
-                        onChange={(e) => {
-                          setTarget({ ...target, [axis]: e.target.value })
-                          resetComposition()
-                        }}
-                      >
-                        {catalog.targets
-                          .filter((o) => o.axis === axis)
-                          .map((o) => (
-                            <option key={o.key} value={o.key}>
-                              {o.key === 'none' ? t('wizard.noFrontend') : o.name}
-                            </option>
-                          ))}
-                      </Select>
-                    </Field>
-                  ))}
+                  {AXES.map((axis) => {
+                    const option = catalog.targets.find((o) => o.axis === axis && o.key === target[axis])
+                    const versions = option?.versions ?? []
+                    const chosen = target.versions?.[axis] ?? versions.find((v) => v.default)?.key ?? ''
+                    return (
+                      <Field key={axis} label={t(`target.${axis}`)}>
+                        <Select
+                          value={target[axis]}
+                          onChange={(e) => {
+                            const next = catalog.targets.find((o) => o.axis === axis && o.key === e.target.value)
+                            const fallback = next?.versions?.find((v) => v.default)?.key
+                            const versionsNext = { ...(target.versions ?? {}) }
+                            if (fallback) versionsNext[axis] = fallback
+                            else delete versionsNext[axis]
+                            setTarget({ ...target, [axis]: e.target.value, versions: versionsNext })
+                            resetComposition()
+                          }}
+                        >
+                          {catalog.targets
+                            .filter((o) => o.axis === axis)
+                            .map((o) => (
+                              <option key={o.key} value={o.key}>
+                                {o.key === 'none' ? t('wizard.noFrontend') : o.name}
+                              </option>
+                            ))}
+                        </Select>
+                        {versions.length > 0 && (
+                          <Select
+                            aria-label={`${t('target.' + axis)} · ${t('wizard.version')}`}
+                            className="mt-2"
+                            value={chosen}
+                            onChange={(e) => {
+                              setTarget({ ...target, versions: { ...(target.versions ?? {}), [axis]: e.target.value } })
+                              resetComposition()
+                            }}
+                          >
+                            {versions.map((v) => (
+                              <option key={v.key} value={v.key} disabled={v.level === 'planned'}>
+                                {v.name}
+                                {v.level === 'planned' ? ` · ${t('wizard.versionPlanned')}` : ''}
+                              </option>
+                            ))}
+                          </Select>
+                        )}
+                      </Field>
+                    )
+                  })}
                 </div>
                 {result && result.warnings.length > 0 ? (
                   <div className="space-y-2">
@@ -779,7 +819,14 @@ function Wizard({ catalog }: { catalog: Catalog }) {
                     })}
                   </Summary>
                   <Summary label={t('wizard.stepNames.target')}>
-                    {AXES.map((axis) => optionName(axis, target[axis])).join(' · ')}
+                    {AXES.map((axis) => {
+                      const version = catalog.targets
+                        .find((o) => o.axis === axis && o.key === target[axis])
+                        ?.versions?.find((v) => v.key === target.versions?.[axis])
+                      return version
+                        ? `${optionName(axis, target[axis])} ${version.key}`
+                        : optionName(axis, target[axis])
+                    }).join(' · ')}
                   </Summary>
                   <Summary label={t('wizard.stepNames.agents')}>
                     {t('wizard.agentsSelected', { count: agentIds.length })}

@@ -22,6 +22,7 @@ from nexti_core.composition.model import (
     SourceAdapter,
     SourceOption,
     TargetOption,
+    Version,
 )
 
 DATA_FILES = ("flows", "sources", "targets", "compatibility", "templates")
@@ -50,6 +51,14 @@ def option_flows(value: Any) -> tuple[str, ...]:
     return found
 
 
+def versions(option: Mapping[str, Any]) -> tuple[Version, ...]:
+    """The versions an option lists (ADR-0037), in catalog order."""
+    return tuple(
+        Version(str(v["key"]), str(v["name"]), v.get("level"), bool(v.get("default", False)))
+        for v in option.get("versions") or []
+    )
+
+
 def sources(data: Mapping[str, Any]) -> tuple[SourceOption, ...]:
     return tuple(
         SourceOption(
@@ -58,6 +67,7 @@ def sources(data: Mapping[str, Any]) -> tuple[SourceOption, ...]:
             flows=option_flows(o["flow"]),
             adapter=o.get("adapter"),
             required_skills=tuple(o.get("required_skills") or ()),
+            versions=versions(o),
         )
         for o in data["sources"]["options"]
     )
@@ -67,7 +77,8 @@ def targets(data: Mapping[str, Any]) -> tuple[TargetOption, ...]:
     out = []
     for axis in AXES:
         for o in data["targets"]["axes"][axis]:
-            out.append(TargetOption(axis, str(o["key"]), str(o["name"]), o.get("level"), o.get("wave")))
+            out.append(TargetOption(axis, str(o["key"]), str(o["name"]), o.get("level"), o.get("wave"),
+                                    versions(o)))  # fmt: skip
     return tuple(out)
 
 

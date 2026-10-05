@@ -3,6 +3,7 @@ deterministic engine and, if valid, writes a new version with the catalog versio
 
 import uuid
 from dataclasses import dataclass
+from typing import Any
 
 from sqlalchemy import func, insert, select
 from sqlalchemy.ext.asyncio import AsyncConnection
@@ -69,7 +70,11 @@ async def write_config(
         await conn.execute(select(func.max(ProjectConfig.version)).where(ProjectConfig.project_id == project_id))
     ).scalar_one()
     version = (current or 0) + 1
-    target = {axis: config.target.get(axis) for axis in ("architecture", "backend", "frontend", "database", "cloud")}
+    target: dict[str, Any] = {
+        axis: config.target.get(axis) for axis in ("architecture", "backend", "frontend", "database", "cloud")
+    }
+    if config.target.versions:
+        target["versions"] = dict(config.target.versions)
     await conn.execute(
         insert(ProjectConfig).values(
             tenant_id=tenant_id,

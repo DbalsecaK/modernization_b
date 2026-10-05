@@ -253,6 +253,19 @@ def test_next_js_on_both_sides_is_not_a_bff_warning(catalog: Catalog) -> None:
     assert "nextBff" not in evaluate(catalog, request).warnings
 
 
+def test_a_version_must_be_listed_and_available(catalog: Catalog) -> None:
+    def codes(versions: dict[str, str]) -> set[tuple[str, str | None]]:
+        target = Target("mvc", "spring-boot", "react", "postgresql", "aws", versions)
+        return {(p.code, p.subject) for p in evaluate(catalog, Request("modernization", ("cobol",), target)).problems}
+
+    assert codes({"backend": "3.5", "frontend": "19"}) == set()
+    assert ("unknown_target_version", "backend:spring-boot:2.7") in codes({"backend": "2.7"})
+    assert ("target_version_not_available", "frontend:react:18") in codes({"frontend": "18"})
+    spring = catalog.target_option("backend", "spring-boot")
+    assert spring is not None
+    assert [v.key for v in spring.versions if v.default] == ["3.5"]
+
+
 def test_invalid_requests_are_problems_not_crashes(catalog: Catalog) -> None:
     request = Request("modernization", ("figma", "zos-assembler"), Target("mvc", "cobol", "react", "postgresql", "aws"))
     codes = {(p.code, p.subject) for p in evaluate(catalog, request).problems}

@@ -341,3 +341,24 @@ async def test_a_project_can_extend_an_existing_application(
     assert res.json()["flow"] == "extendExisting"
     figma = api.post("/api/v1/projects:compose", json={**request, "sources": ["figma"]}, headers=headers)
     assert {"code": "unknown_source", "subject": "figma"} in figma.json()["problems"]
+
+
+async def test_a_project_keeps_the_versions_it_chose_and_rejects_a_planned_one(
+    api: TestClient, fga: OpenFga, app_engine: AsyncEngine, world: World
+) -> None:
+    await reconcile(app_engine, fga)
+    headers = sign_in(api, world.a_user)
+    catalog = api.get("/api/v1/catalog", headers=headers).json()
+    spring = next(o for o in catalog["targets"] if o["axis"] == "backend" and o["key"] == "spring-boot")
+    assert [v["key"] for v in spring["versions"] if v["default"]] == ["3.5"]
+    sybase = next(o for o in catalog["sources"] if o["key"] == "sybase-sp")
+    assert [v["key"] for v in sybase["versions"]] == ["16.0", "15.7"]
+    body = new_project(target={**TARGET, "versions": {"backend": "3.5"}}, name=f"Versions {uuid.uuid4().hex[:8]}")
+    created = api.post("/api/v1/projects", json=body, headers=headers)
+    assert created.status_code == 201, created.text
+    assert created.json()["target"]["versions"] == {"backend": "3.5"}
+    planned = api.post("/api/v1/projects:compose",
+                       json={"flow": "modernization", "sources": ["cobol"],
+                             "target": {**TARGET, "versions": {"frontend": "21"}}},
+                       headers=headers)  # fmt: skip
+    assert {"code": "target_version_not_available", "subject": "frontend:angular:21"} in planned.json()["problems"]

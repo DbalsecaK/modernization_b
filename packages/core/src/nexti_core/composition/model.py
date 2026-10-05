@@ -31,12 +31,24 @@ def _axes(value: Any) -> Mapping[str, frozenset[str]]:
 
 
 @dataclass(frozen=True)
+class Version:
+    """A version a project may choose for an option (ADR-0037): `certified` ones are pinned by the pack and its
+    sandbox image; `planned` ones are listed but not selectable yet."""
+
+    key: str
+    name: str
+    level: str | None = None
+    default: bool = False
+
+
+@dataclass(frozen=True)
 class Target:
     architecture: str
     backend: str
     frontend: str
     database: str
     cloud: str
+    versions: Mapping[str, str] = field(default_factory=dict, compare=False, hash=False)  # axis -> version key
 
     def get(self, axis: str) -> str:
         value: str = getattr(self, axis)
@@ -209,6 +221,7 @@ class SourceOption:
     flows: tuple[str, ...]  # the flows that offer it: a legacy technology serves Flow 1 and Flow 4
     adapter: str | None
     required_skills: tuple[str, ...]
+    versions: tuple[Version, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -218,6 +231,10 @@ class TargetOption:
     name: str
     level: str | None
     wave: int | None
+    versions: tuple[Version, ...] = ()
+
+    def version(self, key: str) -> Version | None:
+        return next((v for v in self.versions if v.key == key), None)
 
 
 @dataclass(frozen=True)

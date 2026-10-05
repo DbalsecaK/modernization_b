@@ -42,5 +42,6 @@ reemplaza y se marca el anterior como "Reemplazado por ADR-NNNN".
 | [0034](0034-reintento-desde-la-fase-fallida.md) | Reintento desde la fase fallida y verificación por código que no pierde trabajo | Aceptada |
 | [0035](0035-reintento-por-fase-y-mascaras-del-diseno.md) | Reintento desde una fase elegida y máscaras del diseño verificadas contra las reglas | Aceptada |
 | [0036](0036-suite-de-caracterizacion-por-piezas.md) | La suite de caracterización en piezas acotadas | Aceptada |
+| [0037](0037-versiones-por-eje.md) | Versiones por eje en el catálogo y en el proyecto | Aceptada |
 
 Plantilla: contexto, decisión, alternativas consideradas, consecuencias y cómo se valida.

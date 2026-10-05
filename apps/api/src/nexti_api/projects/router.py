@@ -70,9 +70,11 @@ class TargetIn(ApiModel):
     frontend: Key
     database: Key
     cloud: Key
+    versions: dict[str, Key] = Field(default_factory=dict, description="axis -> version key (ADR-0037)")
 
     def to_target(self) -> Target:
-        return Target(self.architecture, self.backend, self.frontend, self.database, self.cloud)
+        return Target(self.architecture, self.backend, self.frontend, self.database, self.cloud,
+                      {k: v for k, v in self.versions.items() if v})  # fmt: skip
 
 
 class ComposeIn(ApiModel):
@@ -172,6 +174,7 @@ class TargetOut(ApiModel):
     frontend: str
     database: str
     cloud: str
+    versions: dict[str, str] = Field(default_factory=dict)
 
 
 class ProjectOut(ApiModel):
