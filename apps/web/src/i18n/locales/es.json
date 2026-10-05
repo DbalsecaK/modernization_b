@@ -1255,7 +1255,9 @@
       "strategy": "Estrategia de migración",
       "artifact": "Artefacto de despliegue",
       "practices": "Prácticas de código",
-      "practicesHint": "Orientativas: se le indican al desarrollador y al revisor; las herramientas verifican lo que pueden."
+      "practicesHint": "Orientativas: se le indican al desarrollador y al revisor; las herramientas verifican lo que pueden.",
+      "pack_profile": "Perfil de pack",
+      "none": "Ninguno"
     }
   },
   "compat": {
@@ -1645,6 +1647,27 @@
       "defaultDescription": "Un lenguaje de programación legado",
       "experimentalNotice": "Los adaptadores declarados son experimentales: inventarían, clasifican y extraen reglas, pero no hay motor para ejecutar el legado, así que un veredicto no pasa de PARTLY PROVEN.",
       "experimental": "Experimental"
+    },
+    "packProfiles": {
+      "title": "Perfiles de pack de tu equipo",
+      "hint": "Cómo quieres el código generado: una raíz de paquete que el diseño debe respetar y convenciones que se les indican a los agentes. El pack, su imagen y su certificación siguen siendo de la plataforma.",
+      "create": "Nuevo perfil de pack",
+      "drawerHint": "Un perfil es dato del proyecto, auditable; nunca un prompt pegado a mano.",
+      "name": "Nombre",
+      "key": "Clave",
+      "keyHint": "Minúsculas, dígitos y guiones.",
+      "backend": "Pack de backend",
+      "anyBackend": "Cualquier backend",
+      "packageRoot": "Raíz de paquete",
+      "packageRootHint": "p. ej. com.andesbank: el paquete base del diseño debe empezar por ella (lo verifica el código).",
+      "conventions": "Convenciones",
+      "conventionsHint": "Se le indican al arquitecto, al desarrollador y al revisor junto con la pila del proyecto.",
+      "notice": "Dependencias, frameworks e imágenes no son parte de un perfil: una tecnología de destino nueva es un pack de la plataforma con su imagen y su aceptación grabada.",
+      "saved": "Perfil {{name}} guardado.",
+      "delete": "Borrar perfil",
+      "confirmDelete": "¿Borrar el perfil {{name}}? Los proyectos que lo eligieron conservan su configuración.",
+      "empty": "Todavía no hay perfiles.",
+      "newPackPath": "Un backend, frontend o base de datos nuevo es un pack de la plataforma: plantillas, una imagen de sandbox con sus dependencias, un arnés de equivalencia y una aceptación grabada (spec 8.7). Las versiones y los perfiles son lo que un equipo configura por sí mismo."
     }
   },
   "roles": {

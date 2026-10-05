@@ -60,6 +60,20 @@ async def load_run(engine: AsyncEngine, run_id: uuid.UUID, tenant_id: uuid.UUID)
             .mappings()
             .all()
         )
+        preferences = (run["target"] or {}).get("preferences") or {}
+        profile_key = preferences.get("pack_profile") if isinstance(preferences, dict) else None
+        profile = None
+        if profile_key:  # the tenant's pack profile (ADR-0040), under RLS of the connection
+            profile = (
+                (
+                    await conn.execute(
+                        text("SELECT name, package_root, conventions FROM tenant_pack_profile WHERE key = :k"),
+                        {"k": str(profile_key)},
+                    )
+                )
+                .mappings()
+                .one_or_none()
+            )
     flow = next((f for f in flows(core_data()) if f.key == run["flow"]), None)
     if flow is None:
         raise RunNotFoundError(f"unknown flow {run['flow']}")
@@ -75,7 +89,16 @@ async def load_run(engine: AsyncEngine, run_id: uuid.UUID, tenant_id: uuid.UUID)
         max_iterations=run["max_iterations"],
         agents=tuple(AgentSpec(a["key"], a["name"], tuple(a["phases"]), a["mandatory"]) for a in agents),
         options=dict(run["options"] or {}),
-        target=flat_target(run["target"] or {}),
+        target=flat_target(run["target"] or {})
+        | (
+            {
+                "pack_profile_name": str(profile["name"]),
+                "package_root": str(profile["package_root"] or ""),
+                "pack_conventions": str(profile["conventions"] or ""),
+            }
+            if profile
+            else {}
+        ),
     )
     return LoadedRun(
         context=context,

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { TenantAdapters } from './AdapterStudio'
+import { PackProfiles } from './PackProfiles'
 import { can, useMe } from '@/api/session'
 import { useTab } from '@/lib/useTab'
 import { useCatalog, useSkill, type Catalog, type CatalogSkill } from '@/api/projects'
@@ -211,32 +212,39 @@ function Adapters({ catalog }: { catalog: Catalog }) {
 
 function Packs({ catalog }: { catalog: Catalog }) {
   const { t } = useTranslation()
+  const me = useMe()
   return (
-    <div className="grid gap-6 lg:grid-cols-2">
-      {(['architecture', 'backend', 'frontend', 'database', 'cloud'] as const).map((axis) => (
-        <Card key={axis}>
-          <CardHeader title={t(`target.${axis}`)} />
-          <CardBody className="space-y-2">
-            {catalog.targets
-              .filter((p) => p.axis === axis)
-              .map((p) => (
-                <div key={p.key} className="flex items-center gap-3 text-sm">
-                  <span className="flex-1 text-text">{p.name}</span>
-                  {p.wave != null && <span className="text-xs text-muted">{t('catalog.wave', { wave: p.wave })}</span>}
-                  {p.level && <LevelBadge level={p.level as 'certified' | 'assisted' | 'experimental'} />}
-                  {(p.versions ?? []).length > 0 && (
-                    <div className="mt-1 text-xs text-muted">
-                      {t('catalog.versions')}:{' '}
-                      {(p.versions ?? [])
-                        .map((v) => `${v.name}${v.level === 'planned' ? ` (${t('catalog.planned')})` : ''}`)
-                        .join(' · ')}
-                    </div>
-                  )}
-                </div>
-              ))}
-          </CardBody>
-        </Card>
-      ))}
+    <div className="space-y-6">
+      {can(me, 'models.configure') && <PackProfiles catalog={catalog} />}
+      <p className="text-xs text-muted">{t('catalog.packProfiles.newPackPath')}</p>
+      <div className="grid gap-6 lg:grid-cols-2">
+        {(['architecture', 'backend', 'frontend', 'database', 'cloud'] as const).map((axis) => (
+          <Card key={axis}>
+            <CardHeader title={t(`target.${axis}`)} />
+            <CardBody className="space-y-2">
+              {catalog.targets
+                .filter((p) => p.axis === axis)
+                .map((p) => (
+                  <div key={p.key} className="flex items-center gap-3 text-sm">
+                    <span className="flex-1 text-text">{p.name}</span>
+                    {p.wave != null && (
+                      <span className="text-xs text-muted">{t('catalog.wave', { wave: p.wave })}</span>
+                    )}
+                    {p.level && <LevelBadge level={p.level as 'certified' | 'assisted' | 'experimental'} />}
+                    {(p.versions ?? []).length > 0 && (
+                      <div className="mt-1 text-xs text-muted">
+                        {t('catalog.versions')}:{' '}
+                        {(p.versions ?? [])
+                          .map((v) => `${v.name}${v.level === 'planned' ? ` (${t('catalog.planned')})` : ''}`)
+                          .join(' · ')}
+                      </div>
+                    )}
+                  </div>
+                ))}
+            </CardBody>
+          </Card>
+        ))}
+      </div>
     </div>
   )
 }

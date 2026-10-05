@@ -8,7 +8,18 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from nexti_api import dashboard, health, license_gate, me, operations, topbar, usage
-from nexti_api.admin import adapters, assignments, audit_log, identity, integrations, invitations, roles, tenants, users
+from nexti_api.admin import (
+    adapters,
+    assignments,
+    audit_log,
+    identity,
+    integrations,
+    invitations,
+    pack_profiles,
+    roles,
+    tenants,
+    users,
+)
 from nexti_api.ai import assignments as ai_assignments
 from nexti_api.ai import catalog as ai_catalog
 from nexti_api.ai import connections as ai_connections
@@ -203,6 +214,7 @@ def create_app(settings: Settings | None = None, health_checks: dict[str, health
         integrations.router,
         identity.router,
         adapters.router,
+        pack_profiles.router,
     ):
         app.include_router(admin_router)
     scim.install(app)  # /scim/v2 (bearer of the tenant) and its administration (ADR-0031)

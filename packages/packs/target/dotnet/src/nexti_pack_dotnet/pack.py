@@ -2,6 +2,7 @@
 
 import re
 from collections.abc import Mapping, Sequence
+from typing import Any
 
 from nexti_core.spec.characterization import GoldenMaster, Scalar
 from nexti_core.spec.design import Design, Port, UseCase
@@ -30,6 +31,10 @@ class DotnetPack:
     image = IMAGE
     developer_prompt = "backend-dev-dotnet"
     tester_prompt = "test-engineer-dotnet"
+
+    def configured(self, target: Mapping[str, Any]) -> "DotnetPack":
+        """The pack has one version per image (ADR-0040): the target changes nothing."""
+        return self
 
     def skeleton(self, design: Design) -> dict[str, str]:
         return skeleton(design)

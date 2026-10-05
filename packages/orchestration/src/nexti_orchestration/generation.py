@@ -201,7 +201,7 @@ def mask_problems(design: Design, rules: Sequence[Rule], files: Sequence[SourceF
 
 def design_problems(
     design: Design, rules: Sequence[Rule], names: set[str] | None = None, *, hints: bool = False,
-    files: Sequence[SourceFile] = (), written: set[str] | None = None,
+    files: Sequence[SourceFile] = (), written: set[str] | None = None, package_root: str | None = None,
 ) -> list[str]:  # fmt: skip
     """What is wrong with a design, for the model to correct. With `hints` (guided extraction, ADR-0033) an invented
     legacy name comes with the closest real names, and the masks are checked against the rules (ADR-0035)."""
@@ -237,6 +237,9 @@ def design_problems(
             problems.append(f"closest names in the legacy code: {closest(invented, names)}")
     if hints:
         problems += mask_problems(design, rules, files, written or set())
+        root = (package_root or "").strip().lower()
+        if root and not (design.base_package == root or design.base_package.startswith(root + ".")):
+            problems.append(f"base_package must be {root} or start with {root}. (the pack profile of the project)")
     return problems
 
 
@@ -263,6 +266,7 @@ async def propose_design(
     caller: ModelCaller, rules: Sequence[Rule], inventory: str, *, max_iterations: int = 3,
     names: set[str] | None = None, source: str = "", system: str = ARCHITECT, label: str = "Inventory",
     hints: bool = False, files: Sequence[SourceFile] = (), written: set[str] | None = None, guidance: str = "",
+    package_root: str | None = None,
 ) -> tuple[Design, list[Usage]]:  # fmt: skip
     """The design from the rules. Flow 1 gives the inventory of the legacy; Flow 2 gives the approved screens and
     stories (`label`) and its own prompt (`system`), with no legacy to map."""
@@ -285,7 +289,8 @@ async def propose_design(
         try:
             data = parse_json(reply.content)
             design = Design.model_validate(data)
-            problems = design_problems(design, rules, names, hints=hints, files=files, written=written)
+            problems = design_problems(design, rules, names, hints=hints, files=files, written=written,
+                                       package_root=package_root)  # fmt: skip
             if problems:
                 raise ReplyError("\n".join(problems))
             return design, usage
@@ -325,7 +330,7 @@ class GenerationPhases:
                         max_iterations=ctx.run.max_iterations, names=legacy_names(files),
                         source="\n\n".join(f"// {f.path}\n{f.text}" for f in files),
                         hints=guided_enabled(ctx.run.options), files=files, written=written_tables(files),
-                        guidance=stack_guidance(ctx.run.target),
+                        guidance=stack_guidance(ctx.run.target), package_root=ctx.run.target.get("package_root"),
                     )  # fmt: skip
             except ReplyError as exc:
                 raise PhaseFailedError(str(exc)[:1500]) from exc
@@ -365,6 +370,7 @@ class GenerationPhases:
         if pack is None:
             backend = ctx.run.target.get("backend")
             raise PhaseUnavailableError(f"The {backend} pack is not available yet: generation waits for it")
+        pack = pack.configured(ctx.run.target)  # the chosen version, when the pack supports it (ADR-0040)
         flavour = frontend.flavour_of(ctx.run.target) if hasattr(self.port, "load_screens") else None
         design = await self.port.load_design()
         if design is None:

@@ -733,6 +733,22 @@ class TenantAdapter(Base):
     updated_at: Mapped[datetime] = _now()
 
 
+# A pack profile of the tenant (migration 0024, ADR-0040): a package root and conventions, never a pack.
+class TenantPackProfile(Base):
+    __tablename__ = "tenant_pack_profile"
+    __table_args__ = (UniqueConstraint("tenant_id", "key"),)
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    tenant_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("tenant.id", ondelete="CASCADE"), nullable=False)
+    key: Mapped[str] = mapped_column(Text, nullable=False)
+    name: Mapped[str] = mapped_column(Text, nullable=False)
+    backend: Mapped[str | None] = mapped_column(Text)
+    package_root: Mapped[str | None] = mapped_column(Text)
+    conventions: Mapped[str] = mapped_column(Text, nullable=False, server_default="")
+    created_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("app_user.id"))
+    created_at: Mapped[datetime] = _now()
+    updated_at: Mapped[datetime] = _now()
+
+
 # The backlog of a project in Jira or Azure DevOps (migration 0012, ADR-0019).
 class ProjectBacklog(Base):
     __tablename__ = "project_backlog"
