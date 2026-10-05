@@ -66,13 +66,43 @@ def format_problems(exc: ValidationError, limit: int = 8) -> str:
     return "; ".join(lines) + (f"; and {more} more" if more > 0 else "") + f". {FORMAT}"
 
 
-def parse_suite(content: str, *, readable: bool = False) -> Suite:
-    """The suite of the reply. With `readable` (guided extraction, ADR-0033) the format errors go back in words
-    instead of the validator's raw records."""
+KEY_MARKERS = ("key", "primary_key", "primaryKey", "pk", "is_key", "isKey")
+
+
+def table_keys_from_columns(data: Any) -> Any:
+    """A key written as a marker on each column (`"key": true`, `"primary_key": true`, the way database tools show
+    it) means the table's key: the marked columns, in order, join the table's list. Other fields stay as they are."""
+    tables = data.get("schema", {}).get("tables") if isinstance(data, dict) else None
+    if not isinstance(tables, list):
+        return data
+    fixed = []
+    for table in tables:
+        if not isinstance(table, dict) or not isinstance(table.get("columns"), list):
+            fixed.append(table)
+            continue
+        marked: list[str] = []
+        columns = []
+        for item in table["columns"]:
+            if isinstance(item, dict):
+                if any(item.get(k) is True for k in KEY_MARKERS) and isinstance(item.get("name"), str):
+                    marked.append(item["name"])
+                item = {k: v for k, v in item.items() if k not in KEY_MARKERS}
+            columns.append(item)
+        key = list(table["key"]) if isinstance(table.get("key"), list) else []
+        key += [m for m in marked if m.lower() not in {k.lower() for k in key}]
+        fixed.append({**table, "columns": columns, "key": key})
+    return {**data, "schema": {**data["schema"], "tables": fixed}}
+
+
+def parse_suite(content: str, *, guided: bool = False) -> Suite:
+    """The suite of the reply. With `guided` (guided extraction, ADR-0033) a key marked on the columns is read as
+    the table's key, and the format errors go back in words instead of the validator's raw records. Without it the
+    parse is the strict one the recordings were made with."""
+    data = parse_json(content)
     try:
-        return Suite.model_validate(parse_json(content))
+        return Suite.model_validate(table_keys_from_columns(data) if guided else data)
     except ValidationError as exc:
-        detail = format_problems(exc) if readable else str(exc.errors()[:5])
+        detail = format_problems(exc) if guided else str(exc.errors()[:5])
         raise ReplyError(f"the suite does not follow the format: {detail}") from exc
 
 
@@ -121,7 +151,7 @@ class CharacterizationPhases:
                 messages.append({"role": "user", "content": f"The suite could not be used:\n{feedback}\nFix it."})
             reply = await self.port.models.complete(TESTER, "characterization", messages, iteration=iteration)
             try:
-                suite = parse_suite(reply.content, readable=guided_enabled(ctx.run.options))
+                suite = parse_suite(reply.content, guided=guided_enabled(ctx.run.options))
             except ReplyError as exc:  # verified below: the reply goes back with the reason
                 return Attempt({"error": str(exc)[:3000]}, "suite with format errors", reply.usage)
             reference = await self.port.save_file("characterization/suite.json", suite.model_dump_json(by_alias=True))

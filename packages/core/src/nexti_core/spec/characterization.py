@@ -32,9 +32,6 @@ class CharacterizationModel(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
 
-KEY_MARKERS = ("key", "primary_key", "primaryKey", "pk", "is_key", "isKey")
-
-
 class Column(CharacterizationModel):
     name: Identifier
     type: str = Field(min_length=1, max_length=60, description="The legacy type as written, e.g. money, char(3)")
@@ -47,27 +44,6 @@ class Table(CharacterizationModel):
     name: Identifier
     columns: list[Column] = Field(min_length=1)
     key: list[str] = Field(default_factory=list)
-
-    @model_validator(mode="before")
-    @classmethod
-    def key_marked_on_columns(cls, data: object) -> object:
-        """A key written as a marker on each column (`"key": true`, `"primary_key": true`, the way database tools
-        show it) means the table's key: the marked columns, in order, join the table's list."""
-        if not isinstance(data, dict) or not isinstance(data.get("columns"), list):
-            return data
-        marked: list[str] = []
-        columns = []
-        for item in data["columns"]:
-            if not isinstance(item, dict):
-                columns.append(item)
-                continue
-            rest = {k: v for k, v in item.items() if k not in KEY_MARKERS}
-            if any(item.get(k) is True for k in KEY_MARKERS) and isinstance(item.get("name"), str):
-                marked.append(item["name"])
-            columns.append(rest)
-        key = list(data.get("key") or []) if isinstance(data.get("key"), list) else []
-        key += [m for m in marked if m.lower() not in {k.lower() for k in key}]
-        return {**data, "columns": columns, "key": key}
 
     @model_validator(mode="after")
     def known_key(self) -> "Table":
