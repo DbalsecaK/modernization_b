@@ -32,6 +32,10 @@ lanzar una corrida nueva y repetir inventario, extracción, historias, C1 y el g
   a invocar el grafo con `resume_from` y el nodo inicial salta a la fase elegida con el mismo reinicio (filas a
   pendiente, compuertas pedidas de nuevo, identificadores nuevos). Las corridas terminadas antes de este cambio se
   reintentan igual.
+- (precisión del 2026-10-05, migración 0025) lo que una fase rehecha produce **reemplaza** lo de su intento
+  anterior: `generated_artifact` registra la fase que escribió cada archivo, el reinicio borra los de las fases
+  rehechas y el guardado actualiza la fila cuando la ruta se repite. Los veredictos no se reescriben: cada
+  verificación añade su intento (`attempt`) con su propio paquete de evidencia y el más reciente es el del módulo.
 
 ### Máscaras del diseño verificadas contra las reglas (extracción guiada)
 
@@ -40,8 +44,10 @@ Con la opción `guided_extraction`, el pedido al arquitecto lleva las restriccio
 - una máscara `tables:` se rechaza cuando una regla aprobada cita líneas que leen o escriben esa tabla;
 - un programa de `infrastructure` se rechaza cuando una regla cita líneas que lo llaman: es negocio y necesita un
   puerto con `legacy_program`;
-- toda tabla que el programa escribe (según el inventario) necesita una entidad con `legacy_table` o una máscara
-  con razón;
+- toda tabla que el programa escribe (según el inventario) necesita una entidad con `legacy_table`; desde el
+  2026-10-05 **sin máscara posible** sobre ella ni sobre sus columnas: el golden master compara lo escrito (11.3) y
+  una máscara ahí garantiza la diferencia (una corrida real enmascaró "con razón" la tabla de detalle y el destino
+  no dejó la fila que el legado sí deja);
 - (precisión del 2026-10-05) una máscara `tables:` se rechaza también cuando el programa **lee** esa tabla en las
   40 líneas anteriores a una línea que una regla cita: los valores que carga alimentan la regla (el `SELECT` de
   configuración que precede al `IF` que la regla cita). Una corrida real había enmascarado la tabla de

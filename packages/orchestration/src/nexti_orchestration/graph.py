@@ -24,6 +24,7 @@ from langgraph.graph import END, START, StateGraph
 from langgraph.graph.state import CompiledStateGraph
 from langgraph.types import Command, interrupt
 
+from nexti_core.run_phase import CURRENT_PHASE
 from nexti_orchestration.context import Memo, NeedsAnswer, PhaseContext, RunStoppedError
 from nexti_orchestration.model import PhaseFailedError, PhaseResult, PhaseSpec, PhaseUnavailableError, RunContext
 from nexti_orchestration.store import RunStore
@@ -110,6 +111,7 @@ def build_graph(
                 return Command(goto=END)
             journals = dict(state.get("journal") or {})
             journal = dict(journals.get(phase.key) or {})
+            CURRENT_PHASE.set(phase.key)  # the stores tag what this phase produces (ADR-0035)
             if await store.phase_started(phase.key):
                 await store.event("phaseStarted", "running", f"Phase {phase.key} started", phase=phase.key)
             await store.run_running(phase.key)

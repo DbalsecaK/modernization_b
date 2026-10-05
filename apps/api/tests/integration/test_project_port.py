@@ -217,6 +217,12 @@ async def test_the_port_keeps_designs_drafts_and_the_golden_master_as_references
         generated, traced = await port.load_generated()
         assert generated == {"src/main/java/A.java": "class A {}"}  # the design and the golden master apart
         assert traced == {"src/main/java/A.java": ["RULE-001"]}
+        # A retried phase writes the same path again (ADR-0035): the row follows the new content.
+        path = "src/main/java/A.java"
+        await port.save_artifacts({path: "class A { int v = 2; }"}, {path: "domain"}, {path: ["RULE-002"]})
+        generated, traced = await port.load_generated()
+        assert (generated, traced) == ({"src/main/java/A.java": "class A { int v = 2; }"},
+                                       {"src/main/java/A.java": ["RULE-002"]})  # fmt: skip
         verdict = compute("PayOrder", [checks.tests_ran(7, 0, True)], ["a note"])
         pack_key = await port.save_verdict(verdict, b"PK-proof")
         assert pack_key.endswith("/verification/PayOrder/proof-pack.zip")
@@ -226,6 +232,12 @@ async def test_the_port_keeps_designs_drafts_and_the_golden_master_as_references
         assert row["verdict"] == "PARTLY PROVEN"
         assert row["checks"][0]["key"] == "tests_ran"
         assert row["not_proven"][0] == "a note"
+        # A retried verification keeps the earlier verdict as evidence and adds its own attempt and proof pack.
+        again = await port.save_verdict(compute("PayOrder", [checks.tests_ran(9, 0, True)], []), b"PK-proof-2")
+        assert again.endswith("/verification/PayOrder/attempt-2/proof-pack.zip")
+        rows = await fetch(owner_engine, "SELECT attempt, proof_pack_key FROM verdict WHERE run_id = :r "
+                                         "ORDER BY attempt", r=run_id)  # fmt: skip
+        assert [(r["attempt"], r["proof_pack_key"]) for r in rows] == [(1, pack_key), (2, again)]
         spec_file = fixtures / "reference_spec.json"
         await port.save_evaluation(evaluate(load_reference(spec_file), []))
         (stored,) = await fetch(owner_engine, "SELECT reference, reference_sha256, metrics FROM evaluation "

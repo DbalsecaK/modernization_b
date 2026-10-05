@@ -1081,13 +1081,14 @@ class GeneratedArtifact(Base):
     sha256: Mapped[str] = mapped_column(Text, nullable=False)
     size_bytes: Mapped[int] = mapped_column(BigInteger, nullable=False)
     rules: Mapped[list[Any]] = mapped_column(JSONB, nullable=False, server_default=text("'[]'::jsonb"))
+    phase: Mapped[str | None] = mapped_column(Text)  # the phase that wrote it; a retry replaces its files (0025)
     created_at: Mapped[datetime] = _now()
 
 
 class Verdict(Base):
     __tablename__ = "verdict"
     __table_args__ = (
-        UniqueConstraint("run_id", "module"),
+        UniqueConstraint("run_id", "module", "attempt"),
         ForeignKeyConstraint(["run_id", "tenant_id"], ["run.id", "run.tenant_id"], ondelete="CASCADE"),
     )
     id: Mapped[uuid.UUID] = _uuid_pk()
@@ -1099,6 +1100,7 @@ class Verdict(Base):
     checks: Mapped[list[Any]] = mapped_column(JSONB, nullable=False)
     not_proven: Mapped[list[Any]] = mapped_column(JSONB, nullable=False, server_default=text("'[]'::jsonb"))
     proof_pack_key: Mapped[str | None] = mapped_column(Text)
+    attempt: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("1"))  # per retry (0025)
     created_at: Mapped[datetime] = _now()
 
 

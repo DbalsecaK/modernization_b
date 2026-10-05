@@ -120,6 +120,19 @@ def parse_schema(content: str) -> tuple[str, Schema]:
         raise ReplyError(f"the schema does not follow the format: {format_problems(exc)}") from exc
 
 
+def case_name(raw: Any) -> Any:
+    """The name a model wrote, in the form a case name takes (lowercase letters, digits and underscores, starting
+    with a letter): `Batch-Flag COBIS (S)` becomes `batch_flag_cobis_s`. Only the guided suite (ADR-0036) applies
+    it, before validation: a wrong spelling of the name is not a reason to ask for the cases again. Anything that is
+    not a string is left for the validator to reject."""
+    if not isinstance(raw, str):
+        return raw
+    slug = re.sub(r"_+", "_", re.sub(r"[^a-z0-9_]+", "_", raw.strip().lower())).strip("_")
+    if slug and not slug[0].isalpha():
+        slug = f"case_{slug}"
+    return slug[:80] if len(slug) >= 3 else raw
+
+
 def parse_cases(content: str) -> list[Case]:
     """A piece of cases of a guided suite."""
     data = parse_json(content)
@@ -127,7 +140,10 @@ def parse_cases(content: str) -> list[Case]:
     if not isinstance(items, list) or not items:
         raise ReplyError('the answer must be {"cases": [...]} with at least one case')
     try:
-        return [Case.model_validate(item) for item in items]
+        return [
+            Case.model_validate({**item, "name": case_name(item.get("name"))} if isinstance(item, dict) else item)
+            for item in items
+        ]
     except ValidationError as exc:
         raise ReplyError(f"the cases do not follow the format: {format_problems(exc)}") from exc
 
