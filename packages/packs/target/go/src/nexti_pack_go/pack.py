@@ -41,6 +41,10 @@ class GoPack:
     developer_prompt = "backend-dev-go"
     tester_prompt = "test-engineer-go"
 
+    def configured(self, target: Mapping[str, Any]) -> "GoPack":
+        """The pack has one version per image (ADR-0040): the target changes nothing."""
+        return self
+
     def skeleton(self, design: Design) -> dict[str, str]:
         return skeleton(design)
 

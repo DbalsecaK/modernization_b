@@ -462,32 +462,39 @@ function Wizard({ catalog }: { catalog: Catalog }) {
                   })}
                 </div>
                 <div className="mt-4 grid gap-4 sm:grid-cols-2">
-                  {(['strategy', 'artifact'] as const).map((group) => (
-                    <Field key={group} label={t(`wizard.preferences.${group}`)}>
-                      <Select
-                        value={
-                          (target.preferences?.[group] as string | undefined) ??
-                          (catalog.preferences ?? []).find((p) => p.group === group && p.default)?.key ??
-                          ''
-                        }
-                        onChange={(e) => {
-                          setTarget({
-                            ...target,
-                            preferences: { ...(target.preferences ?? {}), [group]: e.target.value },
-                          })
-                          resetComposition()
-                        }}
-                      >
-                        {(catalog.preferences ?? [])
-                          .filter((p) => p.group === group)
-                          .map((p) => (
-                            <option key={p.key} value={p.key}>
-                              {p.name}
-                            </option>
-                          ))}
-                      </Select>
-                    </Field>
-                  ))}
+                  {Array.from(new Set((catalog.preferences ?? []).map((p) => p.group)))
+                    .filter((group) => group !== 'practices')
+                    .map((group) => (
+                      <Field key={group} label={t(`wizard.preferences.${group}`, { defaultValue: group })}>
+                        <Select
+                          value={
+                            (target.preferences?.[group] as string | undefined) ??
+                            (catalog.preferences ?? []).find((p) => p.group === group && p.default)?.key ??
+                            ''
+                          }
+                          onChange={(e) => {
+                            const { [group]: _dropped, ...rest } = target.preferences ?? {}
+                            void _dropped
+                            setTarget({
+                              ...target,
+                              preferences: e.target.value ? { ...rest, [group]: e.target.value } : rest,
+                            })
+                            resetComposition()
+                          }}
+                        >
+                          {!(catalog.preferences ?? []).some((p) => p.group === group && p.default) && (
+                            <option value="">{t('wizard.preferences.none')}</option>
+                          )}
+                          {(catalog.preferences ?? [])
+                            .filter((p) => p.group === group)
+                            .map((p) => (
+                              <option key={p.key} value={p.key}>
+                                {p.name}
+                              </option>
+                            ))}
+                        </Select>
+                      </Field>
+                    ))}
                 </div>
                 <Field label={t('wizard.preferences.practices')} hint={t('wizard.preferences.practicesHint')}>
                   <div className="flex flex-wrap gap-2">

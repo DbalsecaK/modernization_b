@@ -16,6 +16,8 @@ from nexti_core.spec import neutral_types as nt
 from nexti_pack_spring_boot.design import Design, Entity, FieldSpec, Port, UseCase
 
 SPRING_BOOT_VERSION = "3.5.6"
+# The versions the pack and its sandbox image support, by the catalog's version key (ADR-0037, ADR-0040).
+SPRING_BOOT_VERSIONS = {"3.5": SPRING_BOOT_VERSION}
 
 
 def java_type(neutral: str) -> str:
@@ -179,7 +181,7 @@ def schema_file(design: Design) -> tuple[str, str]:
     return "src/main/resources/db/schema.sql", "\n\n".join(statements) + "\n"
 
 
-def pom_file(design: Design) -> tuple[str, str]:
+def pom_file(design: Design, spring_boot_version: str = SPRING_BOOT_VERSION) -> tuple[str, str]:
     artifact = design.context.replace("_", "-")
     return (
         "pom.xml",
@@ -190,7 +192,7 @@ def pom_file(design: Design) -> tuple[str, str]:
   <parent>
     <groupId>org.springframework.boot</groupId>
     <artifactId>spring-boot-starter-parent</artifactId>
-    <version>{SPRING_BOOT_VERSION}</version>
+    <version>{spring_boot_version}</version>
   </parent>
   <groupId>{design.base_package.rsplit(".", 1)[0]}</groupId>
   <artifactId>{artifact}</artifactId>
@@ -223,9 +225,11 @@ def adapter_path(design: Design, port: Port) -> str:
     return _path(f"{design.base_package}.adapters.out.jdbc", f"Jdbc{port.name}")
 
 
-def skeleton(design: Design) -> dict[str, str]:
+def skeleton(design: Design, spring_boot_version: str = SPRING_BOOT_VERSION) -> dict[str, str]:
     """The deterministic files by layer: contracts, domain (model, ports, error), adapters (REST), orchestration."""
-    files: dict[str, str] = dict([pom_file(design), application_file(design), error_file(design), schema_file(design)])
+    files: dict[str, str] = dict(
+        [pom_file(design, spring_boot_version), application_file(design), error_file(design), schema_file(design)]
+    )
     for entity in design.entities:
         files.update([entity_file(design, entity)])
     for port in design.ports:

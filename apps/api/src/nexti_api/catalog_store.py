@@ -25,6 +25,7 @@ from nexti_core.db.models import (
     SourceOptionDefinition,
     TargetOptionDefinition,
     TenantAdapter,
+    TenantPackProfile,
 )
 
 
@@ -216,6 +217,7 @@ async def load_catalog(conn: AsyncConnection) -> Catalog:
         .all()
     )
     declared = (await conn.execute(select(TenantAdapter).order_by(TenantAdapter.created_at))).mappings().all()
+    profiles = (await conn.execute(select(TenantPackProfile).order_by(TenantPackProfile.created_at))).mappings().all()
     data = dict(core_data())
     data["sources"] = {
         "adapters": [dict(a) for a in adapters] + [
@@ -233,6 +235,7 @@ async def load_catalog(conn: AsyncConnection) -> Catalog:
         ],
     }  # fmt: skip
     data["targets"] = {
+        "preferences": dict((core_data()["targets"] or {}).get("preferences") or {}),
         "axes": {
             axis: [
                 {
@@ -246,8 +249,14 @@ async def load_catalog(conn: AsyncConnection) -> Catalog:
                 if t["axis"] == axis
             ]
             for axis in AXES
-        }
+        },
     }
+    if profiles:  # the tenant's pack profiles are the `pack_profile` preference of its catalog (ADR-0040)
+        targets_data = dict(data["targets"])
+        preferences = dict(targets_data.get("preferences") or {})
+        preferences["pack_profile"] = [{"key": p["key"], "name": p["name"]} for p in profiles]
+        targets_data["preferences"] = preferences
+        data["targets"] = targets_data
     data["compatibility"] = {
         "rules": [{"key": r["key"], "when": r["condition"], "message": r["message"]} for r in rules]
     }

@@ -6234,6 +6234,126 @@
         "title": "OptionVersionOut",
         "type": "object"
       },
+      "PackProfileIn": {
+        "properties": {
+          "backend": {
+            "anyOf": [
+              {
+                "maxLength": 40,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The backend pack it applies to, or any",
+            "title": "Backend"
+          },
+          "conventions": {
+            "default": "",
+            "description": "Told to the architect, developer and reviewer",
+            "maxLength": 4000,
+            "title": "Conventions",
+            "type": "string"
+          },
+          "key": {
+            "pattern": "^[a-z][a-z0-9-]{1,40}$",
+            "title": "Key",
+            "type": "string"
+          },
+          "name": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "packageRoot": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "pattern": "^[a-z][a-z0-9]*(\\.[a-z][a-z0-9]*)*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The design's base package must start with it",
+            "title": "Packageroot"
+          }
+        },
+        "required": [
+          "key",
+          "name"
+        ],
+        "title": "PackProfileIn",
+        "type": "object"
+      },
+      "PackProfileOut": {
+        "properties": {
+          "backend": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Backend"
+          },
+          "conventions": {
+            "title": "Conventions",
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "title": "Createdat",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "packageRoot": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Packageroot"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "title": "Updatedat",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "key",
+          "name",
+          "backend",
+          "packageRoot",
+          "conventions",
+          "createdAt",
+          "updatedAt"
+        ],
+        "title": "PackProfileOut",
+        "type": "object"
+      },
       "PermissionOut": {
         "properties": {
           "description": {
@@ -14035,6 +14155,157 @@
         "summary": "Notifications",
         "tags": [
           "topbar"
+        ]
+      }
+    },
+    "/api/v1/pack-profiles": {
+      "get": {
+        "operationId": "list_profiles_api_v1_pack_profiles_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/PackProfileOut"
+                  },
+                  "title": "Response List Profiles Api V1 Pack Profiles Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Profiles",
+        "tags": [
+          "admin"
+        ]
+      },
+      "post": {
+        "operationId": "create_profile_api_v1_pack_profiles_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PackProfileIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PackProfileOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Profile",
+        "tags": [
+          "admin"
+        ]
+      }
+    },
+    "/api/v1/pack-profiles/{profile_id}": {
+      "delete": {
+        "operationId": "delete_profile_api_v1_pack_profiles__profile_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "profile_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Profile Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Profile",
+        "tags": [
+          "admin"
+        ]
+      },
+      "put": {
+        "operationId": "update_profile_api_v1_pack_profiles__profile_id__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "profile_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Profile Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PackProfileIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PackProfileOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Profile",
+        "tags": [
+          "admin"
         ]
       }
     },

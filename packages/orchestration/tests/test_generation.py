@@ -316,3 +316,34 @@ def test_the_stack_and_the_preferences_become_guidance_only_when_the_run_has_the
     assert "solid:" in text
     assert "tdd:" in text
     assert "unknown" not in text
+    profile = {"backend": "spring-boot", "pack_profile": "bank", "pack_profile_name": "Bank standard",
+               "package_root": "com.andesbank", "pack_conventions": "Money as BigDecimal."}  # fmt: skip
+    with_profile = stack_guidance(profile)
+    assert "Pack profile Bank standard: base package root com.andesbank" in with_profile
+    assert "conventions: Money as BigDecimal." in with_profile
+
+
+def test_the_chosen_version_reaches_the_pack_and_the_profile_root_is_checked() -> None:
+    from nexti_core.spec.design import Design
+    from nexti_core.spec.model import Rule as SpecRule
+    from nexti_orchestration.generation import design_problems
+    from nexti_orchestration.packs import backend_pack
+    from nexti_pack_spring_boot.generate import SPRING_BOOT_VERSION
+
+    pack = backend_pack({"backend": "spring-boot"})
+    assert pack is not None
+    assert pack.configured({"backend_version": "3.5"}) is pack  # the version the pack pins already
+    assert pack.configured({"backend_version": "9.9"}) is pack  # unknown versions change nothing
+    design = Design.model_validate({"context": "x", "base_package": "com.other.pay",
+                                    "use_cases": [{"name": "Uc", "rules": ["RULE-001"]}]})  # fmt: skip
+    assert f"<version>{SPRING_BOOT_VERSION}</version>" in pack.configured({}).skeleton(design)["pom.xml"]
+    rule = SpecRule.model_validate({"id": "RULE-001", "name": "rule name", "category": "validation", "priority": "P1",
+                                    "statement": "a statement long enough",
+                                    "sources": [{"file": "p.sp", "line_start": 1, "line_end": 1}]})  # fmt: skip
+    assert design_problems(design, [rule], package_root="com.andesbank") == []  # not guided: nothing changes
+    found = design_problems(design, [rule], hints=True, package_root="com.andesbank")
+    assert found == [
+        "base_package must be com.andesbank or start with com.andesbank. (the pack profile of the project)"
+    ]
+    ok = design.model_copy(update={"base_package": "com.andesbank.pay"})
+    assert design_problems(ok, [rule], hints=True, package_root="com.andesbank") == []

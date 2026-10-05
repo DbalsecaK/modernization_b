@@ -1255,7 +1255,9 @@
       "strategy": "Migration strategy",
       "artifact": "Deployment artifact",
       "practices": "Coding practices",
-      "practicesHint": "Advisory: the developer and the reviewer are told; tools check what they can."
+      "practicesHint": "Advisory: the developer and the reviewer are told; tools check what they can.",
+      "pack_profile": "Pack profile",
+      "none": "None"
     }
   },
   "compat": {
@@ -1645,6 +1647,27 @@
       "defaultDescription": "A legacy programming language",
       "experimentalNotice": "Declared adapters are experimental: they inventory, classify and extract rules, but there is no engine to run the legacy, so a verdict cannot pass PARTLY PROVEN.",
       "experimental": "Experimental"
+    },
+    "packProfiles": {
+      "title": "Pack profiles of your team",
+      "hint": "How you want the generated code shaped: a package root the design must respect and conventions the agents are told. The pack, its image and its certification stay the platform's.",
+      "create": "New pack profile",
+      "drawerHint": "A profile is data of the project, auditable; never a prompt pasted by hand.",
+      "name": "Name",
+      "key": "Key",
+      "keyHint": "Lowercase letters, digits and dashes.",
+      "backend": "Backend pack",
+      "anyBackend": "Any backend",
+      "packageRoot": "Package root",
+      "packageRootHint": "e.g. com.andesbank: the design's base package must start with it (checked by code).",
+      "conventions": "Conventions",
+      "conventionsHint": "Told to the architect, the developer and the reviewer with the stack of the project.",
+      "notice": "Dependencies, frameworks and images are not part of a profile: a new target technology is a pack of the platform with its image and its recorded acceptance.",
+      "saved": "Profile {{name}} saved.",
+      "delete": "Delete profile",
+      "confirmDelete": "Delete the profile {{name}}? Projects that chose it keep their configuration.",
+      "empty": "No profiles yet.",
+      "newPackPath": "A new backend, frontend or database is a pack of the platform: templates, a sandbox image with its dependencies, an equivalence harness and a recorded acceptance (spec 8.7). Versions and profiles are what a team configures by itself."
     }
   },
   "roles": {

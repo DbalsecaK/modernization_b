@@ -2,6 +2,7 @@
 generate and verify a target without naming the language. The texts sent to the agents are exactly those of M4, so
 its recordings stay valid."""
 
+import copy
 import re
 from collections.abc import Mapping, Sequence
 from typing import Any
@@ -13,7 +14,16 @@ from nexti_pack_spring_boot.build import IMAGE, compile_and_test
 from nexti_pack_spring_boot.canary import Mutation, mutations
 from nexti_pack_spring_boot.design import Design, Port, UseCase
 from nexti_pack_spring_boot.equivalence import run_equivalence
-from nexti_pack_spring_boot.generate import _path, adapter_path, junit_path, layer_of, service_path, skeleton
+from nexti_pack_spring_boot.generate import (
+    SPRING_BOOT_VERSION,
+    SPRING_BOOT_VERSIONS,
+    _path,
+    adapter_path,
+    junit_path,
+    layer_of,
+    service_path,
+    skeleton,
+)
 from nexti_sandbox import Sandbox
 from nexti_sandbox.build import BuildResult
 
@@ -51,9 +61,19 @@ class SpringBootPack:
     image = IMAGE
     developer_prompt = "backend-dev"
     tester_prompt = "test-engineer"
+    spring_boot_version = SPRING_BOOT_VERSION
+
+    def configured(self, target: Mapping[str, Any]) -> "SpringBootPack":
+        """The pack with the Spring Boot version the project chose (ADR-0040), when the pack supports it."""
+        chosen = SPRING_BOOT_VERSIONS.get(str(target.get("backend_version") or ""))
+        if not chosen or chosen == self.spring_boot_version:
+            return self
+        pack = copy.copy(self)
+        pack.spring_boot_version = chosen
+        return pack
 
     def skeleton(self, design: Design) -> dict[str, str]:
-        files = skeleton(design)
+        files = skeleton(design, self.spring_boot_version)
         path, content = wiring(design)
         files[path] = content
         return files

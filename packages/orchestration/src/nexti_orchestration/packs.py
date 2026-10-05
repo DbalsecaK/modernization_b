@@ -80,6 +80,11 @@ class BackendPack(Protocol):
 
     def mutations(self, source: str) -> Sequence[Any]: ...
 
+    def configured(self, target: Mapping[str, Any]) -> "BackendPack":
+        """The pack adjusted to the run's target (ADR-0040): its version pins from `<axis>_version`; itself when
+        the target asks nothing it supports."""
+        ...
+
 
 PACKS: dict[str, BackendPack] = {SPRING_BOOT.name: SPRING_BOOT, QUARKUS.name: QUARKUS, DOTNET.name: DOTNET, GO.name: GO}
 

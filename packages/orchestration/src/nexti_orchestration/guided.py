@@ -347,4 +347,11 @@ def stack_guidance(target: Mapping[str, Any]) -> str:
     practices = [p for p in str(target.get("practices") or "").split(",") if p in PRACTICE_NOTES]
     if practices:
         lines.append("Coding practices: " + "; ".join(f"{p}: {PRACTICE_NOTES[p]}" for p in practices) + ".")
+    profile = str(target.get("pack_profile_name") or target.get("pack_profile") or "")
+    root = str(target.get("package_root") or "")
+    conventions = str(target.get("pack_conventions") or "").strip()
+    if profile and (root or conventions):  # the tenant's pack profile (ADR-0040)
+        root_note = f" base package root {root} (the design's base_package starts with it);" if root else ""
+        conventions_note = f" conventions: {conventions}" if conventions else ""
+        lines.append(f"Pack profile {profile}:{root_note}{conventions_note}")
     return "\n".join(lines)

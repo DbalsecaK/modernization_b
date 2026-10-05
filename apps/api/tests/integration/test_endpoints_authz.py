@@ -836,6 +836,22 @@ ADAPTER_TRY_BODY = {"spec": ADAPTER_SPEC, "samples": [{"path": "a.toy", "text": 
 ADAPTER_DRAFT_BODY = {"description": "toy", "samples": [{"path": "a.toy", "text": "PROCEDURE a\n  x\n"}]}
 
 
+async def _new_pack_profile(ctx: Ctx) -> Request:
+    return "/api/v1/pack-profiles", {"key": f"prof-{uuid.uuid4().hex[:8]}", "name": "Profile"}
+
+
+def _pack_profile_path(with_body: bool) -> Callable[[Ctx], Awaitable[Request]]:
+    async def make(ctx: Ctx) -> Request:
+        key = f"prof-{uuid.uuid4().hex[:8]}"
+        async with ctx.owner.begin() as conn:
+            profile_id: uuid.UUID = (await conn.execute(text(
+                "INSERT INTO tenant_pack_profile (tenant_id, key, name) VALUES (:t, :k, 'Profile') RETURNING id"),
+                {"t": ctx.world.tenant_a, "k": key})).scalar_one()  # fmt: skip
+        return f"/api/v1/pack-profiles/{profile_id}", ({"key": key, "name": "Profile 2"} if with_body else None)
+
+    return make
+
+
 async def _new_adapter(ctx: Ctx) -> Request:
     return "/api/v1/adapters", {"spec": {**ADAPTER_SPEC, "key": f"toy-{uuid.uuid4().hex[:8]}"}}
 
@@ -1058,6 +1074,11 @@ CASES = [
     Case("DELETE", "/api/v1/adapters/{adapter_id}", "admin", "member", _adapter_path("")),
     Case("POST", "/api/v1/adapters:try", "admin", "member", fixed("/api/v1/adapters:try", ADAPTER_TRY_BODY)),
     Case("POST", "/api/v1/adapters:draft", "admin", "member", fixed("/api/v1/adapters:draft", ADAPTER_DRAFT_BODY)),
+    # Pack profiles (ADR-0040): models.configure.
+    Case("GET", "/api/v1/pack-profiles", "admin", "member", fixed("/api/v1/pack-profiles")),
+    Case("POST", "/api/v1/pack-profiles", "admin", "member", _new_pack_profile),
+    Case("PUT", "/api/v1/pack-profiles/{profile_id}", "admin", "member", _pack_profile_path(True)),
+    Case("DELETE", "/api/v1/pack-profiles/{profile_id}", "admin", "member", _pack_profile_path(False)),
     Case("GET", "/api/v1/integrations", "admin", "member", fixed("/api/v1/integrations")),
     Case("POST", "/api/v1/integrations", "admin", "member", _new_integration),
     Case(
