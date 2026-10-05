@@ -26,7 +26,7 @@ from nexti_agents import prompt
 from nexti_core.adapters import SourceFile
 from nexti_ivv.target import TargetInventory, inventory
 from nexti_orchestration.context import Attempt, PhaseContext, Verification
-from nexti_orchestration.extraction import ModelCaller, ReplyError, parse_json
+from nexti_orchestration.extraction import ModelCaller, ReplyError, not_cut, parse_json
 from nexti_orchestration.feature import FeatureStory
 from nexti_orchestration.feature_build import proof_pack
 from nexti_orchestration.model import PhaseFailedError, PhaseResult, PhaseUnavailableError
@@ -364,7 +364,8 @@ class ExtensionPhases:
             messages = list(request)
             if feedback:
                 messages.append({"role": "user", "content": f"The design cannot be used:\n{feedback}\nFix it."})
-            reply = await self.port.models.complete(ARCHITECT, "design", messages, iteration=iteration)
+            reply = not_cut(await self.port.models.complete(ARCHITECT, "design", messages, iteration=iteration),
+                            "Delta design")  # fmt: skip
             try:
                 design = DeltaDesign.model_validate(parse_json(reply.content))
             except (ReplyError, ValidationError) as exc:
@@ -428,7 +429,8 @@ class ExtensionPhases:
             messages = list(request)
             if feedback:
                 messages.append({"role": "user", "content": f"The tests cannot be used:\n{feedback}\nFix them."})
-            reply = await self.port.models.complete(TESTER, "generation", messages, iteration=iteration)
+            reply = not_cut(await self.port.models.complete(TESTER, "generation", messages, iteration=iteration),
+                            f"Tests for {change.name}")  # fmt: skip
             try:
                 files = parse_files(reply.content)
             except ReplyError as exc:
@@ -470,7 +472,8 @@ class ExtensionPhases:
             messages = list(base)
             if feedback:
                 messages.append({"role": "user", "content": f"The previous version failed:\n{feedback}\nFix it."})
-            reply = await self.port.models.complete(DEVELOPER, "generation", messages, iteration=iteration)
+            reply = not_cut(await self.port.models.complete(DEVELOPER, "generation", messages, iteration=iteration),
+                            f"Code for {change.name}")  # fmt: skip
             try:
                 files = parse_files(reply.content)
             except ReplyError as exc:

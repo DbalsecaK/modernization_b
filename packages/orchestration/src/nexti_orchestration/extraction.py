@@ -183,7 +183,8 @@ def parse_rules(content: str, view: SliceView, source: str, *, salvage: bool = F
 def cut_message(what: str, limit: int) -> str:
     return (
         f"{what}: the model's answer was cut at the output limit of its profile ({limit} tokens) before it ended; "
-        "raise the maximum output tokens of the model profile (AI configuration -> Profiles) and run again"
+        "raise the maximum output tokens of the model profile (AI configuration -> Profiles), or lower its effort "
+        "when the model reasons at length (reasoning counts against the limit), then retry the phase"
     )
 
 
@@ -233,6 +234,14 @@ async def extract(
 
 class CutReplyError(ReplyError):
     """The model's answer reached the output limit of its profile before it ended."""
+
+
+def not_cut(reply: ModelReply, what: str) -> ModelReply:
+    """A reply cut at the output limit of its profile is not asked again (the same cut comes back, at the same cost):
+    it is reported at once, so a person raises the limit or lowers the effort and retries the phase."""
+    if reply.cut_at:
+        raise CutReplyError(cut_message(what, reply.cut_at))
+    return reply
 
 
 async def _extract(

@@ -15,7 +15,7 @@ from decimal import Decimal
 from functools import partial
 from typing import Any, TypeVar
 
-from nexti_orchestration.model import Answer, Option, PhaseSpec, QuestionSpec, RunContext
+from nexti_orchestration.model import Answer, Option, PhaseFailedError, PhaseSpec, QuestionSpec, RunContext
 from nexti_orchestration.store import RunStore, Usage
 from nexti_sandbox import Sandbox
 
@@ -67,6 +67,12 @@ def _usage_from(memo: Memo | None) -> Usage | None:
         output_tokens=int(memo.get("output_tokens", 0)),
         cost_usd=Decimal(memo.get("cost_usd", "0")),
     )
+
+
+def _cut(exc: BaseException) -> bool:
+    """The model's answer was cut at the output limit of its profile (extraction.CutReplyError, named here to keep
+    the context free of the extraction module)."""
+    return type(exc).__name__ == "CutReplyError"
 
 
 class PhaseContext:
@@ -170,6 +176,8 @@ class PhaseContext:
                     "failed", "failed", f"{what}: {type(exc).__name__}", phase=self.phase.key, agent=agent,
                     invocation_id=invocation, payload={"error": error},
                 )  # fmt: skip
+                if _cut(exc):  # asking again gives the same cut answer: the phase stops here, with what to do
+                    raise PhaseFailedError(str(exc)) from exc
                 raise
             await self.store.invocation_finished(invocation, "succeeded", summary=attempt.summary, usage=attempt.usage)
             await self.store.event(
@@ -244,7 +252,16 @@ class PhaseContext:
             "started", "running", f"{what} (attempt {iteration - first + 1} of {limit})", phase=self.phase.key,
             agent=agent, invocation_id=invocation,
         )  # fmt: skip
-        attempt = await work(iteration, feedback)
+        try:
+            attempt = await work(iteration, feedback)
+        except Exception as exc:
+            if not _cut(exc):
+                raise
+            error = {"type": type(exc).__name__, "message": str(exc)[:1000]}
+            await self.store.invocation_finished(invocation, "failed", error=error)
+            await self.store.event("failed", "failed", f"{what}: {exc}"[:2000], phase=self.phase.key, agent=agent,
+                                   invocation_id=invocation, payload={"error": error})  # fmt: skip
+            raise PhaseFailedError(str(exc)) from exc
         verdict = await verify(attempt.artifact)
         memo: Memo = {
             "ok": verdict.ok,

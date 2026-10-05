@@ -15,7 +15,7 @@ from nexti_agents import prompt
 from nexti_core.adapters import SourceFile
 from nexti_core.spec.screens import ScreenSpec
 from nexti_orchestration.context import Attempt, PhaseContext, Verification
-from nexti_orchestration.extraction import ModelCaller, ReplyError
+from nexti_orchestration.extraction import ModelCaller, ReplyError, not_cut
 from nexti_orchestration.model import PhaseResult
 from nexti_sandbox import Sandbox
 from nexti_ui import IMAGE, PrototypeBuild, build
@@ -89,7 +89,8 @@ async def prototype(
         messages = list(base)
         if feedback:
             messages.append({"role": "user", "content": f"The prototype could not be used:\n{feedback}\nFix it."})
-        reply = await port.models.complete(DESIGNER, "ui", messages, iteration=iteration)
+        reply = not_cut(await port.models.complete(DESIGNER, "ui", messages, iteration=iteration),
+                        f"Prototype of {screen.id}")  # fmt: skip
         try:
             code = tsx_block(reply.content)
         except ReplyError as exc:
@@ -180,7 +181,7 @@ async def change_prototype(
     messages = [{"role": "system", "content": prompt(DESIGNER)}, {"role": "user", "content": request}]
     last = ""
     for iteration in range(1, max_iterations + 1):
-        reply = await models.complete(DESIGNER, "ui", messages, iteration=iteration)
+        reply = not_cut(await models.complete(DESIGNER, "ui", messages, iteration=iteration), "Prototype change")
         problem = ""
         try:
             code = tsx_block(reply.content)

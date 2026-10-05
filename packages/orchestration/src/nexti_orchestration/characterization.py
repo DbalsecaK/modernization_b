@@ -14,7 +14,7 @@ from nexti_core.adapters import LegacyRunner, LegacyUnavailableError, SourceFile
 from nexti_core.spec.characterization import GoldenMaster, Suite
 from nexti_core.spec.model import Rule
 from nexti_orchestration.context import Attempt, PhaseContext, Verification
-from nexti_orchestration.extraction import ModelCaller, ReplyError, parse_json
+from nexti_orchestration.extraction import ModelCaller, ReplyError, not_cut, parse_json
 from nexti_orchestration.guided import enabled as guided_enabled
 from nexti_orchestration.model import PhaseFailedError, PhaseResult, PhaseUnavailableError
 from nexti_orchestration.scope import scope_files, split_rules
@@ -149,7 +149,8 @@ class CharacterizationPhases:
             messages = list(request)
             if feedback:
                 messages.append({"role": "user", "content": f"The suite could not be used:\n{feedback}\nFix it."})
-            reply = await self.port.models.complete(TESTER, "characterization", messages, iteration=iteration)
+            reply = not_cut(await self.port.models.complete(TESTER, "characterization", messages,
+                                                            iteration=iteration), "Characterization suite")  # fmt: skip
             try:
                 suite = parse_suite(reply.content, guided=guided_enabled(ctx.run.options))
             except ReplyError as exc:  # verified below: the reply goes back with the reason

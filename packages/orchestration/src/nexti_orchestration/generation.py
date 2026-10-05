@@ -24,7 +24,7 @@ from nexti_core.adapters import SourceFile
 from nexti_core.spec.model import Rule
 from nexti_orchestration import frontend, infrastructure
 from nexti_orchestration.context import Attempt, PhaseContext, Verification
-from nexti_orchestration.extraction import ModelCaller, ReplyError, parse_json
+from nexti_orchestration.extraction import ModelCaller, ReplyError, not_cut, parse_json
 from nexti_orchestration.guided import enabled as guided_enabled
 from nexti_orchestration.model import PhaseFailedError, PhaseResult, PhaseUnavailableError
 from nexti_orchestration.packs import BackendPack, backend_pack
@@ -207,7 +207,7 @@ async def propose_design(
     usage: list[Usage] = []
     last = ""
     for iteration in range(1, max_iterations + 1):
-        reply = await caller.complete(ARCHITECT, "design", messages, iteration=iteration)
+        reply = not_cut(await caller.complete(ARCHITECT, "design", messages, iteration=iteration), "Target design")
         usage.append(reply.usage)
         try:
             data = parse_json(reply.content)
@@ -362,7 +362,8 @@ class GenerationPhases:
                 {"role": "system", "content": prompt(pack.tester_prompt)},
                 {"role": "user", "content": request},
             ]
-            reply = await self.port.models.complete(TESTER, "generation", messages)
+            reply = not_cut(await self.port.models.complete(TESTER, "generation", messages),
+                            f"Tests of {use_case.name}")  # fmt: skip
             code = code_block(pack, reply.content)
             reference = await self.port.save_file(pack.test_path(design, use_case), code)
             return Attempt({"file": reference}, f"tests of {use_case.name}", reply.usage)
@@ -388,7 +389,8 @@ class GenerationPhases:
             messages = list(base)
             if feedback:
                 messages.append({"role": "user", "content": f"The previous version failed:\n{feedback}\nFix it."})
-            reply = await self.port.models.complete(DEVELOPER, "generation", messages, iteration=iteration)
+            reply = not_cut(await self.port.models.complete(DEVELOPER, "generation", messages, iteration=iteration),
+                            f"{use_case.name}Service")  # fmt: skip
             code = code_block(pack, reply.content)
             return Attempt({"file": await self.port.save_file(target, code)}, f"{use_case.name}Service", reply.usage)
 
@@ -422,7 +424,8 @@ class GenerationPhases:
             messages = list(base)
             if feedback:
                 messages.append({"role": "user", "content": f"The previous version failed:\n{feedback}\nFix it."})
-            reply = await self.port.models.complete(DEVELOPER, "generation", messages, iteration=iteration)
+            reply = not_cut(await self.port.models.complete(DEVELOPER, "generation", messages, iteration=iteration),
+                            str(adapter))  # fmt: skip
             code = code_block(pack, reply.content)
             return Attempt({"file": await self.port.save_file(target, code)}, adapter, reply.usage)
 
