@@ -36,7 +36,12 @@ Con la opción `guided_extraction`, el pedido al arquitecto lleva las restriccio
 - un programa de `infrastructure` se rechaza cuando una regla cita líneas que lo llaman: es negocio y necesita un
   puerto con `legacy_program`;
 - toda tabla que el programa escribe (según el inventario) necesita una entidad con `legacy_table` o una máscara
-  con razón.
+  con razón;
+- (precisión del 2026-10-05) una máscara `tables:` se rechaza también cuando el programa **lee** esa tabla en las
+  40 líneas anteriores a una línea que una regla cita: los valores que carga alimentan la regla (el `SELECT` de
+  configuración que precede al `IF` que la regla cita). Una corrida real había enmascarado la tabla de
+  configuración contable como infraestructura y el código generado nunca producía el error ni la comisión que el
+  legado sí producía (59/59 casos distintos).
 
 Las razones de infraestructura legítimas (registro de errores y eventos, auditoría) no citan reglas y siguen
 permitidas. Sin la opción no cambia ningún pedido: las grabaciones (M4, M6, M6c, M8b, M10, M11) valen igual.

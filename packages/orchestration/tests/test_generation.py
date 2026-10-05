@@ -277,25 +277,39 @@ def test_a_guided_design_cannot_mask_what_the_rules_use_and_keeps_the_written_ta
     from nexti_core.spec.model import Rule as SpecRule
     from nexti_orchestration.generation import design_problems, table_of
 
-    source = "create proc sp_p as\nupdate db_x..pg_orden_total set to_estado = 'P'\nexec sp_comision_grabar 1\n"
+    source = ("create proc sp_p as\nselect @cfg = pa_valor from db_a..pg_config where pa_clave = 'X'\n"
+              "update db_x..pg_orden_total set to_estado = 'P'\nexec sp_comision_grabar 1\n")  # fmt: skip
     files = [File("p.sp", source)]
     rule = SpecRule.model_validate({"id": "RULE-001", "name": "rule name", "category": "validation", "priority": "P1",
                                     "statement": "a statement long enough",
-                                    "sources": [{"file": "p.sp", "line_start": 2, "line_end": 3}]})  # fmt: skip
+                                    "sources": [{"file": "p.sp", "line_start": 3, "line_end": 4}]})  # fmt: skip
     design = Design.model_validate({
         "context": "x", "base_package": "com.x.y", "use_cases": [{"name": "Uc", "rules": ["RULE-001"]}],
-        "masks": [{"path": "tables:db_x..pg_orden_total", "reason": "no entity keeps this legacy table"}],
+        "masks": [{"path": "tables:db_x..pg_orden_total", "reason": "no entity keeps this legacy table"},
+                  {"path": "tables:db_a..pg_config", "reason": "infrastructure of the legacy"}],
         "infrastructure": ["sp_comision_grabar"],
     })  # fmt: skip
-    assert design_problems(design, [rule], files=files, written={"pg_orden_total", "pg_detalle"}) == []
-    found = design_problems(design, [rule], hints=True, files=files, written={"pg_orden_total", "pg_detalle"})
+    written = {"pg_orden_total", "pg_detalle"}
+    assert design_problems(design, [rule], files=files, written=written, read={"pg_config"}) == []
+    found = design_problems(design, [rule], hints=True, files=files, written=written, read={"pg_config"})
     assert found == [
         "mask tables:db_x..pg_orden_total hides a table the rules use (RULE-001): keep it as an entity with its "
         "legacy_table",
+        # The config table is read one line before the cited lines: its values feed the rule.
+        "mask tables:db_a..pg_config hides a table the program reads right before lines the rules cite (RULE-001): "
+        "the values it loads feed those rules, so keep it as an entity with its legacy_table (a lookup the target "
+        "replaces is still an entity)",
         "sp_comision_grabar is listed as infrastructure, but the rules cite its call (RULE-001): give it a port with "
         "legacy_program",
         "legacy tables the program writes need an entity with legacy_table (or an explained tables: mask): pg_detalle",
     ]
+    # Without the inventory's read set, or when the table is read far from any cited line, the mask stands.
+    assert len(design_problems(design, [rule], hints=True, files=files, written=written)) == 3
+    far = [File("p.sp", "create proc sp_p as\nselect @cfg = pa_valor from db_a..pg_config\n" + "\n" * 60
+                + "update db_x..pg_orden_total set to_estado = 'P'\nexec sp_comision_grabar 1\n")]  # fmt: skip
+    far_rule = rule.model_copy(update={"sources": [rule.sources[0].model_copy(update={"line_start": 63,
+                                                                                       "line_end": 64})]})  # fmt: skip
+    assert len(design_problems(design, [far_rule], hints=True, files=far, written=written, read={"pg_config"})) == 3
     assert (table_of("db..t.col"), table_of("db.dbo.t"), table_of("t")) == ("t", "t", "t")
 
 
