@@ -26,9 +26,15 @@ DEVELOPER = "backend-dev"
 ROUNDS = 2  # rounds of correction before the verdict
 WINDOW = 6  # legacy lines shown around a line that names a table or program of the differences
 EXCERPT_LINES = 160  # at most this many legacy lines in a request
-FILES_AT_MOST = 4  # the service and up to three adapters
-FILE_HEADER = re.compile(r"^\s*(?:###\s*|//\s*(?:file|path)\s*:\s*|file\s*:\s*)`?([\w./-]+\.[A-Za-z0-9]+)`?\s*$", re.I)
-FENCE = re.compile(r"^\s*```")
+FILES_AT_MOST = 6  # the service and up to five adapters, the ones the differences point at most first
+# A path on a line of its own, however the developer marks it: `### path`, `**path**`, `// file: path`, `path:`...
+FILE_HEADER = re.compile(
+    r"^\s*(?:#{1,4}\s*|\*\*|//\s*(?:file|path)?\s*:?\s*|file\s*:\s*|path\s*:\s*)?`?((?:[\w-]+/)*[\w-]+\.[A-Za-z0-9]+)`?"
+    r"(?:\*\*)?\s*:?\s*$",
+    re.I,
+)
+FENCE = re.compile(r"^\s*```(.*)$")
+FENCE_PATH = re.compile(r"((?:[\w-]+/)+[\w-]+\.[A-Za-z0-9]+)")
 TABLE_PATH = re.compile(r"^tables:([^\[]+?)(?:\[|$)")  # tables:db..t[0].col, tables:db..t
 CALL_PATH = re.compile(r"^calls(?:\[\d+\])?:(.+?)(?:\.@|$)")  # calls[1]:db..p.@arg, calls[1]:db..p
 
@@ -79,19 +85,24 @@ def difference_digest(outcomes: Sequence[CaseOutcome], at_most: int = 12) -> str
     return "\n".join(lines)
 
 
-def named_in(outcomes: Sequence[CaseOutcome]) -> set[str]:
-    """The bare names of the tables and programs the differences point at (`tables:db..t[0].col` -> t)."""
-    names: set[str] = set()
+def named_in(outcomes: Sequence[CaseOutcome]) -> Counter[str]:
+    """The bare names of the tables and programs the differences point at (`tables:db..t[0].col` -> t), with how
+    many differences name each: a table whose rows differ in every case weighs more than a call's argument."""
+    names: Counter[str] = Counter()
     for outcome in outcomes:
         for d in outcome.differences:
             for pattern in (TABLE_PATH, CALL_PATH):
                 found = pattern.match(d.path)
                 if found:
-                    names.add(found.group(1).strip().rsplit(".", 1)[-1].lower())
-    return {n for n in names if n}
+                    name = found.group(1).strip().rsplit(".", 1)[-1].lower()
+                    if name:
+                        names[name] += 1
+    return names
 
 
-def legacy_excerpts(source: Sequence[SourceFile], names: set[str], rules: Sequence[Rule], case_rules: set[str]) -> str:
+def legacy_excerpts(
+    source: Sequence[SourceFile], names: Mapping[str, int] | set[str], rules: Sequence[Rule], case_rules: set[str]
+) -> str:
     """The legacy lines that name the tables and programs of the differences, with `WINDOW` lines around each, and
     the lines the rules of the failing cases cite; numbered, so the developer can quote them."""
     wanted: dict[str, set[int]] = {}
@@ -133,42 +144,73 @@ def legacy_excerpts(source: Sequence[SourceFile], names: set[str], rules: Sequen
 
 
 def files_to_correct(
-    pack: BackendPack, design: Design, use_case: UseCase, files: Mapping[str, str], names: set[str]
+    pack: BackendPack, design: Design, use_case: UseCase, files: Mapping[str, str], names: Mapping[str, int] | set[str]
 ) -> dict[str, str]:
     """The service of the use case and the adapters that name a table or program of the differences (by their
-    legacy name or the entity that keeps it), the service first; at most `FILES_AT_MOST`."""
+    legacy name, or by the entity or port that keeps it), the service first and then the adapters the differences
+    point at most; at most `FILES_AT_MOST`."""
+    weights: dict[str, int] = dict(names) if isinstance(names, Mapping) else dict.fromkeys(names, 1)
     service = pack.service_path(design, use_case)
     chosen: dict[str, str] = {}
     if service in files:
         chosen[service] = files[service]
-    aliases = set(names)
+    aliases: dict[str, int] = dict(weights)
     for entity in design.entities:
-        if entity.legacy_table and entity.legacy_table.rsplit(".", 1)[-1].lower() in names:
-            aliases.add(entity.name.lower())
+        if entity.legacy_table and (table := entity.legacy_table.rsplit(".", 1)[-1].lower()) in weights:
+            aliases[entity.name.lower()] = weights[table]
     for port in design.ports:
-        if port.legacy_program and port.legacy_program.rsplit(".", 1)[-1].lower() in names:
-            aliases.add(port.name.lower())
-    patterns = [re.compile(rf"(?<![a-z0-9_]){re.escape(a)}(?![a-z0-9_])", re.I) for a in sorted(aliases)]
-    for port in design.ports:
+        if port.legacy_program and (program := port.legacy_program.rsplit(".", 1)[-1].lower()) in weights:
+            aliases[port.name.lower()] = weights[program]
+    patterns = [(re.compile(rf"(?<![a-z0-9_]){re.escape(a)}(?![a-z0-9_])", re.I), w) for a, w in aliases.items()]
+    scored: list[tuple[int, int, str]] = []
+    for position, port in enumerate(design.ports):
         path = pack.adapter_path(design, port)
-        if path in files and path not in chosen and any(p.search(files[path]) for p in patterns):
-            chosen[path] = files[path]
-        if len(chosen) >= FILES_AT_MOST:
-            break
+        if path in files and path not in chosen:
+            weight = sum(w for p, w in patterns if p.search(files[path]))
+            if weight:
+                scored.append((-weight, position, path))
+    for _, _, path in sorted(scored)[: max(0, FILES_AT_MOST - len(chosen))]:
+        chosen[path] = files[path]
     return chosen
 
 
+def _known_path(candidate: str | None, known: Mapping[str, str]) -> str | None:
+    """The file the developer means: the path as given, or the only known file with that base name."""
+    if not candidate:
+        return None
+    if candidate in known:
+        return candidate
+    base = candidate.rsplit("/", 1)[-1]
+    matching = [p for p in known if p.rsplit("/", 1)[-1] == base]
+    return matching[0] if len(matching) == 1 else None
+
+
 def files_from_reply(content: str, known: Mapping[str, str]) -> dict[str, str]:
-    """The files of a developer's answer: each one a path on its own line (`### path`, `// file: path` or
-    `file: path`) followed by a fenced code block. Only paths of the files it was given are taken."""
+    """The files of a developer's answer, however it marks them: a path on the line before a fenced block (`###
+    path`, `**path**`, `// file: path`, `path:`), in the fence itself (```java path) or as a comment on the block's
+    first line; a lone block when it was given one file. Only the files it was given are taken."""
     found: dict[str, str] = {}
+    blocks: list[tuple[str | None, list[str]]] = []
     path: str | None = None
     block: list[str] | None = None
     for line in content.splitlines():
+        fence = FENCE.match(line)
         if block is not None:
-            if FENCE.match(line):
-                if path and path in known:
-                    found[path] = "\n".join(block).rstrip("\n") + "\n"
+            if fence:
+                if (
+                    path is None
+                    and block
+                    and (first := FENCE_PATH.search(block[0]))
+                    and block[0].lstrip()[:2]
+                    in (
+                        "//",
+                        "/*",
+                        "--",
+                        "# ",
+                    )
+                ):
+                    path, block = first.group(1), block[1:]
+                blocks.append((path, block))
                 block, path = None, None
             else:
                 block.append(line)
@@ -177,10 +219,20 @@ def files_from_reply(content: str, known: Mapping[str, str]) -> dict[str, str]:
         if header:
             path = header.group(1)
             continue
-        if FENCE.match(line) and path:
+        if fence:
+            if path is None and (hinted := FENCE_PATH.search(fence.group(1))):
+                path = hinted.group(1)
             block = []
+    if len(blocks) == 1 and blocks[0][0] is None and len(known) == 1:
+        blocks = [(next(iter(known)), blocks[0][1])]
+    for candidate, lines in blocks:
+        resolved = _known_path(candidate, known)
+        if resolved and lines:
+            found[resolved] = "\n".join(lines).rstrip("\n") + "\n"
     if not found:
-        raise ReplyError("the answer has no file: give each changed file as `### path` followed by its code block")
+        shape = "; ".join(f"{c or 'unnamed'} ({len(ls)} lines)" for c, ls in blocks[:4]) or "no code block"
+        raise ReplyError(f"the answer has no file of the ones given (found: {shape}): give each changed file as "
+                         "`### path` followed by its code block")  # fmt: skip
     return found
 
 

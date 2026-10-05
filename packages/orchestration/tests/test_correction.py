@@ -58,7 +58,7 @@ def test_the_digest_groups_the_differences_and_names_what_they_point_at() -> Non
     assert digest.splitlines()[0] == "- returns (2 case(s), e.g. a, b): legacy '0', target '122004'"
     assert "- tables:db..pg_orden_total[0].to_estado (1 case(s), e.g. a): legacy 'T', target 'I'" in digest
     assert "1 case(s) could not run on the target, e.g. d: the harness crashed" in digest
-    assert named_in(found) == {"pg_orden_total", "sp_comision"}
+    assert named_in(found) == {"pg_orden_total": 1, "sp_comision": 1}
 
 
 def test_the_legacy_excerpts_show_the_lines_that_name_what_differs_and_the_cited_lines() -> None:
@@ -92,8 +92,20 @@ def test_the_files_involved_are_the_service_and_the_adapters_that_name_what_diff
     chosen = files_to_correct(SPRING, DESIGN, USE_CASE, files, {table})
     assert next(iter(chosen)) == SERVICE
     assert adapter_path(DESIGN, holder) in chosen  # names the entity that keeps the table
-    assert len(chosen) <= 4
+    assert len(chosen) <= 6
     assert list(files_to_correct(SPRING, DESIGN, USE_CASE, files, set())) == [SERVICE]
+    # The adapters the differences point at most come first, whatever their order in the design.
+    kept = [e for e in DESIGN.entities if e.legacy_table]
+    assert len(kept) >= 2
+    first_port, second_port = list(DESIGN.ports)[:2]
+    weighted = {
+        SERVICE: "svc",
+        adapter_path(DESIGN, first_port): f"class A {{ /* {kept[0].name} */ }}",
+        adapter_path(DESIGN, second_port): f"class B {{ /* {kept[1].name} */ }}",
+    }
+    tables = [str(e.legacy_table).rsplit(".", 1)[-1].lower() for e in kept[:2]]
+    chosen = files_to_correct(SPRING, DESIGN, USE_CASE, weighted, {tables[0]: 1, tables[1]: 40})
+    assert list(chosen)[1] == adapter_path(DESIGN, second_port)
 
 
 def test_the_reply_gives_each_changed_file_under_its_path() -> None:
@@ -103,6 +115,21 @@ def test_the_reply_gives_each_changed_file_under_its_path() -> None:
     assert files_from_reply(reply, known) == {"src/A.java": "class A { int v = 2; }\n", "src/B.java": "class B {}\n"}
     with pytest.raises(ReplyError, match="has no file"):
         files_from_reply("no files here", known)
+    # However the developer marks the file: bold, a trailing colon, the fence itself, a comment on the first
+    # line, the base name alone, or one lone block when it was given one file.
+    forms = [
+        "**src/A.java**\n```java\nclass A {}\n```",
+        "src/A.java:\n```java\nclass A {}\n```",
+        "```java src/A.java\nclass A {}\n```",
+        "```java\n// src/A.java\nclass A {}\n```",
+        "## A.java\n```java\nclass A {}\n```",
+        "Here:\n```java\nclass A {}\n```",
+    ]
+    for form in forms[:-1]:
+        assert files_from_reply(form, known) == {"src/A.java": "class A {}\n"}, form
+    assert files_from_reply(forms[-1], {"src/A.java": "old"}) == {"src/A.java": "class A {}\n"}
+    with pytest.raises(ReplyError, match="unnamed"):
+        files_from_reply(forms[-1], known)  # two files were given: a lone block names none
 
 
 @dataclass
