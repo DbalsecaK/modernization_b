@@ -27,6 +27,11 @@ lanzar una corrida nueva y repetir inventario, extracción, historias, C1 y el g
   C4 nueva. Las decisiones anteriores quedan en la auditoría.
 - Lo anterior a la fase elegida conserva sus resultados: reglas, historias, C1 y el golden master.
 - La web ofrece la fase en un selector junto al botón de reintento, limitado a la fallida y las anteriores.
+- (precisión del 2026-10-05) **una corrida terminada también se reintenta**, desde cualquier fase: una entrega con
+  veredicto NOT PROVEN se rehace desde el diseño sin repetir inventario, reglas ni caracterización. El worker vuelve
+  a invocar el grafo con `resume_from` y el nodo inicial salta a la fase elegida con el mismo reinicio (filas a
+  pendiente, compuertas pedidas de nuevo, identificadores nuevos). Las corridas terminadas antes de este cambio se
+  reintentan igual.
 
 ### Máscaras del diseño verificadas contra las reglas (extracción guiada)
 

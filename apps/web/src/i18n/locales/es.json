@@ -2900,7 +2900,7 @@
       "info": "Info"
     },
     "retry": "Reintentar desde esta fase",
-    "retried": "Ejecución encolada de nuevo: sigue desde la fase que falló.",
+    "retried": "Ejecución encolada de nuevo: sigue desde la fase elegida.",
     "retryFrom": "Reintentar desde la fase"
   },
   "questions": {

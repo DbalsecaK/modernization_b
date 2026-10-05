@@ -130,6 +130,11 @@ class Harness:
         await self.graph.ainvoke(Command(resume=value), thread_config(self.run))
         return await pending_interrupts(self.graph, self.run)
 
+    async def restart(self, phase: str) -> list[dict[str, Any]]:
+        """What the worker does with a finished run queued again with `retry_from` (ADR-0035)."""
+        await self.graph.ainvoke({"resume_from": phase}, thread_config(self.run))
+        return await pending_interrupts(self.graph, self.run)
+
     async def answer_all(self, option: str) -> list[dict[str, Any]]:
         (waiting,) = await pending_interrupts(self.graph, self.run)
         return await self.resume({q: {"option": option, "text": "", "by": "tester"} for q in waiting["question_ids"]})
@@ -312,6 +317,27 @@ async def test_a_failed_run_is_retried_from_the_failed_phase_without_repeating_t
     await other.answer_all("stop")
     assert await other.resume({"retry": False}) == []
     assert other.store.status == "failed"
+
+
+async def test_a_finished_run_starts_again_from_a_chosen_phase_keeping_what_came_before() -> None:
+    h = Harness(context(gates=("C1",)))
+    (waiting,) = await h.start()
+    assert waiting["type"] == "gate"
+    assert await h.resume({"decision": "approved", "by": "reviewer"}) == []
+    assert h.store.status == "succeeded"
+    before = len(h.invocations("ruleExtraction"))
+    started = h.store.kinds().count("runStarted")
+    # The API queues the finished run with the chosen phase; the worker invokes the graph again with it.
+    h.store.status = "queued"
+    (again,) = await h.restart("ruleExtraction")
+    assert again == {"type": "gate", "gate": "C1", "phase": "ruleReview"}  # asked again after the redo
+    assert len(h.invocations("ruleExtraction")) > before
+    assert h.store.kinds().count("runStarted") == started  # not started again: it went on from the phase
+    assert h.store.phases["preflight"]["status"] == "succeeded"  # what came before kept its results
+    assert "Retrying from phase ruleExtraction" in [e.message for e in h.store.events]
+    assert await h.resume({"decision": "approved", "by": "reviewer"}) == []
+    assert h.store.status == "succeeded"
+    assert h.store.phases["generation"]["status"] == "succeeded"  # redone after the chosen phase
 
 
 async def test_the_preflight_rejects_an_archive_that_looks_like_a_zip_bomb() -> None:

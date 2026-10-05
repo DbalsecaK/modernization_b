@@ -41,6 +41,7 @@ class RunState(TypedDict, total=False):
     artifacts: dict[str, str]  # name -> object key
     outcome: str  # why the run failed
     failed_phase: str  # the phase a failed run may be retried from (ADR-0034)
+    resume_from: str  # a finished run invoked again starts over from this phase (ADR-0035)
     retries: dict[str, int]  # phase -> how many times it was retried (its questions and invocations get new ids)
 
 
@@ -75,9 +76,30 @@ def build_graph(
     def after_gate(index: int) -> str:
         return phase_node_name(phases[index + 1].key) if index + 1 < len(phases) else "finish"
 
+    async def restart(state: RunState, target: str, ceiling: str) -> Command[str]:
+        """The run goes on from `target` (at most `ceiling`): the phases from it on start over, with their gates
+        asked again and fresh ids for their questions and invocations; what came before keeps its results."""
+        keys = [p.key for p in phases]
+        if target not in keys or keys.index(target) > keys.index(ceiling):
+            target = ceiling
+        redo = keys[keys.index(target) :]
+        await store.reset_for_retry(redo, [p.gate for p in phases[keys.index(target) :] if p.gate])
+        await store.run_running(target)
+        await store.event("info", "running", f"Retrying from phase {target}", phase=target)
+        # The redone phases start over: their journals and the answers to their questions do not carry over.
+        journals = {k: v for k, v in (state.get("journal") or {}).items() if k not in redo}
+        previous = dict(state.get("retries") or {})
+        retries = {**previous, **{k: int(previous.get(k, 0)) + 1 for k in redo}}
+        update: RunState = {"outcome": "", "failed_phase": "", "resume_from": "", "journal": journals, "pending": [],
+                            "retries": retries}  # fmt: skip
+        return Command(goto=phase_node_name(target), update=update)
+
     async def start(state: RunState) -> Command[str]:
         if await store.is_cancelled():
             return Command(goto=END)
+        if target := str(state.get("resume_from") or ""):
+            # A finished run invoked again (ADR-0035): a NOT PROVEN delivery redone from the design, for instance.
+            return await restart(state, target, phases[-1].key)
         await store.run_running(None)
         await store.event("runStarted", "running", f"Run started ({run.kind}, flow {run.flow})")
         return Command(goto=phase_node_name(phases[0].key))
@@ -218,22 +240,8 @@ def build_graph(
         decision: Memo = interrupt({"type": "failed", "phase": phase_key})
         if not decision.get("retry") or await store.is_cancelled():
             return Command(goto=END)
-        # A person may start again from an earlier phase (a design to redo after a failed verification): the phases
-        # from it on start over, with their gates asked again; what came before keeps its results.
-        keys = [p.key for p in phases]
-        target = str(decision.get("phase") or phase_key)
-        if target not in keys or keys.index(target) > keys.index(phase_key):
-            target = phase_key
-        redo = keys[keys.index(target) :]
-        await store.reset_for_retry(redo, [p.gate for p in phases[keys.index(target) :] if p.gate])
-        await store.run_running(target)
-        await store.event("info", "running", f"Retrying from phase {target}", phase=target)
-        # The redone phases start over: their journals and the answers to their questions do not carry over.
-        journals = {k: v for k, v in (state.get("journal") or {}).items() if k not in redo}
-        previous = dict(state.get("retries") or {})
-        retries = {**previous, **{k: int(previous.get(k, 0)) + 1 for k in redo}}
-        return Command(goto=phase_node_name(target), update={"outcome": "", "failed_phase": "", "journal": journals,
-                                                             "pending": [], "retries": retries})  # fmt: skip
+        # A person may start again from an earlier phase (a design to redo after a failed verification).
+        return await restart(state, str(decision.get("phase") or phase_key), phase_key)
 
     graph.add_node("start", start)
     graph.add_edge(START, "start")

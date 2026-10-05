@@ -14,7 +14,8 @@ class RetryIn(ApiModel):
     phase: str | None = Field(
         default=None,
         description="Retry from this phase instead of the failed one; it must be the failed phase or an earlier one "
-        "(ADR-0035). The phases from it on run again; what came before keeps its results.",
+        "(ADR-0035). A finished run may start again from any phase. The phases from it on run again; what came "
+        "before keeps its results.",
     )
 
 

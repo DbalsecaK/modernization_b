@@ -110,6 +110,12 @@ async def _resume_value(
     return None
 
 
+async def _retry_from(engine: AsyncEngine, tenant_id: uuid.UUID, run_id: uuid.UUID) -> str | None:
+    async with scoped_connection(engine, DbScope(tenant_id=tenant_id)) as conn:
+        row = (await conn.execute(text("SELECT retry_from FROM run WHERE id = :run"), {"run": run_id})).one_or_none()
+    return str(row.retry_from) if row is not None and row.retry_from else None
+
+
 def _answer(row: Any) -> dict[str, Any]:
     """The answer as the executor reads it: the chosen option's key (the API stores the key when an option was
     chosen, the person's text otherwise)."""
@@ -196,11 +202,12 @@ async def _execute(
             elif snapshot.next:
                 log.info("run.continue", run_id=str(run_id), next=list(snapshot.next))
                 await graph.ainvoke(None, config)
-            elif await store.status() == "queued":  # a retry of a run that finished before retries existed
-                reason = ("This run cannot be retried: it finished before retries from the failed phase existed; "
-                          "launch a new run")  # fmt: skip
-                await store.run_finished("failed", reason)
-                await store.event("runFinished", "failed", reason)
+            elif await store.status() == "queued":
+                # A finished run retried from a chosen phase (ADR-0035): the graph starts again and goes straight to
+                # that phase, keeping the results of the phases before it.
+                target = await _retry_from(runtime.engine, tenant_id, run_id) or run.phases[-1].key
+                log.info("run.restart", run_id=str(run_id), phase=target)
+                await graph.ainvoke({"resume_from": target}, config)
             else:
                 return "nothing to do"
     return str(await store.status())

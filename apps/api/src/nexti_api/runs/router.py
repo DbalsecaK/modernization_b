@@ -196,14 +196,14 @@ async def retry_run(
     request: Request, project_id: uuid.UUID, run_id: uuid.UUID, auth: RunPipeline, body: RetryIn | None = None
 ) -> RunOut:
     """A failed run goes on from the phase that failed, or from an earlier phase a person chooses (ADR-0034,
-    ADR-0035): what comes before keeps its results, the rest runs again with its gates asked again. Only a failed run,
-    and one run at a time per project."""
+    ADR-0035); a finished run may start again from any phase (a NOT PROVEN delivery redone from the design): what
+    comes before keeps its results, the rest runs again with its gates asked again. One run at a time per project."""
     assert auth.tenant_id is not None  # noqa: S101 - require_project guarantees it
     await license_gate.ensure_writable(request, auth, "run.retry", f"project:{project_id}")
     async with transaction(request, auth) as conn:
         run = await load_run(conn, project_id, run_id, lock=True)
-        if run["status"] != "failed":
-            raise ProblemError(409, "run_not_failed", "Only a failed run can be retried.")
+        if run["status"] not in ("failed", "succeeded"):
+            raise ProblemError(409, "run_not_finished", "Only a failed or finished run can be retried.")
         chosen = body.phase if body else None
         if chosen is not None:
             rows = await conn.execute(
@@ -226,7 +226,8 @@ async def retry_run(
         )
         await defer_run(conn, run_id, auth.tenant_id)
         await audit(conn, auth, "run.retry", f"project:{project_id}",
-                    {"run_id": str(run_id), "failed_phase": run["current_phase"], "from": chosen})  # fmt: skip
+                    {"run_id": str(run_id), "status": run["status"], "failed_phase": run["current_phase"],
+                     "from": chosen})  # fmt: skip
         return RunOut.model_validate(dict(await load_run(conn, project_id, run_id)))
 
 

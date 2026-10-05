@@ -294,7 +294,7 @@ async def test_a_failed_run_is_queued_again_to_retry_from_its_failed_phase(
     await reconcile(app_engine, fga)
     run = api.post(f"/api/v1/projects/{project_id}/runs", json={"kind": "pipeline"}, headers=headers).json()
     early = api.post(f"/api/v1/projects/{project_id}/runs/{run['id']}:retry", headers=headers)
-    assert (early.status_code, early.json()["code"]) == (409, "run_not_failed")
+    assert (early.status_code, early.json()["code"]) == (409, "run_not_finished")
     await execute(owner_engine, "UPDATE run SET status = 'failed', error = 'no valid design', finished_at = now(), "
                                 "current_phase = 'design' WHERE id = :r", r=uuid.UUID(run["id"]))  # fmt: skip
     # The worker consumed the first job before the run failed; the retry enqueues a new one.
@@ -315,3 +315,11 @@ async def test_a_failed_run_is_queued_again_to_retry_from_its_failed_phase(
     assert [j["status"] for j in await jobs_of(owner_engine, uuid.UUID(run["id"]))] == ["succeeded", "todo"]
     (row,) = await fetch(owner_engine, "SELECT retry_from FROM run WHERE id = :r", r=uuid.UUID(run["id"]))
     assert row["retry_from"] == "ruleExtraction"
+    # A finished run may start again from any phase (a NOT PROVEN delivery redone from the design).
+    await execute(owner_engine, "UPDATE run SET status = 'succeeded', finished_at = now(), current_phase = "
+                                "'verification' WHERE id = :r", r=uuid.UUID(run["id"]))  # fmt: skip
+    await execute(owner_engine, "UPDATE procrastinate_jobs SET status = 'succeeded' WHERE args->>'run_id' = :r",
+                  r=run["id"])  # fmt: skip
+    redone = api.post(f"/api/v1/projects/{project_id}/runs/{run['id']}:retry", json={"phase": "design"},
+                      headers=headers)  # fmt: skip
+    assert (redone.status_code, redone.json()["status"]) == (200, "queued"), redone.text
