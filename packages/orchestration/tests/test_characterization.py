@@ -147,3 +147,28 @@ def test_a_key_marked_on_the_columns_becomes_the_table_key_only_when_guided() ->
     suite = parse_suite(content, guided=True)
     assert suite.schema_.tables[0].key == [c["name"] for c in table["columns"][:2]]
     assert all(set(c.model_dump()) == {"name", "type", "nullable"} for c in suite.schema_.tables[0].columns)
+
+
+async def test_a_suite_cut_at_the_output_limit_stops_the_phase_at_once_instead_of_paying_the_same_again() -> None:
+    from nexti_orchestration.model import PhaseFailedError
+
+    class CutTester(StandInTester):
+        async def complete(
+            self, agent: str, phase: str, messages: list[dict[str, str]], *, iteration: int = 1, judge: int = 0
+        ) -> ModelReply:
+            self.requests.append(messages)
+            return ModelReply(SUITE[:200], Usage(model="t", input_tokens=5, output_tokens=16000), cut_at=16000)
+
+    port = MemoryPort(None, [SUITE])
+    port.tester = CutTester([SUITE])
+    port.models = port.tester
+    ctx, store = _context()
+
+    class Runner:
+        engine = "test"
+
+    port.runner = Runner()  # type: ignore[assignment]
+    with pytest.raises(PhaseFailedError, match=r"cut at the output limit of its profile \(16000 tokens\)"):
+        await CharacterizationPhases(port).characterization(ctx)
+    assert len(port.tester.requests) == 1  # not asked again
+    assert [i["status"] for i in store.invocations.values()] == ["failed"]
