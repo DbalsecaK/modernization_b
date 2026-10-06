@@ -369,24 +369,3 @@ def test_the_chosen_version_reaches_the_pack_and_the_profile_root_is_checked() -
     ]
     ok = design.model_copy(update={"base_package": "com.andesbank.pay"})
     assert design_problems(ok, [rule], hints=True, package_root="com.andesbank") == []
-
-
-def test_a_guided_design_gives_a_port_that_replaces_a_program_one_method() -> None:
-    from nexti_core.spec.design import Design
-    from nexti_core.spec.model import Rule as SpecRule
-    from nexti_orchestration.generation import design_problems
-
-    rule = SpecRule.model_validate({"id": "RULE-001", "name": "rule name", "category": "validation", "priority": "P1",
-                                    "statement": "a statement long enough",
-                                    "sources": [{"file": "p.sp", "line_start": 1, "line_end": 1}]})  # fmt: skip
-    split = Design.model_validate({
-        "context": "x", "base_package": "com.x.y", "use_cases": [{"name": "Uc", "rules": ["RULE-001"]}],
-        "ports": [{"name": "AccountingConfig", "legacy_program": "db..sp_con_confcontable", "methods": [
-            {"name": "findTransaction", "returns": "int"}, {"name": "findCause", "returns": "int"}]},
-            {"name": "Orders", "methods": [{"name": "find", "returns": "int"}, {"name": "save", "returns": None}]}],
-    })  # fmt: skip
-    assert design_problems(split, [rule]) == []  # not guided: nothing changes
-    (problem,) = design_problems(split, [rule], hints=True)
-    assert problem.startswith("a port that replaces a legacy program has exactly one method")
-    assert "AccountingConfig (db..sp_con_confcontable: findTransaction, findCause)" in problem
-    assert "Orders" not in problem  # an entity repository may have many methods

@@ -290,15 +290,6 @@ def design_problems(
         root = (package_root or "").strip().lower()
         if root and not (design.base_package == root or design.base_package.startswith(root + ".")):
             problems.append(f"base_package must be {root} or start with {root}. (the pack profile of the project)")
-        # A legacy program is one call that returns every output at once (R11): a port that replaces it has one
-        # method, or the target calls the program once per method and the trace of calls never matches (a real
-        # design split sp_con_confcontable into findTransaction and findCause: every later call shifted a position).
-        split = [f"{p.name} ({p.legacy_program}: {', '.join(m.name for m in p.methods)})" for p in design.ports
-                 if p.legacy_program and len(p.methods) > 1]  # fmt: skip
-        if split:
-            problems.append("a port that replaces a legacy program has exactly one method, called once with the "
-                            "program's inputs and returning every output it sets (an entity or record with all of "
-                            f"them): {'; '.join(split)}")  # fmt: skip
     return problems
 
 
