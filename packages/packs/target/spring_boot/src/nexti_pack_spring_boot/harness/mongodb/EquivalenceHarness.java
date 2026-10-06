@@ -138,7 +138,8 @@ public final class EquivalenceHarness {
                 Supplier<Object> work = () -> invoke(execute, service, request);
                 out.set("response", fields(invoke(transaction, null, client, work)));
             } catch (RuntimeException e) {
-                calls.clear(); // inside the aborted transaction: they had no effect
+                // The calls stay: they are what the service did before it rejected, as the legacy's calls before
+                // its `return code` are (ADR-0044); the rollback undoes the tables, which are dumped after it.
                 if (!e.getClass().getSimpleName().equals("BusinessError")) {
                     throw e;
                 }

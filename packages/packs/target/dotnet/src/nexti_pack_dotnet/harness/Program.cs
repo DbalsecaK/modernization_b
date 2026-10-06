@@ -54,7 +54,7 @@ public static class Harness
             catch (TargetInvocationException e) when (e.InnerException is not null)
             {
                 Invoke(db, "Rollback");
-                calls.Clear(); // inside the rolled-back transaction: they had no effect
+                // The calls stay: what the service did before it rejected, as the legacy calls before its return (ADR-0044).
                 var cause = e.InnerException;
                 if (cause.GetType().Name != "BusinessError") throw cause;
                 output["error"] = new JsonObject

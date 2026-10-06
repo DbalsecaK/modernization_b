@@ -17,6 +17,7 @@ from nexti_core.spec.equivalence import CaseRun, EquivalenceRun
 from nexti_core.spec.model import Rule
 from nexti_orchestration import PhaseSpec, RunContext
 from nexti_orchestration.context import NeedsAnswer, PhaseContext
+from nexti_orchestration.correction import differing
 from nexti_orchestration.extraction import ModelReply
 from nexti_orchestration.fidelity import (
     FINDINGS_FILE,
@@ -385,7 +386,7 @@ def test_a_correction_that_fixes_some_cases_by_breaking_others_is_not_closer_and
                CaseOutcome("d", (), out)]  # fmt: skip
     # The crash is gone, but b and c now differ: farther by cases although the distance tuple is smaller.
     candidate = [CaseOutcome("a", ()), CaseOutcome("b", (), out), CaseOutcome("c", (), out), CaseOutcome("d", (), out)]
-    assert distance(candidate) < distance(current)
+    assert distance(candidate) < distance(current)  # by kind alone it looks closer
     assert not closer(candidate, current)
     note = regression_note(candidate, current)
     assert note.startswith("Cases that matched the legacy before this correction and differ now (2): b, c.")
@@ -445,11 +446,12 @@ async def test_a_correction_that_is_not_closer_spends_the_attempt_and_ends_the_r
     assert [i["status"] for i in store.invocations.values()] == ["failed", "failed", "escalated"]
 
 
-async def test_after_a_restart_the_kept_corrections_are_applied_again_from_the_journal() -> None:
+async def test_after_a_restart_the_kept_corrections_are_re_evaluated_and_applied_from_the_journal() -> None:
     from nexti_orchestration.fidelity import KEPT, rebuild_base
 
     port = FakePort(replies=[])
     kept = await port.save_file(SERVICE, "class PayOrderService { /* kept */ }")
+    stale = await port.save_file(SERVICE, "class PayOrderService { /* kept under an older rule */ }")
     discarded = await port.save_file(SERVICE, "class PayOrderService { /* discarded */ }")
     ctx, _store = _ctx()
     ctx.journal[ctx._key("dvc/backend-dev/1")] = {
@@ -464,16 +466,62 @@ async def test_after_a_restart_the_kept_corrections_are_applied_again_from_the_j
     }
     ctx.journal[ctx._key("dvc/backend-dev/3")] = {
         "ok": False,
+        "artifact": {"files": {SERVICE: stale}},
+        "diagnostic": f"the correction was {KEPT}",
+    }
+    ctx.journal[ctx._key("dvc/backend-dev/4")] = {
+        "ok": False,
         "artifact": {"problem": "no usable answer"},
         "diagnostic": "the answer could not be used",
     }
-    rebuilt = await rebuild_base(ctx, cast(Any, port), {SERVICE: "v1", TEST: "t"})
+    master = _master()
+    case_rules = {r.case.name: r.case.rules for r in master.results}
+    # The generated files, then each kept correction on the golden master: 1 is closer, 3 is not any more.
+    pack = FakePack(runs=[_run(3), _run(1), _run(2)], builds=[])
+    of = lambda r: outcomes(r, case_rules)  # noqa: E731
+    rebuilt, run = await rebuild_base(ctx, cast(Any, port), cast(Any, pack), cast(Any, None), DESIGN, USE_CASE,
+                                      master, {}, {SERVICE: "v1", TEST: "t"}, of)  # fmt: skip
     assert rebuilt == {SERVICE: "class PayOrderService { /* kept */ }", TEST: "t"}
-    # The convergence starts from the rebuilt base, so the first comparison sees it.
-    pack = FakePack(runs=[_run(0)], builds=[])
-    await _converge(ctx, port, pack, {SERVICE: "v1", TEST: "t"})
-    assert pack.verified[0][SERVICE] == "class PayOrderService { /* kept */ }"
-    assert any("Convergence resumed: 1 kept correction(s)" in e.message for e in _store.events)
+    assert run is not None
+    assert differing(outcomes(run, case_rules)) == 1
+    stale_text = "class PayOrderService { /* kept under an older rule */ }"
+    assert [v[SERVICE] for v in pack.verified] == ["v1", "class PayOrderService { /* kept */ }", stale_text]
+    assert any("Convergence resumed: 1 of 2 kept correction(s) still closer" in e.message for e in _store.events)
+    # The convergence starts from the rebuilt base and its run: no extra comparison before the first attempt.
+    pack = FakePack(runs=[_run(3), _run(0), _run(1)], builds=[])  # generated, kept (matches), stale (not closer)
+    _files, result = await _converge(ctx, port, pack, {SERVICE: "v1", TEST: "t"})
+    assert (result.differing, result.iterations) == (0, 0)
+    assert pack.verified[1][SERVICE] == "class PayOrderService { /* kept */ }"
+    assert pack.runs == []
+
+
+def test_the_progress_key_decides_the_three_real_corrections() -> None:
+    from nexti_orchestration.fidelity import closer, progress_key, severity
+    from nexti_verification.compare import Difference
+    from nexti_verification.verdict import CaseOutcome
+
+    ret = Difference("returns", "0", "122004")
+    out = Difference("outputs:@o_x", "0", "None")
+    calls = tuple(Difference(f"calls[{i}]:p.@x", "1", "2") for i in range(4))
+    # Removing an early exit: ten cases with a wrong return become ten cases with four call differences each.
+    before = [CaseOutcome(f"c{i}", (), (ret,)) for i in range(10)]
+    after = [CaseOutcome(f"c{i}", (), calls) for i in range(10)]
+    assert closer(after, before)
+    assert severity(after) < severity(before)
+    # Removing five crashes by changing an output everywhere: 38 differing cases become 57.
+    before = [CaseOutcome(f"x{i}", (), (), "ArithmeticException") for i in range(5)]
+    before += [CaseOutcome(f"y{i}", (), (out,)) for i in range(33)] + [CaseOutcome(f"z{i}", ()) for i in range(35)]
+    after = [CaseOutcome(f"x{i}", (), (out,)) for i in range(5)] + [CaseOutcome(f"y{i}", (), (out,)) for i in range(33)]
+    after += [CaseOutcome(f"z{i}", (), (out,)) for i in range(19)] + [CaseOutcome(f"z{i}", ()) for i in range(19, 35)]
+    assert not closer(after, before)
+    # Fixing twenty cases at the price of four wrong return codes.
+    before = [CaseOutcome(f"c{i}", (), (out,)) for i in range(50)] + [CaseOutcome(f"d{i}", (), calls) for i in range(7)]
+    after = [CaseOutcome(f"c{i}", (), (ret,)) for i in range(4)] + [
+        CaseOutcome(f"c{i}", (), (out,)) for i in range(4, 25)
+    ]
+    after += [CaseOutcome(f"d{i}", (), calls) for i in range(7)]
+    assert closer(after, before)
+    assert progress_key(after)[0] == 4 * 4 + 21 * 3 + 7
 
 
 async def test_the_ports_and_the_domain_travel_as_read_only_context() -> None:

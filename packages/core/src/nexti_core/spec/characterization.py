@@ -10,9 +10,17 @@ import re
 from collections.abc import Sequence
 from datetime import date, datetime
 from decimal import Decimal, InvalidOperation
-from typing import TYPE_CHECKING, Annotated
+from typing import TYPE_CHECKING, Annotated, Any
 
-from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    SerializerFunctionWrapHandler,
+    StringConstraints,
+    model_serializer,
+    model_validator,
+)
 
 from nexti_core.spec import neutral_types as nt
 
@@ -129,8 +137,21 @@ class GoldenMaster(CharacterizationModel):
     engine: str = Field(description="What ran the legacy, e.g. sybase-ase-16.0")
     schema_: Schema = Field(alias="schema")
     results: list[Recorded]
+    unassigned_outputs: list[str] = Field(
+        default_factory=list,
+        description="Output parameters the program never assigns (ADR-0044): the legacy returns the caller's value, "
+        "so the comparison masks them",
+    )
 
     model_config = ConfigDict(extra="forbid", frozen=True, populate_by_name=True)
+
+    @model_serializer(mode="wrap")
+    def _without_empty_unassigned(self, handler: SerializerFunctionWrapHandler) -> Any:
+        """A golden master without unassigned outputs serialises as before ADR-0044 (recorded runs)."""
+        data = handler(self)
+        if isinstance(data, dict) and not self.unassigned_outputs:
+            data.pop("unassigned_outputs", None)
+        return data
 
     @property
     def from_traces(self) -> bool:

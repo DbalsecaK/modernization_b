@@ -79,10 +79,36 @@ def distance(outcomes: Sequence[CaseOutcome]) -> tuple[int, ...]:
     return (failures, *(counts[k] for k in _ORDER))
 
 
+_LEVEL = {"returns": 4, "outputs": 3, "messages": 2, "tables": 2, "calls": 1}
+
+
+def severity(outcomes: Sequence[CaseOutcome]) -> int:
+    """How far from the legacy, case by case: each differing case weighs its worst difference (a crash 5, the
+    return code 4, an output 3, a message or a table 2, a call 1). A case with ten call differences weighs one
+    point; a case whose return code is wrong weighs four whatever else differs in it."""
+    total = 0
+    for o in outcomes:
+        if o.failure:
+            total += 5
+            continue
+        worst = 0
+        for d in o.differences:
+            kind = d.path.split(":", 1)[0].split("[", 1)[0]
+            worst = max(worst, _LEVEL.get(kind, 1))
+        total += worst
+    return total
+
+
+def progress_key(outcomes: Sequence[CaseOutcome]) -> tuple[int, int, tuple[int, ...]]:
+    """What "closer to the legacy" compares (P29): the severity of the cases, then the plain total, then the
+    distance by kind. Three real corrections decide it: removing an early exit (ten cases with a wrong return
+    become ten cases with call differences: closer), removing five crashes by changing an output everywhere (38
+    differing cases become 57: farther) and fixing 20 cases at the price of four wrong return codes (closer)."""
+    return (severity(outcomes), total_differences(outcomes), distance(outcomes))
+
+
 def closer(candidate: Sequence[CaseOutcome], current: Sequence[CaseOutcome]) -> bool:
-    """Closer by distance without more cases differing (P28): a real round kept a correction that removed five
-    crashes but changed an output everywhere, so 38 differing cases became 57 and the next attempts oscillated."""
-    return distance(candidate) < distance(current) and differing(candidate) <= differing(current)
+    return progress_key(candidate) < progress_key(current)
 
 
 def regressions(candidate: Sequence[CaseOutcome], current: Sequence[CaseOutcome]) -> tuple[list[str], list[str]]:
@@ -252,26 +278,47 @@ def convergence_request(
 KEPT = "kept as the new base"
 
 
-async def rebuild_base(ctx: PhaseContext, port: FidelityPort, files: dict[str, str]) -> dict[str, str]:
+async def rebuild_base(
+    ctx: PhaseContext,
+    port: FidelityPort,
+    pack: BackendPack,
+    sandbox: Sandbox,
+    design: Design,
+    use_case: UseCase,
+    master: GoldenMaster,
+    defaults: dict[str, Any],
+    files: dict[str, str],
+    outcomes_of: Any,
+) -> tuple[dict[str, str], EquivalenceRun | None]:
     """The base of the convergence after a worker restart (ADR-0043): the journal keeps every attempt of the
-    developer, so the files of the attempts that were kept (or passed) are applied again, in order, before the
-    first comparison. Without this, a restart replayed the attempts but started again from the generated files."""
+    developer, so the corrections that were kept (or passed) are applied again, in order, each one re-evaluated
+    on the golden master with the rule of today (P29: a base kept under an older rule is not taken on faith).
+    Returns the base and its run, or None when nothing was replayed."""
     prefix = ctx._key(f"dvc/{DEVELOPER}/")
-    kept = sorted(((int(key[len(prefix):]), memo) for key, memo in ctx.journal.items()
-                   if key.startswith(prefix) and key[len(prefix):].isdigit()), key=lambda pair: pair[0])  # fmt: skip
-    rebuilt = dict(files)
+    found = sorted(((int(key[len(prefix):]), memo) for key, memo in ctx.journal.items()
+                    if key.startswith(prefix) and key[len(prefix):].isdigit()), key=lambda pair: pair[0])  # fmt: skip
+    kept = [(i, m) for i, m in found if m.get("ok") or KEPT in str(m.get("diagnostic", ""))]
+    if not kept:
+        return files, None
+    base = dict(files)
+    run = await pack.run_equivalence(sandbox, base, design, use_case, master, defaults)
+    outcomes: list[CaseOutcome] = outcomes_of(run)
     applied = 0
     for _iteration, memo in kept:
-        if not (memo.get("ok") or KEPT in str(memo.get("diagnostic", ""))):
+        if run.problem:
+            break
+        candidate = dict(base)
+        for path, reference in ((memo.get("artifact") or {}).get("files") or {}).items():
+            candidate[path] = await port.load_file(reference)
+        candidate_run = await pack.run_equivalence(sandbox, candidate, design, use_case, master, defaults)
+        candidate_outcomes: list[CaseOutcome] = outcomes_of(candidate_run)
+        if candidate_run.problem or not closer(candidate_outcomes, outcomes):
             continue
-        references = (memo.get("artifact") or {}).get("files") or {}
-        for path, reference in references.items():
-            rebuilt[path] = await port.load_file(reference)
+        base, run, outcomes = candidate, candidate_run, candidate_outcomes
         applied += 1
-    if applied:
-        await ctx.store.event("info", "running", f"Convergence resumed: {applied} kept correction(s) applied again "
-                              "from the journal", phase=ctx.phase.key)  # fmt: skip
-    return rebuilt
+    note = f"Convergence resumed: {applied} of {len(kept)} kept correction(s) still closer to the legacy, applied again"
+    await ctx.store.event("info", "running", note + " from the journal", phase=ctx.phase.key)
+    return base, run
 
 
 async def converge(
@@ -293,8 +340,9 @@ async def converge(
     """The generated project against the golden master, corrected by the developer until every case matches: at
     most `max_iterations` developer calls per round, then the escalation question (retry or stop) a person answers
     (11.1). Returns the files to keep and what happened."""
-    files = await rebuild_base(ctx, port, files)
-    first = await pack.run_equivalence(sandbox, files, design, use_case, master, defaults)
+    files, resumed = await rebuild_base(ctx, port, pack, sandbox, design, use_case, master, defaults, files,
+                                        outcomes_of)  # fmt: skip
+    first = resumed or await pack.run_equivalence(sandbox, files, design, use_case, master, defaults)
     first_outcomes: list[CaseOutcome] = outcomes_of(first)
     if first.problem:
         raise_problem = f"the golden master could not run on the generated project: {first.problem}"
@@ -368,9 +416,9 @@ async def converge(
             return Verification(False, f"the golden master could not run: {run.problem}"[:1500])
         left = differing(outcomes)
         before = differing(state["outcomes"])
-        # Progress is the distance (causes first), never at the price of more differing cases: a correction that
-        # removes the cause of an early exit leaves the same cases differing on smaller things and is kept; one
-        # that fixes some cases by breaking others is discarded, with both lists for the developer (P28).
+        # Progress is the severity of the cases (see `progress_key`): a correction that removes the cause of an
+        # early exit leaves the same cases differing on smaller things and is kept; one that fixes some cases by
+        # breaking more is discarded, with both lists for the developer (P28).
         note = regression_note(outcomes, state["outcomes"])
         if closer(outcomes, state["outcomes"]):
             state["files"], state["outcomes"] = candidate, outcomes

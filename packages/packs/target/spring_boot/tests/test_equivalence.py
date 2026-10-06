@@ -120,3 +120,27 @@ def test_a_port_that_returns_an_entity_gets_every_output_of_the_program_in_one_a
             {"returns": 0, "output": None, "outputs": {"sequence": None}},
         ]
     }
+
+
+def test_an_output_the_program_never_assigns_is_masked_when_every_case_echoes_its_input() -> None:
+    # ADR-0044: the legacy returns the caller's value; the target cannot "reproduce" that, so it is not compared.
+    echoing = [
+        r.model_copy(
+            update={
+                "case": r.case.model_copy(update={"inputs": {**r.case.inputs, "@o_movimiento": 7}}),
+                "observation": r.observation.model_copy(
+                    update={"outputs": {**r.observation.outputs, "@o_movimiento": "7"}}
+                ),
+            }
+        )
+        for r in MASTER.results
+    ]
+    master = MASTER.model_copy(update={"results": echoing, "unassigned_outputs": ["@o_movimiento"]})
+    found = {m.path: m for m in masks(DESIGN, PAY, master)}
+    assert found["outputs:@o_movimiento"].reason.startswith("the program never assigns this output parameter")
+    assert found["outputs:@o_movimiento"].when == "always"
+    # Declared unassigned but a case returned something else: it is compared (the detection was wrong).
+    assert "never assigns" not in " ".join(
+        m.reason for m in masks(DESIGN, PAY, MASTER.model_copy(update={"unassigned_outputs": ["@o_movimiento"]}))
+    )
+    assert "unassigned_outputs" not in MASTER.model_dump_json()  # the recorded runs see the same text as before

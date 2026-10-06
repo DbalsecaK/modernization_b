@@ -150,7 +150,8 @@ public final class EquivalenceHarness {
             try {
                 out.set("response", fields(inTransaction(jdbc, execute, service, request)));
             } catch (RuntimeException e) {
-                calls.clear(); // inside the rolled-back transaction: they had no effect
+                // The calls stay: they are what the service did before it rejected, as the legacy's calls before
+                // its `return code` are (ADR-0044); the rollback undoes the tables, which are dumped after it.
                 if (!e.getClass().getSimpleName().equals("BusinessError")) {
                     throw e;
                 }

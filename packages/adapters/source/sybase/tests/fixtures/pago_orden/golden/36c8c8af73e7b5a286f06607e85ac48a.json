@@ -1430,6 +1430,15 @@
         },
         "calls": [
           {
+            "program": "db_cuentas..sp_debito",
+            "arguments": {
+              "@i_cuenta": "1000000001",
+              "@i_tipo": "CTE",
+              "@i_valor": "1.0100",
+              "@i_referencia": "PAGO ORDEN"
+            }
+          },
+          {
             "program": "cobis..sp_cerror",
             "arguments": {
               "@t_from": "sp_pago_orden",
@@ -1562,6 +1571,24 @@
           ]
         },
         "calls": [
+          {
+            "program": "db_cuentas..sp_debito",
+            "arguments": {
+              "@i_cuenta": "1000000001",
+              "@i_tipo": "CTE",
+              "@i_valor": "170.0000",
+              "@i_referencia": "PAGO ORDEN"
+            }
+          },
+          {
+            "program": "db_cuentas..sp_debito",
+            "arguments": {
+              "@i_cuenta": "1000000001",
+              "@i_tipo": "CTE",
+              "@i_valor": "2.5500",
+              "@i_referencia": "COMISION PAGO"
+            }
+          },
           {
             "program": "cobis..sp_cerror",
             "arguments": {

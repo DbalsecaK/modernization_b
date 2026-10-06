@@ -232,6 +232,15 @@ class Plan:
     sources: list[SourceFile]
 
 
+def unassigned_outputs(program: Procedure) -> list[str]:
+    """The OUTPUT parameters no statement of the program writes (no `select @p =`, `set @p =`, `fetch into @p`,
+    nor `@x = @p output` in a nested call): Sybase returns to the caller the value it passed in, so the recorded
+    value is the case's input echoed, not behaviour of the program (ADR-0044). A real procedure of 2 173 lines
+    declared one and 72 of 73 cases "differed" on it whatever the target did."""
+    written = {v for stmt in program.statements() for v in stmt.vars_written}
+    return sorted(q.name for q in program.parameters if q.output and q.name not in written)
+
+
 def plan(files: list[SourceFile], suite: Suite) -> Plan:
     found = procedures(files)
     program = next((p for _, p in found if _short(p.name) == _short(suite.program)), None)
@@ -305,6 +314,10 @@ def _stub_body(stub: Stub, answers: list[StubAnswer]) -> str:
         "  declare @nx_n int",
         f"  select @nx_n = count(*) + 1 from {WORK_DB}..nx_call where program = {_quote(stub.program)}",
         f"  insert {WORK_DB}..nx_call (program, args) values ({_quote(stub.program)}, {args})",
+        # The call is reported the moment it happens, as a result set the client already holds: a `rollback`
+        # after it undoes the row in nx_call (the count that picks the answer) but not the fact that the program
+        # was called, which is what the comparison with the target needs (ADR-0044).
+        f"  select 'NXC|' + {_quote(stub.program)} + '|' + {args}",
     ]
     for n, answer in enumerate(answers or [StubAnswer()], start=1):
         sets = [f"{name.lower()} = {literal(v, (stub.parameter(name) or StubParameter(name, 'varchar', True)).type)}"
@@ -353,7 +366,6 @@ def case_script(p: Plan, case: Case) -> str:
         order = ", ".join(table.key or [c.name for c in table.columns])
         printed = _joined([_prefixed(c.name, c.type) for c in table.columns])
         out.append(_go(f"select 'NXT|{table.name}|' + {printed} from {table.name} order by {order}"))
-    out.append(_go(f"select 'NXC|' + program + '|' + isnull(args, '') from {WORK_DB}..nx_call order by seq"))
     return "".join(out)
 
 

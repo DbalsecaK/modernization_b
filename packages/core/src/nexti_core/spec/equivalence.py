@@ -123,7 +123,21 @@ def masks(design: Design, use_case: UseCase, master: GoldenMaster) -> list[Mask]
     outputs = {o for r in master.results for o in r.observation.outputs}
     found += [Mask(f"outputs:{o}", "no output of the use case returns this legacy parameter")
               for o in sorted(outputs) if o.lower() not in mapped]  # fmt: skip
+    # An output the program never assigns echoes what the caller passed (ADR-0044): not behaviour to reproduce.
+    found += [Mask(f"outputs:{o}", "the program never assigns this output parameter: the legacy returns the value "
+                   "the caller passed in") for o in sorted(master.unassigned_outputs)
+              if o.lower() in mapped and echoed(master, o)]  # fmt: skip
     return found
+
+
+def echoed(master: GoldenMaster, output: str) -> bool:
+    """Every recorded case returned in `output` exactly what it passed in (or nothing when it passed nothing)."""
+    for r in master.results:
+        given = next((v for k, v in r.case.inputs.items() if k.lower() == output.lower()), None)
+        observed = next((v for k, v in r.observation.outputs.items() if k.lower() == output.lower()), None)
+        if canonical(None, given) != observed:
+            return False
+    return True
 
 
 def _masked(path: str, found: list[Mask], rejected: bool = False) -> bool:
