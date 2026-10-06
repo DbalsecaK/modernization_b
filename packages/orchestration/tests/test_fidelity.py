@@ -31,7 +31,7 @@ from nexti_orchestration.fidelity import (
 from nexti_orchestration.generation import outcomes
 from nexti_orchestration.memory import MemoryStore
 from nexti_orchestration.store import Usage
-from nexti_pack_spring_boot import Design, adapter_path, service_path
+from nexti_pack_spring_boot import Design, adapter_path, junit_path, service_path
 
 PACKAGES = Path(__file__).resolve().parents[2]
 LEGACY = PACKAGES / "adapters/source/sybase/tests/fixtures/pago_orden"
@@ -41,6 +41,7 @@ RULES = [Rule.model_validate(r) for r in json.loads((LEGACY / "reference_spec.js
 SOURCE = [SourceFile("sp/sp_pago_orden.sp", (LEGACY / "sp_pago_orden.sp").read_text(encoding="utf-8"))]
 USE_CASE = DESIGN.use_cases[0]
 SERVICE = service_path(DESIGN, USE_CASE)
+TEST = junit_path(DESIGN, USE_CASE)
 
 
 def test_the_policy_prompt_names_the_stacks_and_precedes_the_agent_prompt() -> None:
@@ -125,6 +126,9 @@ class FakePack:
     def service_path(self, design: Design, use_case: Any) -> str:
         return SERVICE
 
+    def test_path(self, design: Design, use_case: Any) -> str:
+        return TEST
+
     def adapter_path(self, design: Design, port: Any) -> str:
         return adapter_path(design, port)
 
@@ -161,6 +165,9 @@ class FakePort:
 
     async def load_file(self, reference: str) -> str:
         return self.objects[reference]
+
+    async def save_artifacts(self, files: dict[str, str], layers: dict[str, str], rules: dict[str, list[str]]) -> None:
+        self.docs = {**getattr(self, "docs", {}), **files}
 
 
 def _ctx(max_iterations: int = 3) -> tuple[PhaseContext, MemoryStore]:
@@ -232,14 +239,16 @@ async def test_the_developer_corrects_with_the_program_until_every_case_matches(
 
 
 async def test_a_correction_that_does_not_build_or_does_not_help_feeds_the_next_attempt() -> None:
-    pack = FakePack(runs=[_run(3), _run(3), _run(0)], builds=[FakeBuild(ok=False), FakeBuild(), FakeBuild()])
+    pack = FakePack(
+        runs=[_run(3), _run(3), _run(0)], builds=[FakeBuild(ok=False, compiled=False), FakeBuild(), FakeBuild()]
+    )
     port = FakePort(replies=[_reply("broken"), _reply("same"), _reply("good")])
     ctx, _store = _ctx()
     files, result = await _converge(ctx, port, pack, {SERVICE: "v1"})
     assert files[SERVICE] == "class PayOrderService { /* good */ }\n"
     assert result.iterations == 3
     requests = [r[1]["content"] for r in port.models.requests]
-    assert "does not pass its build" in requests[1]
+    assert "does not compile" in requests[1]
     assert "still differ" in requests[2]
 
 
@@ -307,3 +316,22 @@ async def test_the_tests_and_the_service_see_the_program_only_when_the_run_is_gu
     assert system["content"] == prompt(SPRING.tester_prompt)
     assert "legacy program" not in user["content"]
     assert "per branch" not in user["content"]
+
+
+async def test_the_tests_travel_with_the_correction_and_failing_tests_do_not_stop_the_comparison() -> None:
+    # Attempt 1: the correction matches the legacy but a unit test contradicts it (build not ok, compiled): the
+    # developer is told; attempt 2 aligns the test and everything passes.
+    pack = FakePack(runs=[_run(3), _run(0), _run(0)], builds=[FakeBuild(ok=False), FakeBuild()])
+    aligned = _reply("v3") + f"\n### {TEST}\n```java\nclass T {{}}\n```"
+    port = FakePort(replies=[_reply("v2"), aligned])
+    ctx, _store = _ctx()
+    files, result = await _converge(ctx, port, pack, {SERVICE: "v1", TEST: "class T { /* wrong */ }"})
+    assert files[TEST] == "class T {}\n"
+    assert result.differing == 0
+    assert result.iterations == 2
+    first, second = (r[1]["content"] for r in port.models.requests)
+    assert f"### {TEST}" in first  # the test file is among the files involved
+    assert "every case of the golden master matches, but" in second
+    assert "align them with the program" in second
+    assert "generation/convergence/attempt-1-request.md" in port.docs
+    assert "generation/convergence/attempt-2-reply.md" in port.docs

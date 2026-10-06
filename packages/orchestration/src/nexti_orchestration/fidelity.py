@@ -231,10 +231,20 @@ async def converge(
     async def work(iteration: int, feedback: str | None) -> Attempt:
         current: dict[str, str] = state["files"]
         involved = files_to_correct(pack, design, use_case, current, named_in(state["outcomes"]))
+        # The unit tests came from the program too; one that contradicts the golden master is wrong, and only the
+        # developer can align it (a real run spent its attempts on tests that expected an error the legacy does
+        # not raise on those inputs).
+        test_path = pack.test_path(design, use_case)
+        if test_path in current:
+            involved = {**involved, test_path: current[test_path]}
         request = convergence_request(use_case, program, design, state["outcomes"], master, source, rules, involved,
                                       feedback)  # fmt: skip
         messages = [{"role": "system", "content": system_prompt}, {"role": "user", "content": request}]
         reply = await port.models.complete(DEVELOPER, "generation", messages, iteration=iteration)
+        if hasattr(port, "save_artifacts"):  # the exchange stays with the run (docs, never delivered)
+            exchange = {f"generation/convergence/attempt-{iteration}-request.md": request,
+                        f"generation/convergence/attempt-{iteration}-reply.md": reply.content}  # fmt: skip
+            await port.save_artifacts(exchange, dict.fromkeys(exchange, "docs"), {})
         known = {**involved, FINDINGS_FILE: ""}
         state["iterations"] = iteration
         try:
@@ -259,8 +269,16 @@ async def converge(
         for path, reference in artifact["files"].items():
             candidate[path] = await port.load_file(reference)
         build = await pack.compile_and_test(sandbox, candidate)
-        if not build.ok:
-            return Verification(False, f"the corrected project does not pass its build:\n{build.diagnostic(1500)}")
+        if not build.compiled:
+            return Verification(False, f"the corrected project does not compile:\n{build.diagnostic(1500)}")
+        # Failing unit tests do not stop the comparison with the legacy: the golden master decides, and a test that
+        # contradicts it is reported back for the developer to align with the program.
+        tests_note = (
+            ""
+            if build.ok
+            else f"\n\nUnit tests that fail (align them with the program if they contradict "
+            f"it, the golden master proves what the program does):\n{build.diagnostic(1200)}"
+        )
         run: EquivalenceRun = await pack.run_equivalence(sandbox, candidate, design, use_case, master, defaults)
         outcomes: list[CaseOutcome] = outcomes_of(run)
         if run.problem:
@@ -275,10 +293,14 @@ async def converge(
             state["files"], state["outcomes"] = candidate, outcomes
             state["changed"].update(artifact["files"])
             state["findings"] = artifact["findings"] or state["findings"]
-            return Verification(True)
+            if build.ok:
+                return Verification(True)
+            # The legacy is matched; what is left is a unit test that contradicts the program.
+            return Verification(False, f"every case of the golden master matches, but {tests_note.strip()}")
         await ctx.store.event("info", "running", f"Golden master after the correction: {left} of {len(outcomes)} "
                               f"case(s) differ (before: {before})", phase=ctx.phase.key)  # fmt: skip
-        return Verification(False, f"{left} of {len(outcomes)} case(s) still differ:\n{difference_digest(outcomes)}")
+        return Verification(False, f"{left} of {len(outcomes)} case(s) still differ:\n{difference_digest(outcomes)}"
+                            + tests_note)  # fmt: skip
 
     await ctx.do_verify_correct(DEVELOPER, work, verify, what=f"{use_case.name} against the golden master")
     outcomes = state["outcomes"]
