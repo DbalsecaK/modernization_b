@@ -94,7 +94,8 @@ class AseRunner:
         finally:
             await self._stop(name)
         return GoldenMaster(program=suite.program, source_sha256=source_digest(files), engine=self.engine,
-                            schema_=suite.schema_, results=results)  # fmt: skip
+                            schema_=suite.schema_, results=results,
+                            unassigned_outputs=golden.unassigned_outputs(plan.program))  # fmt: skip
 
 
 class RecordedRunner:

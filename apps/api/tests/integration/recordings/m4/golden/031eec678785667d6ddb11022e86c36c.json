@@ -2049,6 +2049,24 @@
         },
         "calls": [
           {
+            "program": "db_cuentas..sp_debito",
+            "arguments": {
+              "@i_cuenta": "0012345678",
+              "@i_tipo": "AHO",
+              "@i_valor": "100.0000",
+              "@i_referencia": "PAGO ORDEN"
+            }
+          },
+          {
+            "program": "db_cuentas..sp_debito",
+            "arguments": {
+              "@i_cuenta": "0012345678",
+              "@i_tipo": "AHO",
+              "@i_valor": "2.0000",
+              "@i_referencia": "COMISION PAGO"
+            }
+          },
+          {
             "program": "cobis..sp_cerror",
             "arguments": {
               "@t_from": "sp_pago_orden",
@@ -2717,6 +2735,15 @@
           ]
         },
         "calls": [
+          {
+            "program": "db_cuentas..sp_debito",
+            "arguments": {
+              "@i_cuenta": "0012345678",
+              "@i_tipo": "AHO",
+              "@i_valor": "102.0000",
+              "@i_referencia": "PAGO ORDEN"
+            }
+          },
           {
             "program": "cobis..sp_cerror",
             "arguments": {

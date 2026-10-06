@@ -134,7 +134,7 @@ func run(ctx context.Context, db store, p plan, c testCase) (out map[string]any)
 			out["failure"] = fmt.Sprintf("%T: %v", err, err)
 			return out
 		}
-		rec.calls = nil // inside the rolled-back transaction: they had no effect
+		// The calls stay: what the service did before it rejected, as the legacy calls before its return (ADR-0044).
 		out["error"] = found
 	} else {
 		out["response"] = response

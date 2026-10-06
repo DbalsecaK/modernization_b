@@ -95,8 +95,9 @@ def test_the_recorded_golden_master_is_the_behaviour_of_the_legacy() -> None:
     undone = seen["failed_commission_undoes_the_payment"]
     assert undone.returns == 50006
     assert undone.tables["db_pagos..pg_orden"][0]["ord_estado"] == "P"
-    # The first debit ran inside the transaction the program rolled back: it had no effect.
-    assert [c.program for c in undone.calls] == ["cobis..sp_cerror"]
+    # Both debits were called before the program rolled back (ADR-0044): the calls happened, the tables show the
+    # rollback (the order stays pending), and the error log came after it.
+    assert [c.program for c in undone.calls] == ["db_cuentas..sp_debito", "db_cuentas..sp_debito", "cobis..sp_cerror"]
 
 
 def test_replay_without_a_recording_says_so() -> None:
@@ -110,3 +111,22 @@ def test_a_live_run_reproduces_the_recording() -> None:
     recorded = asyncio.run(RecordedRunner(FIXTURES / "golden", "replay").run(FILES, SUITE))
     live = asyncio.run(AseRunner().run(FILES, SUITE))
     assert [r.observation for r in live.results] == [r.observation for r in recorded.results]
+
+
+def test_output_parameters_the_program_never_assigns_are_detected() -> None:
+    # ADR-0044: an OUTPUT no statement writes (not even as `@x = @p output` of a nested call) echoes the caller.
+    lines = [
+        "create procedure sp_x @i_a int, @o_b int output, @o_c int output, @o_d int output, @o_e int output as",
+        "begin",
+        "  select @o_b = 1",
+        "  exec @rc = sp_y @x = @o_c output",
+        "  declare cur cursor for select 1",
+        "  open cur",
+        "  fetch cur into @o_e",
+        "  return 0",
+        "end",
+    ]
+    (_, program) = golden.procedures([SourceFile("sp/sp_x.sp", "\n".join(lines) + "\n")])[0]
+    assert golden.unassigned_outputs(program) == ["@o_d"]
+    (_, pago) = golden.procedures(FILES)[0]
+    assert golden.unassigned_outputs(pago) == []  # the fixture assigns both of its outputs

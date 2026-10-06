@@ -70,3 +70,15 @@ los casos: 38 casos distintos pasaron a 57 y los intentos siguientes oscilaron e
 esa base. Desde P28 una corrección se conserva solo si acorta la distancia **y no aumenta los casos distintos**; y
 el diagnóstico que vuelve al desarrollador lista los casos que coincidían antes y difieren ahora, los que la
 corrección arregló, y aclara que los archivos mostrados son la base conservada, no la versión descartada.
+
+## Precisión P29 (2026-10-06): severidad por caso y base reevaluada
+
+La ronda siguiente a P28 no pudo salir de la base mala: la distancia por tipo (código de retorno antes que
+salidas) seguía prefiriendo 57 casos con una salida errónea a 37 casos con cuatro códigos de retorno erróneos, y
+la base se reconstruía del journal tal como se conservó con la regla anterior. Desde P29 "más cerca del legado"
+compara `progress_key`: la **severidad de los casos** (cada caso distinto pesa su peor diferencia: caída 5,
+retorno 4, salida 3, mensaje o tabla 2, llamada 1), luego el total de diferencias, luego la distancia por tipo.
+Las tres correcciones reales deciden: quitar una salida anticipada (diez casos con retorno erróneo pasan a diez
+con diferencias de llamadas) acerca; quitar cinco caídas cambiando una salida en todos los casos (38 → 57) aleja;
+arreglar veinte casos a costa de cuatro códigos de retorno acerca. Y `rebuild_base` reevalúa cada corrección
+conservada sobre el golden master con la regla de hoy antes de aplicarla.
