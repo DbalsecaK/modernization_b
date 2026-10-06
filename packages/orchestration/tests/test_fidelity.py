@@ -23,6 +23,7 @@ from nexti_orchestration.fidelity import (
     Convergence,
     converge,
     convergence_request,
+    distance,
     parse_findings,
     policy_prompt,
     program_text,
@@ -354,3 +355,18 @@ async def test_a_correction_that_removes_differences_is_kept_even_when_every_cas
     assert "class PayOrderService { /* v2 */ }" in second  # the next attempt starts from the kept file
     assert total_differences(outcomes(many, {})) == 6
     assert total_differences(outcomes(fewer, {})) == 3
+
+
+def test_the_distance_puts_causes_before_consequences() -> None:
+    from nexti_verification.compare import Difference
+    from nexti_verification.verdict import CaseOutcome
+
+    early_exit = [CaseOutcome("a", (), (Difference("returns", "0", "122004"), Difference("calls", "[x]", "[]")))]
+    uncovered = [CaseOutcome("a", (), tuple(Difference(f"calls[{i}]:p.@x", "1", "2") for i in range(6)))]
+    crashed = [CaseOutcome("a", (), (), "ArithmeticException")]
+    assert distance(early_exit) == (0, 1, 0, 0, 0, 1)
+    assert distance(uncovered) == (0, 0, 0, 0, 0, 6)
+    assert distance(crashed) == (1, 0, 0, 0, 0, 0)
+    assert distance(uncovered) < distance(early_exit)  # six call differences are closer than one wrong return
+    assert distance(early_exit) < distance(crashed)
+    assert total_differences(uncovered) > total_differences(early_exit)  # the plain total says the opposite

@@ -60,6 +60,29 @@ def total_differences(outcomes: Sequence[CaseOutcome]) -> int:
     return sum(len(o.differences) if o.differences else (1 if o.failure else 0) for o in outcomes)
 
 
+_ORDER = ("returns", "outputs", "messages", "tables", "calls")
+
+
+def distance(outcomes: Sequence[CaseOutcome]) -> tuple[int, ...]:
+    """How far from the legacy, causes before consequences: cases that could not run, then differences in the
+    return code, the outputs, the tables, the calls. Compared as a tuple, so removing an early exit is progress
+    even when it uncovers more differences downstream (a real round discarded exactly that correction because the
+    plain total went from 100 to 147)."""
+    counts = dict.fromkeys(_ORDER, 0)
+    failures = 0
+    for o in outcomes:
+        if o.failure:
+            failures += 1
+        for d in o.differences:
+            kind = d.path.split(":", 1)[0].split("[", 1)[0]
+            counts[kind if kind in counts else "calls"] += 1
+    return (failures, *(counts[k] for k in _ORDER))
+
+
+def closer(candidate: Sequence[CaseOutcome], current: Sequence[CaseOutcome]) -> bool:
+    return distance(candidate) < distance(current)
+
+
 @dataclass(frozen=True)
 class Convergence:
     cases: int
@@ -292,7 +315,7 @@ async def converge(
         before = differing(state["outcomes"])
         # Progress is the number of differences, not of differing cases: a correction that removes the cause of
         # an early exit leaves every case differing on smaller things, and must be kept to build on it.
-        if total_differences(outcomes) < total_differences(state["outcomes"]):
+        if closer(outcomes, state["outcomes"]):
             state["files"], state["outcomes"] = candidate, outcomes
             state["changed"].update(artifact["files"])
             state["findings"] = artifact["findings"] or state["findings"]
@@ -306,8 +329,9 @@ async def converge(
             return Verification(False, f"every case of the golden master matches, but {tests_note.strip()}")
         kept = "kept as the new base" if state["outcomes"] is outcomes else "discarded"
         await ctx.store.event("info", "running", f"Golden master after the correction: {left} of {len(outcomes)} "
-                              f"case(s) differ, {total_differences(outcomes)} difference(s) (before: {before} and "
-                              f"{total_differences(state['outcomes']) if kept == 'discarded' else '-'}); {kept}",
+                              f"case(s) differ, {total_differences(outcomes)} difference(s), distance "
+                              f"{distance(outcomes)} (before: {before} case(s), distance "
+                              f"{distance(state['outcomes']) if kept == 'discarded' else '-'}); {kept}",
                               phase=ctx.phase.key)  # fmt: skip
         summary = (f"{left} of {len(outcomes)} case(s) still differ ({total_differences(outcomes)} difference(s); "
                    f"the correction was {kept}):\n{difference_digest(outcomes)}")  # fmt: skip
