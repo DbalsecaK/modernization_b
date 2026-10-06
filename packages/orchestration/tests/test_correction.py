@@ -57,12 +57,14 @@ def test_the_digest_groups_the_differences_and_names_what_they_point_at() -> Non
         CaseOutcome("d", ("RULE-002",), (), "the harness crashed"),
     ]
     digest = difference_digest(found)
-    assert digest.splitlines()[0] == "- returns (2 case(s), e.g. a, b): legacy '0', target '122004'"
+    lines = digest.splitlines()
+    assert lines[0].startswith("- 1 case(s) could not run on the target (first to fix")  # nothing of it compared
+    assert lines[0].endswith("e.g. d: the harness crashed")
+    assert lines[1] == "- returns (2 case(s), e.g. a, b): legacy '0', target '122004'"
     # Causes before consequences: the calls are shown last even when more cases differ on them.
     noisy = [_outcome(f"n{i}", ("calls", "[x]", "[]")) for i in range(5)] + [_outcome("r", ("returns", "0", "9"))]
     assert [line.split(" ")[1] for line in difference_digest(noisy).splitlines()] == ["returns", "calls"]
     assert "- tables:db..pg_orden_total[0].to_estado (1 case(s), e.g. a): legacy 'T', target 'I'" in digest
-    assert "1 case(s) could not run on the target, e.g. d: the harness crashed" in digest
     assert named_in(found) == {"pg_orden_total": 1, "sp_comision": 1}
 
 

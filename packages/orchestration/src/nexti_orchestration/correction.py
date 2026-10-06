@@ -88,8 +88,10 @@ def difference_digest(outcomes: Sequence[CaseOutcome], at_most: int = 12) -> str
         for path, count in ranked[:at_most]
     ]
     if failures:
-        lines.append(f"- {len(failures)} case(s) could not run on the target, e.g. {failures[0].name}: "
-                     f"{str(failures[0].failure)[:200]}")  # fmt: skip
+        # A case that could not run comes first: nothing of it could be compared, and the exception names the
+        # cause (a BigDecimal scale without a rounding mode, a null the legacy tolerates, an unmapped type).
+        lines.insert(0, f"- {len(failures)} case(s) could not run on the target (first to fix: the legacy ran them), "
+                        f"e.g. {failures[0].name}: {str(failures[0].failure)[:300]}")  # fmt: skip
     return "\n".join(lines)
 
 
