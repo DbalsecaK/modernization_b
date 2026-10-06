@@ -375,6 +375,47 @@ def test_the_distance_puts_causes_before_consequences() -> None:
     assert total_differences(uncovered) > total_differences(early_exit)  # the plain total says the opposite
 
 
+def test_a_correction_that_fixes_some_cases_by_breaking_others_is_not_closer_and_both_lists_are_told() -> None:
+    from nexti_orchestration.fidelity import closer, regression_note
+    from nexti_verification.compare import Difference
+    from nexti_verification.verdict import CaseOutcome
+
+    out = (Difference("outputs:@o_x", "0", "None"),)
+    current = [CaseOutcome("a", (), (), "ArithmeticException"), CaseOutcome("b", ()), CaseOutcome("c", ()),
+               CaseOutcome("d", (), out)]  # fmt: skip
+    # The crash is gone, but b and c now differ: farther by cases although the distance tuple is smaller.
+    candidate = [CaseOutcome("a", ()), CaseOutcome("b", (), out), CaseOutcome("c", (), out), CaseOutcome("d", (), out)]
+    assert distance(candidate) < distance(current)
+    assert not closer(candidate, current)
+    note = regression_note(candidate, current)
+    assert note.startswith("Cases that matched the legacy before this correction and differ now (2): b, c.")
+    assert "Cases this correction fixed (1): a." in note
+    # Fewer cases and a smaller distance: closer. Nothing to tell when nothing changed hands.
+    assert closer([CaseOutcome("a", ()), CaseOutcome("b", ()), CaseOutcome("c", ()), CaseOutcome("d", (), out)],
+                  current)  # fmt: skip
+    assert regression_note(current, current) == ""
+
+
+async def test_a_discarded_correction_tells_the_developer_which_cases_it_broke() -> None:
+    out = (Observation(returns=0, tables={"db..pg_orden_total": [{"to_estado": "T"}]}),
+           Observation(returns=122004, tables={"db..pg_orden_total": [{"to_estado": "I"}]}))  # fmt: skip
+    base = EquivalenceRun(FakeBuild(), [CaseRun("batch_case", out[0], out[1]), CaseRun("case_0", out[0], out[0]),
+                                        CaseRun("case_1", out[0], out[0])], [])  # fmt: skip
+    worse = EquivalenceRun(FakeBuild(), [CaseRun("batch_case", out[0], out[0]), CaseRun("case_0", out[0], out[1]),
+                                         CaseRun("case_1", out[0], out[1])], [])  # fmt: skip
+    pack = FakePack(runs=[base, worse, _run(0)], builds=[FakeBuild(), FakeBuild()])
+    port = FakePort(replies=[_reply("v2"), _reply("v3")])
+    ctx, _store = _ctx(max_iterations=2)
+    _files, result = await _converge(ctx, port, pack, {SERVICE: "v1"})
+    assert result.differing == 0
+    third = port.models.requests[1][1]["content"]
+    assert "the correction was discarded" in third
+    assert "Cases that matched the legacy before this correction and differ now (2): case_0, case_1." in third
+    assert "Cases this correction fixed (1): batch_case." in third
+    assert "The files shown are the ones kept as the base (1 case(s) differ on them)" in third
+    assert "class PayOrderService { /* v2 */ }" not in third  # the discarded version is not what it corrects
+
+
 async def test_a_kept_correction_is_progress_and_does_not_spend_an_attempt() -> None:
     # One attempt per round: v2 is closer (kept, progress), v3 matches. Before ADR-0043 v2 exhausted the round.
     pack = FakePack(runs=[_run(3), _run(2), _run(0)], builds=[FakeBuild(), FakeBuild()])
