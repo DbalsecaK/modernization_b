@@ -224,6 +224,31 @@ def convergence_request(
     return text
 
 
+KEPT = "kept as the new base"
+
+
+async def rebuild_base(ctx: PhaseContext, port: FidelityPort, files: dict[str, str]) -> dict[str, str]:
+    """The base of the convergence after a worker restart (ADR-0043): the journal keeps every attempt of the
+    developer, so the files of the attempts that were kept (or passed) are applied again, in order, before the
+    first comparison. Without this, a restart replayed the attempts but started again from the generated files."""
+    prefix = ctx._key(f"dvc/{DEVELOPER}/")
+    kept = sorted(((int(key[len(prefix):]), memo) for key, memo in ctx.journal.items()
+                   if key.startswith(prefix) and key[len(prefix):].isdigit()), key=lambda pair: pair[0])  # fmt: skip
+    rebuilt = dict(files)
+    applied = 0
+    for _iteration, memo in kept:
+        if not (memo.get("ok") or KEPT in str(memo.get("diagnostic", ""))):
+            continue
+        references = (memo.get("artifact") or {}).get("files") or {}
+        for path, reference in references.items():
+            rebuilt[path] = await port.load_file(reference)
+        applied += 1
+    if applied:
+        await ctx.store.event("info", "running", f"Convergence resumed: {applied} kept correction(s) applied again "
+                              "from the journal", phase=ctx.phase.key)  # fmt: skip
+    return rebuilt
+
+
 async def converge(
     ctx: PhaseContext,
     port: FidelityPort,
@@ -243,6 +268,7 @@ async def converge(
     """The generated project against the golden master, corrected by the developer until every case matches: at
     most `max_iterations` developer calls per round, then the escalation question (retry or stop) a person answers
     (11.1). Returns the files to keep and what happened."""
+    files = await rebuild_base(ctx, port, files)
     first = await pack.run_equivalence(sandbox, files, design, use_case, master, defaults)
     first_outcomes: list[CaseOutcome] = outcomes_of(first)
     if first.problem:
@@ -331,7 +357,7 @@ async def converge(
                 return Verification(True)
             # The legacy is matched; what is left is a unit test that contradicts the program.
             return Verification(False, f"every case of the golden master matches, but {tests_note.strip()}")
-        kept = "kept as the new base" if state["outcomes"] is outcomes else "discarded"
+        kept = KEPT if state["outcomes"] is outcomes else "discarded"
         await ctx.store.event("info", "running", f"Golden master after the correction: {left} of {len(outcomes)} "
                               f"case(s) differ, {total_differences(outcomes)} difference(s), distance "
                               f"{distance(outcomes)} (before: {before} case(s), distance "
@@ -339,7 +365,8 @@ async def converge(
                               phase=ctx.phase.key)  # fmt: skip
         summary = (f"{left} of {len(outcomes)} case(s) still differ ({total_differences(outcomes)} difference(s); "
                    f"the correction was {kept}):\n{difference_digest(outcomes)}")  # fmt: skip
-        return Verification(False, summary + tests_note)
+        # A kept correction is progress: it does not count against the attempts of the round (ADR-0043).
+        return Verification(False, summary + tests_note, progress=kept != "discarded")
 
     await ctx.do_verify_correct(DEVELOPER, work, verify, what=f"{use_case.name} against the golden master")
     outcomes = state["outcomes"]

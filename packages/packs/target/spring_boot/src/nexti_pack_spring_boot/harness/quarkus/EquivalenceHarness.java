@@ -171,7 +171,7 @@ public final class EquivalenceHarness {
             calls.forEach(recorded::add);
         } catch (Exception e) {
             Throwable cause = e instanceof InvocationTargetException ite ? ite.getCause() : e;
-            out.put("failure", cause.getClass().getName() + ": " + cause.getMessage());
+            out.put("failure", cause.getClass().getName() + ": " + cause.getMessage() + where(cause, plan));
         }
         return out;
     }
@@ -240,9 +240,40 @@ public final class EquivalenceHarness {
             if (answer.path("returns").asInt(0) != 0) {
                 throw new RuntimeException(name + " answered " + answer.path("returns").asInt());
             }
+            JsonNode outputs = answer.path("outputs");
+            if (outputs.isObject()) { // one call, every output: the entity the method returns (ADR-0043)
+                return recordOf(method, outputs);
+            }
             JsonNode output = answer.path("output");
             return convert(output.isMissingNode() || output.isNull() ? null : output.asText(), method.getReturnType());
         });
+    }
+
+    /** The entity a port method returns, built from the outputs of the case (Optional when the method says so). */
+    private static Object recordOf(Method method, JsonNode outputs) throws ReflectiveOperationException {
+        Class<?> type = method.getReturnType();
+        if (type == java.util.Optional.class) {
+            java.lang.reflect.Type generic = method.getGenericReturnType();
+            if (generic instanceof java.lang.reflect.ParameterizedType parameterized) {
+                Class<?> inner = (Class<?>) parameterized.getActualTypeArguments()[0];
+                return java.util.Optional.of(record(inner, outputs));
+            }
+            return java.util.Optional.empty();
+        }
+        return type.isRecord() ? record(type, outputs) : null;
+    }
+
+    /** Where in the generated code the exception was raised: the first frame inside the base package. */
+    private static String where(Throwable cause, JsonNode plan) {
+        String service = plan.path("service").asText("");
+        String base = service.contains(".application.") ? service.substring(0, service.indexOf(".application.")) : "";
+        for (StackTraceElement frame : cause.getStackTrace()) {
+            if (!base.isEmpty() && frame.getClassName().startsWith(base)) {
+                return " at " + frame.getClassName() + "." + frame.getMethodName() + "(" + frame.getFileName() + ":"
+                        + frame.getLineNumber() + ")";
+            }
+        }
+        return "";
     }
 
     private static Object record(Class<?> type, JsonNode values) throws ReflectiveOperationException {

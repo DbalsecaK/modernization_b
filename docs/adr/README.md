@@ -48,5 +48,6 @@ reemplaza y se marca el anterior como "Reemplazado por ADR-NNNN".
 | [0040](0040-perfiles-de-pack.md) | Packs parametrizables: versiones que llegan al pack y perfiles de pack del cliente | Aceptada |
 | [0041](0041-ronda-de-correccion-en-la-verificacion.md) | Ronda de corrección en la verificación (extracción guiada) | Aceptada |
 | [0042](0042-generacion-fiel-al-programa.md) | Generación fiel al programa (behaviour-preserving) en la extracción guiada | Aceptada |
+| [0043](0043-puertos-con-varias-salidas-y-convergencia-persistente.md) | Puertos con varias salidas, convergencia persistente e intentos con progreso | Aceptada |
 
 Plantilla: contexto, decisión, alternativas consideradas, consecuencias y cómo se valida.
