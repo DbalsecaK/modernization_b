@@ -39,3 +39,5 @@ Sin la opción no cambia ninguna petición: las grabaciones (M4, M6, M6c, M8b, M
 - Costo acotado: dos llamadas del desarrollador y dos compilaciones más por verificación, en el peor caso.
 - Límite honesto: corrige desviaciones localizadas (predicados, orden, salidas); no rehace el diseño. Si el
   diseño es la causa, el camino sigue siendo el reintento desde Architecture (ADR-0035).
+
+- (2026-10-06) Con ADR-0042 el golden master se cierra ya en la generación; esta ronda queda como red de seguridad y no se invoca cuando no hay diferencias.
