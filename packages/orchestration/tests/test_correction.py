@@ -58,6 +58,9 @@ def test_the_digest_groups_the_differences_and_names_what_they_point_at() -> Non
     ]
     digest = difference_digest(found)
     assert digest.splitlines()[0] == "- returns (2 case(s), e.g. a, b): legacy '0', target '122004'"
+    # Causes before consequences: the calls are shown last even when more cases differ on them.
+    noisy = [_outcome(f"n{i}", ("calls", "[x]", "[]")) for i in range(5)] + [_outcome("r", ("returns", "0", "9"))]
+    assert [line.split(" ")[1] for line in difference_digest(noisy).splitlines()] == ["returns", "calls"]
     assert "- tables:db..pg_orden_total[0].to_estado (1 case(s), e.g. a): legacy 'T', target 'I'" in digest
     assert "1 case(s) could not run on the target, e.g. d: the harness crashed" in digest
     assert named_in(found) == {"pg_orden_total": 1, "sp_comision": 1}
@@ -144,6 +147,15 @@ def test_the_files_involved_are_the_service_and_the_adapters_that_name_what_diff
     tables = [str(e.legacy_table).rsplit(".", 1)[-1].lower() for e in kept[:2]]
     chosen = files_to_correct(SPRING, DESIGN, USE_CASE, weighted, {tables[0]: 1, tables[1]: 40})
     assert list(chosen)[1] == adapter_path(DESIGN, second_port)
+    # The adapter of a port that replaces a legacy program is a stub in the harness: never offered, however much
+    # it names what differs (a real run changed it three times for nothing).
+    stub_port = next(p for p in DESIGN.ports if p.legacy_program)
+    program = str(stub_port.legacy_program).rsplit(".", 1)[-1].lower()
+    stubbed_files = {SERVICE: "svc", adapter_path(DESIGN, stub_port): f"class S {{ /* {program} {kept[0].name} */ }}"}
+    assert list(files_to_correct(SPRING, DESIGN, USE_CASE, stubbed_files, {program: 50, tables[0]: 50})) == [SERVICE]
+    text = request_text(USE_CASE, "d", "e", {}, None, "", [f"{stub_port.name} ({stub_port.legacy_program})"])
+    assert "their adapters are not executed" in text
+    assert f"{stub_port.name} ({stub_port.legacy_program})" in text
 
 
 def test_the_reply_gives_each_changed_file_under_its_path() -> None:
@@ -265,7 +277,13 @@ async def test_a_correction_stays_only_when_it_builds_and_reduces_the_difference
     assert [(r.number, r.before, r.after) for r in rounds] == [(1, 3, 3), (2, 3, 0)]
     assert final[SERVICE] == "class PayOrderService { /* v3 */ }\n"
     assert all(o.matched for o in found)
-    assert port.saved == [{SERVICE: "class PayOrderService { /* v3 */ }\n"}]  # only the round that helped
+    # Only the round that helped is kept as code; every round leaves what the developer saw and answered (docs).
+    assert [s for s in port.saved if SERVICE in s] == [{SERVICE: "class PayOrderService { /* v3 */ }\n"}]
+    exchanges = [p for s in port.saved for p in s if p.startswith("verification/correction/")]
+    assert exchanges == [
+        "verification/correction/round-1-request.md", "verification/correction/round-1-reply.md",
+        "verification/correction/round-2-request.md", "verification/correction/round-2-reply.md",
+    ]  # fmt: skip
     assert "did not help" in port.models.requests[1]  # the second request carries the feedback
     assert "Differences, grouped by what differs" in port.models.requests[0]
     assert "pg_orden_total" in port.models.requests[0]  # the legacy lines that touch the table are shown
@@ -283,4 +301,4 @@ async def test_a_correction_that_does_not_build_is_discarded_and_the_diagnostic_
     assert run_after is first
     assert [r.note.startswith("the corrected code does not pass its build") for r in rounds] == [True, True]
     assert "did not build" in port.models.requests[1]
-    assert port.saved == []
+    assert all(SERVICE not in s for s in port.saved)  # nothing kept as code; the exchanges stay as docs
