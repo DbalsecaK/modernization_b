@@ -19,12 +19,23 @@ from typing import Any, Protocol, cast
 
 from pydantic import ValidationError
 
+from nexti_adapter_sybase.golden import parameter_defaults
 from nexti_agents import prompt
 from nexti_core.adapters import SourceFile
+from nexti_core.spec.characterization import GoldenMaster
 from nexti_core.spec.model import Rule
 from nexti_orchestration import frontend, infrastructure
 from nexti_orchestration.context import Attempt, PhaseContext, Verification
 from nexti_orchestration.extraction import ModelCaller, ReplyError, is_cut, parse_json, raise_if_cut
+from nexti_orchestration.fidelity import (
+    DEVELOPER_OBLIGATIONS,
+    FINDINGS_PATH,
+    TESTER_OBLIGATIONS,
+    FidelityPort,
+    converge,
+    policy_prompt,
+    program_text,
+)
 from nexti_orchestration.guided import enabled as guided_enabled
 from nexti_orchestration.guided import stack_guidance
 from nexti_orchestration.model import PhaseFailedError, PhaseResult, PhaseUnavailableError
@@ -36,7 +47,24 @@ from nexti_pack_spring_boot.pack import PACK as SPRING_BOOT
 from nexti_pack_spring_boot.pack import wiring
 from nexti_sandbox import Sandbox
 from nexti_sandbox.build import BuildResult
-from nexti_verification.verdict import criterion_test
+from nexti_verification import differences
+from nexti_verification.verdict import (
+    CaseOutcome,
+    criterion_test,
+)
+
+
+def outcomes(run: Any, rules: Mapping[str, Sequence[str]]) -> list[CaseOutcome]:
+    """The cases of an equivalence run as outcomes (the same reading the verification makes, 11.3)."""
+    return [CaseOutcome(c.name, rules.get(c.name, ()), () if c.failure else differences(c.expected, c.actual),
+                        c.failure) for c in run.cases]  # fmt: skip
+
+
+def _replaces(use_case: UseCase, master: GoldenMaster) -> bool:
+    """Whether the use case is the one the golden master's program became (by legacy program, or the only one)."""
+    short = master.program.rsplit(".", 1)[-1].lower()
+    return (use_case.legacy_program or "").rsplit(".", 1)[-1].lower() == short or use_case.legacy_program is None
+
 
 ARCHITECT = "solution-architect"
 FEATURE_ARCHITECT = "solution-architect-feature"  # the prompt of the design without legacy (Flow 2)
@@ -418,13 +446,34 @@ class GenerationPhases:
         await ctx.store.event("info", "succeeded", "Layers contracts and domain model compile", phase=ctx.phase.key)
         tests_run = 0
         criteria = await self._criteria(design) if ctx.run.flow == "newFeature" else {}
+        # Behaviour-preserving generation (ADR-0042): with the guided option and a legacy, the program is in view.
+        faithful = guided_enabled(ctx.run.options) and ctx.run.flow == "modernization"
+        source = await self.port.source_files() if faithful else []
+        legacy_stack = ""
+        if source:
+            from nexti_orchestration.modernization import pick_adapter
+
+            try:
+                legacy_stack = pick_adapter(source).name
+            except PhaseFailedError:
+                legacy_stack = ""
+        programs: dict[str, str] = {}
+        tester_prompt = developer_prompt = ""
+        if source:
+            tester_prompt = policy_prompt(pack.tester_prompt, ctx.run.target, legacy_stack)
+            developer_prompt = policy_prompt(pack.developer_prompt, ctx.run.target, legacy_stack)
+            programs = {u.name: program_text(source, u, list(rules.values())) for u in design.use_cases}
         for use_case in design.use_cases:
             # One shard per piece: its invocations and journal entries never mix with another piece's.
             piece = ctx.for_shard(f"use-case:{use_case.name}")
-            files[pack.test_path(design, use_case)] = await self._tests(piece, pack, design, use_case, rules, files,
-                                                                        criteria.get(use_case.name, ""))  # fmt: skip
-            files[pack.service_path(design, use_case)] = await self._service(piece, pack, design, use_case, rules,
-                                                                             files, sandbox)  # fmt: skip
+            files[pack.test_path(design, use_case)] = await self._tests(
+                piece, pack, design, use_case, rules, files, criteria.get(use_case.name, ""),
+                programs.get(use_case.name, ""), tester_prompt,
+            )  # fmt: skip
+            files[pack.service_path(design, use_case)] = await self._service(
+                piece, pack, design, use_case, rules, files, sandbox, programs.get(use_case.name, ""),
+                developer_prompt,
+            )  # fmt: skip
         for port_spec in design.ports:
             piece = ctx.for_shard(f"adapter:{port_spec.name}")
             files[pack.adapter_path(design, port_spec)] = await self._adapter(piece, pack, design, port_spec.name,
@@ -438,8 +487,30 @@ class GenerationPhases:
         layers = {p: pack.layer_of(p, design) for p in files}
         traced = {pack.service_path(design, u): u.rules for u in design.use_cases}
         traced.update({pack.test_path(design, u): u.rules for u in design.use_cases})
+        notes: list[str] = []
+        if source and hasattr(self.port, "load_golden_master"):
+            # The golden master inside the loop (ADR-0042): the project converges before the phase ends.
+            master = await self.port.load_golden_master()
+            if master is not None:
+                defaults = parameter_defaults(source, master.program)
+                for use_case in design.use_cases:
+                    if not _replaces(use_case, master):
+                        continue
+                    piece = ctx.for_shard(f"converge:{use_case.name}")
+                    case_rules = {r.case.name: r.case.rules for r in master.results}
+                    files, result = await converge(
+                        piece, cast(FidelityPort, self.port), pack, sandbox, design, use_case, master, defaults,
+                        files, source, list(rules.values()), lambda run, cr=case_rules: outcomes(run, cr),
+                        developer_prompt, programs.get(use_case.name, ""),
+                    )  # fmt: skip
+                    notes.append(result.note)
+                    layers = {p: pack.layer_of(p, design) for p in files}
+                    layers[FINDINGS_PATH] = "docs"
+                    files[FINDINGS_PATH] = json.dumps(result.findings, ensure_ascii=False, indent=1)
         await self.port.save_artifacts(files, layers, traced)
         summary = f"{len(files)} files in {len(set(layers.values()))} layers; {tests_run} tests pass in the sandbox"
+        if notes:
+            summary += "; " + "; ".join(notes)
         if flavour is not None:
             port = cast(frontend.FrontendPort, self.port)
             pages, _, frontend_summary = await frontend.generate(ctx, port, design, flavour)
@@ -457,12 +528,14 @@ class GenerationPhases:
 
     async def _tests(
         self, ctx: PhaseContext, pack: BackendPack, design: Design, use_case: UseCase, rules: dict[str, Rule],
-        files: dict[str, str], criteria: str = "",
+        files: dict[str, str], criteria: str = "", program: str = "", system_prompt: str = "",
     ) -> str:  # fmt: skip
         async def work() -> Attempt:
             request = (f"Design:\n{design.model_dump_json(indent=1)}\n\nUse case: {use_case.name}\n\n"
                        f"Rules:\n{_rules_text([rules[r] for r in use_case.rules if r in rules])}\n\n"
                        f"Existing files:\n{pack.existing(files, design)}")  # fmt: skip
+            if program:  # behaviour-preserving generation (ADR-0042): the program is the oracle of the tests
+                request += f"\n\nThe legacy program (numbered):\n{program}\n\n{TESTER_OBLIGATIONS}"
             if criteria:  # Flow 2: the approved acceptance criteria are the oracle too (ADR-0018)
                 request += (
                     "\n\nAcceptance criteria of the user stories. Besides the tests of the rule scenarios, write one "
@@ -473,7 +546,7 @@ class GenerationPhases:
                     f"and do not assert what no scenario states:\n{criteria}"
                 )
             messages = [
-                {"role": "system", "content": prompt(pack.tester_prompt)},
+                {"role": "system", "content": system_prompt or prompt(pack.tester_prompt)},
                 {"role": "user", "content": request},
             ]
             reply = await self.port.models.complete(TESTER, "generation", messages)
@@ -490,16 +563,18 @@ class GenerationPhases:
 
     async def _service(
         self, ctx: PhaseContext, pack: BackendPack, design: Design, use_case: UseCase, rules: dict[str, Rule],
-        files: dict[str, str], sandbox: Sandbox,
+        files: dict[str, str], sandbox: Sandbox, program: str = "", system_prompt: str = "",
     ) -> str:  # fmt: skip
         base = [
-            {"role": "system", "content": prompt(pack.developer_prompt)},
+            {"role": "system", "content": system_prompt or prompt(pack.developer_prompt)},
             {"role": "user", "content": (
                 f"Write the application service of {use_case.name}.\n\nDesign:\n{design.model_dump_json(indent=1)}\n\n"
                 f"Rules:\n{_rules_text([rules[r] for r in use_case.rules if r in rules])}\n\n"
                 f"Existing files:\n{pack.existing(files, design)}\n\nThe tests it must pass:\n"
                 f"{files[pack.test_path(design, use_case)]}"
-                + (f"\n\n{stack_guidance(ctx.run.target)}" if guided_enabled(ctx.run.options) else ""))},
+                + (f"\n\n{stack_guidance(ctx.run.target)}" if guided_enabled(ctx.run.options) else "")
+                # Behaviour-preserving generation (ADR-0042): the program is the oracle of the behaviour.
+                + (f"\n\nThe legacy program (numbered):\n{program}\n\n{DEVELOPER_OBLIGATIONS}" if program else ""))},
         ]  # fmt: skip
         target = pack.service_path(design, use_case)
 
