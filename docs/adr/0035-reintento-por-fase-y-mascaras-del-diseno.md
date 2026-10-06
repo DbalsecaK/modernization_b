@@ -53,6 +53,9 @@ Con la opción `guided_extraction`, el pedido al arquitecto lleva las restriccio
   configuración que precede al `IF` que la regla cita). Una corrida real había enmascarado la tabla de
   configuración contable como infraestructura y el código generado nunca producía el error ni la comisión que el
   legado sí producía (59/59 casos distintos).
+- (precisión del 2026-10-06) un puerto que reemplaza un programa del legado tiene **un solo método**, llamado una vez
+  con las entradas del programa y que devuelve todas sus salidas: un diseño real partió `sp_con_confcontable` en
+  `findTransaction` y `findCause`, el destino lo llamaba dos veces y la traza de llamadas nunca coincidía (R11).
 
 Las razones de infraestructura legítimas (registro de errores y eventos, auditoría) no citan reglas y siguen
 permitidas. Sin la opción no cambia ningún pedido: las grabaciones (M4, M6, M6c, M8b, M10, M11) valen igual.

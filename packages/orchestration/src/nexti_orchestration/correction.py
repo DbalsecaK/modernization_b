@@ -247,6 +247,22 @@ def _known_path(candidate: str | None, known: Mapping[str, str]) -> str | None:
     return matching[0] if len(matching) == 1 else None
 
 
+DECLARED = re.compile(
+    r"^\s*(?:public\s+|final\s+|abstract\s+|internal\s+|sealed\s+)*(?:class|interface|record|enum)\s+(\w+)"
+)
+
+
+def _declared_in(lines: Sequence[str], known: Mapping[str, str]) -> str | None:
+    """The known file whose base name is the type a code block declares (Java, C#, Kotlin: `class Name`)."""
+    for line in lines[:400]:
+        found = DECLARED.match(line)
+        if found:
+            name = found.group(1)
+            matching = [p for p in known if p.rsplit("/", 1)[-1].rsplit(".", 1)[0] == name]
+            return matching[0] if len(matching) == 1 else None
+    return None
+
+
 def files_from_reply(content: str, known: Mapping[str, str]) -> dict[str, str]:
     """The files of a developer's answer, however it marks them: a path on the line before a fenced block (`###
     path`, `**path**`, `// file: path`, `path:`), in the fence itself (```java path) or as a comment on the block's
@@ -287,6 +303,16 @@ def files_from_reply(content: str, known: Mapping[str, str]) -> dict[str, str]:
             block = []
     if len(blocks) == 1 and blocks[0][0] is None and len(known) == 1:
         blocks = [(next(iter(known)), blocks[0][1])]
+    # A block that names no path (or that carries the `### path` line inside the fence) is matched by the type it
+    # declares: `class DebitCompanyAccountService` is the known file of that base name.
+    resolved_blocks: list[tuple[str | None, list[str]]] = []
+    for candidate, lines in blocks:
+        if lines and candidate is None and (inner := FILE_HEADER.match(lines[0])):
+            candidate, lines = inner.group(1), lines[1:]
+        if candidate is None:
+            candidate = _declared_in(lines, known)
+        resolved_blocks.append((candidate, lines))
+    blocks = resolved_blocks
     for candidate, lines in blocks:
         resolved = _known_path(candidate, known)
         if resolved and lines:

@@ -199,10 +199,13 @@ def parse_findings(content: str) -> list[dict[str, Any]]:
 def convergence_request(
     use_case: UseCase, program: str, design: Design, outcomes: Sequence[CaseOutcome], master: GoldenMaster,
     source: Sequence[SourceFile], rules: Sequence[Rule], files: Mapping[str, str], feedback: str | None,
+    context: str = "",
 ) -> str:  # fmt: skip
     names = named_in(outcomes)
     case_rules = {r for o in outcomes if not o.matched for r in o.rules}
     shown = "\n\n".join(f"### {path}\n```\n{code}\n```" for path, code in files.items())
+    if context:  # the ports and the domain the files use: read-only, so the signatures are known
+        shown += f"\n\nRead-only context (the ports and the domain these files use; do not change them):\n{context}"
     stubbed = [f"{p.name} ({p.legacy_program})" for p in design.ports if p.legacy_program]
     text = (
         f"The generated {use_case.name} does not reproduce the legacy program on its golden master: the legacy ran "
@@ -265,8 +268,9 @@ async def converge(
         test_path = pack.test_path(design, use_case)
         if test_path in current:
             involved = {**involved, test_path: current[test_path]}
+        context = pack.existing({p: c for p, c in current.items() if p not in involved}, design)
         request = convergence_request(use_case, program, design, state["outcomes"], master, source, rules, involved,
-                                      feedback)  # fmt: skip
+                                      feedback, context)  # fmt: skip
         messages = [{"role": "system", "content": system_prompt}, {"role": "user", "content": request}]
         reply = await port.models.complete(DEVELOPER, "generation", messages, iteration=iteration)
         if hasattr(port, "save_artifacts"):  # the exchange stays with the run (docs, never delivered)

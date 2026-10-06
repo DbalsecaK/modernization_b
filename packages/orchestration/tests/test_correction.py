@@ -180,8 +180,10 @@ def test_the_reply_gives_each_changed_file_under_its_path() -> None:
     for form in forms[:-1]:
         assert files_from_reply(form, known) == {"src/A.java": "class A {}\n"}, form
     assert files_from_reply(forms[-1], {"src/A.java": "old"}) == {"src/A.java": "class A {}\n"}
-    with pytest.raises(ReplyError, match="unnamed"):
-        files_from_reply(forms[-1], known)  # two files were given: a lone block names none
+    # Two files were given and the lone block names none: the type it declares (class A) picks src/A.java.
+    assert files_from_reply(forms[-1], known) == {"src/A.java": "class A {}\n"}
+    with pytest.raises(ReplyError, match="unnamed"):  # a block that declares nothing known stays unnamed
+        files_from_reply("Here:\n```java\nint x = 1;\n```", known)
 
 
 @dataclass
@@ -315,3 +317,14 @@ def test_two_lists_of_calls_are_shown_by_length_and_where_they_part() -> None:
     assert "legacy '3 call(s), [1] = db..sp_b', target '1 call(s), [1] = (nothing)'" in short
     (plain,) = difference_digest([_outcome("z", ("calls", "[x]", "[]"))]).splitlines()  # not JSON: as they are
     assert "legacy '[x]', target '[]'" in plain
+
+
+def test_a_block_without_a_path_is_matched_by_the_type_it_declares() -> None:
+    known = {"src/main/java/x/PayOrderService.java": "old", "src/main/java/x/JdbcOrders.java": "old"}
+    body = "package x;\n\npublic class PayOrderService {\n}\n"
+    by_class = "Here is the service.\n```java\n" + body + "```"
+    assert files_from_reply(by_class, known) == {"src/main/java/x/PayOrderService.java": body}
+    inside = "```java\n### src/main/java/x/JdbcOrders.java\nclass JdbcOrders {}\n```"  # the header inside the fence
+    assert files_from_reply(inside, known) == {"src/main/java/x/JdbcOrders.java": "class JdbcOrders {}\n"}
+    with pytest.raises(ReplyError):  # a type none of the given files declares
+        files_from_reply("```java\nclass Other {}\n```", known)

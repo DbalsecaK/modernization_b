@@ -137,6 +137,9 @@ class FakePack:
     def layer_of(self, path: str, design: Design) -> str:
         return "application"
 
+    def existing(self, files: dict[str, str], design: Design) -> str:
+        return "\n".join(f"// {p}\n{c}" for p, c in sorted(files.items()) if "/domain/" in p)
+
     async def compile_and_test(self, sandbox: Any, files: dict[str, str], run_tests: bool = True) -> FakeBuild:
         return self.builds.pop(0)
 
@@ -370,3 +373,14 @@ def test_the_distance_puts_causes_before_consequences() -> None:
     assert distance(uncovered) < distance(early_exit)  # six call differences are closer than one wrong return
     assert distance(early_exit) < distance(crashed)
     assert total_differences(uncovered) > total_differences(early_exit)  # the plain total says the opposite
+
+
+async def test_the_ports_and_the_domain_travel_as_read_only_context() -> None:
+    pack = FakePack(runs=[_run(3), _run(0)], builds=[FakeBuild()])
+    port = FakePort(replies=[_reply("v2")])
+    ctx, _store = _ctx()
+    files = {SERVICE: "v1", "src/main/java/x/domain/port/Orders.java": "interface Orders { int find(); }"}
+    await _converge(ctx, port, pack, files)
+    text = port.models.requests[0][1]["content"]
+    assert "Read-only context (the ports and the domain these files use; do not change them):" in text
+    assert "interface Orders { int find(); }" in text
