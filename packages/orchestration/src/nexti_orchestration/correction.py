@@ -185,9 +185,10 @@ def case_examples(master: GoldenMaster | None, outcomes: Sequence[CaseOutcome], 
 def files_to_correct(
     pack: BackendPack, design: Design, use_case: UseCase, files: Mapping[str, str], names: Mapping[str, int] | set[str]
 ) -> dict[str, str]:
-    """The service of the use case and the adapters that name a table or program of the differences (by their
-    legacy name, or by the entity or port that keeps it), the service first and then the adapters the differences
-    point at most; at most `FILES_AT_MOST`."""
+    """The service of the use case and the adapters of the entities that name a table or program of the
+    differences (by their legacy name, or by the entity that keeps it), the service first and then the adapters the
+    differences point at most; at most `FILES_AT_MOST`. The adapters of ports that replace legacy programs are left
+    out: the harness stubs those ports, so their code never runs in the verification."""
     weights: dict[str, int] = dict(names) if isinstance(names, Mapping) else dict.fromkeys(names, 1)
     service = pack.service_path(design, use_case)
     chosen: dict[str, str] = {}
@@ -203,6 +204,8 @@ def files_to_correct(
     patterns = [(re.compile(rf"(?<![a-z0-9_]){re.escape(a)}(?![a-z0-9_])", re.I), w) for a, w in aliases.items()]
     scored: list[tuple[int, int, str]] = []
     for position, port in enumerate(design.ports):
+        if port.legacy_program:  # a stub in the harness: its adapter does not run, so it cannot be the cause
+            continue
         path = pack.adapter_path(design, port)
         if path in files and path not in chosen:
             weight = sum(w for p, w in patterns if p.search(files[path]))
@@ -276,11 +279,19 @@ def files_from_reply(content: str, known: Mapping[str, str]) -> dict[str, str]:
 
 
 def request_text(
-    use_case: UseCase, digest: str, excerpts: str, files: Mapping[str, str], feedback: str | None, examples: str = ""
-) -> str:
+    use_case: UseCase, digest: str, excerpts: str, files: Mapping[str, str], feedback: str | None, examples: str = "",
+    stubbed: Sequence[str] = (),
+) -> str:  # fmt: skip
     shown = "\n\n".join(f"### {path}\n```\n{code}\n```" for path, code in files.items())
     whole = (f"\n\nFailing cases, whole (trace which branch of the legacy applies to these inputs and rows, and "
              f"what the target did instead):\n{examples}" if examples else "")  # fmt: skip
+    if stubbed:
+        whole += (
+            "\n\nIn this verification the ports that replace legacy programs are stubs that answer as each case "
+            "says; their adapters are not executed, so changing them changes nothing: "
+            + ", ".join(stubbed)
+            + ". The differences come from the service and from the repositories of the entities."
+        )
     text = (
         f"The generated code of {use_case.name} does not reproduce the legacy on the golden master. The legacy ran "
         f"the same cases: where it differs, the legacy is right.\n\nDifferences, grouped by what differs:\n{digest}"
@@ -337,9 +348,13 @@ async def correct(
         excerpts = legacy_excerpts(source, names, rules, case_rules)
         digest = difference_digest(outcomes)
         examples = case_examples(master, outcomes)
+        stubbed = [f"{p.name} ({p.legacy_program})" for p in design.ports if p.legacy_program]
         messages = [
             {"role": "system", "content": prompt(pack.developer_prompt)},
-            {"role": "user", "content": request_text(use_case, digest, excerpts, involved, feedback, examples)},
+            {
+                "role": "user",
+                "content": request_text(use_case, digest, excerpts, involved, feedback, examples, stubbed),
+            },
         ]
 
         async def work(

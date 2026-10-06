@@ -147,6 +147,15 @@ def test_the_files_involved_are_the_service_and_the_adapters_that_name_what_diff
     tables = [str(e.legacy_table).rsplit(".", 1)[-1].lower() for e in kept[:2]]
     chosen = files_to_correct(SPRING, DESIGN, USE_CASE, weighted, {tables[0]: 1, tables[1]: 40})
     assert list(chosen)[1] == adapter_path(DESIGN, second_port)
+    # The adapter of a port that replaces a legacy program is a stub in the harness: never offered, however much
+    # it names what differs (a real run changed it three times for nothing).
+    stub_port = next(p for p in DESIGN.ports if p.legacy_program)
+    program = str(stub_port.legacy_program).rsplit(".", 1)[-1].lower()
+    stubbed_files = {SERVICE: "svc", adapter_path(DESIGN, stub_port): f"class S {{ /* {program} {kept[0].name} */ }}"}
+    assert list(files_to_correct(SPRING, DESIGN, USE_CASE, stubbed_files, {program: 50, tables[0]: 50})) == [SERVICE]
+    text = request_text(USE_CASE, "d", "e", {}, None, "", [f"{stub_port.name} ({stub_port.legacy_program})"])
+    assert "their adapters are not executed" in text
+    assert f"{stub_port.name} ({stub_port.legacy_program})" in text
 
 
 def test_the_reply_gives_each_changed_file_under_its_path() -> None:
