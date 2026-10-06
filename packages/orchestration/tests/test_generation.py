@@ -369,3 +369,44 @@ def test_the_chosen_version_reaches_the_pack_and_the_profile_root_is_checked() -
     ]
     ok = design.model_copy(update={"base_package": "com.andesbank.pay"})
     assert design_problems(ok, [rule], hints=True, package_root="com.andesbank") == []
+
+
+def test_a_port_method_can_return_an_entity_with_every_output_of_the_program() -> None:
+    # ADR-0043: one call, every output. The entity carries the outputs; the mapping names its fields.
+    data = json.loads(DESIGN_JSON)
+    data["entities"].append(
+        {
+            "name": "DebitResult",
+            "fields": [
+                {"name": "sequence", "type": "integer(64,signed)"},
+                {"name": "cause", "type": "text(var,10,iso8859-1)"},
+            ],
+        }
+    )
+    method = data["ports"][3]["methods"][0]
+    method["returns"], method["legacy_output"] = "DebitResult", None
+    method["legacy_outputs"] = {"sequence": "@o_secuencial", "cause": "@o_causa"}
+    design = Design.model_validate(data)
+    assert design.ports[3].methods[0].legacy_outputs == {"sequence": "@o_secuencial", "cause": "@o_causa"}
+    method["legacy_outputs"] = {"sequence": "@o_secuencial", "reason": "@o_causa"}
+    with pytest.raises(ValueError, match="fields that DebitResult does not have: reason"):
+        Design.model_validate(data)
+    method["returns"], method["legacy_outputs"] = "long", {"sequence": "@o_secuencial"}
+    with pytest.raises(ValueError, match="has legacy_outputs but does not return an entity"):
+        Design.model_validate(data)
+
+
+def test_a_guided_design_gives_one_method_to_a_port_that_replaces_a_program() -> None:
+    data = json.loads(DESIGN_JSON)
+    assert design_problems(Design.model_validate(data), RULES, hints=True) == []
+    port = data["ports"][3]
+    port["methods"].append({**port["methods"][0], "name": "debitCause", "returns": "int", "legacy_output": "@o_causa"})
+    problems = design_problems(Design.model_validate(data), RULES, hints=True)
+    assert problems == [
+        "a port that replaces a legacy program has exactly one method, called once with the program's inputs and "
+        "returning every output it sets: an entity whose fields map to the output parameters through "
+        '`legacy_outputs` ({"field": "@o_param", ...}), or a single output through `legacy_output`: '
+        f"DebitGateway ({port['legacy_program']}: debit, debitCause)"
+    ]
+    # Not guided: the recorded runs keep their designs as they are.
+    assert design_problems(Design.model_validate(data), RULES) == []

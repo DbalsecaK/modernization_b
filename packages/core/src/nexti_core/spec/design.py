@@ -99,6 +99,11 @@ class PortMethod(DesignModel):
     inputs: list[FieldSpec] = Field(default_factory=list)
     returns: str | None = Field(default=None, description="An entity name, 'boolean', 'int' or null (void)")
     legacy_output: str | None = Field(default=None, description="Output parameter of the external program it returns")
+    legacy_outputs: dict[str, str] = Field(
+        default_factory=dict,
+        description="When the method returns an entity that carries several output parameters of the external "
+        "program (one call, every output): entity field -> legacy output parameter (ADR-0043)",
+    )
 
     @field_validator("returns", mode="before")
     @classmethod
@@ -183,6 +188,16 @@ class Design(DesignModel):
                         "entity of the design, boolean, int, long or null; to return another value, such as a "
                         "decimal amount or a text, declare an entity with a field of that type and return the entity)"
                     )
+                if method.legacy_outputs:
+                    returned = next((e for e in self.entities if e.name == method.returns), None)
+                    if returned is None:
+                        problems.append(f"{port.name}.{method.name} has legacy_outputs but does not return an entity "
+                                        "(the entity carries the outputs of the program as its fields)")  # fmt: skip
+                    else:
+                        unknown = sorted(set(method.legacy_outputs) - {f.name for f in returned.fields})
+                        if unknown:
+                            problems.append(f"{port.name}.{method.name} maps legacy outputs to fields that "
+                                            f"{returned.name} does not have: {', '.join(unknown)}")  # fmt: skip
         for use_case in self.use_cases:
             problems += [f"use case {use_case.name} uses unknown port {p}" for p in use_case.ports if p not in ports]
         names = [u.name for u in self.use_cases] + [e.name for e in self.entities] + [p.name for p in self.ports]

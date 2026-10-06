@@ -39,6 +39,10 @@ class NeedsAnswer(Exception):
 class Verification:
     ok: bool
     diagnostic: str = ""
+    progress: bool = False  # not passed, but closer than before: it does not count against the attempts (ADR-0043)
+
+
+ATTEMPTS_AT_MOST = 4  # times `max_iterations`: the absolute cap of a round, progress or not
 
 
 @dataclass(frozen=True)
@@ -202,16 +206,21 @@ class PhaseContext:
         limit = self.run.max_iterations
         feedback: str | None = None
         round_number = 0
+        iteration = 0
         while True:
-            first = round_number * limit + 1
-            for iteration in range(first, first + limit):
+            first = iteration + 1
+            spent = 0  # attempts without progress: the ones that count (ADR-0043)
+            while spent < limit and iteration < first - 1 + limit * ATTEMPTS_AT_MOST:
+                iteration += 1
                 memo = await self.step(
                     f"dvc/{agent}/{iteration}",
-                    partial(self._attempt, agent, iteration, first, feedback, work, verify, what),
+                    partial(self._attempt, agent, iteration, first, feedback, work, verify, what, spent),
                 )
                 if memo["ok"]:
                     return Attempt(memo["artifact"], memo["summary"], _usage_from(memo["usage"]))
                 feedback = memo["diagnostic"]
+                if not memo.get("progress"):
+                    spent += 1
             escalation_key = f"escalation-{agent}-{round_number}"
             await self.step(
                 f"escalated/{agent}/{round_number}",
@@ -244,13 +253,16 @@ class PhaseContext:
         work: Callable[[int, str | None], Awaitable[Attempt]],
         verify: Callable[[Any], Awaitable[Verification]],
         what: str,
+        spent: int = 0,
     ) -> Memo:
         limit = self.run.max_iterations
         invocation = self.invocation_id(agent, iteration)
         await self.store.invocation_started(invocation, self.phase.key, agent, iteration, self.shard)
+        progressing = iteration - first + 1 - spent - 1  # earlier attempts of the round that made progress
+        label = (f"attempt {spent + 1} of {limit}" if not progressing
+                 else f"attempt {spent + 1} of {limit}, after {progressing} with progress")  # fmt: skip
         await self.store.event(
-            "started", "running", f"{what} (attempt {iteration - first + 1} of {limit})", phase=self.phase.key,
-            agent=agent, invocation_id=invocation,
+            "started", "running", f"{what} ({label})", phase=self.phase.key, agent=agent, invocation_id=invocation,
         )  # fmt: skip
         try:
             attempt = await work(iteration, feedback)
@@ -269,6 +281,7 @@ class PhaseContext:
             "summary": attempt.summary,
             "usage": _usage_memo(attempt.usage),
             "diagnostic": verdict.diagnostic[:2000],
+            "progress": bool(verdict.progress),
         }
         if verdict.ok:
             await self.store.invocation_finished(invocation, "succeeded", summary=attempt.summary, usage=attempt.usage)
@@ -279,7 +292,9 @@ class PhaseContext:
                 agent=agent, invocation_id=invocation, usage=attempt.usage,
             )  # fmt: skip
             return memo
-        last = iteration == first + limit - 1
+        # The round ends when the attempts without progress run out, or at the absolute cap.
+        at_cap = iteration >= first - 1 + limit * ATTEMPTS_AT_MOST
+        last = at_cap or (not verdict.progress and spent + 1 >= limit)
         await self.store.invocation_finished(
             invocation, "escalated" if last else "failed", summary=attempt.summary,
             error={"verification": verdict.diagnostic[:2000]}, usage=attempt.usage,

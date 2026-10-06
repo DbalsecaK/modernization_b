@@ -93,8 +93,15 @@ def target_case(
             continue
         answers = next((a for p, a in case.stubs.items() if p.lower() == port.legacy_program.lower()), [])
         output_name = next((m.legacy_output for m in port.methods if m.legacy_output), None)
+        # One call, every output (ADR-0043): the entity the method returns carries the program's outputs.
+        mapped = {field: legacy for m in port.methods for field, legacy in m.legacy_outputs.items()}
         stubs[port.name] = [
-            {"returns": a.returns, "output": a.outputs.get(output_name) if output_name else None} for a in answers
+            {
+                "returns": a.returns,
+                "output": a.outputs.get(output_name) if output_name else None,
+                **({"outputs": {field: a.outputs.get(legacy) for field, legacy in mapped.items()}} if mapped else {}),
+            }
+            for a in answers
         ]
     return {"name": case.name, "request": request, "setup": setup, "stubs": stubs}
 

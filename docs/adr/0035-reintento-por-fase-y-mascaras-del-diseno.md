@@ -56,8 +56,8 @@ Con la opción `guided_extraction`, el pedido al arquitecto lleva las restriccio
 - (pendiente, 2026-10-06) un puerto que reemplaza un programa del legado debería ser **una llamada con todas sus
   salidas**: un diseño real partió `sp_con_confcontable` en `findTransaction` y `findCause`, el destino lo llamaba
   dos veces y la traza de llamadas nunca coincidía (R11). La regla no puede exigirse todavía: el modelo de diseño y
-  el arnés admiten una sola salida por método (`legacy_output`); extenderlos a varias salidas es el primer paso del
-  siguiente hito.
+  el arnés admitían una sola salida por método (`legacy_output`). Resuelto en M25: `legacy_outputs` y la regla de
+  vuelta ([ADR-0043](0043-puertos-con-varias-salidas-y-convergencia-persistente.md)).
 
 Las razones de infraestructura legítimas (registro de errores y eventos, auditoría) no citan reglas y siguen
 permitidas. Sin la opción no cambia ningún pedido: las grabaciones (M4, M6, M6c, M8b, M10, M11) valen igual.

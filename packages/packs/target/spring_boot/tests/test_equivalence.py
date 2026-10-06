@@ -102,3 +102,21 @@ def test_without_the_declared_mask_the_real_difference_shows(java_sandbox: Docke
     case = different["failed_commission_undoes_the_payment"]
     assert case.expected.outputs["@o_movimiento"] == "900001"
     assert case.actual.outputs["@o_movimiento"] is None
+
+
+def test_a_port_that_returns_an_entity_gets_every_output_of_the_program_in_one_answer() -> None:
+    # ADR-0043: the stub answer carries `outputs` by field, for the harness to build the record in one call.
+    data = json.loads((PACK / "design.json").read_text(encoding="utf-8"))
+    data["entities"].append({"name": "DebitResult", "fields": [{"name": "sequence", "type": "integer(64,signed)"}]})
+    method = data["ports"][3]["methods"][0]
+    method["returns"], method["legacy_output"] = "DebitResult", None
+    method["legacy_outputs"] = {"sequence": "@o_secuencial"}
+    design = Design.model_validate(data)
+    case = next(r.case for r in MASTER.results if r.case.name == "separate_commission_is_a_second_debit")
+    target = target_case(design, design.use_cases[0], case)
+    assert target["stubs"] == {
+        "DebitGateway": [
+            {"returns": 0, "output": None, "outputs": {"sequence": 900001}},
+            {"returns": 0, "output": None, "outputs": {"sequence": None}},
+        ]
+    }

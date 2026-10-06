@@ -375,6 +375,66 @@ def test_the_distance_puts_causes_before_consequences() -> None:
     assert total_differences(uncovered) > total_differences(early_exit)  # the plain total says the opposite
 
 
+async def test_a_kept_correction_is_progress_and_does_not_spend_an_attempt() -> None:
+    # One attempt per round: v2 is closer (kept, progress), v3 matches. Before ADR-0043 v2 exhausted the round.
+    pack = FakePack(runs=[_run(3), _run(2), _run(0)], builds=[FakeBuild(), FakeBuild()])
+    port = FakePort(replies=[_reply("v2"), _reply("v3")])
+    ctx, store = _ctx(max_iterations=1)
+    files, result = await _converge(ctx, port, pack, {SERVICE: "v1"})
+    assert (result.differing, result.iterations) == (0, 2)
+    assert "v3" in files[SERVICE]
+    statuses = [i["status"] for i in store.invocations.values()]
+    assert statuses == ["failed", "succeeded"]  # the kept attempt is not the escalated one
+    labels = [e.message for e in store.events if e.kind == "started"]
+    assert labels == [f"{USE_CASE.name} against the golden master (attempt 1 of 1)",
+                      f"{USE_CASE.name} against the golden master (attempt 1 of 1, after 1 with progress)"]  # fmt: skip
+
+
+async def test_a_correction_that_is_not_closer_spends_the_attempt_and_ends_the_round() -> None:
+    from nexti_orchestration.context import ATTEMPTS_AT_MOST
+
+    assert ATTEMPTS_AT_MOST == 4
+    # v2 and v3 are closer (kept, free); v4 is as far as v3 (discarded): with one attempt per round, the question.
+    pack = FakePack(runs=[_run(3), _run(2), _run(1), _run(1), _run(0)], builds=[FakeBuild()] * 4)
+    port = FakePort(replies=[_reply(f"v{i}") for i in range(2, 6)])
+    ctx, store = _ctx(max_iterations=1)
+    with pytest.raises(NeedsAnswer):
+        await _converge(ctx, port, pack, {SERVICE: "v1"})
+    assert len(port.models.requests) == 3
+    assert [i["status"] for i in store.invocations.values()] == ["failed", "failed", "escalated"]
+
+
+async def test_after_a_restart_the_kept_corrections_are_applied_again_from_the_journal() -> None:
+    from nexti_orchestration.fidelity import KEPT, rebuild_base
+
+    port = FakePort(replies=[])
+    kept = await port.save_file(SERVICE, "class PayOrderService { /* kept */ }")
+    discarded = await port.save_file(SERVICE, "class PayOrderService { /* discarded */ }")
+    ctx, _store = _ctx()
+    ctx.journal[ctx._key("dvc/backend-dev/1")] = {
+        "ok": False,
+        "artifact": {"files": {SERVICE: kept}},
+        "diagnostic": f"1 case(s) still differ (the correction was {KEPT})",
+    }
+    ctx.journal[ctx._key("dvc/backend-dev/2")] = {
+        "ok": False,
+        "artifact": {"files": {SERVICE: discarded}},
+        "diagnostic": "the correction was discarded",
+    }
+    ctx.journal[ctx._key("dvc/backend-dev/3")] = {
+        "ok": False,
+        "artifact": {"problem": "no usable answer"},
+        "diagnostic": "the answer could not be used",
+    }
+    rebuilt = await rebuild_base(ctx, cast(Any, port), {SERVICE: "v1", TEST: "t"})
+    assert rebuilt == {SERVICE: "class PayOrderService { /* kept */ }", TEST: "t"}
+    # The convergence starts from the rebuilt base, so the first comparison sees it.
+    pack = FakePack(runs=[_run(0)], builds=[])
+    await _converge(ctx, port, pack, {SERVICE: "v1", TEST: "t"})
+    assert pack.verified[0][SERVICE] == "class PayOrderService { /* kept */ }"
+    assert any("Convergence resumed: 1 kept correction(s)" in e.message for e in _store.events)
+
+
 async def test_the_ports_and_the_domain_travel_as_read_only_context() -> None:
     pack = FakePack(runs=[_run(3), _run(0)], builds=[FakeBuild()])
     port = FakePort(replies=[_reply("v2")])
