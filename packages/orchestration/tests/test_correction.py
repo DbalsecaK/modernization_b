@@ -11,18 +11,20 @@ from typing import Any, cast
 import pytest
 
 from nexti_core.adapters import SourceFile
-from nexti_core.spec.characterization import Observation
+from nexti_core.spec.characterization import Observation, Schema
 from nexti_core.spec.equivalence import CaseRun, EquivalenceRun
 from nexti_core.spec.model import Rule
 from nexti_orchestration import PhaseSpec, RunContext
 from nexti_orchestration.context import PhaseContext
 from nexti_orchestration.correction import (
+    case_examples,
     correct,
     difference_digest,
     files_from_reply,
     files_to_correct,
     legacy_excerpts,
     named_in,
+    request_text,
 )
 from nexti_orchestration.extraction import ModelReply, ReplyError
 from nexti_orchestration.memory import MemoryStore
@@ -79,6 +81,42 @@ def test_the_legacy_excerpts_show_the_lines_that_name_what_differs_and_the_cited
     assert "   48  line 48" not in lines
     assert lines.count("   ...") == 1  # one gap, between the cited lines and the window
     assert legacy_excerpts(source, set(), [rule], set()) == ""
+    # Where a parameter the shown lines use is set (a default far above the UPDATE) is shown too.
+    far = (
+        "\n".join(f"line {n}" for n in range(1, 10))
+        + "\nselect @p_deb = isnull(@p_deb, @p)\n"
+        + "\n".join(f"line {n}" for n in range(11, 60))
+        + "\nupdate db..pg_orden_total set x = 1 where f in (@p_deb)\n"
+    )
+    text = legacy_excerpts([SourceFile("p.sp", far)], {"pg_orden_total"}, [], set())
+    assert "   10  select @p_deb = isnull(@p_deb, @p)" in text
+    assert "    9  line 9" in text  # its own small window
+    assert "    7  line 7" not in text
+
+
+def test_the_failing_cases_are_shown_whole_with_their_inputs_and_rows() -> None:
+    from nexti_core.spec.characterization import Case, GoldenMaster, Recorded
+
+    case = Case(name="batch_case", rules=["RULE-001"], inputs={"@i_orden": 100, "@i_frm": "CUE"},
+                setup={"db..pg_orden_total": [{"to_estado": "I"}], "db..pg_other": [{"x": 1}]})  # fmt: skip
+    quiet = Case(name="quiet", rules=["RULE-002"])
+    master = GoldenMaster(program="db..sp_p", source_sha256="0" * 64, engine="sybase-ase-16.0", schema_=Schema(),
+                          results=[Recorded(case=case, observation=Observation()),
+                                   Recorded(case=quiet, observation=Observation())])  # fmt: skip
+    found = [
+        _outcome("quiet", ("returns", "0", "1"), rules=("RULE-002",)),
+        _outcome("batch_case", ("returns", "0", "122004"), ("tables:db..pg_orden_total[0].to_estado", "T", "I")),
+    ]
+    text = case_examples(master, found)
+    lines = text.splitlines()
+    assert lines[0] == "Case batch_case (rules RULE-001):"  # the case with most differences first
+    assert lines[1] == '  inputs: {"@i_orden": 100, "@i_frm": "CUE"}'
+    assert lines[2] == '  rows given in db..pg_orden_total: [{"to_estado": "I"}]'  # only the tables that differ
+    assert "  returns: legacy '0', target '122004'" in lines
+    assert "Case quiet (rules RULE-002):" in lines
+    assert case_examples(master, found, at_most=1).count("Case ") == 1
+    assert "Failing cases, whole" in request_text(USE_CASE, "d", "e", {}, None, text)
+    assert "Failing cases, whole" not in request_text(USE_CASE, "d", "e", {}, None)
 
 
 def test_the_files_involved_are_the_service_and_the_adapters_that_name_what_differs() -> None:
