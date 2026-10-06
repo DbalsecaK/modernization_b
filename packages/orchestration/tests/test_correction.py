@@ -58,6 +58,9 @@ def test_the_digest_groups_the_differences_and_names_what_they_point_at() -> Non
     ]
     digest = difference_digest(found)
     assert digest.splitlines()[0] == "- returns (2 case(s), e.g. a, b): legacy '0', target '122004'"
+    # Causes before consequences: the calls are shown last even when more cases differ on them.
+    noisy = [_outcome(f"n{i}", ("calls", "[x]", "[]")) for i in range(5)] + [_outcome("r", ("returns", "0", "9"))]
+    assert [line.split(" ")[1] for line in difference_digest(noisy).splitlines()] == ["returns", "calls"]
     assert "- tables:db..pg_orden_total[0].to_estado (1 case(s), e.g. a): legacy 'T', target 'I'" in digest
     assert "1 case(s) could not run on the target, e.g. d: the harness crashed" in digest
     assert named_in(found) == {"pg_orden_total": 1, "sp_comision": 1}
@@ -265,7 +268,13 @@ async def test_a_correction_stays_only_when_it_builds_and_reduces_the_difference
     assert [(r.number, r.before, r.after) for r in rounds] == [(1, 3, 3), (2, 3, 0)]
     assert final[SERVICE] == "class PayOrderService { /* v3 */ }\n"
     assert all(o.matched for o in found)
-    assert port.saved == [{SERVICE: "class PayOrderService { /* v3 */ }\n"}]  # only the round that helped
+    # Only the round that helped is kept as code; every round leaves what the developer saw and answered (docs).
+    assert [s for s in port.saved if SERVICE in s] == [{SERVICE: "class PayOrderService { /* v3 */ }\n"}]
+    exchanges = [p for s in port.saved for p in s if p.startswith("verification/correction/")]
+    assert exchanges == [
+        "verification/correction/round-1-request.md", "verification/correction/round-1-reply.md",
+        "verification/correction/round-2-request.md", "verification/correction/round-2-reply.md",
+    ]  # fmt: skip
     assert "did not help" in port.models.requests[1]  # the second request carries the feedback
     assert "Differences, grouped by what differs" in port.models.requests[0]
     assert "pg_orden_total" in port.models.requests[0]  # the legacy lines that touch the table are shown
@@ -283,4 +292,4 @@ async def test_a_correction_that_does_not_build_is_discarded_and_the_diagnostic_
     assert run_after is first
     assert [r.note.startswith("the corrected code does not pass its build") for r in rounds] == [True, True]
     assert "did not build" in port.models.requests[1]
-    assert port.saved == []
+    assert all(SERVICE not in s for s in port.saved)  # nothing kept as code; the exchanges stay as docs

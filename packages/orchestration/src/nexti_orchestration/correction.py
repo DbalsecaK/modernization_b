@@ -36,6 +36,7 @@ FILE_HEADER = re.compile(
 )
 FENCE = re.compile(r"^\s*```(.*)$")
 VARIABLE = re.compile(r"@\w+")  # a parameter or variable of the legacy (Sybase/T-SQL)
+_CATEGORY = {"returns": 0, "outputs": 1, "messages": 1, "tables": 2, "calls": 3}  # causes before consequences
 EXAMPLES = 2  # failing cases shown whole (inputs, rows given, what each side did)
 FENCE_PATH = re.compile(r"((?:[\w-]+/)+[\w-]+\.[A-Za-z0-9]+)")
 TABLE_PATH = re.compile(r"^tables:([^\[]+?)(?:\[|$)")  # tables:db..t[0].col, tables:db..t
@@ -77,10 +78,14 @@ def difference_digest(outcomes: Sequence[CaseOutcome], at_most: int = 12) -> str
             if len(cases[d.path]) < 3 and outcome.name not in cases[d.path]:
                 cases[d.path].append(outcome.name)
     failures = [o for o in outcomes if o.failure]
+    # Causes before consequences: a return code or an error output explains the rows and the calls that follow
+    # (an empty list of calls is the target stopping early), so they come first, then by how many cases show it.
+    ranked = sorted(counts.items(), key=lambda item: (_CATEGORY.get(item[0].split(":", 1)[0].split("[", 1)[0], 9),
+                                                      -item[1]))  # fmt: skip
     lines = [
         f"- {path} ({count} case(s), e.g. {', '.join(cases[path])}): legacy {first[path][0]!r}, target "
         f"{first[path][1]!r}"
-        for path, count in counts.most_common(at_most)
+        for path, count in ranked[:at_most]
     ]
     if failures:
         lines.append(f"- {len(failures)} case(s) could not run on the target, e.g. {failures[0].name}: "
@@ -281,11 +286,16 @@ def request_text(
         f"the same cases: where it differs, the legacy is right.\n\nDifferences, grouped by what differs:\n{digest}"
         f"{whole}"
         f"\n\nThe legacy lines that touch what differs (numbered):\n{excerpts}\n\nThe files involved:\n{shown}\n\n"
-        "Change only what makes the target behave as the legacy in these cases: same predicates in the SQL the "
-        "legacy uses (every column of a WHERE, the same IN lists, the same parameters), the same order of the "
-        "calls, outputs left NULL when the legacy leaves them NULL, errors raised only where the legacy raises them. "
-        "Keep the signatures the other files use. Answer with every file you change, each as `### path` on its own "
-        "line followed by one code block with the whole file; do not include files you do not change."
+        "Find the cause before the consequences: a return code or an error the legacy does not raise means the "
+        "target stopped early, and an empty list of calls or a row not updated usually follows from that; look at "
+        "the branch the legacy takes for the inputs of the failing cases, including the defaults it assigns to its "
+        "parameters before using them (isnull, coalesce, set). Change only what makes the target behave as the "
+        "legacy in these cases: the same defaults of the inputs, the same predicates in the SQL the legacy uses "
+        "(every column of a WHERE, the same IN lists, the same parameters), the same order of the calls, outputs "
+        "left NULL when the legacy leaves them NULL, errors raised only where the legacy raises them. The service "
+        "is where the inputs are defaulted and the branch is chosen; an adapter only runs the SQL it is given. Keep "
+        "the signatures the other files use. Answer with every file you change, each as `### path` on its own line "
+        "followed by one code block with the whole file; do not include files you do not change."
     )
     if feedback:
         text += f"\n\nThe previous correction did not build or did not help:\n{feedback}"
@@ -337,6 +347,13 @@ async def correct(
             number: int = number, repeated: bool = feedback is not None,
         ) -> Attempt:  # fmt: skip
             reply = await port.models.complete(DEVELOPER, "verification", messages, iteration=number)
+            # The exchange stays with the run (docs, never delivered): what the developer saw and answered.
+            await port.save_artifacts(
+                {f"verification/correction/round-{number}-request.md": messages[-1]["content"],
+                 f"verification/correction/round-{number}-reply.md": reply.content},
+                dict.fromkeys((f"verification/correction/round-{number}-request.md",
+                               f"verification/correction/round-{number}-reply.md"), "docs"), {},
+            )  # fmt: skip
             try:
                 changed = files_from_reply(reply.content, involved)
             except ReplyError as exc:
