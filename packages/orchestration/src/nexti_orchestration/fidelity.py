@@ -80,7 +80,32 @@ def distance(outcomes: Sequence[CaseOutcome]) -> tuple[int, ...]:
 
 
 def closer(candidate: Sequence[CaseOutcome], current: Sequence[CaseOutcome]) -> bool:
-    return distance(candidate) < distance(current)
+    """Closer by distance without more cases differing (P28): a real round kept a correction that removed five
+    crashes but changed an output everywhere, so 38 differing cases became 57 and the next attempts oscillated."""
+    return distance(candidate) < distance(current) and differing(candidate) <= differing(current)
+
+
+def regressions(candidate: Sequence[CaseOutcome], current: Sequence[CaseOutcome]) -> tuple[list[str], list[str]]:
+    """The cases the correction broke (matched before, differ now) and the ones it fixed."""
+    before = {o.name: o.matched for o in current}
+    broke = sorted(o.name for o in candidate if not o.matched and before.get(o.name, False))
+    fixed = sorted(o.name for o in candidate if o.matched and o.name in before and not before[o.name])
+    return broke, fixed
+
+
+def regression_note(candidate: Sequence[CaseOutcome], current: Sequence[CaseOutcome], at_most: int = 15) -> str:
+    broke, fixed = regressions(candidate, current)
+    if not broke and not fixed:
+        return ""
+    parts = []
+    if broke:
+        shown = ", ".join(broke[:at_most]) + (f" and {len(broke) - at_most} more" if len(broke) > at_most else "")
+        parts.append(f"Cases that matched the legacy before this correction and differ now ({len(broke)}): {shown}. "
+                     "Keep what fixed the others and undo what broke these: the program decides both.")  # fmt: skip
+    if fixed:
+        shown = ", ".join(fixed[:at_most]) + (f" and {len(fixed) - at_most} more" if len(fixed) > at_most else "")
+        parts.append(f"Cases this correction fixed ({len(fixed)}): {shown}.")
+    return "\n".join(parts)
 
 
 @dataclass(frozen=True)
@@ -343,8 +368,10 @@ async def converge(
             return Verification(False, f"the golden master could not run: {run.problem}"[:1500])
         left = differing(outcomes)
         before = differing(state["outcomes"])
-        # Progress is the number of differences, not of differing cases: a correction that removes the cause of
-        # an early exit leaves every case differing on smaller things, and must be kept to build on it.
+        # Progress is the distance (causes first), never at the price of more differing cases: a correction that
+        # removes the cause of an early exit leaves the same cases differing on smaller things and is kept; one
+        # that fixes some cases by breaking others is discarded, with both lists for the developer (P28).
+        note = regression_note(outcomes, state["outcomes"])
         if closer(outcomes, state["outcomes"]):
             state["files"], state["outcomes"] = candidate, outcomes
             state["changed"].update(artifact["files"])
@@ -365,6 +392,11 @@ async def converge(
                               phase=ctx.phase.key)  # fmt: skip
         summary = (f"{left} of {len(outcomes)} case(s) still differ ({total_differences(outcomes)} difference(s); "
                    f"the correction was {kept}):\n{difference_digest(outcomes)}")  # fmt: skip
+        if note:
+            summary += f"\n\n{note}"
+        if kept == "discarded":
+            summary += (f"\n\nThe files shown are the ones kept as the base ({before} case(s) differ on them): "
+                        "correct them, not the discarded version.")  # fmt: skip
         # A kept correction is progress: it does not count against the attempts of the round (ADR-0043).
         return Verification(False, summary + tests_note, progress=kept != "discarded")
 

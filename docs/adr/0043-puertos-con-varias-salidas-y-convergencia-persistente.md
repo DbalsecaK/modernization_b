@@ -62,3 +62,11 @@ generado sino de la plataforma:
 `test_fidelity.py` (progreso no gasta intentos, tope absoluto, base reconstruida desde el journal),
 `test_generation.py` (validador de `legacy_outputs`, regla de un método por puerto), `test_equivalence.py` del pack
 (stubs con `outputs`), y una corrida real reintentada desde Architecture.
+
+## Precisión P28 (2026-10-06): retrocesos en la convergencia
+
+La primera corrida con este ADR conservó una corrección que quitaba cinco caídas pero cambiaba una salida en todos
+los casos: 38 casos distintos pasaron a 57 y los intentos siguientes oscilaron entre las dos versiones sin superar
+esa base. Desde P28 una corrección se conserva solo si acorta la distancia **y no aumenta los casos distintos**; y
+el diagnóstico que vuelve al desarrollador lista los casos que coincidían antes y difieren ahora, los que la
+corrección arregló, y aclara que los archivos mostrados son la base conservada, no la versión descartada.
