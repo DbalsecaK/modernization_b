@@ -73,7 +73,7 @@ def difference_digest(outcomes: Sequence[CaseOutcome], at_most: int = 12) -> str
     for outcome in outcomes:
         for d in outcome.differences:
             counts[d.path] += 1
-            first.setdefault(d.path, (str(d.expected)[:80], str(d.actual)[:80]))
+            first.setdefault(d.path, _shown(d.path, d.expected, d.actual))
             cases.setdefault(d.path, [])
             if len(cases[d.path]) < 3 and outcome.name not in cases[d.path]:
                 cases[d.path].append(outcome.name)
@@ -91,6 +91,24 @@ def difference_digest(outcomes: Sequence[CaseOutcome], at_most: int = 12) -> str
         lines.append(f"- {len(failures)} case(s) could not run on the target, e.g. {failures[0].name}: "
                      f"{str(failures[0].failure)[:200]}")  # fmt: skip
     return "\n".join(lines)
+
+
+def _shown(path: str, expected: Any, actual: Any) -> tuple[str, str]:
+    """The two values as the developer should read them. Two lists of calls are long and alike at the start, so
+    they are shown as their lengths and the first position where they part."""
+    if path == "calls":
+        try:
+            legacy, target = json.loads(str(expected)), json.loads(str(actual))
+        except ValueError:
+            legacy = target = None
+        if isinstance(legacy, list) and isinstance(target, list):
+            at = next((i for i, (a, b) in enumerate(zip(legacy, target, strict=False)) if a != b),
+                      min(len(legacy), len(target)))  # fmt: skip
+            l_at = legacy[at] if at < len(legacy) else "(nothing)"
+            t_at = target[at] if at < len(target) else "(nothing)"
+            return (f"{len(legacy)} call(s), [{at}] = {str(l_at)[:50]}", f"{len(target)} call(s), [{at}] = "
+                    f"{str(t_at)[:50]}")  # fmt: skip
+    return str(expected)[:80], str(actual)[:80]
 
 
 def named_in(outcomes: Sequence[CaseOutcome]) -> Counter[str]:

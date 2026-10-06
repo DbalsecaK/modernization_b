@@ -55,6 +55,11 @@ class FidelityPort(Protocol):
     async def load_file(self, reference: str) -> str: ...
 
 
+def total_differences(outcomes: Sequence[CaseOutcome]) -> int:
+    """How far from the legacy: every difference of every case, and a case that could not run counts as one."""
+    return sum(len(o.differences) if o.differences else (1 if o.failure else 0) for o in outcomes)
+
+
 @dataclass(frozen=True)
 class Convergence:
     cases: int
@@ -285,7 +290,9 @@ async def converge(
             return Verification(False, f"the golden master could not run: {run.problem}"[:1500])
         left = differing(outcomes)
         before = differing(state["outcomes"])
-        if left < before:  # progress is kept even when not yet complete
+        # Progress is the number of differences, not of differing cases: a correction that removes the cause of
+        # an early exit leaves every case differing on smaller things, and must be kept to build on it.
+        if total_differences(outcomes) < total_differences(state["outcomes"]):
             state["files"], state["outcomes"] = candidate, outcomes
             state["changed"].update(artifact["files"])
             state["findings"] = artifact["findings"] or state["findings"]
@@ -297,10 +304,14 @@ async def converge(
                 return Verification(True)
             # The legacy is matched; what is left is a unit test that contradicts the program.
             return Verification(False, f"every case of the golden master matches, but {tests_note.strip()}")
+        kept = "kept as the new base" if state["outcomes"] is outcomes else "discarded"
         await ctx.store.event("info", "running", f"Golden master after the correction: {left} of {len(outcomes)} "
-                              f"case(s) differ (before: {before})", phase=ctx.phase.key)  # fmt: skip
-        return Verification(False, f"{left} of {len(outcomes)} case(s) still differ:\n{difference_digest(outcomes)}"
-                            + tests_note)  # fmt: skip
+                              f"case(s) differ, {total_differences(outcomes)} difference(s) (before: {before} and "
+                              f"{total_differences(state['outcomes']) if kept == 'discarded' else '-'}); {kept}",
+                              phase=ctx.phase.key)  # fmt: skip
+        summary = (f"{left} of {len(outcomes)} case(s) still differ ({total_differences(outcomes)} difference(s); "
+                   f"the correction was {kept}):\n{difference_digest(outcomes)}")  # fmt: skip
+        return Verification(False, summary + tests_note)
 
     await ctx.do_verify_correct(DEVELOPER, work, verify, what=f"{use_case.name} against the golden master")
     outcomes = state["outcomes"]

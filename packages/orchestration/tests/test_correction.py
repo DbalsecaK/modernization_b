@@ -302,3 +302,14 @@ async def test_a_correction_that_does_not_build_is_discarded_and_the_diagnostic_
     assert [r.note.startswith("the corrected code does not pass its build") for r in rounds] == [True, True]
     assert "did not build" in port.models.requests[1]
     assert all(SERVICE not in s for s in port.saved)  # nothing kept as code; the exchanges stay as docs
+
+
+def test_two_lists_of_calls_are_shown_by_length_and_where_they_part() -> None:
+    legacy = json.dumps(["db..sp_a", "db..sp_b", "sp_c"])
+    target = json.dumps(["db..sp_a", "db..sp_b", "db..sp_b", "sp_c"])
+    (line,) = difference_digest([_outcome("x", ("calls", legacy, target))]).splitlines()
+    assert line == "- calls (1 case(s), e.g. x): legacy '3 call(s), [2] = sp_c', target '4 call(s), [2] = db..sp_b'"
+    (short,) = difference_digest([_outcome("y", ("calls", legacy, json.dumps(["db..sp_a"])))]).splitlines()
+    assert "legacy '3 call(s), [1] = db..sp_b', target '1 call(s), [1] = (nothing)'" in short
+    (plain,) = difference_digest([_outcome("z", ("calls", "[x]", "[]"))]).splitlines()  # not JSON: as they are
+    assert "legacy '[x]', target '[]'" in plain

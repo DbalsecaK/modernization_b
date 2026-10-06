@@ -27,6 +27,7 @@ from nexti_orchestration.fidelity import (
     policy_prompt,
     program_text,
     stack_words,
+    total_differences,
 )
 from nexti_orchestration.generation import outcomes
 from nexti_orchestration.memory import MemoryStore
@@ -335,3 +336,21 @@ async def test_the_tests_travel_with_the_correction_and_failing_tests_do_not_sto
     assert "align them with the program" in second
     assert "generation/convergence/attempt-1-request.md" in port.docs
     assert "generation/convergence/attempt-2-reply.md" in port.docs
+
+
+async def test_a_correction_that_removes_differences_is_kept_even_when_every_case_still_differs() -> None:
+    # Attempt 1 leaves every case differing on fewer things: kept as the base; attempt 2 finishes from it.
+    many = _run(3)
+    fewer = EquivalenceRun(FakeBuild(), [CaseRun(c.name, c.expected, Observation(returns=0, tables={
+        "db..pg_orden_total": [{"to_estado": "X"}]})) for c in many.cases], [])  # fmt: skip
+    pack = FakePack(runs=[many, fewer, _run(0)], builds=[FakeBuild(), FakeBuild()])
+    port = FakePort(replies=[_reply("v2"), _reply("v3")])
+    ctx, store = _ctx()
+    _files, result = await _converge(ctx, port, pack, {SERVICE: "v1"})
+    assert result.differing == 0
+    assert "kept as the new base" in " ".join(e.message for e in store.events)
+    second = port.models.requests[1][1]["content"]
+    assert "the correction was kept as the new base" in second
+    assert "class PayOrderService { /* v2 */ }" in second  # the next attempt starts from the kept file
+    assert total_differences(outcomes(many, {})) == 6
+    assert total_differences(outcomes(fewer, {})) == 3
