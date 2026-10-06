@@ -50,6 +50,14 @@ function Test-Url([string]$Url) {
   try { (Invoke-WebRequest -Uri $Url -UseBasicParsing -TimeoutSec 3).StatusCode -lt 500 } catch { $false }
 }
 
+# The HTTP status of a URL, or 0 when it does not answer: a decision that destroys data needs a real answer.
+function Get-UrlStatus([string]$Url) {
+  try { [int](Invoke-WebRequest -Uri $Url -UseBasicParsing -TimeoutSec 10).StatusCode }
+  catch {
+    if ($_.Exception.Response -and $_.Exception.Response.StatusCode) { [int]$_.Exception.Response.StatusCode } else { 0 }
+  }
+}
+
 function Wait-Url([string]$Name, [string]$Url, [int]$Seconds) {
   for ($i = 0; $i -lt $Seconds; $i += 2) {
     if (Test-Url $Url) { Done "$Name ready ($Url)"; return }
@@ -92,7 +100,16 @@ try {
   Done 'services healthy'
   # The realm is imported only when it does not exist (ADR-0022): a Keycloak created before M0b lacks the test
   # identity provider and the Organizations. Recreating its database imports the current realm files.
-  if (-not (Test-Url "http://localhost:$(if ($env:KEYCLOAK_PORT) { $env:KEYCLOAK_PORT } else { 8180 })/realms/idp-test")) {
+  # Only when Keycloak answers (the realm nexti is there) and the realm idp-test is really missing (404): a slow
+  # Keycloak must never look like an old one, because recreating its database changes every user's identifier.
+  $KeycloakUrl = "http://localhost:$(if ($env:KEYCLOAK_PORT) { $env:KEYCLOAK_PORT } else { 8180 })"
+  $NextiRealm = 0
+  for ($i = 0; $i -lt 60 -and $NextiRealm -ne 200; $i += 2) {
+    $NextiRealm = Get-UrlStatus "$KeycloakUrl/realms/nexti"
+    if ($NextiRealm -ne 200) { Start-Sleep -Seconds 2 }
+  }
+  if ($NextiRealm -ne 200) { Fail "Keycloak did not answer at $KeycloakUrl/realms/nexti; see docker compose logs keycloak" }
+  if ((Get-UrlStatus "$KeycloakUrl/realms/idp-test") -eq 404) {
     Write-Host '    Keycloak has a realm from before M0b; recreating its database to import the current realm files' -ForegroundColor Yellow
     Invoke-Checked 'docker' @('compose', '-f', 'infra/docker-compose/compose.yaml', 'stop', 'keycloak')
     Invoke-Checked 'docker' @('compose', '-f', 'infra/docker-compose/compose.yaml', 'exec', '-T', 'postgres', 'psql', '-U', 'postgres', '-c', 'DROP DATABASE keycloak WITH (FORCE)', '-c', 'CREATE DATABASE keycloak OWNER keycloak')
