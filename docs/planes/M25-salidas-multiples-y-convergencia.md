@@ -10,7 +10,7 @@
 |---|---|
 | 1 | `PortMethod.legacy_outputs` y su validador; `target_case` con `outputs` por respuesta del stub |
 | 2 | Arneses Java (Spring JDBC, MongoDB, Quarkus): record desde `outputs` (Optional si procede); `failure` con el primer marco del paquete generado |
-| 3 | Prompt del arquitecto; regla guiada "un método por puerto que reemplaza un programa" de vuelta en `design_problems` |
+| 3 | Guía de diseño guiado (`GUIDED_DESIGN`); regla guiada "un método por puerto que reemplaza un programa" de vuelta en `design_problems` |
 | 4 | `Verification.progress`; `do_verify_correct` no cuenta los intentos con progreso (tope `ATTEMPTS_AT_MOST`) |
 | 5 | `fidelity.rebuild_base`: la base de la convergencia se reconstruye del journal tras un reinicio |
 | 6 | Pruebas: `test_fidelity.py`, `test_generation.py`, `test_equivalence.py` (pack); regresión completa; corrida real desde Architecture |

@@ -4,9 +4,18 @@ agent, validated here, approved by a person at C3. It does not depend on the tar
 backend pack generates from it; a pack escapes the names its language reserves (C# with @)."""
 
 import re
-from typing import Annotated, Literal
+from typing import Annotated, Any, Literal
 
-from pydantic import AfterValidator, BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import (
+    AfterValidator,
+    BaseModel,
+    ConfigDict,
+    Field,
+    SerializerFunctionWrapHandler,
+    field_validator,
+    model_serializer,
+    model_validator,
+)
 
 from nexti_core.spec import neutral_types
 
@@ -104,6 +113,15 @@ class PortMethod(DesignModel):
         description="When the method returns an entity that carries several output parameters of the external "
         "program (one call, every output): entity field -> legacy output parameter (ADR-0043)",
     )
+
+    @model_serializer(mode="wrap")
+    def _without_empty_outputs(self, handler: SerializerFunctionWrapHandler) -> Any:
+        """A method without `legacy_outputs` serialises as before ADR-0043: the design travels in the agents'
+        requests, and the recorded runs must see exactly the same text."""
+        data = handler(self)
+        if isinstance(data, dict) and not self.legacy_outputs:
+            data.pop("legacy_outputs", None)
+        return data
 
     @field_validator("returns", mode="before")
     @classmethod

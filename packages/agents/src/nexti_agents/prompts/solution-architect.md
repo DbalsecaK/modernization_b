@@ -22,10 +22,7 @@ Rules of the design:
 - Traceability to the legacy, used to replay the golden master on the target: every field has `legacy` (the
   legacy column of an entity field, the legacy parameter of a use case input or output, the argument of the
   external program for a port method input); a port that replaces an external legacy program has
-  `legacy_program` and exactly one method (the program is one call that sets every output at once): when the
-  method returns one output parameter, `legacy_output`; when it returns several, it returns an entity of the
-  design (no table) whose fields carry them, with `legacy_outputs` mapping each field to its output parameter
-  (`{"transactionCode": "@o_cod_transaccion", "causeCode": "@o_causa"}`); each use case has
+  `legacy_program` and, when a method returns one of its output parameters, `legacy_output`; each use case has
   `legacy_program` and `legacy_message` (the output parameter that carries the message of a rejection);
   `infrastructure` lists the legacy programs that are only infrastructure (e.g. error logging).
 - `masks` only for differences with the legacy that are deliberate and explained (`path` like
@@ -37,7 +34,7 @@ Answer with one JSON object and nothing else, with this shape:
   "key": ["..."], "fields": [{"name": "...", "type": "...", "column": "...", "legacy": "..."}]}],
  "ports": [{"name": "...", "entity": "...", "legacy_program": null, "methods": [{"name": "...",
   "description": "...", "inputs": [{"name": "...", "type": "...", "legacy": "..."}], "returns": "...",
-  "legacy_output": null, "legacy_outputs": {}}]}],
+  "legacy_output": null}]}],
  "use_cases": [{"name": "...", "description": "...", "rules": ["RULE-001"], "inputs": [], "outputs": [],
   "errors": [{"code": "...", "legacy_code": "...", "message": "..."}], "ports": ["..."], "http_method": "POST",
   "path": "/...", "legacy_program": "...", "legacy_message": "..."}],

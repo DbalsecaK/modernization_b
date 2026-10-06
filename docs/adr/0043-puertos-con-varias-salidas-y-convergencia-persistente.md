@@ -30,7 +30,7 @@ generado sino de la plataforma:
    campos llevan las salidas del programa. El validador exige que el método devuelva una entidad y que cada clave sea
    un campo de ella. `target_case` añade a cada respuesta del stub `"outputs": {campo: valor}`; los tres arneses
    Java (Spring JDBC, MongoDB, Quarkus) construyen el record (envuelto en `Optional` si el método lo declara) desde
-   `outputs`. El prompt del arquitecto lo documenta y la regla guiada **"un puerto que reemplaza un programa tiene
+   `outputs`. La guía de diseño guiado (`GUIDED_DESIGN`, solo con `guided_extraction`: el prompt grabado del arquitecto no cambia) lo documenta y la regla guiada **"un puerto que reemplaza un programa tiene
    exactamente un método"** vuelve a `design_problems`, ahora satisfacible.
 2. **Convergencia persistente.** `fidelity.rebuild_base` lee del journal los memos `dvc/backend-dev/<i>` y aplica
    de nuevo, en orden, los archivos de los intentos conservados (`ok` o diagnóstico "kept as the new base") antes de

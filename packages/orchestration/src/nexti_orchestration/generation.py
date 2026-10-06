@@ -176,7 +176,11 @@ GUIDED_DESIGN = (
     "Design constraints, checked by code: every legacy table the program writes needs an entity with its "
     "legacy_table; a `tables:` mask is refused when an approved rule reads or writes that table; a legacy program "
     "called from lines an approved rule cites is business, not infrastructure: give it a port with legacy_program; "
-    "list in `infrastructure` only programs that implement no rule (error and event logging, auditing)."
+    "list in `infrastructure` only programs that implement no rule (error and event logging, auditing). A port that "
+    "replaces a legacy program has exactly one method (the program is one call that sets every output at once): "
+    "when it returns one output parameter, `legacy_output`; when it returns several, it returns an entity of the "
+    "design (no table) whose fields carry them, with `legacy_outputs` mapping each field to its output parameter "
+    '({"transactionCode": "@o_cod_transaccion", "causeCode": "@o_causa"}) (ADR-0043).'
 )
 
 
