@@ -149,3 +149,28 @@ async def test_a_golden_master_from_traces_cannot_observe_fresh_inputs() -> None
     fresh, reason = await phases._fresh(None, None, [], master, None, None, {}, None, {})  # type: ignore[arg-type]
     assert fresh is None
     assert "recorded traces" in reason
+
+
+async def test_the_gaps_of_the_legacy_are_asked_before_any_work() -> None:
+    # ADR-0050: a branch no case entered needs a signed decision; it is asked first, so waiting repeats no work.
+    from nexti_core.spec.characterization import Coverage, CoveredBranch, Schema
+    from nexti_orchestration.context import NeedsAnswer
+
+    branch = CoveredBranch(id="b1", kind="else", line_start=40, line_end=44)
+    master = GoldenMaster(program="db..sp_p", source_sha256="0" * 64, engine="sybase-ase-16.0", schema_=Schema(),
+                          results=[], coverage=Coverage(branches=[branch]))  # fmt: skip
+
+    class OnlyMaster:
+        async def load_golden_master(self) -> GoldenMaster:
+            return master
+
+        async def load_design(self) -> None:
+            raise AssertionError("no work before the decision")
+
+    with pytest.raises(NeedsAnswer) as waiting:
+        await VerificationPhases(OnlyMaster()).verification(_context())  # type: ignore[arg-type]
+    ((_, question),) = waiting.value.questions
+    assert question.key == "legacy-gaps"
+    assert "- branch 40-44 (else)" in question.context
+    assert question.recommended.key == "accept"
+    assert [o.key for o in question.alternatives] == ["unreachable"]

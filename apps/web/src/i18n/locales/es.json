@@ -979,6 +979,7 @@
       "freshInputs": "Inputs frescos",
       "canary": "Canario",
       "sourceIntact": "Fuente intacta",
+      "legacyCovered": "Legado cubierto",
       "compiles": "Compila",
       "screensMount": "Las pantallas cargan",
       "fieldsCovered": "Campos cubiertos",

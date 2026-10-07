@@ -77,8 +77,10 @@ EXTEND_CHECKS: tuple[tuple[str, str], ...] = (
     ("canary", "Canary"),
     ("traced_to_inputs", "Traced to inputs"),
 )
+# The legacy covered (ADR-0050): only in a verdict whose golden master measured the legacy's coverage.
+LEGACY_CHECKS: tuple[tuple[str, str], ...] = (("legacy_covered", "Legacy covered"),)
 _TITLES = (dict(CHECKS) | dict(FRONTEND_CHECKS) | dict(FEATURE_CHECKS) | dict(IAC_CHECKS) | dict(IVV_CHECKS)
-           | dict(EXTEND_CHECKS))  # fmt: skip
+           | dict(EXTEND_CHECKS) | dict(LEGACY_CHECKS))  # fmt: skip
 _CRITERION = re.compile(r"(?i)ac_?us-?_?0*(\d{1,4})_(\d{1,3})(?![0-9])")
 
 
@@ -237,6 +239,22 @@ def source_intact(characterized: str | None, current: str) -> Check:
     if characterized != current:
         return Check("source_intact", "failed", "the legacy changed after it was characterized", evidence)
     return Check("source_intact", "passed", "the legacy is the code that was characterized (SHA-256)", evidence)
+
+
+def legacy_covered(gaps: Sequence[str], decision: str | None, by: str | None, comment: str = "") -> Check:
+    """Every branch of the legacy entered and every engine quirk reached, or each gap with a signed decision
+    (ADR-0050): signed unreachable, the check passes; accepted as a gap, the verdict stays PARTLY PROVEN."""
+    evidence = {"gaps": list(gaps), "decision": decision, "by": by, "comment": comment}
+    if not gaps:
+        return Check("legacy_covered", "passed", "every measurable branch of the legacy was entered and every engine "
+                     "quirk reached by a case", evidence)  # fmt: skip
+    signer = by or "the analyst"
+    if decision == "unreachable":
+        return Check("legacy_covered", "passed", f"{len(gaps)} gap(s) no input can reach, signed by {signer}",
+                     evidence)  # fmt: skip
+    return Check("legacy_covered", "not_checked", f"{len(gaps)} gap(s) of the legacy no case covers"
+                 + (f", accepted as not proven by {signer}" if decision else ", without a signed decision"),
+                 evidence)  # fmt: skip
 
 
 def criterion_test(story: str, number: int) -> str:

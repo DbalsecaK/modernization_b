@@ -85,3 +85,18 @@ def test_the_proof_pack_holds_the_evidence_and_recomputes_the_same() -> None:
     assert document["verdict"] == "PARTLY PROVEN"
     assert document["not_proven"][0] == "a note"
     assert json.loads(archive.read("TRACE.json"))[0]["verified"] is True
+
+
+def test_a_gap_of_the_legacy_needs_a_signed_unreachable_to_be_proven() -> None:
+    # ADR-0050: the legacy covered, or each gap signed unreachable; accepted or undecided gaps keep PARTLY PROVEN.
+    gaps = ["branch 40-44 (else)"]
+    assert checks.legacy_covered([], None, None).status == "passed"
+    signed = checks.legacy_covered(gaps, "unreachable", "Carlos Ruiz", "the caller validates the type")
+    assert signed.status == "passed"
+    assert "signed by Carlos Ruiz" in signed.detail
+    accepted = checks.legacy_covered(gaps, "accept", "Carlos Ruiz")
+    assert accepted.status == "not_checked"
+    assert "accepted as not proven by Carlos Ruiz" in accepted.detail
+    six = [checks.Check(key, "passed", "") for key, _ in checks.CHECKS]
+    assert compute("m", [*six, accepted], []).verdict == "PARTLY PROVEN"
+    assert compute("m", [*six, signed], []).verdict == "PROVEN"
