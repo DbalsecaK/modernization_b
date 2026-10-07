@@ -79,3 +79,14 @@ llegaron al destino, los lookups devolvían vacío y cuatro casos difirieron sei
 de la notificación, sin que ningún código pudiera arreglarlo. Desde P34, en el diseño guiado, cada tabla que el
 programa lee necesita una entidad con `legacy_table` o una máscara `tables:` con su razón (visible en C3 y en el
 veredicto); nunca se omite en silencio.
+
+
+## Precisión P37 (2026-10-07): dos tablas con el mismo nombre en bases distintas son dos entidades
+
+Tras P36 quedaba 1 de 78 casos: la notificación salía con el grupo y el nombre del beneficiario vacíos. La fila del
+detalle que el caso preparaba nunca llegaba al destino: el programa usa dos tablas con el mismo nombre, una en otra
+base de datos (`db..t`) y otra en la base propia del procedimiento (`t`); el diseño conservó solo la primera, y las
+reglas de P34 comparan por nombre corto, así que vieron una sola. En ese camino el programa lee la tabla propia (cuyo
+secuencial admite nulos; en la otra es clave). Desde P37, en el diseño guiado, cada forma calificada de un nombre que
+el programa usa con más de una calificación debe tener su propia entidad con su `legacy_table` exacto. Se descartó
+emparejar tablas por nombre corto en el arnés: mezclaría dos tablas distintas del legado.
