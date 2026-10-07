@@ -314,6 +314,17 @@ def quirk_combinations(master: GoldenMaster) -> list[tuple[str, str, str, list[s
     return out
 
 
+def legacy_gaps(master: GoldenMaster) -> list[str]:
+    """What of the legacy the golden master does not prove (ADR-0050): the measurable branches no reliable case
+    entered and the engine quirks no case reaches. Empty when coverage was not measured."""
+    if master.coverage is None:
+        return []
+    gaps = [f"branch {b.line_start}-{b.line_end} ({b.kind})" for b in master.coverage.not_exercised]
+    gaps += [f"quirk {q.id} ({q.severity}) at lines {', '.join(str(n) for n in q.lines[:10])}"
+             for q in unresolved_quirks(master)]  # fmt: skip
+    return gaps
+
+
 def engine_not_proven(master: GoldenMaster) -> list[str]:
     """What of the engine behaviour the golden master does not show (M28), for the verdict's "not proven"."""
     out = [f"Engine quirk no case reaches: {q.id} ({q.severity}) at lines {', '.join(str(n) for n in q.lines[:10])}"

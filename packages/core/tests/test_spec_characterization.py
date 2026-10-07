@@ -109,3 +109,12 @@ def test_the_engine_notes_say_what_this_engine_does_and_empty_registers_serialis
     data = bare.model_dump(by_alias=True)
     assert "quirks" not in data
     assert "environment" not in data
+
+
+def test_the_gaps_are_the_branches_without_a_case_and_the_quirks_no_case_reaches() -> None:
+    # ADR-0050: what of the legacy the golden master does not prove; nothing when coverage was not measured.
+    from nexti_core.spec.characterization import legacy_gaps
+
+    master = _quirk_master()
+    assert legacy_gaps(master) == ["branch 20-22 (else)", "quirk unreached (high) at lines 21"]
+    assert legacy_gaps(master.model_copy(update={"coverage": None})) == []

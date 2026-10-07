@@ -12,7 +12,13 @@ from typing import Any, Protocol, cast
 
 from nexti_adapter_sybase.golden import parameter_defaults
 from nexti_core.adapters import LegacyRunner, LegacyUnavailableError, SourceFile
-from nexti_core.spec.characterization import GoldenMaster, Suite, engine_not_proven, source_digest
+from nexti_core.spec.characterization import (
+    GoldenMaster,
+    Suite,
+    engine_not_proven,
+    legacy_gaps,
+    source_digest,
+)
 from nexti_core.spec.design import Design, UseCase
 from nexti_core.spec.equivalence import EquivalenceRun
 from nexti_core.spec.model import Rule
@@ -21,7 +27,7 @@ from nexti_orchestration import frontend, infrastructure
 from nexti_orchestration.context import Attempt, PhaseContext
 from nexti_orchestration.correction import CorrectionPort, Round, correct, differing
 from nexti_orchestration.guided import enabled as guided_enabled
-from nexti_orchestration.model import PhaseFailedError, PhaseResult
+from nexti_orchestration.model import Answer, Option, PhaseFailedError, PhaseResult, QuestionSpec
 from nexti_orchestration.packs import BackendPack, backend_pack
 from nexti_orchestration.scope import scope_files, split_rules
 from nexti_pack_frontend import IMAGE as FRONTEND_IMAGE
@@ -83,6 +89,31 @@ def outcomes(run: EquivalenceRun, rules: Mapping[str, Sequence[str]]) -> list[Ca
 
 
 TARGET_REGIONS_AT_MOST = 30
+GAPS_SHOWN = 40
+
+
+def gap_question(gaps: Sequence[str]) -> QuestionSpec:
+    """The decision card of the gaps of the legacy (ADR-0050): signed unreachable, or kept as not proven."""
+    shown = "\n".join(f"- {g}" for g in gaps[:GAPS_SHOWN])
+    more = len(gaps) - GAPS_SHOWN
+    return QuestionSpec(
+        key="legacy-gaps",
+        agent=VALIDATOR,
+        text=f"{len(gaps)} part(s) of the legacy have no case in the golden master. Are they unreachable?",
+        context=("The golden master proves only what its cases run. These branches were entered by no case and "
+                 "these engine quirks reached by none, after the test engineer was asked for them:\n" + shown
+                 + (f"\n... and {more} more" if more > 0 else "")
+                 + "\n\nSigned as unreachable (no input can reach them), the verdict can be PROVEN; kept as gaps, "
+                 "it stays PARTLY PROVEN and lists them."),
+        reason="missingInformation",
+        impact="high",
+        recommended=Option("accept", "Keep them as not proven", "Nobody has shown that no input reaches them: the "
+                           "verdict stays PARTLY PROVEN and lists each one"),
+        confidence=0.6,
+        alternatives=(Option("unreachable", "Sign them as unreachable", "I checked the code: no input of the "
+                             "program can reach these branches or lines (say why in the comment)"),),
+        affects=("verification",),
+    )  # fmt: skip
 
 
 def target_not_run(measured: TargetCoverage) -> list[str]:
@@ -114,13 +145,20 @@ class VerificationPhases:
         self.port = port
 
     async def verification(self, ctx: PhaseContext) -> PhaseResult:
+        # ADR-0050: the gaps of the legacy (branches without a case, quirks no case reaches) need a signed decision
+        # before PROVEN; asked first, so waiting for it repeats no work.
+        master = await self.port.load_golden_master()
+        gaps = legacy_gaps(master) if master is not None else []
+        decision = ctx.ask(gap_question(gaps)) if gaps else None
+
         async def work() -> Attempt:
-            return Attempt(await self._verify(ctx), "verdict")
+            return Attempt(await self._verify(ctx, gaps, decision), "verdict")
 
         attempt = await ctx.invoke(VALIDATOR, work, what="Independent verification")
         return PhaseResult(summary=attempt.artifact["summary"])
 
-    async def _verify(self, ctx: PhaseContext) -> dict[str, Any]:
+    async def _verify(self, ctx: PhaseContext, gaps: Sequence[str] = (), decision: Answer | None = None
+                      ) -> dict[str, Any]:  # fmt: skip
         design = await self.port.load_design()
         master = await self.port.load_golden_master()
         if design is None or master is None:
@@ -184,6 +222,10 @@ class VerificationPhases:
             found.append(checks.Check("canary", "not_checked", "the unchanged code does not reproduce the golden "
                                       "master, so a deliberate change cannot be told apart"))  # fmt: skip
         found.append(checks.source_intact(master.source_sha256, source_digest(source)))
+        if master.coverage is not None:  # ADR-0050: the legacy covered, or each gap with a signed decision
+            found.append(checks.legacy_covered(gaps, decision.option if decision else None,
+                                               decision.by if decision else None,
+                                               decision.comment if decision else ""))  # fmt: skip
 
         not_proven = [f"Declared mask {m}" for m in masks] + optional
         not_proven += [f"Correction round {r.number} ({', '.join(r.changed) or 'no file'}): {r.note}" for r in rounds]

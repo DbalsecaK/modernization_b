@@ -979,6 +979,7 @@
       "freshInputs": "Fresh inputs",
       "canary": "Canary",
       "sourceIntact": "Source intact",
+      "legacyCovered": "Legacy covered",
       "compiles": "Compiles",
       "screensMount": "Screens mount",
       "fieldsCovered": "Fields covered",
