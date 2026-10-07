@@ -10,6 +10,7 @@ dependencies = [
   "psycopg[binary]>=3.2",
   "nexti-adapter-bms",
   "nexti-adapter-cobol",
+  "nexti-adapter-rpg",
   "nexti-pack-frontend",
   "nexti-pack-iac",
   "nexti-hardening",
@@ -31,6 +32,7 @@ dependencies = [
 nexti-adapter-aspx = { workspace = true }
 nexti-adapter-bms = { workspace = true }
 nexti-adapter-cobol = { workspace = true }
+nexti-adapter-rpg = { workspace = true }
 nexti-pack-frontend = { workspace = true }
 nexti-pack-iac = { workspace = true }
 nexti-hardening = { workspace = true }

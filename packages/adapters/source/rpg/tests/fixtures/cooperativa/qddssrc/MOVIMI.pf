@@ -1,0 +1,5 @@
+00100A          R RMOVIM
+00200A            MVCTA         10A
+00300A            MVMONT        11P 2
+00400A            MVFECH          Z
+00500A          K MVCTA

@@ -1,0 +1,9 @@
+00100A                                      UNIQUE
+00200A          R RCUENTA                   TEXT('Cuentas de ahorro')
+00300A            CTNUME        10A
+00400A            CTTIPO         3A
+00500A            CTSALD        11P 2
+00600A            CTINTA        11P 2
+00700A            CTESTA         1A
+00800A            CTFAPE          L
+00900A          K CTNUME

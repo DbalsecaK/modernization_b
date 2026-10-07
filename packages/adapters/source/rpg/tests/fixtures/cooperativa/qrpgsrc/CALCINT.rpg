@@ -1,0 +1,21 @@
+00100H
+00200FCUENTAS IF  E           K        DISK
+00300FREPINT  O   E                    PRINTER
+00400C* Calcula el interes diario de cada cuenta de ahorro (ficticio)
+00500C           *ENTRY    PLIST
+00600C                     PARM           WTASA   54
+00700C                     PARM           WFECHA  80
+00800C           CTTIPO    IFEQ 'AHO'
+00900C           CTSALD    IFGT 0
+01000C                     EXSR CALINT
+01100C                     END
+01200C                     END
+01300C                     EXSR IMPRIM
+01400C           CALINT    BEGSR
+01500C           CTSALD    MULT WTASA     WINT   112H
+01600C           WINT      DIV  360       WINT      H
+01700C                     ADD  WINT      CTINTA
+01800C                     ENDSR
+01900C           IMPRIM    BEGSR
+02000C                     WRITEDETALLE
+02100C                     ENDSR
