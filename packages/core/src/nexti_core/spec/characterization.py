@@ -129,6 +129,48 @@ class Recorded(CharacterizationModel):
     observation: Observation
 
 
+class CoveredBranch(CharacterizationModel):
+    """A branch of the legacy program: the THEN or ELSE of an IF, an implicit ELSE, the body of a loop (ADR-0047)."""
+
+    id: str = Field(min_length=1, max_length=200)
+    kind: str = Field(min_length=1, max_length=40)
+    line_start: int
+    line_end: int
+    measurable: bool = True
+
+
+class Coverage(CharacterizationModel):
+    """Which branches of the legacy program the cases exercised, measured on an instrumented copy run after the
+    golden master (ADR-0047). A case whose instrumented run differed from the original is unreliable."""
+
+    branches: list[CoveredBranch] = Field(default_factory=list)
+    executed: dict[str, list[str]] = Field(default_factory=dict)  # case name -> branch ids
+    unreliable: list[str] = Field(default_factory=list)
+
+    @property
+    def measurable(self) -> list[CoveredBranch]:
+        return [b for b in self.branches if b.measurable]
+
+    @property
+    def exercised(self) -> set[str]:
+        return {b for case, ids in self.executed.items() if case not in self.unreliable for b in ids}
+
+    @property
+    def not_exercised(self) -> list[CoveredBranch]:
+        hit = self.exercised
+        return [b for b in self.measurable if b.id not in hit]
+
+    def note(self) -> str:
+        measurable = self.measurable
+        unmeasured = len(self.branches) - len(measurable)
+        text = f"{len(measurable) - len(self.not_exercised)} of {len(measurable)} measurable branches exercised"
+        if unmeasured:
+            text += f", {unmeasured} not measurable"
+        if self.unreliable:
+            text += f", {len(self.unreliable)} case(s) without reliable coverage"
+        return text
+
+
 class GoldenMaster(CharacterizationModel):
     """The frozen oracle: the suite as run and what the legacy did in every case."""
 
@@ -142,6 +184,9 @@ class GoldenMaster(CharacterizationModel):
         description="Output parameters the program never assigns (ADR-0044): the legacy returns the caller's value, "
         "so the comparison masks them",
     )
+    coverage: Coverage | None = Field(
+        default=None, description="Branches of the legacy the cases exercised, when the engine measured them (ADR-0047)"
+    )
 
     model_config = ConfigDict(extra="forbid", frozen=True, populate_by_name=True)
 
@@ -151,6 +196,8 @@ class GoldenMaster(CharacterizationModel):
         data = handler(self)
         if isinstance(data, dict) and not self.unassigned_outputs:
             data.pop("unassigned_outputs", None)
+        if isinstance(data, dict) and self.coverage is None:
+            data.pop("coverage", None)
         return data
 
     @property

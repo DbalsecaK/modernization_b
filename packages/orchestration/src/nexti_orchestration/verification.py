@@ -173,6 +173,11 @@ class VerificationPhases:
                        "that runs its code" for r in outside]  # fmt: skip
         not_proven.append("External programs are replaced by stubs that answer as the case says; their own logic "
                           "is not verified here")  # fmt: skip
+        if master.coverage is not None:  # ADR-0047: the branches of the legacy no case exercised are not proven
+            missed = master.coverage.not_exercised
+            not_proven.append(f"Legacy coverage: {master.coverage.note()}")
+            not_proven += [f"Branch not exercised by any case: lines {b.line_start}-{b.line_end} ({b.kind})"
+                           for b in missed[:50]]  # fmt: skip
         if master.from_traces:
             not_proven.append(
                 "The legacy did not run on the platform: its behaviour comes from recorded traces, so "

@@ -344,4 +344,6 @@ class CharacterizationPhases:
         if recorded is not None:
             rejected = sum(1 for r in recorded.results if r.observation.returns not in (0, None))
             cases = f"{len(recorded.results)} case(s) frozen, {rejected} of them rejected by the legacy"
+            if recorded.coverage is not None:  # ADR-0047: what of the legacy the cases exercised
+                cases += f"; legacy coverage: {recorded.coverage.note()}"
         return PhaseResult(summary=f"Golden master: {cases} ({runner.engine})")
