@@ -143,3 +143,26 @@ def test_the_parser_reads_markup_and_csharp_as_they_are() -> None:
         ("T",),
         ("lbl",),
     )
+
+
+def test_the_methods_each_trace_ran_are_the_coverage_of_the_page() -> None:
+    # Step 11 of the plan (ADR-0047): the methods of the code-behind and App_Code are the branches of a page.
+    import json
+
+    branches = ADAPTER.coverage_branches(FILES, "TRANSFERENCIA")
+    ids = {b.id for b in branches}
+    assert any(i.endswith(".btnTransferir_Click") for i in ids)
+    click = next(i for i in ids if i.endswith(".btnTransferir_Click"))
+    files = []
+    for file in FILES:
+        if file.path.endswith("TRANSFERENCIA.json"):
+            data = json.loads(file.text)
+            for result in data["results"]:
+                result["executed"] = [click]
+            file = SourceFile(file.path, json.dumps(data))
+        files.append(file)
+    suite = Suite(program="TRANSFERENCIA", cases=[Case(name="tope_de_comision", rules=["RULE-007"], inputs={})])
+    master = asyncio.run(TraceRunner(branches=ADAPTER.coverage_branches).run(files, suite))
+    assert master.coverage is not None
+    assert master.coverage.exercised == {click}
+    assert all(b.kind == "method" for b in master.coverage.branches)

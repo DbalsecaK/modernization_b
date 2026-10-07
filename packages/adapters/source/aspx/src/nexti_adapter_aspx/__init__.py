@@ -22,7 +22,7 @@ from nexti_adapter_aspx.parser import (
 from nexti_adapter_aspx.uplift import UpliftItem, assess
 from nexti_adapter_cobol.traces import is_trace, load_traces
 from nexti_core.adapters import Edge, Inventory, Node, SliceView, SourceFile
-from nexti_core.spec.characterization import EngineQuirk
+from nexti_core.spec.characterization import CoveredBranch, EngineQuirk
 from nexti_core.spec.model import SourceRef
 from nexti_core.spec.screens import ScreenAction, ScreenField, ScreenSpec
 
@@ -313,6 +313,17 @@ class AspxAdapter:
     def engine_quirks(self, files: list[SourceFile]) -> list[EngineQuirk]:
         """No engine quirk catalogued for this technology yet (M28)."""
         return []
+
+    def coverage_branches(self, files: list[SourceFile], program: str) -> list[CoveredBranch]:
+        """The methods of the page's code-behind and of the App_Code classes, the unit a WebForms trace reports as
+        executed (step 11 of the plan, ADR-0047): a trace result lists `Class.Method` under `executed`."""
+        workspace = self._workspace(files)
+        page = next((p for p in workspace.pages if p.name.upper() == program.upper()
+                     or _stem(p.path).upper() == program.upper()), None)  # fmt: skip
+        owner = workspace.page_class(page) if page is not None else None
+        classes = ([owner] if owner else []) + workspace.library()
+        return [CoveredBranch(id=f"{c.name}.{m.name}", kind="method", line_start=m.line_start, line_end=m.line_end,
+                              file=c.path) for c in classes for m in c.methods]  # fmt: skip
 
     def digest(self, files: list[SourceFile]) -> str:
         workspace = self._workspace(files)
