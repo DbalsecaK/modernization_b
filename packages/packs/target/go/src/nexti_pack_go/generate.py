@@ -448,6 +448,25 @@ def schema_file(design: Design) -> tuple[str, str]:
     return SCHEMA, postgresql_schema(design)[1]
 
 
+def placeholder_service(design: Design, use_case: UseCase) -> tuple[str, str]:
+    """A service that compiles and does nothing, with the shape the prompt fixes for the real one
+    (`New<UseCase>Service(ports...)`, `Execute(ctx, req)`): the tests compile against it before the developer writes
+    the service, so a test file that does not compile goes back to the test engineer (P31, step 12)."""
+    local = [f"{module_path(design)}/{PORTS}"] if use_case.ports else []
+    params = ", ".join(f"{ident(p)} ports.{p}" for p in use_case.ports)
+    name = use_case.name
+    return service_path(design, use_case), (
+        f"package app\n\n{_imports(['context', 'errors'], [], local)}"
+        f"// {name}Service is a placeholder: the tests are compiled against it before the service exists.\n"
+        f"type {name}Service struct{{}}\n\n"
+        f"// New{name}Service builds the placeholder.\n"
+        f"func New{name}Service({params}) *{name}Service {{\n\treturn &{name}Service{{}}\n}}\n\n"
+        f"// Execute is not written yet.\n"
+        f"func (s *{name}Service) Execute(ctx context.Context, req {name}Request) ({name}Response, error) {{\n"
+        f'\treturn {name}Response{{}}, errors.New("placeholder")\n}}\n'
+    )
+
+
 def service_path(design: Design, use_case: UseCase) -> str:
     return f"{APP}/{snake(use_case.name)}_service.go"
 

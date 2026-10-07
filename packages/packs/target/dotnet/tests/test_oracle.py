@@ -140,3 +140,24 @@ def test_a_canary_change_is_caught_on_oracle(oracle_sandbox: DockerSandbox) -> N
     assert run.problem is None, run.problem
     caught = run.build.failed > 0 or any(c.failure or c.expected != c.actual for c in run.cases)
     assert caught, mutation.after
+
+
+def test_the_sql_probe_accepts_the_reference_adapters_and_names_a_missing_table(oracle_sandbox: DockerSandbox) -> None:
+    # P32 for this pack (step 12 of the plan): the reference adapters prepare against the schema; one that reads a
+    # table the design does not keep comes back with the error and its statement.
+    import re as _re
+
+    files = reference_project(DESIGN)
+    checked = 0
+    for port in DESIGN.ports:
+        path = ORACLE_PACK.adapter_path(DESIGN, port)
+        if path not in files or not _re.search(r"(?i)\bFROM\s+\w", files[path]):
+            continue
+        assert asyncio.run(ORACLE_PACK.probe_sql(oracle_sandbox, files, path)) == "", path
+        broken = _re.sub(r"(?i)\bFROM(\s+)[\w.\"]+", r"FROM\1legacy_lookup", files[path], count=1)
+        errors = asyncio.run(ORACLE_PACK.probe_sql(oracle_sandbox, {**files, path: broken}, path))
+        assert "legacy_lookup" in errors.lower(), errors
+        assert "statement: " in errors
+        checked += 1
+        break
+    assert checked == 1

@@ -299,6 +299,23 @@ def adapter_name(port: str) -> str:
     return f"Sql{port}"
 
 
+def placeholder_service(design: Design, use_case: UseCase) -> tuple[str, str]:
+    """A service that compiles and does nothing, with the shape the prompt fixes for the real one (one constructor
+    with the ports of the use case in order, `Execute(request)`): the tests compile against it before the developer
+    writes the service, so a test file that does not compile goes back to the test engineer (P31, step 12)."""
+    ns = namespace(design)
+    params = ", ".join(f"{p} {p[:1].lower() + p[1:]}" for p in use_case.ports)
+    ports = f"using {ns}.Domain.Port;\n" if use_case.ports else ""
+    return service_path(design, use_case), (
+        f"{ports}using {ns}.Adapters.In.Rest;\n\nnamespace {ns}.Application;\n\n"
+        "/// <summary>Placeholder: the tests are compiled against it before the service exists.</summary>\n"
+        f"public sealed class {use_case.name}Service\n{{\n"
+        f"    public {use_case.name}Service({params})\n    {{\n    }}\n\n"
+        f"    public {use_case.name}Response Execute({use_case.name}Request request) =>\n"
+        '        throw new System.NotSupportedException("placeholder");\n}\n'
+    )
+
+
 def service_path(design: Design, use_case: UseCase) -> str:
     return f"{APP}/Application/{use_case.name}Service.cs"
 

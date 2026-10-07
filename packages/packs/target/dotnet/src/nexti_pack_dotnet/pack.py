@@ -18,6 +18,7 @@ from nexti_pack_dotnet.generate import (
     adapter_path,
     layer_of,
     namespace,
+    placeholder_service,
     service_path,
     skeleton,
     test_path,
@@ -55,6 +56,17 @@ class DotnetPack:
 
     def test_path(self, design: Design, use_case: UseCase) -> str:
         return test_path(design, use_case)
+
+    async def probe_sql(self, sandbox: Sandbox, files: Mapping[str, str], path: str) -> str:
+        """The SQL of a generated adapter resolved against the schema before it is accepted (P32, step 12)."""
+        from nexti_pack_dotnet.sqlprobe import probe_sql
+
+        return await probe_sql(sandbox, files, path)
+
+    def placeholder_service(self, design: Design, use_case: UseCase) -> dict[str, str]:
+        """The service the tests compile against before the real one exists (P31, step 12)."""
+        path, text = placeholder_service(design, use_case)
+        return {path: text}
 
     def adapter_path(self, design: Design, port: Port) -> str:
         return adapter_path(design, port)
@@ -112,6 +124,11 @@ class DotnetPack:
 class DotnetOraclePack(DotnetPack):
     """The same pack with Oracle as its persistence (ADR-0031): the Oracle schema, the ODP.NET client in the project,
     the adapters asked for Oracle SQL and the golden master run against Oracle in its sandbox."""
+
+    async def probe_sql(self, sandbox: Sandbox, files: Mapping[str, str], path: str) -> str:
+        from nexti_pack_dotnet.sqlprobe import probe_oracle
+
+        return await probe_oracle(sandbox, files, path)  # EXPLAIN PLAN in its sandbox (P32, step 12)
 
     image = oracle.IMAGE
     database = "oracle"

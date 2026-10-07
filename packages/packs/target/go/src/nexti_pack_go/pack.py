@@ -23,6 +23,7 @@ from nexti_pack_go.generate import (
     constructor,
     layer_of,
     module_path,
+    placeholder_service,
     probe_file,
     service_path,
     skeleton,
@@ -64,6 +65,17 @@ class GoPack:
 
     def test_path(self, design: Design, use_case: UseCase) -> str:
         return test_path(design, use_case)
+
+    async def probe_sql(self, sandbox: Sandbox, files: Mapping[str, str], path: str) -> str:
+        """The SQL of a generated adapter resolved against the schema before it is accepted (P32, step 12)."""
+        from nexti_pack_go.sqlprobe import probe_sql
+
+        return await probe_sql(sandbox, files, path)
+
+    def placeholder_service(self, design: Design, use_case: UseCase) -> dict[str, str]:
+        """The service the tests compile against before the real one exists (P31, step 12)."""
+        path, text = placeholder_service(design, use_case)
+        return {path: text}
 
     def adapter_path(self, design: Design, port: Port) -> str:
         return adapter_path(design, port)
