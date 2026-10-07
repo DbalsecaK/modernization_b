@@ -14,6 +14,7 @@ from typing import Any, Protocol
 
 from nexti_adapter_aspx import AspxAdapter
 from nexti_adapter_cobol import CobolAdapter
+from nexti_adapter_rpg import RpgAdapter
 from nexti_adapter_sybase import SybaseAdapter
 from nexti_core.adapters import Inventory, Node, SliceView, SourceAdapter, SourceFile
 from nexti_core.spec.model import Rule, SourceRef
@@ -24,7 +25,7 @@ from nexti_orchestration.model import Option, PhaseFailedError, PhaseResult, Que
 from nexti_orchestration.stories import FALLBACK_WRITER, STORY_WRITER, RuleData, Stories, derive
 from nexti_orchestration.usage import total
 
-ADAPTERS: tuple[SourceAdapter, ...] = (SybaseAdapter(), CobolAdapter(), AspxAdapter())
+ADAPTERS: tuple[SourceAdapter, ...] = (SybaseAdapter(), CobolAdapter(), AspxAdapter(), RpgAdapter())
 # The adapters a tenant declared (ADR-0039), set by the worker for the run it executes (a context variable: runs of
 # other tenants in the same process never see them).
 EXTRA_ADAPTERS: ContextVar[tuple[SourceAdapter, ...]] = ContextVar("nexti_extra_adapters", default=())
@@ -140,7 +141,7 @@ def pick_adapter(files: list[SourceFile]) -> SourceAdapter:
     if not scored or scored[0][0] < DETECT_THRESHOLD:
         raise PhaseFailedError(
             "No source adapter recognises these inputs (supported in this version: Sybase ASE "
-            "stored procedures, COBOL/CICS with BMS maps, ASP.NET WebForms)"
+            "stored procedures, COBOL/CICS with BMS maps, ASP.NET WebForms, RPG on IBM i with its DDS and CL)"
         )
     return scored[0][2]
 

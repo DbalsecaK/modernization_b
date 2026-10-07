@@ -12,6 +12,7 @@ members = [
     "nexti-adapter-aspx",
     "nexti-adapter-bms",
     "nexti-adapter-cobol",
+    "nexti-adapter-rpg",
     "nexti-adapter-sybase",
     "nexti-agents",
     "nexti-api",
@@ -1311,6 +1312,21 @@ requires-dist = [
 ]
 
 [[package]]
+name = "nexti-adapter-rpg"
+version = "0.1.0"
+source = { editable = "packages/adapters/source/rpg" }
+dependencies = [
+    { name = "nexti-adapter-cobol" },
+    { name = "nexti-core" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "nexti-adapter-cobol", editable = "packages/adapters/source/cobol" },
+    { name = "nexti-core", editable = "packages/core" },
+]
+
+[[package]]
 name = "nexti-adapter-sybase"
 version = "0.1.0"
 source = { editable = "packages/adapters/source/sybase" }
@@ -1535,6 +1551,7 @@ dependencies = [
     { name = "nexti-adapter-aspx" },
     { name = "nexti-adapter-bms" },
     { name = "nexti-adapter-cobol" },
+    { name = "nexti-adapter-rpg" },
     { name = "nexti-adapter-sybase" },
     { name = "nexti-agents" },
     { name = "nexti-core" },
@@ -1560,6 +1577,7 @@ requires-dist = [
     { name = "nexti-adapter-aspx", editable = "packages/adapters/source/aspx" },
     { name = "nexti-adapter-bms", editable = "packages/adapters/source/bms" },
     { name = "nexti-adapter-cobol", editable = "packages/adapters/source/cobol" },
+    { name = "nexti-adapter-rpg", editable = "packages/adapters/source/rpg" },
     { name = "nexti-adapter-sybase", editable = "packages/adapters/source/sybase" },
     { name = "nexti-agents", editable = "packages/agents" },
     { name = "nexti-core", editable = "packages/core" },

@@ -1,0 +1,5 @@
+00100A          R RCUENTA1                  PFILE(COOPLIB/CUENTAS)
+00200A            CTNUME
+00300A            CTSALD
+00400A          K CTNUME
+00500A          S CTESTA                    COMP(EQ 'A')

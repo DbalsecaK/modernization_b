@@ -1,0 +1,8 @@
+00100A                                      DSPSIZ(24 80 *DS3)
+00200A          R PANTALLA                  CF03(03 'Salir')
+00300A                                  1 30'CONSULTA DE CUENTAS'
+00400A                                  4  2'Cuenta:'
+00500A            SCCTA         10A  B  4 12
+00600A                                  6  2'Saldo:'
+00700A            SCSALD        11Y 2O  6 12EDTCDE(J)
+00800A            SCMSG         40A  O 22  2

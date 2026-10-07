@@ -15,6 +15,7 @@ from nexti_orchestration.scope import program_files, scope_files, split_rules
 ROOT = Path(__file__).resolve().parents[3]
 CICS = ROOT / "packages/adapters/source/cobol/tests/fixtures/pagos_cics"
 SYBASE = ROOT / "packages/adapters/source/sybase/tests/fixtures/pago_orden/sp_pago_orden.sp"
+IBMI = ROOT / "packages/adapters/source/rpg/tests/fixtures/cooperativa"
 
 
 def cics() -> list[SourceFile]:
@@ -36,6 +37,17 @@ def test_the_scope_follows_links_and_calls_but_not_transfers() -> None:
     sybase = [SourceFile("sp/sp_pago_orden.sp", SYBASE.read_text(encoding="utf-8"))]
     assert scope_files(sybase, "dbo.sp_pago_orden") == {"sp/sp_pago_orden.sp"}
     assert SybaseAdapter().detect(sybase) > 0
+
+
+def test_an_ibm_i_workspace_gets_the_rpg_adapter_and_the_others_keep_theirs() -> None:
+    from nexti_orchestration.modernization import pick_adapter
+
+    ibmi = [SourceFile(p.relative_to(IBMI).as_posix(), p.read_text(encoding="utf-8")) for p in sorted(IBMI.rglob("*"))
+            if p.is_file()]  # fmt: skip
+    sybase = [SourceFile("sp/sp_pago_orden.sp", SYBASE.read_text(encoding="utf-8"))]
+    assert [pick_adapter(files).name for files in (ibmi, cics(), sybase)] == ["rpg-ibmi", "cobol-cics", "sybase-ase"]
+    inventory = pick_adapter(ibmi).inventory(ibmi)
+    assert program_files(inventory, "CIERRE") == {"qclsrc/CIERRE.clle", "qrpgsrc/CALCINT.rpg"}
 
 
 def test_only_the_rules_in_scope_need_a_case() -> None:
