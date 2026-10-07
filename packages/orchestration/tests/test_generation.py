@@ -436,8 +436,9 @@ def test_a_guided_design_keeps_or_masks_every_table_the_program_reads() -> None:
     assert problem.endswith("a `tables:` mask with its reason: cl_destino")  # pg_config is masked with a reason
     kept = design.model_copy(update={"entities": [
         {"name": "Destino", "table": "destination", "legacy_table": "db_a..cl_destino", "fields": [
-            {"name": "id", "type": "integer(32,signed)", "legacy": "id"}]}]})  # fmt: skip
-    kept = Design.model_validate(kept.model_dump())
+            {"name": "id", "type": "integer(32,signed)", "legacy": "id"},
+            {"name": "account", "type": "text(fixed,10,utf8)", "legacy": "cta"}]}]})  # fmt: skip
+    kept = Design.model_validate(kept.model_dump())  # step 9: the column the program loads (cta) is a field
     assert design_problems(kept, [rule], hints=True, files=files, written=set(), read=read) == []
 
 
@@ -510,3 +511,44 @@ def test_the_engine_document_lists_each_quirk_with_its_state_and_cases() -> None
     assert "- On the engine: not on this engine (answered '1')" in text
     assert "- Cases that run it: none" in text  # no coverage measured: the engine did not say which lines ran
     assert "- language: us_english (engine)" in text
+
+
+def test_the_architect_leaves_out_outputs_never_assigned_and_keeps_the_columns_the_program_loads() -> None:
+    from nexti_core.adapters import SourceFile as File
+    from nexti_core.spec.design import Design
+    from nexti_core.spec.model import Rule as SpecRule
+    from nexti_orchestration.generation import design_problems
+
+    # Step 9 of the plan: @o_b is never assigned (the legacy echoes it), and `valor` is loaded from the kept t_val.
+    source = ("create proc sp_q @i_id int, @o_a int output, @o_b int output as\n"
+              "select @o_a = v.valor from t_val v where v.id = @i_id\n")  # fmt: skip
+    files = [File("q.sp", source)]
+    rule = SpecRule.model_validate({"id": "RULE-001", "name": "rule name", "category": "validation", "priority": "P1",
+                                    "statement": "a statement long enough",
+                                    "sources": [{"file": "q.sp", "line_start": 2, "line_end": 2}]})  # fmt: skip
+    number = "integer(32,signed)"
+    design = Design.model_validate({
+        "context": "x", "base_package": "com.x.y",
+        "use_cases": [{"name": "Uc", "rules": ["RULE-001"], "legacy_program": "sp_q",
+                       "inputs": [{"name": "id", "type": number, "legacy": "@i_id"}],
+                       "outputs": [{"name": "a", "type": number, "legacy": "@o_a"},
+                                   {"name": "b", "type": number, "legacy": "@o_b"}]}],
+        "entities": [{"name": "Val", "table": "val", "legacy_table": "t_val",
+                      "fields": [{"name": "id", "type": number, "legacy": "id"}]}],
+    })  # fmt: skip
+    problems = design_problems(design, [rule], hints=True, files=files, written=set(), read={"t_val"})
+    assert (
+        "Uc: the program never assigns @o_b: the legacy returns the caller's value, so leave them out of the "
+        "outputs (the comparison masks them)" in problems
+    )
+    assert (
+        "Val keeps t_val, and the program loads these of its columns into variables: make them fields with "
+        "their legacy column: valor" in problems
+    )
+    fixed = Design.model_validate({**design.model_dump(), "use_cases": [{
+        **design.use_cases[0].model_dump(), "outputs": [design.use_cases[0].outputs[0].model_dump()]}],
+        "entities": [{**design.entities[0].model_dump(), "fields": [
+            *[f.model_dump() for f in design.entities[0].fields],
+            {"name": "valor", "type": number, "legacy": "valor"}]}]})  # fmt: skip
+    found = design_problems(fixed, [rule], hints=True, files=files, written=set(), read={"t_val"})
+    assert not any("never assigns" in p or "loads these of its columns" in p for p in found)

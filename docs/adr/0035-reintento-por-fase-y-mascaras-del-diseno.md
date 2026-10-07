@@ -90,3 +90,17 @@ reglas de P34 comparan por nombre corto, así que vieron una sola. En ese camino
 secuencial admite nulos; en la otra es clave). Desde P37, en el diseño guiado, cada forma calificada de un nombre que
 el programa usa con más de una calificación debe tener su propia entidad con su `legacy_table` exacto. Se descartó
 emparejar tablas por nombre corto en el arnés: mezclaría dos tablas distintas del legado.
+
+## Precisión paso 9 (2026-10-07): salidas nunca asignadas y columnas que el programa carga
+
+En el diseño guiado, el adaptador de origen aporta dos hechos del código y el diseño se corrige con ellos:
+
+- **Una salida que el programa nunca asigna no se mapea.** El legado devuelve el valor que pasó quien llama
+  (ADR-0044) y la comparación la enmascara: mapearla obliga al destino a inventar un valor. El problema nombra el
+  parámetro y pide dejarlo fuera de las salidas.
+- **Las columnas que el programa carga de una tabla que el diseño conserva son campos de su entidad.** Si
+  `select @v = col from t` y la entidad de `t` no tiene `col`, el destino no puede reproducir lo que el programa
+  calcula con ese valor. El problema lista las columnas que faltan.
+
+Los dos son capacidades opcionales del adaptador (`unassigned_outputs`, `columns_read`); Sybase las tiene y un
+adaptador sin ellas no agrega problemas.

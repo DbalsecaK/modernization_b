@@ -347,6 +347,7 @@ def design_problems(
         # method, or the target calls the program once per method and the trace of calls never matches (a real
         # design split sp_con_confcontable into findTransaction and findCause: every later call shifted a position).
         # Since ADR-0043 a method returns an entity with every output (`legacy_outputs`), so the rule is satisfiable.
+        problems += legacy_shape_problems(design, files)
         split = [f"{p.name} ({p.legacy_program}: {', '.join(m.name for m in p.methods)})" for p in design.ports
                  if p.legacy_program and len(p.methods) > 1]  # fmt: skip
         if split:
@@ -354,6 +355,46 @@ def design_problems(
                             "program's inputs and returning every output it sets: an entity whose fields map to the "
                             "output parameters through `legacy_outputs` ({\"field\": \"@o_param\", ...}), or a "
                             f"single output through `legacy_output`: {'; '.join(split)}")  # fmt: skip
+    return problems
+
+
+def legacy_shape_problems(design: Design, files: Sequence[SourceFile]) -> list[str]:
+    """Step 9 of the plan, from the code through the source adapter: an output the program never assigns is not
+    mapped (the legacy echoes the caller's value and the comparison masks it, so the target would invent it), and
+    the columns the program loads from a table the design keeps are fields of its entity (or the target cannot
+    reproduce what the program computes from them)."""
+    if not files:
+        return []
+    from nexti_orchestration.modernization import pick_adapter
+
+    try:
+        adapter = pick_adapter(list(files))
+    except Exception:
+        return []
+    problems: list[str] = []
+    unassigned = getattr(adapter, "unassigned_outputs", None)
+    if callable(unassigned):
+        for use_case in design.use_cases:
+            if not use_case.legacy_program:
+                continue
+            never = {p.lower() for p in unassigned(list(files), use_case.legacy_program)}
+            mapped = sorted(f.legacy for f in use_case.outputs if f.legacy and f.legacy.lower() in never)
+            if mapped:
+                problems.append(f"{use_case.name}: the program never assigns {', '.join(mapped)}: the legacy returns "
+                                "the caller's value, so leave them out of the outputs (the comparison masks "
+                                "them)")  # fmt: skip
+    columns_read = getattr(adapter, "columns_read", None)
+    if callable(columns_read):
+        loaded = columns_read(list(files))
+        for entity in design.entities:
+            if not entity.legacy_table:
+                continue
+            have = {(f.legacy or "").lower().split(".")[-1] for f in entity.fields}
+            absent = sorted(loaded.get(table_of(entity.legacy_table), set()) - have)
+            if absent:
+                problems.append(f"{entity.name} keeps {entity.legacy_table}, and the program loads these of its "
+                                f"columns into variables: make them fields with their legacy column: "
+                                f"{', '.join(absent)}")  # fmt: skip
     return problems
 
 

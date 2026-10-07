@@ -249,6 +249,41 @@ class SybaseAdapter:
 
         return [q for source, proc in _procedures(files) for q in quirks.detect(source, proc)]
 
+    def unassigned_outputs(self, files: list[SourceFile], program: str) -> list[str]:
+        """The OUTPUT parameters of a procedure no statement assigns (ADR-0044): the legacy echoes the caller's
+        value, so the design leaves them out (step 9 of the plan)."""
+        from nexti_adapter_sybase.golden import unassigned_outputs
+
+        short = program.rsplit(".", 1)[-1].lower()
+        for _, proc in _procedures(files):
+            if proc.name.rsplit(".", 1)[-1].lower() == short:
+                return unassigned_outputs(proc)
+        return []
+
+    def columns_read(self, files: list[SourceFile]) -> dict[str, set[str]]:
+        """Table -> the columns a single-table SELECT loads into variables (`select @v = col from t`): the values the
+        program works with, which an entity keeping the table must carry as fields (step 9 of the plan)."""
+        found: dict[str, set[str]] = {}
+        for source, proc in _procedures(files):
+            tokens, _ = tokenize(source.text)
+            for stmt in proc.statements():
+                if stmt.kind != "select" or len(stmt.reads) != 1 or not stmt.vars_written:
+                    continue
+                table = next(iter(stmt.reads)).split(".")[-1].lower()
+                inside = [t for t in tokens if stmt.line_start <= t.line <= stmt.line_end]
+                for i in range(len(inside) - 2):
+                    var, eq, word = inside[i], inside[i + 1], inside[i + 2]
+                    if var.kind != "variable" or not eq.is_symbol("=") or word.kind != "word":
+                        continue
+                    following = inside[i + 3] if i + 3 < len(inside) else None
+                    if following is not None and following.is_symbol("("):
+                        continue  # a function, not a column
+                    if following is not None and following.is_symbol(".") and i + 4 < len(inside):
+                        word = inside[i + 4]  # alias.column
+                    if word.kind == "word" and word.upper not in ("NULL", "CASE", "SELECT"):
+                        found.setdefault(table, set()).add(word.text.lower())
+        return found
+
     def digest(self, files: list[SourceFile]) -> str:
         inventory = self.inventory(files)
         lines = [f"Metrics: {json.dumps(inventory.metrics)}"]
