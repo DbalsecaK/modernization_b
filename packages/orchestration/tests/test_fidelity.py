@@ -109,6 +109,10 @@ class FakeBuild:
     def diagnostic(self, limit: int = 4000) -> str:
         return "a test failed"[:limit]
 
+    @property
+    def tests(self) -> list[None]:
+        return [None] * (self.passed + self.failed)
+
 
 def _run(differing_cases: int, build_ok: bool = True) -> EquivalenceRun:
     expected = Observation(returns=0, tables={"db..pg_orden_total": [{"to_estado": "T"}]})
@@ -630,3 +634,50 @@ async def test_an_adapter_correction_sees_the_schema_and_its_sql_is_probed_befor
     assert 'relation "cl_tabla" does not exist' in second
     assert pack.probed == [adapter, adapter]
     assert pack.runs == []  # the golden master ran only for the correction that prepared
+
+
+async def test_an_early_match_with_failing_unit_tests_still_converges_until_the_tests_agree() -> None:
+    # P35: every case matches the legacy at once, but a unit test contradicts the program: the developer is told
+    # and aligns it; the convergence ends only when both hold.
+    pack = FakePack(runs=[_run(0, build_ok=False), _run(0)], builds=[FakeBuild()])
+    aligned = _reply("v1") + f"\n### {TEST}\n```java\nclass T {{}}\n```"
+    port = FakePort(replies=[aligned])
+    ctx, _store = _ctx()
+    files, result = await _converge(ctx, port, pack, {SERVICE: "v1", TEST: "class T { /* wrong */ }"})
+    assert (result.differing, result.iterations) == (0, 1)
+    first = port.models.requests[0][1]["content"]
+    assert "Unit tests that fail (align them with the program" in first
+    assert files[TEST].strip() == "class T {}"
+
+
+async def test_with_the_golden_master_as_oracle_a_compiling_service_with_failing_tests_is_accepted() -> None:
+    from nexti_orchestration.generation import GenerationPhases
+    from nexti_pack_spring_boot.pack import PACK as SPRING
+
+    class Pack(FakePack):
+        developer_prompt = SPRING.developer_prompt
+
+        def code_block(self, content: str) -> str:
+            return SPRING.code_block(content)
+
+        def probe(self, design: Design, path: str) -> dict[str, str]:
+            return {}
+
+    rules = {r.id: r for r in RULES}
+    files = {TEST: "class PayOrderServiceTest {}"}
+    service = "```java\nclass PayOrderService { /* v1 */ }\n```"
+    failing = FakeBuild(ok=False, passed=2, failed=1)
+    # Oracle: one attempt, accepted although a test fails; the comparison with the legacy decides next.
+    port = FakePort(replies=[service])
+    ctx, store = _ctx()
+    phases = GenerationPhases(cast(Any, port))
+    pack = cast(Any, Pack(runs=[], builds=[failing]))
+    code = await phases._service(ctx, pack, DESIGN, USE_CASE, rules, files, cast(Any, None), "p", "S", True)
+    assert "v1" in code
+    assert any("unit test(s) fail and go to the comparison with the legacy" in e.message for e in store.events)
+    # Without the oracle (the recorded runs): the failing test is a failed attempt, as before.
+    plain = FakePort(replies=[service, service])
+    other, _store = _ctx(max_iterations=2)
+    with pytest.raises(NeedsAnswer):
+        await GenerationPhases(cast(Any, plain))._service(other, cast(Any, Pack(runs=[], builds=[failing, failing])),
+                                                          DESIGN, USE_CASE, rules, files, cast(Any, None))  # fmt: skip

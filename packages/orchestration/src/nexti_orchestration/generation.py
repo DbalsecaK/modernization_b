@@ -475,6 +475,8 @@ class GenerationPhases:
         criteria = await self._criteria(design) if ctx.run.flow == "newFeature" else {}
         # Behaviour-preserving generation (ADR-0042): with the guided option and a legacy, the program is in view.
         faithful = guided_enabled(ctx.run.options) and ctx.run.flow == "modernization"
+        # The golden master is the oracle of the behaviour when the run is faithful and one was frozen (P35).
+        oracle = bool(faithful and hasattr(self.port, "load_golden_master") and await self.port.load_golden_master())
         source = await self.port.source_files() if faithful else []
         legacy_stack = ""
         if source:
@@ -499,7 +501,7 @@ class GenerationPhases:
             )  # fmt: skip
             files[pack.service_path(design, use_case)] = await self._service(
                 piece, pack, design, use_case, rules, files, sandbox, programs.get(use_case.name, ""),
-                developer_prompt,
+                developer_prompt, oracle,
             )  # fmt: skip
         for port_spec in design.ports:
             piece = ctx.for_shard(f"adapter:{port_spec.name}")
@@ -508,7 +510,14 @@ class GenerationPhases:
         # The wiring may name every adapter (the .NET pack does), so the held files join once all of them exist.
         files.update(held)
         final = await pack.compile_and_test(sandbox, files)
-        if not final.ok:
+        if oracle and final.compiled and final.tests:
+            # The golden master decides (P35): a unit test the model wrote can contradict the program; the
+            # convergence below aligns it and only ends when every case matches and every test passes.
+            if not final.ok:
+                await ctx.store.event("info", "running", f"{final.failed} unit test(s) fail before the comparison "
+                                      "with the legacy: the golden master decides, and the developer aligns any "
+                                      "test that contradicts the program", phase=ctx.phase.key)  # fmt: skip
+        elif not final.ok:
             raise PhaseFailedError(f"The complete project does not pass: {final.diagnostic(1500)}")
         tests_run = final.passed
         layers = {p: pack.layer_of(p, design) for p in files}
@@ -615,7 +624,7 @@ class GenerationPhases:
 
     async def _service(
         self, ctx: PhaseContext, pack: BackendPack, design: Design, use_case: UseCase, rules: dict[str, Rule],
-        files: dict[str, str], sandbox: Sandbox, program: str = "", system_prompt: str = "",
+        files: dict[str, str], sandbox: Sandbox, program: str = "", system_prompt: str = "", oracle: bool = False,
     ) -> str:  # fmt: skip
         base = [
             {"role": "system", "content": system_prompt or prompt(pack.developer_prompt)},
@@ -651,6 +660,13 @@ class GenerationPhases:
                 return Verification(True)
             if build.compiled and not build.tests:
                 return Verification(False, "no test ran: the test class did not compile or was not found")
+            if oracle and build.compiled:
+                # The golden master is the oracle (P35): the service is compared with the legacy next, and the
+                # tests that still fail travel with it to the convergence, where the program decides who is wrong.
+                await ctx.store.event("info", "running", f"{use_case.name}Service compiles; {build.failed} unit "
+                                      "test(s) fail and go to the comparison with the legacy",
+                                      phase=ctx.phase.key)  # fmt: skip
+                return Verification(True)
             return Verification(False, build.diagnostic())
 
         # When attempts run out the person sees the files and an analysis (ADR-0045); the analyst is called only

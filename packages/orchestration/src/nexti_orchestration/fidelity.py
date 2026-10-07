@@ -358,7 +358,14 @@ async def converge(
         raise_problem = f"the golden master could not run on the generated project: {first.problem}"
         await ctx.store.event("info", "failed", raise_problem[:2000], phase=ctx.phase.key)
         return files, Convergence(len(first_outcomes), len(first_outcomes), 0, (), [])
-    if differing(first_outcomes) == 0:
+    first_build_ok = bool(getattr(first.build, "ok", True))
+    tests_first = (
+        ""
+        if first_build_ok
+        else "Unit tests that fail (align them with the program if they contradict it, the golden master proves "
+        f"what the program does):\n{first.build.diagnostic(1200)}"
+    )
+    if differing(first_outcomes) == 0 and first_build_ok:
         await ctx.store.event("info", "succeeded", f"Golden master: {len(first_outcomes)} case(s) match at once",
                               phase=ctx.phase.key)  # fmt: skip
         return files, Convergence(len(first_outcomes), 0, 0, (), [])
@@ -370,6 +377,8 @@ async def converge(
 
     async def work(iteration: int, feedback: str | None) -> Attempt:
         current: dict[str, str] = state["files"]
+        if feedback is None and tests_first:  # P35: the first request names the tests that contradict the program
+            feedback = tests_first
         involved = files_to_correct(pack, design, use_case, current, named_in(state["outcomes"]),
                                     [o.failure for o in state["outcomes"] if o.failure])  # fmt: skip
         # The unit tests came from the program too; one that contradicts the golden master is wrong, and only the
