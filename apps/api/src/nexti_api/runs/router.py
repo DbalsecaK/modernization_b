@@ -202,6 +202,13 @@ async def retry_run(
     await license_gate.ensure_writable(request, auth, "run.retry", f"project:{project_id}")
     async with transaction(request, auth) as conn:
         run = await load_run(conn, project_id, run_id, lock=True)
+        if run["status"] == "waiting" and run.get("waiting_reason") == "phaseUnavailable":
+            # The phase waited for an engine or a pack (ADR-0046): queue it again, nothing to reset.
+            await defer_run(conn, run_id, auth.tenant_id)
+            await audit(conn, auth, "run.retry", f"project:{project_id}",
+                        {"run_id": str(run_id), "status": "waiting", "phase": run["current_phase"],
+                         "reason": "phaseUnavailable"})  # fmt: skip
+            return RunOut.model_validate(dict(await load_run(conn, project_id, run_id)))
         if run["status"] not in ("failed", "succeeded"):
             raise ProblemError(409, "run_not_finished", "Only a failed or finished run can be retried.")
         chosen = body.phase if body else None

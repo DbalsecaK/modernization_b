@@ -3,6 +3,7 @@ programs answer); code checks it against the source and the rules; the legacy it
 isolated engine and what it did is frozen as the golden master, before anything is generated. Nothing of the
 expected behaviour comes from a model: the model only chooses the inputs."""
 
+import asyncio
 import json
 import re
 from collections.abc import Mapping, Sequence
@@ -203,6 +204,14 @@ def _sources(files: Sequence[SourceFile]) -> str:
     return "\n\n".join(f"// {f.path}\n{f.text}" for f in files)
 
 
+# A transient engine failure is tried again after these waits before the phase waits for a person (ADR-0046).
+ENGINE_RETRY_SECONDS: tuple[int, ...] = (60, 180)
+
+
+async def engine_sleep(seconds: float) -> None:
+    await asyncio.sleep(seconds)
+
+
 class CharacterizationPhases:
     def __init__(self, port: CharacterizationPort) -> None:
         self.port = port
@@ -249,12 +258,22 @@ class CharacterizationPhases:
             problems = coverage_problems(suite, rules, required)
             if problems:
                 return Verification(False, "; ".join(problems))
-            try:
-                recorded = await runner.run(files, suite)
-            except ValueError as exc:  # the suite does not fit the code (GoldenError)
-                return Verification(False, str(exc)[:3000])
-            except LegacyUnavailableError as exc:  # no engine, or a replay without a recording: the run waits
-                raise PhaseUnavailableError(str(exc)[:500]) from exc
+            recorded = None
+            for wait in (*ENGINE_RETRY_SECONDS, None):
+                try:
+                    recorded = await runner.run(files, suite)
+                    break
+                except ValueError as exc:  # the suite does not fit the code (GoldenError)
+                    return Verification(False, str(exc)[:3000])
+                except LegacyUnavailableError as exc:
+                    # A busy host makes the engine late (ADR-0046): a transient failure is tried again here before
+                    # the run waits; no engine, or a replay without a recording, waits at once.
+                    if not exc.transient or wait is None:
+                        raise PhaseUnavailableError(str(exc)[:500]) from exc
+                    await ctx.store.event("info", "running", f"The legacy engine is late ({str(exc)[:200]}); "
+                                          f"trying again in {wait} s", phase=ctx.phase.key)  # fmt: skip
+                    await engine_sleep(wait)
+            assert recorded is not None  # noqa: S101 - the loop breaks with a recording or raises
             failed = [f"{r.case.name}: {r.observation.error}" for r in recorded.results if r.observation.error]
             if failed:
                 return Verification(False, "the engine failed these cases:\n" + "\n".join(failed)[:3000])

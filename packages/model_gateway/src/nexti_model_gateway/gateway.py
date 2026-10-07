@@ -40,6 +40,7 @@ from nexti_core.db.models import (
 )
 from nexti_core.db.session import DbScope, scoped_connection
 from nexti_model_gateway.openrouter import (
+    RETRYABLE_STATUS,
     ChatResult,
     ChatUsage,
     OpenAICompatibleClient,
@@ -205,6 +206,7 @@ class ModelGateway:
         *,
         sleep: Sleep = asyncio.sleep,
         backoff_seconds: float = 0.5,
+        patience_seconds: tuple[float, ...] = (30.0, 60.0, 120.0, 240.0),
         openrouter_enabled: bool = True,
         allow_private_hosts: bool = False,
     ) -> None:
@@ -216,6 +218,7 @@ class ModelGateway:
         self.client = client
         self.sleep = sleep
         self.backoff_seconds = backoff_seconds
+        self.patience_seconds = patience_seconds
         self.openrouter_enabled = openrouter_enabled
         self.allow_private_hosts = allow_private_hosts
 
@@ -549,15 +552,36 @@ class ModelGateway:
     ) -> Completion:  # fmt: skip
 
         attempts: list[_Attempt] = []
+        for pause in (*self.patience_seconds, None):
+            round_attempts: list[_Attempt] = []
+            completion = await self._round(ctx, chain, policy, messages, extra, attempts, round_attempts)
+            if completion is not None:
+                return completion
+            # Every plan failed: when only for transient reasons (a provider outage, a rate limit), wait and try the
+            # chain again instead of failing the run (ADR-0046); a refusal or a policy denial fails at once.
+            if pause is None or not round_attempts or not all(_transient(a) for a in round_attempts):
+                break
+            await self.sleep(pause)
+        await self._record(ctx, attempts)
+        if all(a.outcome == "blocked" for a in attempts):
+            raise PolicyDeniedError(", ".join(sorted({a.error_code or "" for a in attempts})))
+        raise ProviderCallError(", ".join(a.error_code or "unknown" for a in attempts))
+
+    async def _round(
+        self, ctx: CallContext, chain: list[_Plan], policy: Policy, messages: list[dict[str, Any]],
+        extra: dict[str, Any], attempts: list[_Attempt], round_attempts: list[_Attempt],
+    ) -> Completion | None:  # fmt: skip
         for plan in chain:
             denial = policy_denial(policy, plan.offering)
             if denial is None and plan.offering.provider == "openrouter" and not self.openrouter_enabled:
                 denial = "openrouter_disabled"
             if denial is not None:
                 attempts.append(_Attempt(plan, "blocked", f"policy:{denial}"))
+                round_attempts.append(attempts[-1])
                 continue
             attempt = await self._call(plan, policy, messages, extra)
             attempts.append(attempt)
+            round_attempts.append(attempt)
             if attempt.outcome == "success" and attempt.result is not None:
                 await self._record(ctx, attempts)
                 usage = attempt.result.usage
@@ -573,7 +597,13 @@ class ModelGateway:
                     model=plan.model,
                     output_limit=plan.max_output_tokens,
                 )
-        await self._record(ctx, attempts)
-        if all(a.outcome == "blocked" for a in attempts):
-            raise PolicyDeniedError(", ".join(sorted({a.error_code or "" for a in attempts})))
-        raise ProviderCallError(", ".join(a.error_code or "unknown" for a in attempts))
+        return None
+
+
+def _transient(attempt: "_Attempt") -> bool:
+    """A failure a later try may not repeat: a timeout, a rate limit or a provider error 5xx (ADR-0046)."""
+    code = attempt.error_code or ""
+    if attempt.outcome != "error" or not code.startswith("provider:"):
+        return False
+    status = code.split(":", 1)[1]
+    return status.isdigit() and int(status) in RETRYABLE_STATUS
