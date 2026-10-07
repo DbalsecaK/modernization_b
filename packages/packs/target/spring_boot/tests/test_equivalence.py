@@ -170,3 +170,16 @@ def test_a_rejected_case_compares_the_code_and_the_message_text_only() -> None:
     view = actual_view(design, numeric, raw, [], rejected=True)
     assert view.returns == 50005
     assert view.outputs.get("@o_movimiento") is None
+
+
+def test_a_branch_removed_from_the_target_makes_the_golden_master_differ(java_sandbox: DockerSandbox) -> None:
+    # ADR-0047 (mutation of the detector): delete the separate-commission branch from the reference service; the
+    # cases that exercise it in the legacy must differ, so the verdict cannot be PROVEN.
+    files = reference_project(DESIGN)
+    service = service_path(DESIGN, PAY)
+    original = files[service]
+    mutated = original.replace("if (separate && commission.signum() > 0) {", "if (false) {", 1)
+    assert mutated != original
+    run = asyncio.run(run_equivalence(java_sandbox, {**files, service: mutated}, DESIGN, PAY, MASTER))
+    different = [c.name for c in run.cases if c.failure or c.expected != c.actual]
+    assert "separate_commission_is_a_second_debit" in different

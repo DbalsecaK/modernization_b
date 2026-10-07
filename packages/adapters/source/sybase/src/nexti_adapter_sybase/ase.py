@@ -13,10 +13,13 @@ import uuid
 from pathlib import Path
 from typing import Literal
 
-from nexti_adapter_sybase import golden
+from nexti_adapter_sybase import coverage, golden
+from nexti_adapter_sybase.parser import Procedure
 from nexti_core.adapters import LegacyUnavailableError, SourceFile
 from nexti_core.spec.characterization import (
     Case,
+    Coverage,
+    CoveredBranch,
     GoldenMaster,
     Observation,
     Recorded,
@@ -51,7 +54,7 @@ class AseRunner:
     engine = golden.ENGINE
 
     def __init__(self, image: str = IMAGE, docker: str = "docker", memory_mb: int = 3072, start_seconds: int = 300,
-                 case_seconds: int = 120, batch_size: int = 25) -> None:  # fmt: skip
+                 case_seconds: int = 120, batch_size: int = 25, coverage: bool = True) -> None:  # fmt: skip
         self.image = image
         self.docker = docker
         self.memory_mb = memory_mb
@@ -61,6 +64,9 @@ class AseRunner:
         # What a case did with this exact code, schema and stubs (plan step 3b): a correction of the suite runs
         # only the cases that changed, and none at all needs no engine.
         self._observed: dict[str, Observation] = {}
+        self.coverage = coverage
+        # The branches each case exercised on the instrumented copy, and whether that run matched the original.
+        self._covered: dict[str, tuple[list[str], bool]] = {}
 
     def _cli(self, args: list[str], stdin: str | None = None, timeout: int = 60) -> tuple[int, str]:
         # Bytes, not text: on Windows text mode turns each newline into CRLF and isql ignores such a `go`.
@@ -107,7 +113,8 @@ class AseRunner:
         setup_script = golden.setup_script(plan)
         keys = {case.name: _case_key(setup_script, case) for case in suite.cases}
         pending = [case for case in suite.cases if keys[case.name] not in self._observed]
-        if not pending:  # every case was observed with this code and schema: no engine needed
+        uncovered = [case for case in suite.cases if self.coverage and keys[case.name] not in self._covered]
+        if not pending and not uncovered:  # every case was observed with this code and schema: no engine needed
             return self._master(files, suite, keys)
         name = await self._start()
         try:
@@ -118,6 +125,8 @@ class AseRunner:
                 raise golden.GoldenError(f"the code or the schema do not load in Sybase:\n{detail}")
             for start in range(0, len(pending), self.batch_size):
                 await self._run_batch(name, plan, pending[start : start + self.batch_size], keys)
+            if uncovered:
+                await self._cover(name, files, plan, uncovered, keys)
         finally:
             await self._stop(name)
         return self._master(files, suite, keys)
@@ -142,11 +151,55 @@ class AseRunner:
                     raise LegacyEngineTimeoutError(f"the Sybase engine did not answer the case {case.name}")
             self._observed[keys[case.name]] = golden.observe(plan, part)
 
+    async def _cover(
+        self, name: str, files: list[SourceFile], plan: golden.Plan, cases: list[Case], keys: dict[str, str]
+    ) -> None:
+        """The same cases on an instrumented copy of the program (ADR-0047): the marks say which branches ran, and
+        a case whose observation differs from the original's is unreliable. The golden master is never taken from
+        this pass."""
+        source, procedure = _program_source(files, plan)
+        copy = coverage.instrument(source.text, procedure)
+        install = golden.install_script(procedure.name, copy.text)
+        loaded = await self._isql(name, install, 300)
+        if golden.engine_errors(loaded):
+            return  # the copy does not load: coverage is simply not measured
+        self._branches = copy.branches
+        for start in range(0, len(cases), self.batch_size):
+            batch = cases[start : start + self.batch_size]
+            script = "".join(
+                f"select '{CASE_MARK}{i}'\ngo\n" + golden.case_script(plan, case) for i, case in enumerate(batch)
+            )
+            parts = _split_cases(await self._isql(name, script, self.case_seconds * len(batch)), len(batch))
+            for index, case in enumerate(batch):
+                hits, rest = coverage.executed(parts.get(index, ""))
+                same = index in parts and golden.observe(plan, rest) == self._observed[keys[case.name]]
+                self._covered[keys[case.name]] = (sorted(hits), same)
+
     def _master(self, files: list[SourceFile], suite: Suite, keys: dict[str, str]) -> GoldenMaster:
         results = [Recorded(case=case, observation=self._observed[keys[case.name]]) for case in suite.cases]
         unassigned = golden.unassigned_outputs(golden.plan(files, suite).program)
+        measured = None
+        if (
+            self.coverage
+            and getattr(self, "_branches", None)
+            and all(keys[c.name] in self._covered for c in suite.cases)
+        ):
+            measured = Coverage(
+                branches=[CoveredBranch(id=b.id, kind=b.kind, line_start=b.line_start, line_end=b.line_end,
+                                        measurable=b.measurable) for b in self._branches],
+                executed={c.name: self._covered[keys[c.name]][0] for c in suite.cases},
+                unreliable=[c.name for c in suite.cases if not self._covered[keys[c.name]][1]],
+            )  # fmt: skip
         return GoldenMaster(program=suite.program, source_sha256=source_digest(files), engine=self.engine,
-                            schema_=suite.schema_, results=results, unassigned_outputs=unassigned)  # fmt: skip
+                            schema_=suite.schema_, results=results, unassigned_outputs=unassigned,
+                            coverage=measured)  # fmt: skip
+
+
+def _program_source(files: list[SourceFile], plan: golden.Plan) -> tuple[SourceFile, Procedure]:
+    for source, procedure in golden.procedures(files):
+        if procedure is plan.program or procedure.name == plan.program.name:
+            return source, procedure
+    raise golden.GoldenError(f"the program {plan.program.name} is not in the source files")
 
 
 def _case_key(setup_script: str, case: Case) -> str:

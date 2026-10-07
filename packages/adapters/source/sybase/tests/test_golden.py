@@ -111,6 +111,11 @@ def test_a_live_run_reproduces_the_recording() -> None:
     recorded = asyncio.run(RecordedRunner(FIXTURES / "golden", "replay").run(FILES, SUITE))
     live = asyncio.run(AseRunner().run(FILES, SUITE))
     assert [r.observation for r in live.results] == [r.observation for r in recorded.results]
+    # ADR-0047: the instrumented copy behaves as the original in every case, and its coverage is measured.
+    assert live.coverage is not None
+    assert live.coverage.unreliable == []
+    assert live.coverage.exercised
+    print("legacy coverage:", live.coverage.note())
 
 
 def test_output_parameters_the_program_never_assigns_are_detected() -> None:
@@ -148,7 +153,7 @@ def test_a_correction_runs_only_the_changed_cases_and_none_needs_no_engine() -> 
 
     class FakeAse(AseRunner):
         def __init__(self) -> None:
-            super().__init__(batch_size=5)
+            super().__init__(batch_size=5, coverage=False)
             self.starts = 0
             self.batches: list[int] = []
 
@@ -197,3 +202,66 @@ def test_an_engine_that_stops_answering_cuts_the_recording_as_transient() -> Non
     with pytest.raises(LegacyEngineTimeoutError, match="stopped answering") as cut:
         asyncio.run(SilentAse().run(FILES, SUITE))
     assert cut.value.transient
+
+
+def test_the_branches_of_the_program_are_marked_in_a_copy_that_still_parses() -> None:
+    # ADR-0047: every THEN, ELSE, implicit ELSE and loop body gets a mark in a COPY; the original is untouched.
+    from nexti_adapter_sybase.coverage import executed, instrument
+    from nexti_adapter_sybase.parser import parse
+
+    (_, program) = golden.procedures(FILES)[0]
+    copy = instrument(FILES[0].text, program)
+    kinds = {b.kind for b in copy.branches}
+    assert {"if-true", "if-false", "else"} <= kinds
+    assert all(b.measurable for b in copy.branches)
+    assert copy.text.count("print 'NXB|") == len(copy.branches)
+    assert parse(copy.text)  # the copy is still a valid procedure
+    assert FILES[0].text.count("NXB|") == 0
+    hits, rest = executed("NXB|35-39:if-true\nNXR|1:0\n  NXB|81-81:if-true  ")
+    assert hits == {"35-39:if-true", "81-81:if-true"}
+    assert rest.strip() == "NXR|1:0"
+    # A one-statement body sharing its line with the condition cannot be marked without risk: not measurable.
+    one_line = "create procedure sp_x @a int as\nbegin\n  if @a = 1 select @a = 2\n  return 0\nend\n"
+    (_, tiny) = golden.procedures([SourceFile("sp/sp_x.sp", one_line)])[0]
+    marked = instrument(one_line, tiny)
+    assert [(b.kind, b.measurable) for b in marked.branches] == [("if-true", False), ("if-false", True)]
+
+
+def test_the_coverage_pass_marks_a_case_unreliable_when_the_copy_behaves_differently() -> None:
+    from nexti_adapter_sybase.ase import AseRunner
+
+    class FakeAse(AseRunner):
+        def __init__(self) -> None:
+            super().__init__(batch_size=50)
+            self.copy = False
+
+        async def _start(self) -> str:
+            return "engine"
+
+        async def _stop(self, name: str) -> None:
+            return None
+
+        async def _isql(self, name: str, script: str, seconds: int) -> str:
+            if "NXCASE|" not in script:
+                self.copy = self.copy or "drop procedure" in script  # the instrumented copy is installed
+                return ""
+            count = script.count("select 'NXCASE|")
+            lines = []
+            for index in range(count):
+                lines.append(f"NXCASE|{index}")
+                if self.copy:
+                    lines.append("NXB|35-39:if-true")
+                    lines.append("NXR|1:9" if index == 0 else "NXR|1:0")  # the first case behaves differently
+                else:
+                    lines.append("NXR|1:0")
+            return "\n".join(lines)
+
+    master = asyncio.run(FakeAse().run(FILES, SUITE))
+    assert master.coverage is not None
+    assert master.coverage.unreliable == [SUITE.cases[0].name]
+    assert master.coverage.executed[SUITE.cases[1].name] == ["35-39:if-true"]
+    assert "35-39:if-true" in master.coverage.exercised
+    assert master.coverage.note().startswith("1 of ")
+    assert "1 case(s) without reliable coverage" in master.coverage.note()
+    assert all(r.observation.returns == 0 for r in master.results)  # the oracle comes from the original
+    assert "coverage" not in asyncio.run(RecordedRunner(FIXTURES / "golden", "replay").run(FILES, SUITE)).model_dump()

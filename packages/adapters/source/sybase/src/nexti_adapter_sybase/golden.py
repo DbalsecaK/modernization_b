@@ -305,6 +305,11 @@ def setup_script(p: Plan) -> str:
     return "".join(out)
 
 
+def install_script(procedure: str, text: str) -> str:
+    """Replaces the program with another text of it (the instrumented copy of ADR-0047), in the same engine."""
+    return _use(WORK_DB) + _go(f"drop procedure {procedure}") + text.rstrip() + "\ngo\n"
+
+
 def _stub_body(stub: Stub, answers: list[StubAnswer]) -> str:
     params = ", ".join(f"{s.name} {s.type} = null{' output' if s.output else ''}" for s in stub.parameters)
     args = _joined([_prefixed(s.name, s.type) for s in stub.parameters if not s.output])
