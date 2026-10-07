@@ -19,13 +19,13 @@ var verbatim = @"DELETE FROM pg_orden WHERE note = ""x""";
 var list = "SELECT id FROM t WHERE id IN (" + string.Join(",", ids) + ")";
 '''
 
-GO = '''
+GO = """
 const findOrder = `SELECT estado
 FROM pg_orden WHERE id = $1`
 var insert = "INSERT INTO pg_orden (id) " +
     "VALUES ($1)"
 var dynamic = "SELECT id FROM " + table
-'''
+"""
 
 
 def test_each_language_gives_its_statements_and_skips_the_ones_built_at_run_time() -> None:
