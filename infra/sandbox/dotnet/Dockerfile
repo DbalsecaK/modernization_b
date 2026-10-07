@@ -24,5 +24,8 @@ RUN cp /opt/mssql/bin/sqlservr /tmp/sqlservr && mv /tmp/sqlservr /opt/mssql/bin/
 WORKDIR /opt/seed
 COPY seed/ ./
 RUN dotnet restore Seed.csproj && chmod -R a+rX /opt/nuget && rm -rf /opt/seed/obj /root/.nuget/v3-cache
+# dotnet-coverage for the coverage of the target under the golden master (M29, ADR-0049).
+RUN dotnet tool install dotnet-coverage --version 18.12.0 --tool-path /opt/tools && chmod -R a+rX /opt/tools \
+ && rm -rf /root/.nuget/v3-cache
 
 LABEL org.opencontainers.image.title="nexti-sandbox-dotnet" org.opencontainers.image.description="Sandbox for the .NET 10 pack"

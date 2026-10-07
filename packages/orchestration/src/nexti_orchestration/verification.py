@@ -28,6 +28,7 @@ from nexti_pack_frontend import IMAGE as FRONTEND_IMAGE
 from nexti_pack_frontend import contract_of
 from nexti_pack_frontend.build import FrontendRun, build_and_test
 from nexti_sandbox import Sandbox
+from nexti_sandbox.coverage import TargetCoverage, target_coverage
 from nexti_verification import Verdict, build_proof_pack, differences, fresh_suite
 from nexti_verification import verdict as checks
 from nexti_verification.proof_pack import verification_document
@@ -79,6 +80,23 @@ class VerificationPort(Protocol):
 def outcomes(run: EquivalenceRun, rules: Mapping[str, Sequence[str]]) -> list[CaseOutcome]:
     return [CaseOutcome(c.name, rules.get(c.name, ()), () if c.failure else differences(c.expected, c.actual),
                         c.failure) for c in run.cases]  # fmt: skip
+
+
+TARGET_REGIONS_AT_MOST = 30
+
+
+def target_not_run(measured: TargetCoverage) -> list[str]:
+    """The target coverage as findings of the verdict (M29): the code no golden case runs."""
+    lines = [f"Target coverage: {measured.note()}"]
+    lines += [
+        f"Target code no golden case runs (logic the legacy may not have, or a case the suite misses): "
+        f"{r.file} lines {r.line_start}-{r.line_end}"
+        for r in measured.uncovered[:TARGET_REGIONS_AT_MOST]
+    ]
+    more = len(measured.uncovered) - TARGET_REGIONS_AT_MOST
+    if more > 0:
+        lines.append(f"... and {more} more target region(s) no case runs (TARGET_COVERAGE.json)")
+    return lines
 
 
 def _module(design: Design, master: GoldenMaster) -> UseCase:
@@ -184,10 +202,16 @@ class VerificationPhases:
                 "The legacy did not run on the platform: its behaviour comes from recorded traces, so "
                 "only the traced cases are compared and fresh inputs are not (PARTLY PROVEN at most)"
             )
+        # M29 (ADR-0049): the target code no golden case runs may be logic the legacy does not have; listed, never
+        # blocking. Measured only when the sandbox image carries the coverage tool of the stack.
+        measured = target_coverage(golden_run.build.after_output)
+        extra: dict[str, Any] = {"MASKS.json": masks, "SOURCE.json": {"sha256": source_digest(source),
+                                                                      "engine": master.engine}}  # fmt: skip
+        if measured is not None:
+            not_proven += target_not_run(measured)
+            extra["TARGET_COVERAGE.json"] = measured.as_json()
         verdict = checks.compute(use_case.name, found, not_proven)
-        pack = build_proof_pack(verdict, golden, fresh, traces, golden_run.build.junit_xml,
-                                {"MASKS.json": masks, "SOURCE.json": {"sha256": source_digest(source),
-                                                                     "engine": master.engine}})  # fmt: skip
+        pack = build_proof_pack(verdict, golden, fresh, traces, golden_run.build.junit_xml, extra)
         key = await self.port.save_verdict(verdict, pack)
         passed = sum(1 for c in verdict.checks if c.status == "passed")
         summary = f"{use_case.name}: {verdict.verdict} ({passed} of {len(verdict.checks)} checks passed)"

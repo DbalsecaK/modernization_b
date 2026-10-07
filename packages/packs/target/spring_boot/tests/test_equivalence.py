@@ -16,6 +16,7 @@ from nexti_core.spec.characterization import GoldenMaster, Suite
 from nexti_pack_spring_boot import IMAGE, Design, adapter_path, junit_path, service_path, skeleton
 from nexti_pack_spring_boot.equivalence import expected_view, masks, plan, run_equivalence, target_case
 from nexti_sandbox import DockerSandbox
+from nexti_sandbox.coverage import target_coverage
 
 PACK = Path(__file__).parent / "fixtures" / "pago_orden"
 LEGACY = Path(__file__).resolve().parents[4] / "adapters/source/sybase/tests/fixtures/pago_orden"
@@ -92,6 +93,13 @@ def test_the_reference_target_reproduces_the_golden_master(java_sandbox: DockerS
     different = [c.name for c in run.cases if c.failure or c.expected != c.actual]
     assert len(run.cases) == 12
     assert different == []
+
+    # M29 (ADR-0049): the golden master cases run under the native coverage tool of the stack; the reference target
+    # has code no case runs (the infrastructure the harness replaces), so some region is reported.
+    measured = target_coverage(run.build.after_output)
+    assert measured is not None, run.build.after_output[-2000:]
+    assert measured.tool == "jacoco"
+    assert 0 < measured.lines_covered < measured.lines_total
 
 
 def test_without_the_declared_mask_the_rejected_path_output_is_masked_with_its_reason(

@@ -54,5 +54,6 @@ reemplaza y se marca el anterior como "Reemplazado por ADR-NNNN".
 | [0046](0046-fallos-transitorios-del-motor-y-del-proveedor.md) | Fallos transitorios del motor legado y del proveedor de modelos | Aceptada |
 | [0047](0047-cobertura-del-legado.md) | Cobertura del legado: qué ramas del programa ejercitó el golden master | Aceptada |
 | [0048](0048-quirks-del-motor-y-entorno.md) | Quirks del motor legado y entorno de ejecución | Aceptada |
+| [0049](0049-cobertura-del-destino.md) | Cobertura del destino bajo el golden master | Aceptada |
 
 Plantilla: contexto, decisión, alternativas consideradas, consecuencias y cómo se valida.
