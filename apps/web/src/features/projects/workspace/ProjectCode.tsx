@@ -1,18 +1,19 @@
 import { useMemo, useState } from 'react'
 import { Link, useSearch } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
-import { Download, FileCode2, Folder, GitPullRequest, Loader2, Lock } from 'lucide-react'
+import { Download, FileCode2, FileText, Folder, GitPullRequest, Loader2, Lock } from 'lucide-react'
 import { cn } from '@/lib/cn'
 import { formatDateTime } from '@/lib/format'
 import { ApiError } from '@/api/client'
 import { CODE_DOWNLOAD, codeDownloadUrl, useCodeFile, useCodeTree } from '@/api/code'
 import { CODE_PUSH, usePushCode } from '@/api/delivery'
+import { useRuns } from '@/api/runs'
 import type { ProjectDetail } from '@/api/projects'
 import { CODE_VIEW } from '@/api/validation'
 import { Badge, Button, Card, CardHeader, EmptyState } from '@/components/ui/primitives'
 import { toast } from '@/components/ui/overlay'
 import { ReleasesCard } from './delivery/DeliveryCards'
-import { buildTree, formatSize, initialFile } from './code/model'
+import { buildTree, formatSize, generationInProgress, initialFile, splitDocs, type TreeNode } from './code/model'
 import { CodeExcerptView } from './validation/CodeExcerptView'
 
 // Code tab (spec 18.3), connected to the API: the file browser of the newest generation, backend and frontend, with
@@ -27,7 +28,13 @@ export function ProjectCode({ project, onOpenRuns }: { project: ProjectDetail; o
   const push = usePushCode(project.id)
   const search = useSearch({ strict: false }) as { file?: string }
   const tree = useCodeTree(project.id, canViewCode)
-  const rows = useMemo(() => buildTree(tree.data?.files ?? []), [tree.data])
+  // The project's code first; the documents of the generation in their own group (step 10 of the plan).
+  const groups = useMemo(() => splitDocs(tree.data?.files ?? []), [tree.data])
+  const codeRows = useMemo(() => buildTree(groups.code), [groups])
+  const docRows = useMemo(() => buildTree(groups.docs), [groups])
+  const rows = useMemo(() => [...codeRows, ...docRows], [codeRows, docRows])
+  const runs = useRuns(project.id)
+  const generating = generationInProgress(runs.data)
   const [picked, setPicked] = useState<string | null>(null)
   const selected = picked ?? initialFile(rows, search.file)
   const file = useCodeFile(project.id, selected)
@@ -79,8 +86,45 @@ export function ProjectCode({ project, onOpenRuns }: { project: ProjectDetail; o
     )
   }
 
+  const fileRow = (n: TreeNode) => (
+    <li key={n.key}>
+      {n.file ? (
+        <button
+          type="button"
+          onClick={() => setPicked(n.file!.path)}
+          aria-current={selected === n.file.path ? 'true' : undefined}
+          className={cn(
+            'flex w-full items-center gap-1.5 rounded px-2 py-1 text-left hover:bg-surface-2',
+            selected === n.file.path && 'bg-surface-2 font-medium',
+          )}
+          style={{ paddingLeft: 8 + n.depth * 14 }}
+        >
+          {n.file.layer === 'docs' ? (
+            <FileText size={14} className="shrink-0 text-muted" aria-hidden />
+          ) : (
+            <FileCode2 size={14} className="shrink-0 text-muted" aria-hidden />
+          )}
+          <span className="truncate text-text">{n.label}</span>
+        </button>
+      ) : (
+        <span className="flex items-center gap-1.5 px-2 py-1 text-muted" style={{ paddingLeft: 8 + n.depth * 14 }}>
+          <Folder size={14} className="shrink-0" aria-hidden />
+          <span className="truncate">{n.label}</span>
+        </span>
+      )}
+    </li>
+  )
+
   return (
     <div className="space-y-6">
+      {generating && (
+        <p
+          className="flex items-center gap-2 rounded-md border border-border bg-surface-2 px-3 py-2 text-sm text-text-2"
+          role="status"
+        >
+          <Loader2 size={14} className="animate-spin" aria-hidden /> {t('code.generating')}
+        </p>
+      )}
       <Card>
         <CardHeader
           title={t('code.title')}
@@ -127,38 +171,17 @@ export function ProjectCode({ project, onOpenRuns }: { project: ProjectDetail; o
           }
         />
         <div className="grid md:grid-cols-[280px_1fr]">
-          <ul
-            className="max-h-[32rem] overflow-auto border-b border-border p-3 text-sm md:border-r md:border-b-0"
-            aria-label={t('code.files')}
-          >
-            {rows.map((n) => (
-              <li key={n.key}>
-                {n.file ? (
-                  <button
-                    type="button"
-                    onClick={() => setPicked(n.file!.path)}
-                    aria-current={selected === n.file.path ? 'true' : undefined}
-                    className={cn(
-                      'flex w-full items-center gap-1.5 rounded px-2 py-1 text-left hover:bg-surface-2',
-                      selected === n.file.path && 'bg-surface-2 font-medium',
-                    )}
-                    style={{ paddingLeft: 8 + n.depth * 14 }}
-                  >
-                    <FileCode2 size={14} className="shrink-0 text-muted" aria-hidden />
-                    <span className="truncate text-text">{n.label}</span>
-                  </button>
-                ) : (
-                  <span
-                    className="flex items-center gap-1.5 px-2 py-1 text-muted"
-                    style={{ paddingLeft: 8 + n.depth * 14 }}
-                  >
-                    <Folder size={14} className="shrink-0" aria-hidden />
-                    <span className="truncate">{n.label}</span>
-                  </span>
-                )}
-              </li>
-            ))}
-          </ul>
+          <div className="max-h-[32rem] overflow-auto border-b border-border p-3 text-sm md:border-r md:border-b-0">
+            <ul aria-label={t('code.files')}>{codeRows.map(fileRow)}</ul>
+            {docRows.length > 0 && (
+              <>
+                <p className="mt-4 mb-1 px-2 text-xs font-semibold tracking-wide text-muted uppercase">
+                  {t('code.generationDocs')}
+                </p>
+                <ul aria-label={t('code.generationDocs')}>{docRows.map(fileRow)}</ul>
+              </>
+            )}
+          </div>
           <div className="min-w-0 space-y-3 p-4">
             {entry && (
               <div className="flex flex-wrap items-center gap-2 text-xs text-muted">

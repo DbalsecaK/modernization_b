@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { CodeFileEntry } from '@/api/code'
-import { buildTree, formatSize, initialFile } from './model'
+import { buildTree, formatSize, generationInProgress, initialFile, splitDocs } from './model'
 
 const file = (path: string): CodeFileEntry => ({ path, layer: 'domain', sizeBytes: 10, rules: [] })
 
@@ -43,5 +43,27 @@ describe('buildTree', () => {
 describe('formatSize', () => {
   it('uses bytes, kilobytes and megabytes', () => {
     expect([formatSize(512), formatSize(2048), formatSize(3 * 1024 * 1024)]).toEqual(['512 B', '2.0 KB', '3.0 MB'])
+  })
+})
+
+describe('splitDocs and generationInProgress', () => {
+  const entry = (path: string, layer: string) => ({ path, layer, sizeBytes: 1, rules: [] })
+
+  it('keeps the documents of the generation apart from the code', () => {
+    const { code, docs } = splitDocs([
+      entry('src/main/java/App.java', 'domain'),
+      entry('generation/findings.json', 'docs'),
+      entry('docs/legacy-engine.md', 'docs'),
+    ] as never)
+    expect(code.map((f) => f.path)).toEqual(['src/main/java/App.java'])
+    expect(docs.map((f) => f.path)).toEqual(['generation/findings.json', 'docs/legacy-engine.md'])
+  })
+
+  it('says a run is generating only while it is in the generation phase', () => {
+    expect(generationInProgress([{ status: 'running', currentPhase: 'generation' }])).toBe(true)
+    expect(generationInProgress([{ status: 'waiting', currentPhase: 'generation' }])).toBe(true)
+    expect(generationInProgress([{ status: 'running', currentPhase: 'verification' }])).toBe(false)
+    expect(generationInProgress([{ status: 'failed', currentPhase: 'generation' }])).toBe(false)
+    expect(generationInProgress(undefined)).toBe(false)
   })
 })
