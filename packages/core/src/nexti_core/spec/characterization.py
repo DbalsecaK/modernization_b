@@ -10,7 +10,7 @@ import re
 from collections.abc import Sequence
 from datetime import date, datetime
 from decimal import Decimal, InvalidOperation
-from typing import TYPE_CHECKING, Annotated, Any
+from typing import TYPE_CHECKING, Annotated, Any, Literal
 
 from pydantic import (
     BaseModel,
@@ -172,6 +172,39 @@ class Coverage(CharacterizationModel):
         return text
 
 
+QuirkSeverity = Literal["critical", "high", "medium", "low"]
+SEVERE: tuple[QuirkSeverity, ...] = ("critical", "high")
+
+
+class EngineQuirk(CharacterizationModel):
+    """A behaviour of the legacy engine the program relies on and a modern stack does differently (M28): where the
+    program uses it, what the engine does, what the target must do, and what the engine answered to a probe."""
+
+    id: str = Field(min_length=1, max_length=80)
+    severity: QuirkSeverity
+    behavior: str = Field(min_length=1, max_length=1000, description="What the legacy engine does")
+    target: str = Field(min_length=1, max_length=1000, description="What the target must do to behave the same")
+    file: str = Field(default="", max_length=500)
+    lines: list[int] = Field(default_factory=list, description="Lines of the program that rely on it")
+    probe: str = Field(default="", max_length=2000, description="The statements run on the engine to confirm it")
+    expected: str = Field(default="", max_length=200, description="What the probe answers when the quirk holds")
+    observed: str | None = Field(default=None, max_length=200, description="What the engine answered; None: not run")
+
+    @property
+    def confirmed(self) -> bool | None:
+        """True: the engine behaves so; False: this engine (its options) does not; None: not probed."""
+        return None if self.observed is None else self.observed == self.expected
+
+
+class EnvironmentItem(CharacterizationModel):
+    """A setting the legacy ran under (M28): an engine option measured on the engine, or one the program or its
+    sources set (a SET option, a trigger on a table). The target reproduces it or a decision records why not."""
+
+    key: str = Field(min_length=1, max_length=120)
+    value: str = Field(max_length=500)
+    source: Literal["engine", "program"]
+
+
 class GoldenMaster(CharacterizationModel):
     """The frozen oracle: the suite as run and what the legacy did in every case."""
 
@@ -188,6 +221,12 @@ class GoldenMaster(CharacterizationModel):
     coverage: Coverage | None = Field(
         default=None, description="Branches of the legacy the cases exercised, when the engine measured them (ADR-0047)"
     )
+    quirks: list[EngineQuirk] = Field(
+        default_factory=list, description="Engine behaviours the program relies on, probed on the engine (M28)"
+    )
+    environment: list[EnvironmentItem] = Field(
+        default_factory=list, description="The settings the legacy ran under (M28)"
+    )
 
     model_config = ConfigDict(extra="forbid", frozen=True, populate_by_name=True)
 
@@ -199,12 +238,111 @@ class GoldenMaster(CharacterizationModel):
             data.pop("unassigned_outputs", None)
         if isinstance(data, dict) and self.coverage is None:
             data.pop("coverage", None)
+        for empty in ("quirks", "environment"):  # M28: recordings without them serialise as before
+            if isinstance(data, dict) and not getattr(self, empty):
+                data.pop(empty, None)
         return data
 
     @property
     def from_traces(self) -> bool:
         """Observed from recorded traces: the legacy cannot run fresh inputs (the verdict stays PARTLY PROVEN)."""
         return self.engine in TRACE_ENGINES
+
+
+def _holder(coverage: Coverage, file: str, line: int) -> CoveredBranch | None:
+    """The innermost branch body holding a line (an implicit ELSE spans its whole IF, so it holds none); None: the
+    line is outside every branch, at the top level of the program."""
+    bodies = [b for b in coverage.branches if b.kind != "if-false" and b.line_start <= line <= b.line_end
+              and (not b.file or not file or b.file == file)]  # fmt: skip
+    return min(bodies, key=lambda b: b.line_end - b.line_start) if bodies else None
+
+
+def quirk_cases(master: GoldenMaster) -> dict[str, list[str]]:
+    """Per quirk, the reliable cases that ran one of its lines (M28): a case ran a line when it entered the
+    innermost branch holding it; a line at the top level is run by every reliable case. Without coverage the
+    engine did not say which lines ran, and no quirk has cases."""
+    measured = master.coverage
+    if measured is None:
+        return {q.id: [] for q in master.quirks}
+    reliable = [r.case.name for r in master.results if r.case.name not in measured.unreliable]
+    found: dict[str, list[str]] = {}
+    for quirk in master.quirks:
+        names: set[str] = set()
+        for line in quirk.lines:
+            branch = _holder(measured, quirk.file, line)
+            if branch is None:
+                names.update(reliable)
+            else:
+                names.update(c for c in reliable if branch.id in measured.executed.get(c, []))
+        found[quirk.id] = sorted(names)
+    return found
+
+
+def unresolved_quirks(master: GoldenMaster) -> list[EngineQuirk]:
+    """The quirks no reliable case reaches, when coverage was measured (M28): what they do is not proven. A quirk
+    whose lines are only in branches that cannot be measured is not counted (nobody can say)."""
+    if master.coverage is None:
+        return []
+    cases = quirk_cases(master)
+    measured = master.coverage
+
+    def knowable(quirk: EngineQuirk) -> bool:
+        return any((b := _holder(measured, quirk.file, line)) is None or b.measurable for line in quirk.lines)
+
+    return [q for q in master.quirks if not cases.get(q.id) and knowable(q)]
+
+
+def quirk_combinations(master: GoldenMaster) -> list[tuple[str, str, str, list[str]]]:
+    """Critical and high quirks that meet in the same branch (or both at the top level), with that branch and the
+    reliable cases entering it (M28): one case must show how the engine combines them."""
+    measured = master.coverage
+    if measured is None:
+        return []
+    reliable = [r.case.name for r in master.results if r.case.name not in measured.unreliable]
+    where: dict[str, set[str]] = {}
+    for quirk in master.quirks:
+        if quirk.severity not in SEVERE:
+            continue
+        for line in quirk.lines:
+            branch = _holder(measured, quirk.file, line)
+            where.setdefault(branch.id if branch else "top level", set()).add(quirk.id)
+    out: list[tuple[str, str, str, list[str]]] = []
+    for place, ids in sorted(where.items()):
+        cases = reliable if place == "top level" else [c for c in reliable if place in measured.executed.get(c, [])]
+        ordered = sorted(ids)
+        out += [(a, b, place, cases) for i, a in enumerate(ordered) for b in ordered[i + 1 :]]
+    return out
+
+
+def engine_not_proven(master: GoldenMaster) -> list[str]:
+    """What of the engine behaviour the golden master does not show (M28), for the verdict's "not proven"."""
+    out = [f"Engine quirk no case reaches: {q.id} ({q.severity}) at lines {', '.join(str(n) for n in q.lines[:10])}"
+           for q in unresolved_quirks(master)]  # fmt: skip
+    out += [f"Engine quirks {a} and {b} meet in {place} and no case runs it"
+            for a, b, place, cases in quirk_combinations(master) if not cases]  # fmt: skip
+    return out[:50]
+
+
+def engine_notes(master: GoldenMaster) -> str:
+    """The engine behaviour and settings the program relies on, for the agents that write the target (M28)."""
+    lines: list[str] = []
+    for quirk in master.quirks:
+        if quirk.confirmed is False:
+            state = f"this engine does NOT behave so (it answered {quirk.observed!r}): follow the golden master"
+        else:
+            state = "confirmed on the legacy engine" if quirk.confirmed else "not probed"
+        at = ", ".join(str(n) for n in quirk.lines[:20]) + (" ..." if len(quirk.lines) > 20 else "")
+        lines.append(f"- [{quirk.severity}] {quirk.id} (lines {at}; {state}): {quirk.behavior} Target: {quirk.target}")
+    settings = [f"- {e.key} = {e.value} ({e.source})" for e in master.environment]
+    if not lines and not settings:
+        return ""
+    text = "The legacy engine behaviour this program relies on (measured on the engine of the golden master):"
+    if lines:
+        text += "\n" + "\n".join(lines)
+    if settings:
+        text += "\nThe settings the legacy ran under (reproduce them in the target or keep the behaviour they give):\n"
+        text += "\n".join(settings)
+    return text
 
 
 def source_digest(files: "Sequence[SourceFile]") -> str:

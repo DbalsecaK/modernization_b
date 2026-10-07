@@ -28,6 +28,7 @@ from nexti_adapter_cobol.parser import (
 from nexti_adapter_cobol.traces import TraceRunner, TraceSet, is_trace, load_traces
 from nexti_adapter_cobol.types import TypeMapping, to_neutral
 from nexti_core.adapters import Edge, EdgeType, Inventory, Node, SliceView, SourceFile
+from nexti_core.spec.characterization import EngineQuirk
 from nexti_core.spec.screens import ScreenSpec
 
 PROGRAM_EXTENSIONS = (".cbl", ".cob", ".cobol")
@@ -300,6 +301,10 @@ class CobolAdapter:
 
     def transactions(self, files: list[SourceFile]) -> list[TransactionDef]:
         return self._transactions(files)
+
+    def engine_quirks(self, files: list[SourceFile]) -> list[EngineQuirk]:
+        """No engine quirk catalogued for this technology yet (M28)."""
+        return []
 
     def digest(self, files: list[SourceFile]) -> str:
         """Transactions, programs with what they use, file records and, when the legacy cannot run, the traces the

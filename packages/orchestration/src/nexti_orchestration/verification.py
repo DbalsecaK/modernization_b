@@ -12,7 +12,7 @@ from typing import Any, Protocol, cast
 
 from nexti_adapter_sybase.golden import parameter_defaults
 from nexti_core.adapters import LegacyRunner, LegacyUnavailableError, SourceFile
-from nexti_core.spec.characterization import GoldenMaster, Suite, source_digest
+from nexti_core.spec.characterization import GoldenMaster, Suite, engine_not_proven, source_digest
 from nexti_core.spec.design import Design, UseCase
 from nexti_core.spec.equivalence import EquivalenceRun
 from nexti_core.spec.model import Rule
@@ -178,6 +178,7 @@ class VerificationPhases:
             not_proven.append(f"Legacy coverage: {master.coverage.note()}")
             not_proven += [f"Branch not exercised by any case: lines {b.line_start}-{b.line_end} ({b.kind})"
                            for b in missed[:50]]  # fmt: skip
+        not_proven += engine_not_proven(master)  # M28: engine quirks no case reaches, combinations without a case
         if master.from_traces:
             not_proven.append(
                 "The legacy did not run on the platform: its behaviour comes from recorded traces, so "

@@ -22,7 +22,7 @@ from pydantic import ValidationError
 from nexti_adapter_sybase.golden import parameter_defaults
 from nexti_agents import prompt
 from nexti_core.adapters import SourceFile
-from nexti_core.spec.characterization import GoldenMaster
+from nexti_core.spec.characterization import GoldenMaster, engine_notes, quirk_cases
 from nexti_core.spec.model import Rule
 from nexti_orchestration import frontend, infrastructure
 from nexti_orchestration.context import Attempt, PhaseContext, Verification
@@ -53,6 +53,24 @@ from nexti_verification.verdict import (
     CaseOutcome,
     criterion_test,
 )
+
+ENGINE_DOC = "docs/legacy-engine.md"
+
+
+def engine_document(master: GoldenMaster) -> str:
+    """The quirk register and the environment of the legacy as a document (M28)."""
+    cases = quirk_cases(master)
+    out = [f"# Legacy engine: {master.engine}", "", f"Program: {master.program}", "", "## Engine quirks", ""]
+    if not master.quirks:
+        out.append("None found in the program.")
+    for quirk in master.quirks:
+        state = {True: "confirmed", False: f"not on this engine (answered {quirk.observed!r})", None: "not probed"}
+        out += [f"### {quirk.id} ({quirk.severity})", "", quirk.behavior, "", f"- Target: {quirk.target}",
+                f"- Lines: {', '.join(str(n) for n in quirk.lines)}", f"- On the engine: {state[quirk.confirmed]}",
+                f"- Cases that run it: {', '.join(cases.get(quirk.id, [])) or 'none'}", ""]  # fmt: skip
+    out += ["## Environment", ""]
+    out += [f"- {e.key}: {e.value} ({e.source})" for e in master.environment] or ["Not measured."]
+    return "\n".join(out) + "\n"
 
 
 def outcomes(run: Any, rules: Mapping[str, Sequence[str]]) -> list[CaseOutcome]:
@@ -538,6 +556,13 @@ class GenerationPhases:
             tester_prompt = policy_prompt(pack.tester_prompt, ctx.run.target, legacy_stack)
             developer_prompt = policy_prompt(pack.developer_prompt, ctx.run.target, legacy_stack)
             programs = {u.name: program_text(source, u, list(rules.values())) for u in design.use_cases}
+            engine = await self.port.load_golden_master() if hasattr(self.port, "load_golden_master") else None
+            notes_text = engine_notes(engine) if engine is not None else ""
+            if engine is not None and notes_text:
+                # M28: the engine behaviour and settings the program relies on reach the tester, the developer and
+                # the convergence with the program; the register is also a document of the delivery.
+                programs = {name: f"{text}\n\n{notes_text}" for name, text in programs.items()}
+                await self.port.save_artifacts({ENGINE_DOC: engine_document(engine)}, {ENGINE_DOC: "docs"}, {})
         for use_case in design.use_cases:
             # One shard per piece: its invocations and journal entries never mix with another piece's.
             piece = ctx.for_shard(f"use-case:{use_case.name}")

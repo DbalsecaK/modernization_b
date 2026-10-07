@@ -4,7 +4,7 @@ a stable identity for recordings."""
 import pytest
 from pydantic import ValidationError
 
-from nexti_core.spec.characterization import Case, Suite, Table, canonical
+from nexti_core.spec.characterization import Case, GoldenMaster, Suite, Table, canonical
 
 
 @pytest.mark.parametrize(
@@ -42,3 +42,70 @@ def test_a_suite_rejects_repeated_case_names_and_undeclared_keys() -> None:
         Table.model_validate({"name": "db..t", "columns": [{"name": "a", "type": "int"}], "key": ["b"]})
     with pytest.raises(ValidationError):
         Case(name="Not Snake", rules=["RULE-001"])
+
+
+def _quirk_master() -> GoldenMaster:
+    # M28: two cases, one entering the branch at lines 10-14; quirks at the top level, inside that branch, and inside
+    # a branch no case enters.
+    from nexti_core.spec.characterization import (
+        Coverage,
+        CoveredBranch,
+        EngineQuirk,
+        EnvironmentItem,
+        GoldenMaster,
+        Observation,
+        Recorded,
+        Schema,
+    )
+
+    def quirk(qid: str, severity: str, lines: list[int], observed: str | None = None) -> EngineQuirk:
+        return EngineQuirk(id=qid, severity=severity, behavior="b.", target="t.", lines=lines, probe="p",
+                           expected="1", observed=observed)  # fmt: skip
+
+    branches = [CoveredBranch(id="10-14:if-true", kind="if-true", line_start=10, line_end=14),
+                CoveredBranch(id="8-14:if-false", kind="if-false", line_start=8, line_end=14),
+                CoveredBranch(id="20-22:else", kind="else", line_start=20, line_end=22)]  # fmt: skip
+    cases = [Case(name="enters", rules=["RULE-001"]), Case(name="skips", rules=["RULE-001"])]
+    return GoldenMaster(
+        program="p", source_sha256="0" * 64, engine="e", schema_=Schema(),
+        results=[Recorded(case=c, observation=Observation()) for c in cases],
+        coverage=Coverage(branches=branches, executed={"enters": ["10-14:if-true"], "skips": ["8-14:if-false"]}),
+        quirks=[quirk("top", "high", [3], "1"), quirk("inside", "critical", [12], "2"),
+                quirk("beside", "high", [11]), quirk("unreached", "high", [21])],
+        environment=[EnvironmentItem(key="language", value="us_english", source="engine")],
+    )  # fmt: skip
+
+
+def test_a_quirk_is_reached_by_the_cases_entering_the_branch_that_holds_it() -> None:
+    from nexti_core.spec.characterization import quirk_cases, unresolved_quirks
+
+    master = _quirk_master()
+    cases = quirk_cases(master)
+    assert cases["top"] == ["enters", "skips"]  # top level: every reliable case
+    assert cases["inside"] == ["enters"]  # the innermost body, never the implicit ELSE spanning the IF
+    assert cases["unreached"] == []
+    assert [q.id for q in unresolved_quirks(master)] == ["unreached"]
+
+
+def test_severe_quirks_meeting_in_a_branch_need_one_case_running_it() -> None:
+    from nexti_core.spec.characterization import engine_not_proven, quirk_combinations
+
+    combos = quirk_combinations(_quirk_master())
+    assert ("beside", "inside", "10-14:if-true", ["enters"]) in combos
+    lines = engine_not_proven(_quirk_master())
+    assert lines == ["Engine quirk no case reaches: unreached (high) at lines 21"]
+
+
+def test_the_engine_notes_say_what_this_engine_does_and_empty_registers_serialise_as_before() -> None:
+    from nexti_core.spec.characterization import engine_notes
+
+    master = _quirk_master()
+    notes = engine_notes(master)
+    assert "[high] top (lines 3; confirmed on the legacy engine)" in notes
+    assert "this engine does NOT behave so (it answered '2')" in notes
+    assert "language = us_english (engine)" in notes
+    bare = master.model_copy(update={"quirks": [], "environment": []})
+    assert engine_notes(bare) == ""
+    data = bare.model_dump(by_alias=True)
+    assert "quirks" not in data
+    assert "environment" not in data

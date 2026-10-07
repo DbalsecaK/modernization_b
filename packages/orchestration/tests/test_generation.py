@@ -483,3 +483,30 @@ def test_two_tables_with_the_same_name_in_different_databases_are_two_entities()
         {"name": "LocalDet", "table": "local_det", "legacy_table": "t_det", "fields": [field]}]})  # fmt: skip
     found = design_problems(both, [rule], hints=True, files=files, written=set(), read=read)
     assert not any("different tables named" in p for p in found)
+
+
+def test_the_engine_document_lists_each_quirk_with_its_state_and_cases() -> None:
+    # M28: the register and the environment of the legacy are a document of the delivery.
+    from nexti_core.spec.characterization import (
+        Case,
+        EngineQuirk,
+        EnvironmentItem,
+        GoldenMaster,
+        Observation,
+        Recorded,
+        Schema,
+    )
+    from nexti_orchestration.generation import engine_document
+
+    master = GoldenMaster(
+        program="db..sp_p", source_sha256="0" * 64, engine="sybase-ase-16.0", schema_=Schema(),
+        results=[Recorded(case=Case(name="paid_ok", rules=["RULE-001"]), observation=Observation())],
+        quirks=[EngineQuirk(id="nested-tran", severity="high", behavior="Rollback ends all.", target="One tx.",
+                            lines=[7], probe="p", expected="0", observed="1")],
+        environment=[EnvironmentItem(key="language", value="us_english", source="engine")],
+    )  # fmt: skip
+    text = engine_document(master)
+    assert "### nested-tran (high)" in text
+    assert "- On the engine: not on this engine (answered '1')" in text
+    assert "- Cases that run it: none" in text  # no coverage measured: the engine did not say which lines ran
+    assert "- language: us_english (engine)" in text

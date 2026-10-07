@@ -116,6 +116,12 @@ def test_a_live_run_reproduces_the_recording() -> None:
     assert live.coverage.unreliable == []
     assert live.coverage.exercised
     print("legacy coverage:", live.coverage.note())
+    # M28: every probe of the quirks the program relies on is confirmed by the real engine, and its settings measured
+    probed = [q for q in live.quirks if q.probe]
+    assert probed
+    assert [(q.id, q.observed) for q in probed if not q.confirmed] == []
+    assert {"version", "language", "isolation-level"} <= {e.key for e in live.environment if e.source == "engine"}
+    print("environment:", [(e.key, e.value) for e in live.environment])
 
 
 def test_output_parameters_the_program_never_assigns_are_detected() -> None:
