@@ -436,8 +436,9 @@ def test_a_guided_design_keeps_or_masks_every_table_the_program_reads() -> None:
     assert problem.endswith("a `tables:` mask with its reason: cl_destino")  # pg_config is masked with a reason
     kept = design.model_copy(update={"entities": [
         {"name": "Destino", "table": "destination", "legacy_table": "db_a..cl_destino", "fields": [
-            {"name": "id", "type": "integer(32,signed)", "legacy": "id"}]}]})  # fmt: skip
-    kept = Design.model_validate(kept.model_dump())
+            {"name": "id", "type": "integer(32,signed)", "legacy": "id"},
+            {"name": "account", "type": "text(fixed,10,utf8)", "legacy": "cta"}]}]})  # fmt: skip
+    kept = Design.model_validate(kept.model_dump())  # step 9: the column the program loads (cta) is a field
     assert design_problems(kept, [rule], hints=True, files=files, written=set(), read=read) == []
 
 
