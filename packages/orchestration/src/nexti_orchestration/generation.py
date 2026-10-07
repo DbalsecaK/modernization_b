@@ -250,6 +250,17 @@ def mask_problems(
     if missing:
         problems.append("legacy tables the program writes need an entity with legacy_table: "
                         f"{', '.join(missing)}")  # fmt: skip
+    # Two tables with the same name in different databases are two tables (P37): the short-name checks above
+    # see one, and a real design kept only the other database's table, so the rows a case set up in the
+    # procedure's own table never reached the target.
+    exact = {qualified(e.legacy_table) for e in design.entities if e.legacy_table}
+    for short, names in sorted(homonym_tables(files).items()):
+        absent = sorted(n for n in names if n not in exact)
+        if absent:
+            listed = ", ".join(sorted(names))
+            problems.append(f"the program uses {len(names)} different tables named {short} ({listed}):"
+                            " keep each as its own entity with its exact legacy_table (a bare name is the "
+                            f"procedure's own database); missing: {', '.join(absent)}")  # fmt: skip
     # The golden master inserts the rows of every table a case sets up only when an entity keeps the table (P34):
     # a table the program reads and the design drops leaves every lookup empty on the target, and no code can
     # fix it (a real run spent six rounds on four cases whose destination rows never reached the target). A read
@@ -336,6 +347,33 @@ def _tables(files: Sequence[SourceFile], edge_type: str) -> set[str]:
     except Exception:
         return set()
     return {table_of(e.target.split(":", 1)[-1]) for e in inventory.edges if str(e.type) == edge_type}
+
+
+def qualified(name: str) -> str:
+    """A legacy table as the program names it, with its database when it has one: `db..t` and `db.dbo.t` are
+    `db..t`; a bare `t` is the procedure's own database. Two forms of the same name are two tables (P37)."""
+    text = name.strip().lower().split(":", 1)[-1]
+    if ".." in text:
+        database, rest = text.split("..", 1)
+        return f"{database}..{rest.split('.')[0]}"
+    parts = [p for p in text.split(".") if p]
+    return f"{parts[0]}..{parts[2]}" if len(parts) == 3 else parts[-1]
+
+
+def homonym_tables(files: Sequence[SourceFile]) -> dict[str, set[str]]:
+    """The table names the program uses in more than one qualified form (`db..t` and its own `t`), by short name."""
+    from nexti_orchestration.modernization import pick_adapter
+
+    try:
+        inventory = pick_adapter(list(files)).inventory(list(files))
+    except Exception:
+        return {}
+    forms: dict[str, set[str]] = {}
+    for edge in inventory.edges:
+        if str(edge.type) in ("READS", "WRITES"):
+            name = qualified(str(edge.target))
+            forms.setdefault(table_of(name), set()).add(name)
+    return {short: names for short, names in forms.items() if len(names) > 1}
 
 
 def written_tables(files: Sequence[SourceFile]) -> set[str]:

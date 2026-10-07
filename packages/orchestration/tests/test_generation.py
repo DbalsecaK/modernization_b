@@ -450,3 +450,36 @@ def test_a_guided_design_keeps_the_rejection_message_a_text_parameter() -> None:
     assert design_problems(design, RULES) == []  # not guided: as before
     problems = design_problems(design, RULES, hints=True)
     assert any("legacy_message names the parameter that carries the message TEXT" in p for p in problems)
+
+
+def test_two_tables_with_the_same_name_in_different_databases_are_two_entities() -> None:
+    from nexti_core.adapters import SourceFile as File
+    from nexti_core.spec.design import Design
+    from nexti_core.spec.model import Rule as SpecRule
+    from nexti_orchestration.generation import design_problems, homonym_tables, qualified
+
+    # P37: `db_a..t_det` and the procedure's own `t_det` are two tables; keeping one hides the other's rows.
+    source = ("create proc sp_p as\nselect @g = grupo from db_a..t_det where id = 1\n"
+              "select @n = nombre from t_det where id = 1\n")  # fmt: skip
+    files = [File("p.sp", source)]
+    assert qualified("db_a.dbo.T_Det") == "db_a..t_det"
+    assert qualified("table:t_det") == "t_det"
+    assert homonym_tables(files) == {"t_det": {"db_a..t_det", "t_det"}}
+    rule = SpecRule.model_validate({"id": "RULE-001", "name": "rule name", "category": "validation", "priority": "P1",
+                                    "statement": "a statement long enough",
+                                    "sources": [{"file": "p.sp", "line_start": 2, "line_end": 3}]})  # fmt: skip
+    field = {"name": "id", "type": "integer(32,signed)", "legacy": "id"}
+    one = Design.model_validate({
+        "context": "x", "base_package": "com.x.y", "use_cases": [{"name": "Uc", "rules": ["RULE-001"]}],
+        "entities": [{"name": "Det", "table": "det", "legacy_table": "db_a..t_det", "fields": [field]}],
+    })  # fmt: skip
+    read = {"t_det"}
+    problems = design_problems(one, [rule], hints=True, files=files, written=set(), read=read)
+    assert any(p.startswith("the program uses 2 different tables named t_det") and p.endswith("missing: t_det")
+               for p in problems)  # fmt: skip
+    assert design_problems(one, [rule], files=files, written=set(), read=read) == []  # not guided: as before
+    both = Design.model_validate({**one.model_dump(), "entities": [
+        *[e.model_dump() for e in one.entities],
+        {"name": "LocalDet", "table": "local_det", "legacy_table": "t_det", "fields": [field]}]})  # fmt: skip
+    found = design_problems(both, [rule], hints=True, files=files, written=set(), read=read)
+    assert not any("different tables named" in p for p in found)
