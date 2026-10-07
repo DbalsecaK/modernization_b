@@ -837,6 +837,8 @@
     "generatedAt_one": "Última generación, {{date}} · {{count}} archivo",
     "generatedAt_other": "Última generación, {{date}} · {{count}} archivos",
     "files": "Archivos generados",
+    "generationDocs": "Documentos de la generación",
+    "generating": "La generación está en curso: estos son los archivos guardados hasta ahora, no el proyecto terminado.",
     "downloadNeedsPermission": "Descargar requiere el permiso code.download",
     "implements": "implementa",
     "loading": "Cargando el código generado…",

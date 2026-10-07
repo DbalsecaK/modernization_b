@@ -54,3 +54,19 @@ export function formatSize(bytes: number): string {
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }
+
+/** The project's code apart from the documents of the generation (findings, engine notes, convergence): they are
+ * evidence of how the code was reached, not part of the project, so the browser shows them in their own group. */
+export function splitDocs(files: CodeFileEntry[]): { code: CodeFileEntry[]; docs: CodeFileEntry[] } {
+  return {
+    code: files.filter((f) => f.layer !== 'docs'),
+    docs: files.filter((f) => f.layer === 'docs'),
+  }
+}
+
+/** A run of the project is generating code now: the tab shows the files saved so far, not the finished project. */
+export function generationInProgress(runs: { status: string; currentPhase: string | null }[] | undefined): boolean {
+  return (runs ?? []).some(
+    (r) => ['queued', 'running', 'waiting'].includes(r.status) && r.currentPhase === 'generation',
+  )
+}

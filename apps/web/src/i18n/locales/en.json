@@ -837,6 +837,8 @@
     "generatedAt_one": "Newest generation, {{date}} · {{count}} file",
     "generatedAt_other": "Newest generation, {{date}} · {{count}} files",
     "files": "Generated files",
+    "generationDocs": "Generation documents",
+    "generating": "Generation is in progress: these are the files saved so far, not the finished project.",
     "downloadNeedsPermission": "Downloading needs the code.download permission",
     "implements": "implements",
     "loading": "Loading the generated code…",
