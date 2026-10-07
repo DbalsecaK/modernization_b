@@ -324,6 +324,58 @@ async def test_the_tests_and_the_service_see_the_program_only_when_the_run_is_gu
     assert "per branch" not in user["content"]
 
 
+async def test_guided_tests_are_compiled_against_a_placeholder_service_before_the_developer_sees_them() -> None:
+    from nexti_orchestration.generation import GenerationPhases
+    from nexti_pack_spring_boot.pack import PACK as SPRING
+
+    placeholder = SPRING.placeholder_service(DESIGN, USE_CASE)
+    ((path, text),) = placeholder.items()
+    assert path == SERVICE
+    assert f"public {USE_CASE.name}Service(" in text
+    assert f"public {USE_CASE.name}Response execute({USE_CASE.name}Request request)" in text
+    for name in USE_CASE.ports:
+        assert f"import {DESIGN.base_package}.domain.port.{name};" in text
+
+    class Pack(FakePack):
+        tester_prompt = SPRING.tester_prompt
+
+        def __init__(self, builds: list[FakeBuild]) -> None:
+            super().__init__(runs=[], builds=builds)
+            self.compiled_with: list[dict[str, str]] = []
+
+        def code_block(self, content: str) -> str:
+            return SPRING.code_block(content)
+
+        def placeholder_service(self, design: Design, use_case: Any) -> dict[str, str]:
+            return dict(placeholder)
+
+        async def compile_and_test(self, sandbox: Any, files: dict[str, str], run_tests: bool = True) -> FakeBuild:
+            self.compiled_with.append(dict(files))
+            return await super().compile_and_test(sandbox, files, run_tests)
+
+    rules = {r.id: r for r in RULES}
+    broken = "```java\nclass PayOrderServiceTest { void t() { r.companyAccountNumber = null; } }\n```"
+    fixed = "```java\nclass PayOrderServiceTest { void t() { } }\n```"
+    port = FakePort(replies=[broken, fixed])
+    pack = Pack(builds=[FakeBuild(compiled=False, ok=False), FakeBuild()])
+    ctx, store = _ctx()
+    program, box = "    1  the program", cast(Any, object())
+    phases = GenerationPhases(cast(Any, port))
+    code = await phases._tests(ctx, cast(Any, pack), DESIGN, USE_CASE, rules, {}, "", program, "SYSTEM", box)
+    assert code.strip() == "class PayOrderServiceTest { void t() { } }"
+    assert len(port.models.requests) == 2
+    assert "does not compile against the contracts of the design" in port.models.requests[1][1]["content"]
+    assert "a test failed" in port.models.requests[1][1]["content"]  # the compiler's diagnostic travels back
+    assert all(SERVICE in files and TEST in files for files in pack.compiled_with)  # placeholder + the test file
+    assert [i["status"] for i in store.invocations.values()] == ["failed", "succeeded"]
+    # Not guided (no program): one call, no compilation, as the recorded runs expect.
+    plain = FakePort(replies=[fixed])
+    other, _store = _ctx()
+    await GenerationPhases(cast(Any, plain))._tests(other, cast(Any, Pack(builds=[])), DESIGN, USE_CASE, rules, {},
+                                                     "", "", "", box)  # fmt: skip
+    assert len(plain.models.requests) == 1
+
+
 async def test_the_tests_travel_with_the_correction_and_failing_tests_do_not_stop_the_comparison() -> None:
     # Attempt 1: the correction matches the legacy but a unit test contradicts it (build not ok, compiled): the
     # developer is told; attempt 2 aligns the test and everything passes.

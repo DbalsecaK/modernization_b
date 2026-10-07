@@ -21,6 +21,7 @@ from nexti_pack_spring_boot.generate import (
     adapter_path,
     junit_path,
     layer_of,
+    placeholder_service,
     service_path,
     skeleton,
 )
@@ -94,6 +95,11 @@ class SpringBootPack:
 
     def test_path(self, design: Design, use_case: UseCase) -> str:
         return junit_path(design, use_case)
+
+    def placeholder_service(self, design: Design, use_case: UseCase) -> dict[str, str]:
+        """The service the tests compile against before the real one exists (P31)."""
+        path, text = placeholder_service(design, use_case)
+        return {path: text}
 
     def adapter_path(self, design: Design, port: Port) -> str:
         return adapter_path(design, port)
