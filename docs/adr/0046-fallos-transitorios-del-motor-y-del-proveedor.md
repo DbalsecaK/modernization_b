@@ -39,3 +39,20 @@ La corrida real que cerró en PROVEN perdió dos noches por fallos que no eran d
 
 `test_characterization.py` (motor tarde dos veces y luego graba; motor que nunca llega espera), `test_gateway.py`
 (corte 503 superado con paciencia; un 400 falla sin esperar), `test_runs_api.py` (reencolar una corrida en espera).
+
+
+## Precisión 3b (2026-10-07): caracterización rápida
+
+Medido en la corrida real: unos 25 a 27 minutos de Sybase por intento (un `docker exec` y un `isql` nuevos por
+cada uno de los 78 casos), la suite entera repetida tras dos casos con error del motor, y un intento colgado 87
+minutos esperando caso por caso a un motor saturado. Desde 3b el adaptador Sybase:
+
+1. Ejecuta los casos en **una sesión de isql por lote** (25 casos), con una marca antes de cada caso que separa la
+   salida; cada caso sigue empezando por reiniciar los datos, como cuando corría solo. stderr va a stdout en orden
+   para que un mensaje del motor quede en el caso que lo produjo. Un caso cortado por el tiempo se ejecuta solo.
+2. **Recuerda lo observado** por huella del caso (mismo código, esquema y stubs): una corrección de la suite solo
+   ejecuta los casos que cambiaron, y si ninguno cambió no arranca el motor.
+3. Corta como **fallo transitorio** una grabación en la que el motor deja de responder (ni un caso del lote, o un
+   caso solo sin respuesta), de modo que la fase reintenta con un motor nuevo en lugar de esperar horas.
+
+Validado con Sybase real: la grabación del fixture se reproduce exactamente.

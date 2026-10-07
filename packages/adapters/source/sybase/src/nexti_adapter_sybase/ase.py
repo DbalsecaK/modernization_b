@@ -6,6 +6,7 @@ the customer runs outside an isolated container). The scripts come from `nexti_a
 recording without starting Sybase (plan M4, golden master decision)."""
 
 import asyncio
+import hashlib
 import subprocess
 import time
 import uuid
@@ -14,12 +15,22 @@ from typing import Literal
 
 from nexti_adapter_sybase import golden
 from nexti_core.adapters import LegacyUnavailableError, SourceFile
-from nexti_core.spec.characterization import GoldenMaster, Recorded, Suite, source_digest, suite_key
+from nexti_core.spec.characterization import (
+    Case,
+    GoldenMaster,
+    Observation,
+    Recorded,
+    Suite,
+    source_digest,
+    suite_key,
+)
 
 IMAGE = "datagrip/sybase:16.0"
 # The public default of the test image (not a secret): the engine has no network and lives for one suite.
 _SA = ("sa", "myPassword", "MYSYBASE")
-_ISQL = ". /opt/sybase/SYBASE.sh && isql -U{0} -P{1} -S{2} -w 32000 -b"
+# stderr joins stdout in order: in a batch of cases, an engine message must stay inside the case that raised it.
+_ISQL = ". /opt/sybase/SYBASE.sh && isql -U{0} -P{1} -S{2} -w 32000 -b 2>&1"
+CASE_MARK = "NXCASE|"
 
 
 class LegacyEngineTimeoutError(LegacyUnavailableError):
@@ -40,12 +51,16 @@ class AseRunner:
     engine = golden.ENGINE
 
     def __init__(self, image: str = IMAGE, docker: str = "docker", memory_mb: int = 3072, start_seconds: int = 300,
-                 case_seconds: int = 120) -> None:  # fmt: skip
+                 case_seconds: int = 120, batch_size: int = 25) -> None:  # fmt: skip
         self.image = image
         self.docker = docker
         self.memory_mb = memory_mb
         self.start_seconds = start_seconds
         self.case_seconds = case_seconds
+        self.batch_size = batch_size
+        # What a case did with this exact code, schema and stubs (plan step 3b): a correction of the suite runs
+        # only the cases that changed, and none at all needs no engine.
+        self._observed: dict[str, Observation] = {}
 
     def _cli(self, args: list[str], stdin: str | None = None, timeout: int = 60) -> tuple[int, str]:
         # Bytes, not text: on Windows text mode turns each newline into CRLF and isql ignores such a `go`.
@@ -57,7 +72,10 @@ class AseRunner:
 
     async def _isql(self, name: str, script: str, seconds: int) -> str:
         command = ["exec", "-i", name, "bash", "-c", _ISQL.format(*_SA)]
-        _, output = await asyncio.to_thread(self._cli, command, script, seconds)
+        try:
+            _, output = await asyncio.to_thread(self._cli, command, script, seconds)
+        except subprocess.TimeoutExpired:
+            return ""  # no answer in time: the caller decides (a cut case, or an engine that stopped answering)
         return output
 
     async def _start(self) -> str:
@@ -86,22 +104,67 @@ class AseRunner:
 
     async def run(self, files: list[SourceFile], suite: Suite) -> GoldenMaster:
         plan = golden.plan(files, suite)
+        setup_script = golden.setup_script(plan)
+        keys = {case.name: _case_key(setup_script, case) for case in suite.cases}
+        pending = [case for case in suite.cases if keys[case.name] not in self._observed]
+        if not pending:  # every case was observed with this code and schema: no engine needed
+            return self._master(files, suite, keys)
         name = await self._start()
         try:
-            setup = await self._isql(name, golden.setup_script(plan), 600)
+            setup = await self._isql(name, setup_script, 600)
             failures = golden.engine_errors(setup)
             if failures:
                 detail = "\n".join(failures)[:3000]
                 raise golden.GoldenError(f"the code or the schema do not load in Sybase:\n{detail}")
-            results = []
-            for case in suite.cases:
-                output = await self._isql(name, golden.case_script(plan, case), self.case_seconds)
-                results.append(Recorded(case=case, observation=golden.observe(plan, output)))
+            for start in range(0, len(pending), self.batch_size):
+                await self._run_batch(name, plan, pending[start : start + self.batch_size], keys)
         finally:
             await self._stop(name)
+        return self._master(files, suite, keys)
+
+    async def _run_batch(self, name: str, plan: golden.Plan, cases: list[Case], keys: dict[str, str]) -> None:
+        """One isql session for several cases (each starts by resetting the data, as alone): a marker before each
+        case splits the output. A case cut by the timeout runs again alone."""
+        script = "".join(
+            f"select '{CASE_MARK}{i}'\ngo\n" + golden.case_script(plan, case) for i, case in enumerate(cases)
+        )
+        output = await self._isql(name, script, self.case_seconds * len(cases))
+        parts = _split_cases(output, len(cases))
+        if not parts:
+            # Not one case answered: the engine stopped answering (a busy host). Waiting case by case would take
+            # hours; the run is cut as transient and the phase tries again with a fresh engine (ADR-0046).
+            raise LegacyEngineTimeoutError("the Sybase engine stopped answering during the cases")
+        for index, case in enumerate(cases):
+            part = parts.get(index)
+            if part is None or (index == len(cases) - 1 and not part.strip()):
+                part = await self._isql(name, golden.case_script(plan, case), self.case_seconds)
+                if not part.strip():
+                    raise LegacyEngineTimeoutError(f"the Sybase engine did not answer the case {case.name}")
+            self._observed[keys[case.name]] = golden.observe(plan, part)
+
+    def _master(self, files: list[SourceFile], suite: Suite, keys: dict[str, str]) -> GoldenMaster:
+        results = [Recorded(case=case, observation=self._observed[keys[case.name]]) for case in suite.cases]
+        unassigned = golden.unassigned_outputs(golden.plan(files, suite).program)
         return GoldenMaster(program=suite.program, source_sha256=source_digest(files), engine=self.engine,
-                            schema_=suite.schema_, results=results,
-                            unassigned_outputs=golden.unassigned_outputs(plan.program))  # fmt: skip
+                            schema_=suite.schema_, results=results, unassigned_outputs=unassigned)  # fmt: skip
+
+
+def _case_key(setup_script: str, case: Case) -> str:
+    return hashlib.sha256((setup_script + "\0" + case.model_dump_json()).encode("utf-8")).hexdigest()
+
+
+def _split_cases(output: str, count: int) -> dict[int, str]:
+    """The output of each case of a batch, by its index; a case whose marker never printed is absent."""
+    parts: dict[int, list[str]] = {}
+    current: int | None = None
+    for line in output.splitlines():
+        text = line.strip()
+        if text.startswith(CASE_MARK) and text[len(CASE_MARK) :].isdigit():
+            current = int(text[len(CASE_MARK) :])
+            parts[current] = []
+        elif current is not None and current < count:
+            parts[current].append(line)
+    return {index: "\n".join(lines) for index, lines in parts.items()}
 
 
 class RecordedRunner:

@@ -130,3 +130,70 @@ def test_output_parameters_the_program_never_assigns_are_detected() -> None:
     assert golden.unassigned_outputs(program) == ["@o_d"]
     (_, pago) = golden.procedures(FILES)[0]
     assert golden.unassigned_outputs(pago) == []  # the fixture assigns both of its outputs
+
+
+def test_a_batch_of_cases_is_split_by_its_markers_and_a_cut_case_is_absent() -> None:
+    from nexti_adapter_sybase.ase import _split_cases
+
+    output = "header\n NXCASE|0\nNXR|0\nMsg 50001, Level 16\n NXCASE|1\nNXR|1\n"
+    parts = _split_cases(output, 3)
+    assert set(parts) == {0, 1}  # case 2 never printed its marker: it runs again alone
+    assert "Msg 50001" in parts[0]  # an engine message stays with the case that raised it
+    assert parts[1].strip() == "NXR|1"
+
+
+def test_a_correction_runs_only_the_changed_cases_and_none_needs_no_engine() -> None:
+    # Plan step 3b: the cases already observed with the same code, schema and stubs are not run again.
+    from nexti_adapter_sybase.ase import AseRunner
+
+    class FakeAse(AseRunner):
+        def __init__(self) -> None:
+            super().__init__(batch_size=5)
+            self.starts = 0
+            self.batches: list[int] = []
+
+        async def _start(self) -> str:
+            self.starts += 1
+            return "engine"
+
+        async def _stop(self, name: str) -> None:
+            return None
+
+        async def _isql(self, name: str, script: str, seconds: int) -> str:
+            if "NXCASE|" not in script:
+                return ""  # the setup script loads without errors
+            count = script.count("select 'NXCASE|")
+            self.batches.append(count)
+            return "\n".join(f"NXCASE|{index}\nNXR|1:0" for index in range(count))  # values as length:text
+
+    runner = FakeAse()
+    first = asyncio.run(runner.run(FILES, SUITE))
+    assert len(first.results) == len(SUITE.cases)
+    assert (runner.starts, runner.batches) == (1, [5, 5, 2])  # 12 cases in batches of 5, one engine start
+    again = asyncio.run(runner.run(FILES, SUITE))
+    assert runner.starts == 1  # nothing changed: no engine started
+    assert [r.case.name for r in again.results] == [c.name for c in SUITE.cases]
+    changed = SUITE.model_copy(update={"cases": [SUITE.cases[0].model_copy(update={"description": "changed"}),
+                                                 *SUITE.cases[1:]]})  # fmt: skip
+    asyncio.run(runner.run(FILES, changed))
+    assert (runner.starts, runner.batches[-1]) == (2, 1)  # only the changed case ran
+
+
+def test_an_engine_that_stops_answering_cuts_the_recording_as_transient() -> None:
+    # Plan step 3b: a wedged engine is not waited case by case (a real run lost 87 minutes); the recording is cut as
+    # a transient failure and the phase tries again with a fresh engine.
+    from nexti_adapter_sybase.ase import AseRunner, LegacyEngineTimeoutError
+
+    class SilentAse(AseRunner):
+        async def _start(self) -> str:
+            return "engine"
+
+        async def _stop(self, name: str) -> None:
+            return None
+
+        async def _isql(self, name: str, script: str, seconds: int) -> str:
+            return ""  # the setup loads, then nothing answers
+
+    with pytest.raises(LegacyEngineTimeoutError, match="stopped answering") as cut:
+        asyncio.run(SilentAse().run(FILES, SUITE))
+    assert cut.value.transient
