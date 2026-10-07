@@ -439,3 +439,14 @@ def test_a_guided_design_keeps_or_masks_every_table_the_program_reads() -> None:
             {"name": "id", "type": "integer(32,signed)", "legacy": "id"}]}]})  # fmt: skip
     kept = Design.model_validate(kept.model_dump())
     assert design_problems(kept, [rule], hints=True, files=files, written=set(), read=read) == []
+
+
+def test_a_guided_design_keeps_the_rejection_message_a_text_parameter() -> None:
+    data = json.loads(DESIGN_JSON)
+    use_case = data["use_cases"][0]
+    numeric = next(f for f in use_case["outputs"] if not f["type"].startswith("text"))
+    use_case["legacy_message"] = numeric["legacy"]
+    design = Design.model_validate(data)
+    assert design_problems(design, RULES) == []  # not guided: as before
+    problems = design_problems(design, RULES, hints=True)
+    assert any("legacy_message names the parameter that carries the message TEXT" in p for p in problems)

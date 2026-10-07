@@ -223,6 +223,19 @@ def frame_of(failure: str | None) -> str | None:
     return f"{match.group(1).rsplit('.', 1)[-1]}({match.group(2)}:{match.group(3)})" if match else None
 
 
+def setup_tables(master: GoldenMaster, outcomes: Sequence[CaseOutcome]) -> dict[str, int]:
+    """The legacy tables the differing cases set up, by how many of them do (P36): their rows reach the target
+    through the adapters of those entities, so a lookup that comes back empty is in one of those adapters even
+    when no difference names the table."""
+    differing = {o.name for o in outcomes if not o.matched}
+    counts: Counter[str] = Counter()
+    for recorded in master.results:
+        if recorded.case.name in differing:
+            for table in recorded.case.setup:
+                counts[table.rsplit(".", 1)[-1].lower()] += 1
+    return dict(counts)
+
+
 def failure_files(failures: Sequence[str | None], files: Mapping[str, str]) -> dict[str, int]:
     """The files the stack frames of the crashes name (the harness keeps the first frame inside the generated
     package), by how many cases crashed in them (P32: a real run crashed 68 cases in an adapter the developer never

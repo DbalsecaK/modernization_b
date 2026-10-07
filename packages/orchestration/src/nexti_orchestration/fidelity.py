@@ -24,6 +24,7 @@ from nexti_orchestration.correction import (
     files_to_correct,
     legacy_excerpts,
     named_in,
+    setup_tables,
 )
 from nexti_orchestration.escalation import explainer, many_files
 from nexti_orchestration.extraction import ModelCaller, ReplyError, raise_if_cut
@@ -379,7 +380,10 @@ async def converge(
         current: dict[str, str] = state["files"]
         if feedback is None and tests_first:  # P35: the first request names the tests that contradict the program
             feedback = tests_first
-        involved = files_to_correct(pack, design, use_case, current, named_in(state["outcomes"]),
+        names = dict(named_in(state["outcomes"]))
+        for table, count in setup_tables(master, state["outcomes"]).items():
+            names.setdefault(table, count)  # P36: the adapters that read the differing cases' data
+        involved = files_to_correct(pack, design, use_case, current, names,
                                     [o.failure for o in state["outcomes"] if o.failure])  # fmt: skip
         # The unit tests came from the program too; one that contradicts the golden master is wrong, and only the
         # developer can align it (a real run spent its attempts on tests that expected an error the legacy does
