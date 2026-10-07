@@ -369,3 +369,24 @@ def test_a_crash_message_keeps_its_cause_at_the_end() -> None:
     assert " … " in excerpt
     assert len(excerpt) < len(message)
     assert failure_excerpt("short") == "short"
+
+
+def test_the_adapters_that_read_the_differing_cases_data_reach_the_developer() -> None:
+    from nexti_core.spec.characterization import Case, Recorded
+    from nexti_orchestration.correction import setup_tables
+
+    entity = next(e for e in DESIGN.entities if e.legacy_table)
+    table = str(entity.legacy_table)
+    port = next(p for p in DESIGN.ports if not p.legacy_program)
+    adapter = adapter_path(DESIGN, port)
+    case = Case(name="looks_up_a_row", rules=["RULE-001"], setup={table: [{"x": 1}]})
+    other = Case(name="matches", rules=["RULE-001"], setup={"db..other_table": [{"x": 1}]})
+    master = cast(Any, type("M", (), {"results": [Recorded(case=case, observation=Observation()),
+                                                    Recorded(case=other, observation=Observation())]})())  # fmt: skip
+    outcomes = [_outcome("looks_up_a_row", ("calls[2]:db..sp_x.@i_concepto", "CP01", "99999")),
+                CaseOutcome("matches", ("RULE-001",))]  # fmt: skip
+    tables = setup_tables(master, outcomes)
+    assert tables == {table.rsplit(".", 1)[-1].lower(): 1}
+    files = {SERVICE: "svc", adapter: f"class A {{ /* reads {entity.name} */ }}"}
+    assert adapter in files_to_correct(SPRING, DESIGN, USE_CASE, files, tables)
+    assert adapter not in files_to_correct(SPRING, DESIGN, USE_CASE, files, named_in(outcomes))  # P33 alone missed it

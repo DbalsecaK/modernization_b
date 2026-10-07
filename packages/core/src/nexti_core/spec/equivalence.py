@@ -106,6 +106,23 @@ def target_case(
     return {"name": case.name, "request": request, "setup": setup, "stubs": stubs}
 
 
+def message_field(use_case: UseCase) -> str | None:
+    """The legacy parameter that carries the message of a rejection, when it is text: a numeric output (an error
+    code) cannot hold a message, so it is compared as an ordinary output (P36)."""
+    if not use_case.legacy_message:
+        return None
+    field = next((f for f in use_case.outputs if (f.legacy or "").lower() == use_case.legacy_message.lower()), None)
+    if field is not None and not field.type.startswith("text"):
+        return None
+    return use_case.legacy_message
+
+
+REJECTED_REASON = (
+    "a rejection of the target is an exception with the code and the message: the legacy's output parameters on "
+    "that path are not part of it"
+)
+
+
 def masks(design: Design, use_case: UseCase, master: GoldenMaster) -> list[Mask]:
     found = [Mask(m.path, m.reason, m.when) for m in design.masks]
     found += [Mask(f"calls:{p}", "infrastructure of the legacy: the target framework replaces it (6.2)")
@@ -123,6 +140,16 @@ def masks(design: Design, use_case: UseCase, master: GoldenMaster) -> list[Mask]
     outputs = {o for r in master.results for o in r.observation.outputs}
     found += [Mask(f"outputs:{o}", "no output of the use case returns this legacy parameter")
               for o in sorted(outputs) if o.lower() not in mapped]  # fmt: skip
+    # On a path the legacy rejects, the target raises its business error (code and message): the other output
+    # parameters of the legacy are not produced there, and comparing them would demand the impossible (P36).
+    message = (message_field(use_case) or "").lower()
+    masked_paths = {m.path.lower() for m in found}
+    rejected_outputs = [
+        f.legacy
+        for f in use_case.outputs
+        if f.legacy and f.legacy.lower() != message and f"outputs:{f.legacy}".lower() not in masked_paths
+    ]
+    found += [Mask(f"outputs:{legacy}", REJECTED_REASON, "rejected") for legacy in rejected_outputs]
     # An output the program never assigns echoes what the caller passed (ADR-0044): not behaviour to reproduce.
     found += [Mask(f"outputs:{o}", "the program never assigns this output parameter: the legacy returns the value "
                    "the caller passed in") for o in sorted(master.unassigned_outputs)
@@ -187,13 +214,10 @@ def actual_view(
         if field.legacy and not _masked(f"outputs:{field.legacy}", found, rejected):
             value = (raw.get("response") or {}).get(field.name) if error is None else None
             outputs[field.legacy] = canonical(field.type, value)
-    if (
-        error is not None
-        and use_case.legacy_message
-        and not _masked(f"outputs:{use_case.legacy_message}", found, rejected)
-    ):
-        message = next((f for f in use_case.outputs if f.legacy == use_case.legacy_message), None)
-        outputs[use_case.legacy_message] = canonical(message.type if message else None, error.get("message"))
+    text_message = message_field(use_case)
+    if error is not None and text_message and not _masked(f"outputs:{text_message}", found, rejected):
+        message = next((f for f in use_case.outputs if f.legacy == text_message), None)
+        outputs[text_message] = canonical(message.type if message else None, error.get("message"))
     returns = 0
     if error is not None:
         code = str(error.get("legacy_code") or "")

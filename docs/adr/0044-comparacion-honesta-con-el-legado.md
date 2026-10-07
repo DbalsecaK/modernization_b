@@ -72,3 +72,20 @@ diferencias que dominaban **no las podía corregir ningún desarrollador**:
 `test_golden.py` (detección), `test_equivalence.py` del pack (máscara solo con eco confirmado; serialización sin
 el campo vacío; arnés con Docker), `test_fidelity.py` (clave de progreso con las tres correcciones reales, base
 reevaluada), aceptaciones M4 a M8b intactas, y la corrida real reintentada desde Generation.
+
+
+## Precisión P36 (2026-10-07): rechazos comparados por código y mensaje; adaptadores de los datos del caso
+
+La corrida con el diseño de P34 bajó a 9 de 78 casos distintos y se estancó por dos causas que ningún intento podía
+cerrar:
+
+1. **Un rechazo del legado con salidas.** El diseño tomó como mensaje del rechazo una salida entera (un código de
+   error): el legado devuelve 122004 con esa salida en 0; el destino, al rechazar, ponía el texto del mensaje en
+   ella, y al no rechazar devolvía 0. Desde P36, en un caso que el legado rechaza se comparan el código y el texto
+   del mensaje; las demás salidas son una máscara declarada `when: rejected` (un rechazo del destino es una
+   excepción con código y mensaje), añadida si el diseño no la declaró. Una salida no textual nunca es el mensaje:
+   se compara como salida ordinaria. El diseño guiado exige además que `legacy_message` sea un parámetro de texto.
+2. **El adaptador del lookup vacío no llegaba al desarrollador.** Las filas del caso llegaban a las tablas destino,
+   pero el adaptador del catálogo no las encontraba; la convergencia solo elegía archivos por los nombres de las
+   diferencias o por los marcos de una caída, y este adaptador no aparecía en ninguno. Desde P36 se suman los
+   adaptadores de las entidades cuyas tablas preparan los casos que difieren.

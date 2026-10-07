@@ -303,6 +303,14 @@ def design_problems(
             problems.append(f"closest names in the legacy code: {closest(invented, names)}")
     if hints:
         problems += mask_problems(design, rules, files, written or set(), read)
+        for use_case in design.use_cases:
+            message = next((f for f in use_case.outputs if use_case.legacy_message
+                            and (f.legacy or "").lower() == use_case.legacy_message.lower()), None)  # fmt: skip
+            if message is not None and not message.type.startswith("text"):
+                problems.append(f"{use_case.name}: legacy_message names the parameter that carries the message TEXT "
+                                f"of a rejection; {message.legacy} is {message.type}: map it as an ordinary output "
+                                "and set legacy_message to the text parameter, or null when the program returns no "
+                                "message text")  # fmt: skip
         root = (package_root or "").strip().lower()
         if root and not (design.base_package == root or design.base_package.startswith(root + ".")):
             problems.append(f"base_package must be {root} or start with {root}. (the pack profile of the project)")

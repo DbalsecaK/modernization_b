@@ -94,14 +94,17 @@ def test_the_reference_target_reproduces_the_golden_master(java_sandbox: DockerS
     assert different == []
 
 
-def test_without_the_declared_mask_the_real_difference_shows(java_sandbox: DockerSandbox) -> None:
+def test_without_the_declared_mask_the_rejected_path_output_is_masked_with_its_reason(
+    java_sandbox: DockerSandbox,
+) -> None:
+    # P36 (ADR-0044): on a path the legacy rejects, the target raises its business error; the legacy output that
+    # the design did not mask is masked automatically, declared with its reason, never silently.
     undeclared = Design.model_validate({**json.loads(DESIGN.model_dump_json()), "masks": []})
     run = asyncio.run(run_equivalence(java_sandbox, reference_project(undeclared), undeclared, PAY, MASTER))
-    different = {c.name: c for c in run.cases if c.expected != c.actual}
-    assert list(different) == ["failed_commission_undoes_the_payment"]
-    case = different["failed_commission_undoes_the_payment"]
-    assert case.expected.outputs["@o_movimiento"] == "900001"
-    assert case.actual.outputs["@o_movimiento"] is None
+    assert [c.name for c in run.cases if c.failure or c.expected != c.actual] == []
+    declared = {m.path: m for m in run.masks}
+    assert declared["outputs:@o_movimiento"].when == "rejected"
+    assert declared["outputs:@o_movimiento"].reason.startswith("a rejection of the target is an exception")
 
 
 def test_a_port_that_returns_an_entity_gets_every_output_of_the_program_in_one_answer() -> None:
@@ -144,3 +147,26 @@ def test_an_output_the_program_never_assigns_is_masked_when_every_case_echoes_it
         m.reason for m in masks(DESIGN, PAY, MASTER.model_copy(update={"unassigned_outputs": ["@o_movimiento"]}))
     )
     assert "unassigned_outputs" not in MASTER.model_dump_json()  # the recorded runs see the same text as before
+
+
+def test_a_rejected_case_compares_the_code_and_the_message_text_only() -> None:
+    # P36: on a path the legacy rejects, the target raises its business error; the other outputs are a declared
+    # "rejected" mask, added when the design did not declare one, and a numeric output is never the message.
+    data = json.loads((PACK / "design.json").read_text(encoding="utf-8"))
+    data["masks"] = [m for m in data["masks"] if m["path"] != "outputs:@o_movimiento"]
+    design = Design.model_validate(data)
+    found = {m.path: m for m in masks(design, PAY, MASTER)}
+    assert found["outputs:@o_movimiento"].when == "rejected"
+    assert found["outputs:@o_movimiento"].reason.startswith("a rejection of the target is an exception")
+    assert "outputs:@o_mensaje" not in found  # the message text is compared
+    # The fixture design declares the same mask: nothing is added twice (the recorded runs see the same list).
+    assert [m.path for m in masks(DESIGN, PAY, MASTER)].count("outputs:@o_movimiento") == 1
+    # A numeric legacy_message is an ordinary output: the error message never lands in it.
+    from nexti_core.spec.equivalence import actual_view, message_field
+
+    numeric = PAY.model_copy(update={"legacy_message": "@o_movimiento"})
+    assert message_field(numeric) is None
+    raw = {"error": {"code": "X", "legacy_code": "50005", "message": "ERROR EN DEBITO"}, "tables": {}, "calls": []}
+    view = actual_view(design, numeric, raw, [], rejected=True)
+    assert view.returns == 50005
+    assert view.outputs.get("@o_movimiento") is None

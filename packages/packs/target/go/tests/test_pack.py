@@ -277,14 +277,17 @@ def test_the_reference_target_reproduces_the_golden_master(go_sandbox: DockerSan
     assert different == {}
 
 
-def test_without_the_declared_mask_the_real_difference_shows(go_sandbox: DockerSandbox) -> None:
+def test_without_the_declared_mask_the_rejected_path_output_is_masked_with_its_reason(
+    go_sandbox: DockerSandbox,
+) -> None:
+    # P36 (ADR-0044): on a path the legacy rejects, the target raises its business error; the legacy output that
+    # the design did not mask is masked automatically, declared with its reason, never silently.
     undeclared = Design.model_validate({**json.loads(DESIGN.model_dump_json()), "masks": []})
     run = asyncio.run(run_equivalence(go_sandbox, reference_project(undeclared), undeclared, PAY, MASTER))
-    different = {c.name: c for c in run.cases if c.expected != c.actual}
-    assert list(different) == ["failed_commission_undoes_the_payment"]
-    case = different["failed_commission_undoes_the_payment"]
-    assert case.expected.outputs["@o_movimiento"] == "900001"
-    assert case.actual.outputs["@o_movimiento"] is None
+    assert [c.name for c in run.cases if c.failure or c.expected != c.actual] == []
+    declared = {m.path: m for m in run.masks}
+    assert declared["outputs:@o_movimiento"].when == "rejected"
+    assert declared["outputs:@o_movimiento"].reason.startswith("a rejection of the target is an exception")
 
 
 def test_the_canary_is_caught(go_sandbox: DockerSandbox) -> None:
