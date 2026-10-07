@@ -27,6 +27,7 @@ from nexti_pack_go.pack import PACK
 from nexti_pack_spring_boot.pack import PACK as SPRING_BOOT
 from nexti_sandbox import DockerSandbox
 from nexti_sandbox.build import parse_junit
+from nexti_sandbox.coverage import target_coverage
 
 HERE = Path(__file__).parent / "fixtures" / "pago_orden"
 PACKS = Path(__file__).resolve().parents[2]
@@ -275,6 +276,13 @@ def test_the_reference_target_reproduces_the_golden_master(go_sandbox: DockerSan
     different = {c.name: (c.failure, c.expected, c.actual) for c in run.cases if c.failure or c.expected != c.actual}
     assert len(run.cases) == 12
     assert different == {}
+
+    # M29 (ADR-0049): the golden master cases run under the native coverage tool of the stack; the reference target
+    # has code no case runs (the infrastructure the harness replaces), so some region is reported.
+    measured = target_coverage(run.build.after_output)
+    assert measured is not None, run.build.after_output[-2000:]
+    assert measured.tool == "go cover"
+    assert 0 < measured.lines_covered < measured.lines_total
 
 
 def test_without_the_declared_mask_the_rejected_path_output_is_masked_with_its_reason(

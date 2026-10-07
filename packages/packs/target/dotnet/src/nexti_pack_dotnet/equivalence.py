@@ -87,8 +87,18 @@ if ! $SQL -Q "CREATE DATABASE nexti" > /work/schema.log 2>&1 \
   echo "===HARNESS-FAILED==="; cat /work/schema.log; tail -20 /work/sql.log; exit 6
 fi
 echo "===EQUIVALENCE==="
-dotnet /work/harness-out/Harness.dll /input/harness/plan.json /input/harness/cases.json 2>&1 || true
+# M29 (ADR-0049): the harness runs under dotnet-coverage when the image has it (Cobertura report).
+if [ -x /opt/tools/dotnet-coverage ]; then
+  mkdir -p /work/tmp
+  TMPDIR=/work/tmp DOTNET_CLI_HOME=/work /opt/tools/dotnet-coverage collect -f cobertura -o /work/coverage.xml \
+    "dotnet /work/harness-out/Harness.dll /input/harness/plan.json /input/harness/cases.json" 2>&1 || true
+else
+  dotnet /work/harness-out/Harness.dll /input/harness/plan.json /input/harness/cases.json 2>&1 || true
+fi
 echo "===EQUIVALENCE-END==="
+if [ -s /work/coverage.xml ]; then
+  echo "===COVERAGE cobertura==="; gzip -c /work/coverage.xml | base64 | tr -d "\n"; echo; echo "===COVERAGE-END==="
+fi
 $SQL -Q "SHUTDOWN WITH NOWAIT" > /dev/null 2>&1 || true
 """
 

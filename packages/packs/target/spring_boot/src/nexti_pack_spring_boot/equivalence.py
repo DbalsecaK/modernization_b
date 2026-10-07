@@ -87,10 +87,17 @@ if ! psql -h localhost -U nexti -d nexti -q -v ON_ERROR_STOP=1 -f /work/p/src/ma
     > /work/schema.log 2>&1; then
   echo "===HARNESS-FAILED==="; cat /work/schema.log; exit 6
 fi
+# M29 (ADR-0049): the harness runs under JaCoCo when the image has it; only the target's classes are reported.
+AGENT=""
+[ -f /opt/coverage/jacocoagent.jar ] && AGENT="-javaagent:/opt/coverage/jacocoagent.jar=destfile=/work/jacoco.exec"
 echo "===EQUIVALENCE==="
-java -cp "/work/out:/work/harness-out:/opt/lib/*" nexti.equivalence.EquivalenceHarness \
+java $AGENT -cp "/work/out:/work/harness-out:/opt/lib/*" nexti.equivalence.EquivalenceHarness \
   /input/harness/plan.json /input/harness/cases.json 2>&1 || true
 echo "===EQUIVALENCE-END==="
+if [ -n "$AGENT" ] && [ -f /work/jacoco.exec ] && java -jar /opt/coverage/jacococli.jar report /work/jacoco.exec \
+    --classfiles /work/out --xml /work/jacoco.xml > /dev/null 2>&1; then
+  echo "===COVERAGE jacoco==="; gzip -c /work/jacoco.xml | base64 | tr -d "\n"; echo; echo "===COVERAGE-END==="
+fi
 pg_ctl -D /work/pg -m fast stop > /dev/null 2>&1 || true
 """
 

@@ -161,7 +161,8 @@ def glue(design: Design, use_case: UseCase) -> str:
 SCRIPT = rf"""
 mkdir -p /work/p/{HARNESS_DIR}
 cp /input/harness/runtime.go /input/harness/glue.go /work/p/{HARNESS_DIR}/
-if ! go build -o /work/harness ./{HARNESS_DIR} > /work/harness.txt 2>&1; then
+# M29 (ADR-0049): the harness is built with Go's coverage; the cases write their counters to /work/cov.
+if ! go build -cover -coverpkg=./... -o /work/harness ./{HARNESS_DIR} > /work/harness.txt 2>&1; then
   echo "===HARNESS-FAILED==="; cat /work/harness.txt; exit 4
 fi
 if ! initdb -D /work/pg -U nexti --auth=trust -E UTF8 --no-locale > /work/pg-init.log 2>&1; then
@@ -175,9 +176,13 @@ psql -h localhost -U nexti -d postgres -q -c "CREATE DATABASE nexti" > /dev/null
 if ! psql -h localhost -U nexti -d nexti -q -v ON_ERROR_STOP=1 -f /work/p/{SCHEMA} > /work/schema.log 2>&1; then
   echo "===HARNESS-FAILED==="; cat /work/schema.log; exit 6
 fi
+mkdir -p /work/cov
 echo "===EQUIVALENCE==="
-/work/harness /input/harness/plan.json /input/harness/cases.json 2>&1 || true
+GOCOVERDIR=/work/cov /work/harness /input/harness/plan.json /input/harness/cases.json 2>&1 || true
 echo "===EQUIVALENCE-END==="
+if go tool covdata textfmt -i=/work/cov -o /work/cover.out > /dev/null 2>&1 && [ -s /work/cover.out ]; then
+  echo "===COVERAGE go==="; gzip -c /work/cover.out | base64 | tr -d "\n"; echo; echo "===COVERAGE-END==="
+fi
 pg_ctl -D /work/pg -m fast stop > /dev/null 2>&1 || true
 """
 
