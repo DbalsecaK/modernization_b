@@ -1,12 +1,23 @@
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { AlertTriangle, FileText, History, MessageCircleQuestion } from 'lucide-react'
+import { AlertTriangle, ChevronRight, FileText, History, MessageCircleQuestion } from 'lucide-react'
 import { formatDateTime } from '@/lib/format'
 import type { Question } from '@/api/runs'
 import { useRuleVersions, type Coverage } from '@/api/spec'
+import { useCodeFile } from '@/api/code'
 import { Badge, Card, CardBody, CardHeader, Code, Input, Select, Table, Td, Th } from '@/components/ui/primitives'
 import { Notice } from '../../NewProjectWizard'
-import { citation, priorityTone, ruleStatusTone, type DataItem, type RuleView } from './model'
+import {
+  CITATIONS_PATH,
+  citation,
+  codeOf,
+  parseCitations,
+  priorityTone,
+  ruleStatusTone,
+  type CitedCode,
+  type DataItem,
+  type RuleView,
+} from './model'
 import { ListButton } from './shared'
 
 const RULE_STATUSES = ['draft', 'review', 'approved', 'reopened', 'obsolete'] as const
@@ -43,6 +54,9 @@ export function RulesView({
     [rules, status, priority, query],
   )
   const rule = rules.find((r) => r.key === selected) ?? list[0] ?? null
+  // The code each rule cites (M27b): saved by the guided extraction; absent for other runs.
+  const citations = useCodeFile(projectId, CITATIONS_PATH)
+  const cited = useMemo(() => parseCitations(citations.data?.content), [citations.data?.content])
   const openAbout = (key: string) => questions.filter((q) => q.status === 'open' && q.affects.includes(key))
   const p0 = rules.filter((r) => r.priority === 'P0').length
 
@@ -141,6 +155,7 @@ export function RulesView({
             outOfScope={coverage?.outOfScope.includes(rule.key) ?? false}
             openQuestions={openAbout(rule.key)}
             onOpenStory={onOpenStory}
+            cited={cited[rule.key]}
           />
         )}
       </div>
@@ -155,9 +170,11 @@ function RuleDetail({
   outOfScope,
   openQuestions,
   onOpenStory,
+  cited,
 }: {
   projectId: string
   rule: RuleView
+  cited?: CitedCode[]
   coveredBy: string[]
   outOfScope: boolean
   openQuestions: Question[]
@@ -229,15 +246,36 @@ function RuleDetail({
 
           <div>
             <div className="mb-1 text-xs font-medium text-muted">{t('spec.citations')}</div>
-            <ul className="flex flex-wrap gap-2">
-              {rule.sources.map((s, i) => (
-                <li
-                  key={i}
-                  className="inline-flex items-center gap-1.5 rounded-md border border-border px-2 py-1 font-mono text-xs text-text-2"
-                >
-                  <FileText size={12} /> {citation(s)}
-                </li>
-              ))}
+            <ul className="space-y-2">
+              {rule.sources.map((s, i) => {
+                const code = codeOf(cited, s)
+                return (
+                  <li key={i}>
+                    {code && code.lines.length > 0 ? (
+                      <details className="group rounded-md border border-border">
+                        <summary className="flex cursor-pointer list-none items-center gap-1.5 px-2 py-1 font-mono text-xs text-text-2 hover:bg-surface-2">
+                          <ChevronRight size={12} className="transition-transform group-open:rotate-90" />
+                          <FileText size={12} /> {citation(s)}
+                          <span className="ml-auto font-sans text-muted">{t('spec.showCode')}</span>
+                        </summary>
+                        <pre className="max-h-80 overflow-auto border-t border-border bg-surface-2 font-mono text-xs text-text">
+                          {code.lines.map((l) => (
+                            <div key={l.n} className="flex gap-3 px-3">
+                              <span className="w-12 shrink-0 select-none text-right text-muted">{l.n}</span>
+                              <span className="whitespace-pre">{l.text}</span>
+                            </div>
+                          ))}
+                          {code.truncated && <div className="px-3 py-1 text-muted">{t('spec.codeTruncated')}</div>}
+                        </pre>
+                      </details>
+                    ) : (
+                      <span className="inline-flex items-center gap-1.5 rounded-md border border-border px-2 py-1 font-mono text-xs text-text-2">
+                        <FileText size={12} /> {citation(s)}
+                      </span>
+                    )}
+                  </li>
+                )
+              })}
             </ul>
           </div>
 

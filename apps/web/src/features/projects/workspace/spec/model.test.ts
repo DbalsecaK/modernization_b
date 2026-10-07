@@ -17,6 +17,7 @@ import {
   toRuleView,
   waveIndex,
 } from './model'
+import { codeOf, parseCitations } from './model'
 
 function rule(data: Record<string, unknown>): RuleOut {
   return { key: 'RULE-001', version: 2, status: 'review', data, origin: 'extracted', createdAt: '2026-09-29T10:00:00Z' }
@@ -204,5 +205,34 @@ describe('moveInWaves', () => {
     expect(sameWaves(waves, moveInWaves(waves, 'US-001', 1))).toBe(false)
     expect(waveIndex(waves, 'US-003')).toBe(1)
     expect(waveIndex(waves, 'US-999')).toBe(-1)
+  })
+})
+
+describe('parseCitations', () => {
+  it('reads the code of each citation and ignores what is not valid', () => {
+    const content = JSON.stringify({
+      'RULE-001': [
+        {
+          file: 'sp/p.sp',
+          lineStart: 3,
+          lineEnd: 4,
+          lines: [
+            { n: 3, text: 'if @a = 1' },
+            { n: 4, text: '  return 1' },
+          ],
+        },
+      ],
+      'RULE-002': 'not a list',
+    })
+    const cited = parseCitations(content)
+    expect(Object.keys(cited)).toEqual(['RULE-001'])
+    expect(cited['RULE-001'][0].lines).toEqual([
+      { n: 3, text: 'if @a = 1' },
+      { n: 4, text: '  return 1' },
+    ])
+    expect(codeOf(cited['RULE-001'], { file: 'sp/p.sp', lineStart: 3, lineEnd: 4 })?.truncated).toBe(false)
+    expect(codeOf(cited['RULE-001'], { file: 'sp/p.sp', lineStart: 5, lineEnd: 6 })).toBeUndefined()
+    expect(parseCitations('not json')).toEqual({})
+    expect(parseCitations(undefined)).toEqual({})
   })
 })

@@ -39,3 +39,17 @@ suposición; hacía falta medirla, con scripts y no con la opinión de un modelo
 Pruebas unitarias de instrumentación (el ficticio queda marcado y sigue siendo un procedimiento válido; una rama de
 una línea es no medible), de la segunda pasada (caso no confiable cuando la copia difiere) y de mutación; y la prueba
 en vivo con Sybase: la grabación se reproduce y la cobertura es confiable en los 12 casos (24 de 26 ramas).
+
+## Precisión M27b (2026-10-07): casos por rama y código citado
+
+- **Una ronda por las ramas sin caso.** En el diseño guiado, después de grabar el golden master, si la cobertura
+  tiene ramas medibles que ningún caso recorrió, la caracterización devuelve al test engineer una sola vez la lista
+  de esas ramas (hasta 25): tipo, líneas, el código numerado alrededor y las reglas cuyas citas las tocan. La
+  instrucción es conservar todos los casos y agregar los que entren a cada rama, o decir que la rama es inalcanzable.
+  Lo que siga sin cubrir tras esa ronda va al reporte y al "no probado" del veredicto; no hay bucle.
+- **La rama conoce su archivo** (`CoveredBranch.file`), para citar el código correcto cuando hay varios fuentes.
+- **Código citado por regla.** La extracción guiada guarda `rules/citations.json`: por regla, cada cita con sus
+  líneas de código (hasta 80 por cita, marcada como truncada si hay más). La tarjeta de regla en C1 muestra cada cita
+  desplegable con el código numerado, para que el aprobador revise la regla contra el programa sin salir de la
+  pantalla. Es un artefacto de documentación del proyecto, como el resto del código del legado en el espacio de
+  trabajo; no entra en fixtures ni en el repositorio.

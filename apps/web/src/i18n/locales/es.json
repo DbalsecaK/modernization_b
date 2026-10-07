@@ -631,6 +631,8 @@
     "inputs": "Entradas",
     "outputs": "Salidas",
     "citations": "Citas en el legado",
+    "showCode": "Ver código",
+    "codeTruncated": "… el resto de las líneas citadas está en el programa",
     "hardcoded": "Valores fijos en el código",
     "suspectedDefect": "Posible defecto",
     "openQuestions_one": "{{count}} pregunta abierta sobre esta regla",

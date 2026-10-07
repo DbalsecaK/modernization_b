@@ -164,6 +164,7 @@ class AseRunner:
         if golden.engine_errors(loaded):
             return  # the copy does not load: coverage is simply not measured
         self._branches = copy.branches
+        self._branch_file = source.path
         for start in range(0, len(cases), self.batch_size):
             batch = cases[start : start + self.batch_size]
             script = "".join(
@@ -186,7 +187,8 @@ class AseRunner:
         ):
             measured = Coverage(
                 branches=[CoveredBranch(id=b.id, kind=b.kind, line_start=b.line_start, line_end=b.line_end,
-                                        measurable=b.measurable) for b in self._branches],
+                                        measurable=b.measurable, file=getattr(self, "_branch_file", ""))
+                          for b in self._branches],
                 executed={c.name: self._covered[keys[c.name]][0] for c in suite.cases},
                 unreliable=[c.name for c in suite.cases if not self._covered[keys[c.name]][1]],
             )  # fmt: skip

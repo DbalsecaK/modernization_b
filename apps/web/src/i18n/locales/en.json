@@ -631,6 +631,8 @@
     "inputs": "Inputs",
     "outputs": "Outputs",
     "citations": "Citations in the legacy",
+    "showCode": "Show code",
+    "codeTruncated": "… the rest of the cited lines is in the program",
     "hardcoded": "Hard-coded values",
     "suspectedDefect": "Suspected defect",
     "openQuestions_one": "{{count}} open question about this rule",
