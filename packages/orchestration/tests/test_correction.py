@@ -355,3 +355,17 @@ def test_the_files_where_the_cases_crashed_reach_the_developer_even_when_nothing
     long_message = "x" * 400 + " at com.bank.pay.application.PayOrderService.execute(PayOrderService.java:12)"
     (line, *_rest) = difference_digest([CaseOutcome("d", ("RULE-001",), (), long_message)]).splitlines()
     assert line.endswith(" [at PayOrderService(PayOrderService.java:12)]")
+
+
+def test_a_crash_message_keeps_its_cause_at_the_end() -> None:
+    from nexti_orchestration.correction import failure_excerpt
+
+    sql = "SELECT " + ", ".join(f"c.col_{i}" for i in range(60)) + " FROM t WHERE x = ?"  # noqa: S608 - a crash message, not a query
+    message = (f"org.springframework.jdbc.BadSqlGrammarException: bad SQL grammar [{sql}]; nested exception is "
+               'org.postgresql.util.PSQLException: ERROR: relation "cl_tabla" does not exist')  # fmt: skip
+    excerpt = failure_excerpt(message)
+    assert excerpt.startswith("org.springframework.jdbc.BadSqlGrammarException")
+    assert excerpt.endswith('ERROR: relation "cl_tabla" does not exist')
+    assert " … " in excerpt
+    assert len(excerpt) < len(message)
+    assert failure_excerpt("short") == "short"

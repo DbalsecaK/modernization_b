@@ -136,6 +136,11 @@ class SpringBootPack:
         """The errors PostgreSQL reports when the adapter's SQL is prepared against the schema (P32), or ""."""
         return await sqlprobe.probe_sql(sandbox, files, path)
 
+    def schema_path(self) -> str | None:
+        """The file with the target schema (the only tables and columns that exist), shown to a developer who
+        corrects an adapter (P33); None when the persistence has no schema file."""
+        return SCHEMA
+
     async def run_equivalence(
         self, sandbox: Sandbox, files: dict[str, str], design: Design, use_case: UseCase, master: GoldenMaster,
         defaults: dict[str, Scalar] | None = None,
@@ -240,6 +245,9 @@ class SpringBootMongoDbPack(SpringBootPack):
 
     async def probe_sql(self, sandbox: Sandbox, files: Mapping[str, str], path: str) -> str:
         return ""  # another engine: the SQL probe is PostgreSQL's for now (P32)
+
+    def schema_path(self) -> str | None:
+        return None  # collections, no schema file
 
     image = mongodb.IMAGE
     database = "mongodb"

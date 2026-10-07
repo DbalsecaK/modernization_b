@@ -585,3 +585,48 @@ async def test_the_ports_and_the_domain_travel_as_read_only_context() -> None:
     text = port.models.requests[0][1]["content"]
     assert "Read-only context (the ports and the domain these files use; do not change them):" in text
     assert "interface Orders { int find(); }" in text
+
+
+async def test_an_adapter_correction_sees_the_schema_and_its_sql_is_probed_before_the_golden_master() -> None:
+
+    adapter = next(adapter_path(DESIGN, p) for p in DESIGN.ports if not p.legacy_program)
+    schema = "src/main/resources/db/schema.sql"
+
+    class Pack(FakePack):
+        probed: list[str] = []  # noqa: RUF012 - one instance per test
+
+        def schema_path(self) -> str:
+            return schema
+
+        async def probe_sql(self, sandbox: Any, files: dict[str, str], path: str) -> str:
+            self.probed.append(path)
+            return 'ERROR: relation "cl_tabla" does not exist' if "cl_tabla" in files[path] else ""
+
+    crash = (
+        "org.springframework.jdbc.BadSqlGrammarException: bad SQL at com.bank.pay.adapters.out.jdbc.Jdbc"
+        f"{next(p.name for p in DESIGN.ports if not p.legacy_program)}.find(X.java:4)"
+    )
+    crashed = EquivalenceRun(FakeBuild(), [CaseRun("batch_case", Observation(returns=0), Observation(returns=0),
+                                                    failure=crash)], [])  # fmt: skip
+    # Attempt 1 still queries the legacy table: the probe stops it before the golden master; attempt 2 is fine.
+    bad = f'### {adapter}\n```java\nclass A {{ String q = "SELECT 1 FROM cl_tabla"; }}\n```'  # noqa: S608
+    good = f'### {adapter}\n```java\nclass A {{ String q = "SELECT 1 FROM company_tariff"; }}\n```'  # noqa: S608
+    pack = Pack(runs=[crashed, _run(0)], builds=[FakeBuild(), FakeBuild()])
+    port = FakePort(replies=[bad, good])
+    ctx, _store = _ctx()
+    files = {
+        SERVICE: "v1",
+        adapter: 'class A { String q = "SELECT 1 FROM cl_tabla"; }',
+        schema: "CREATE TABLE company_tariff (...)",
+    }
+    _files, result = await _converge(ctx, port, pack, files)
+    assert result.differing == 0
+    first = port.models.requests[0][1]["content"]
+    assert f"### {adapter}" in first  # the crash site is among the files to correct
+    assert "Target schema (the only tables and columns that exist; do not query others):" in first
+    assert "CREATE TABLE company_tariff" in first
+    second = port.models.requests[1][1]["content"]
+    assert f"the SQL of {adapter} does not run on the target schema" in second
+    assert 'relation "cl_tabla" does not exist' in second
+    assert pack.probed == [adapter, adapter]
+    assert pack.runs == []  # the golden master ran only for the correction that prepared

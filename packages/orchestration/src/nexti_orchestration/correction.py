@@ -92,8 +92,8 @@ def difference_digest(outcomes: Sequence[CaseOutcome], at_most: int = 12) -> str
         # cause (a BigDecimal scale without a rounding mode, a null the legacy tolerates, an unmapped type).
         where = frame_of(failures[0].failure)
         lines.insert(0, f"- {len(failures)} case(s) could not run on the target (first to fix: the legacy ran them), "
-                        f"e.g. {failures[0].name}: {str(failures[0].failure)[:300]}"
-                        + (f" [at {where}]" if where else ""))  # fmt: skip
+                        f"e.g. {failures[0].name}: {failure_excerpt(failures[0].failure)}"
+                        + (f" [at {where}]" if where and where not in str(failures[0].failure) else ""))  # fmt: skip
     return "\n".join(lines)
 
 
@@ -205,6 +205,16 @@ def case_examples(master: GoldenMaster | None, outcomes: Sequence[CaseOutcome], 
 
 
 FRAME = re.compile(r"\bat ([A-Za-z_][\w.]*)\.[\w$<>]+\(([\w$]+\.\w+):(\d+)\)")
+
+
+def failure_excerpt(failure: str | None, head: int = 200, tail: int = 320) -> str:
+    """A crash message short enough for the digest that still ends with its cause: a JDBC exception puts the
+    whole SQL first and the database's "relation does not exist" last (P33: an analyst reported the diagnostic
+    "cut off before the database's own message")."""
+    text = " ".join(str(failure or "").split())
+    if len(text) <= head + tail + 3:
+        return text
+    return f"{text[:head]} … {text[-tail:]}"
 
 
 def frame_of(failure: str | None) -> str | None:
