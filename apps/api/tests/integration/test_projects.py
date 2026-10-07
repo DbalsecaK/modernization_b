@@ -290,12 +290,12 @@ async def test_unknown_catalog_keys_are_problems(api: TestClient, world: World) 
     headers = sign_in(api, world.a_user)
     res = api.post(
         "/api/v1/projects",
-        json=new_project(sources=["cobol-cics", "rpg"], target={**TARGET, "backend": "cobol"}, pipelineTemplate="x"),
+        json=new_project(sources=["cobol-cics", "natural-adabas"], target={**TARGET, "backend": "cobol"}, pipelineTemplate="x"),
         headers=headers,
     )
     assert res.status_code == 422
     codes = {(p["code"], p["subject"]) for p in res.json()["problems"]}
-    assert ("unknown_source", "rpg") in codes
+    assert ("unknown_source", "natural-adabas") in codes
     assert ("unknown_target_option", "backend:cobol") in codes
     assert ("unknown_pipeline_template", "x") in codes
 

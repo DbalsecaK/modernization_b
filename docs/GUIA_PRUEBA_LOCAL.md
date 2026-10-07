@@ -150,6 +150,42 @@ Este escenario corre el pipeline con modelos reales a través de OpenRouter. La 
 El caso Sybase (`pagos-sybase.zip`) necesita un motor Sybase vivo para el golden master, que no forma parte del
 entorno local. Por eso el modo real se prueba con el caso COBOL/CICS, que trae sus trazas.
 
+### Escenario 7 — Lo nuevo de la verificación (modo real, con costo)
+
+La cobertura del legado, los quirks del motor, las decisiones firmadas y la cobertura del destino **no aparecen en
+los proyectos de demo**: las demos reproducen el golden master desde grabaciones y compilan en un sandbox simulado, y
+eso no mide cobertura. Se ven en una ejecución real de un procedimiento Sybase con el motor Sybase local y las
+imágenes de sandbox reales. El caso real del cliente llegó a PROVEN con 65 USD acumulados en varios reintentos
+(un reintento desde una fase costó entre 1 y 5 USD): define antes un presupuesto en **Consumo y costos**.
+
+| Qué revisar | Dónde |
+|---|---|
+| Cobertura del legado y quirks del motor | **Ejecuciones**, tarjeta de la fase **Caracterización**: «legacy coverage: …» y «engine quirks: N …» (el texto completo al pasar el mouse) |
+| Huecos de cobertura sin caso | Al empezar **Verificación** aparece una pregunta en **Ejecuciones → Preguntas de esta ejecución** (y en **Mis tareas**): «Keep them as not proven» deja el veredicto en PARTLY PROVEN; «Sign them as unreachable» los firma con tu nombre. Escribe el motivo en el comentario. Responden owner, arquitecto, analista o revisor de negocio |
+| Qué no prueba el veredicto | **Validación**, tarjeta **«Lo que esto no prueba»**: ramas sin caso, quirks sin caso y código del destino que ningún caso ejecuta (cobertura del destino; nunca bloquea) |
+| Fila «Legado cubierto» | **Validación**, en los chequeos del veredicto, después de responder la pregunta |
+| Código citado de cada regla | **Especificación → Reglas →** una regla **→ Citas en el legado → Ver código** |
+| Documentos de la generación | **Código**: el árbol muestra primero el proyecto y aparte **«Documentos de la generación»** (hallazgos, `docs/legacy-engine.md`, notas de convergencia). Mientras la generación corre, un aviso arriba lo indica |
+| Evidencia de un agente que agotó intentos | Si pasa, la pregunta trae los paneles **Análisis de la plataforma**, **Diagnóstico**, **Código del último intento** y **Diferencia con la versión anterior** |
+
+La firma final **C4** sigue en **Ejecuciones** (owner o arquitecto, nunca quien lanzó la ejecución); antes de firmar,
+lee **«Lo que esto no prueba»** en Validación.
+
+### Escenario 8 — Origen RPG / IBM i (solo análisis)
+
+Desde R1 la plataforma lee programas RPG (RPG III, RPG IV fijo, mixto y libre), sus DDS y el CL que los arranca. El
+golden master de RPG llega con R2: una ejecución RPG no puede pasar de la caracterización.
+
+1. Comprime el espacio de trabajo ficticio del repositorio:
+   `Compress-Archive packages\adapters\source\rpg\tests\fixtures\cooperativa\* .local\demo-inputs\cooperativa-rpg.zip`
+2. Crea un proyecto con el **asistente**: modernización, origen **RPG (IBM i)**.
+3. En **Insumos**, sube el zip. Si el insumo es rechazado por las extensiones de RPG (`.rpgle`, `.pf`, `.clle`…),
+   avísame: la carga de esas extensiones todavía no se probó de punta a punta.
+4. Lanza la ejecución y abre **Inventario** cuando termine esa fase: programas, subrutinas y procedimientos
+   exportados, archivos PF/LF como tablas, la pantalla DSPF con su tecla F3, el reporte PRTF y el CL que llama a
+   `CALCINT` y envía `ENVIAREP`. La extracción de reglas que sigue usa modelos (con costo): puedes detener la
+   ejecución después del inventario.
+
 ## 6. Problemas frecuentes
 
 | Síntoma | Qué hacer |
@@ -163,12 +199,10 @@ entorno local. Por eso el modo real se prueba con el caso COBOL/CICS, que trae s
 
 ## 7. Qué todavía no se puede probar
 
-| Funcionalidad | Hito |
+| Funcionalidad | Cuándo |
 |---|---|
-| Destino .NET 10 con SQL Server | M6c |
-| Proyectos nuevos desde documentos, historias de usuario y Figma | M7 |
-| Backlog en Jira o Azure DevOps y ciclo de bugs | M7b |
-| Origen ASPX / .NET Framework | M8 |
-| Oracle e infraestructura como código para AWS y Azure | M8b |
-| Inicio de sesión con SSO y MFA | M0b |
-| Despliegue en la nube y operación productiva | M9 |
+| Golden master de RPG (conexión a IBM i o trazas, elegido por proyecto) | R2 |
+| Programas RPG interactivos (pantallas 5250) y su destino web | R3 |
+| Quirks del motor de RPG | R4 |
+| Cobertura y quirks en los proyectos de demo | No aplica: las demos reproducen grabaciones (ver escenario 7) |
+| Inicio de sesión con un tenant real de Entra ID | Requiere credenciales del cliente |
