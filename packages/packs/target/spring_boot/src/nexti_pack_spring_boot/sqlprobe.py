@@ -40,25 +40,34 @@ pg_ctl -D /work/pg -m fast stop > /dev/null 2>&1 || true
 
 def sql_statements(java: str) -> list[str]:
     """The SQL statements an adapter builds from its string literals: adjacent literals joined by `+` are one
-    statement; `?` placeholders become $1, $2… so PREPARE can type them."""
-    statements: list[str] = []
+    statement; `?` placeholders become $1, $2… so PREPARE can type them. A statement concatenated with code (an
+    `IN (` list of placeholders built at run time, a table chosen by a variable) is only known when it runs: it is
+    not probed (P38: the probe once rejected `… IN (` as a syntax error, a fragment of a correct statement)."""
+    statements: list[tuple[str, bool]] = []
     current = ""
+    dynamic = False
     last_end = 0
     for match in LITERAL.finditer(java):
         text = match.group(1) if match.group(1) is not None else _unescape(match.group(2) or "")
         between = java[last_end : match.start()]
         if current and JOINER.match(between):
             current += text
+        elif current and between.strip().startswith("+"):  # literal + expression + literal: built at run time
+            current += text
+            dynamic = True
         else:
             if current:
-                statements.append(current)
-            current = text
+                statements.append((current, dynamic))
+            current, dynamic = text, False
         last_end = match.end()
+        after = java[match.end() : match.end() + 200].lstrip()
+        if after.startswith("+") and not after[1:].lstrip().startswith('"'):
+            dynamic = True  # the literal goes on with an expression
     if current:
-        statements.append(current)
+        statements.append((current, dynamic))
     found = []
-    for statement in statements:
-        if STATEMENT_START.match(statement):
+    for statement, built_at_run_time in statements:
+        if STATEMENT_START.match(statement) and not built_at_run_time:
             found.append(_numbered(" ".join(statement.split())))
     return found
 

@@ -48,6 +48,23 @@ def test_the_sql_statements_of_an_adapter_are_extracted_with_numbered_placeholde
     assert sql_statements('String s = "hello"; String t = "SELECTED";') == []
 
 
+def test_a_statement_built_at_run_time_is_not_probed() -> None:
+    # P38: an IN list of placeholders built by code is only known when it runs; probing the literal fragment
+    # reported a syntax error in a correct adapter.
+    java = """
+    String marks = String.join(",", Collections.nCopies(forms.size(), "?"));
+    String sql = "UPDATE order_total SET state = 'T' WHERE id = ? AND form IN (" + marks + ")";
+    String byTable = "SELECT a FROM " + table + " WHERE b = ?";
+    String fixed = "SELECT a FROM order_total WHERE id = ?";
+    String joined = "SELECT a FROM order_total " +
+        "WHERE id = ?";
+    """
+    assert sql_statements(java) == [
+        "SELECT a FROM order_total WHERE id = $1",
+        "SELECT a FROM order_total WHERE id = $1",
+    ]
+
+
 def test_the_report_names_the_statement_of_each_error() -> None:
     statements = ["SELECT 1", "SELECT x FROM nope"]
     output = (
