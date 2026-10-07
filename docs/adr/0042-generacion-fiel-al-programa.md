@@ -107,3 +107,11 @@ las que fallan pasan a la convergencia, que solo termina cuando coinciden todos 
 pruebas (el desarrollador alinea con el programa las que lo contradicen). Si el golden master coincide al primer
 intento pero hay pruebas que fallan, la convergencia ya no sale: entra al bucle con esas pruebas en la primera
 petición. Sin golden master, o en modo no guiado, nada cambia.
+
+
+## Precisión P38 (2026-10-07): la sonda de SQL no prueba sentencias armadas en tiempo de ejecución
+
+La sonda de P32 tomaba como sentencia el fragmento literal de un `UPDATE … IN (` cuya lista de marcadores el
+adaptador arma en tiempo de ejecución, y PostgreSQL lo rechazaba como error de sintaxis: un falso positivo que escaló
+un adaptador correcto. Desde P38, una sentencia concatenada con código (y no solo con literales) se considera
+dinámica y no se prueba; sus errores, si los hay, los sigue mostrando el golden master.
