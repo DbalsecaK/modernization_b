@@ -50,5 +50,6 @@ reemplaza y se marca el anterior como "Reemplazado por ADR-NNNN".
 | [0042](0042-generacion-fiel-al-programa.md) | Generación fiel al programa (behaviour-preserving) en la extracción guiada | Aceptada |
 | [0043](0043-puertos-con-varias-salidas-y-convergencia-persistente.md) | Puertos con varias salidas, convergencia persistente e intentos con progreso | Aceptada |
 | [0044](0044-comparacion-honesta-con-el-legado.md) | Comparación honesta con el legado: salidas nunca asignadas, llamadas antes de un rechazo, progreso por severidad | Aceptada |
+| [0045](0045-escalacion-explicable.md) | Escalación explicable: código, diferencia y análisis con opciones en la pregunta de intentos agotados | Aceptada |
 
 Plantilla: contexto, decisión, alternativas consideradas, consecuencias y cómo se valida.

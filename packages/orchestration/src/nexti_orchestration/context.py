@@ -15,7 +15,16 @@ from decimal import Decimal
 from functools import partial
 from typing import Any, TypeVar
 
-from nexti_orchestration.model import Answer, Option, PhaseFailedError, PhaseSpec, QuestionSpec, RunContext
+from nexti_orchestration.model import (
+    Answer,
+    Evidence,
+    Explanation,
+    Option,
+    PhaseFailedError,
+    PhaseSpec,
+    QuestionSpec,
+    RunContext,
+)
 from nexti_orchestration.store import RunStore, Usage
 from nexti_sandbox import Sandbox
 
@@ -79,6 +88,56 @@ def _cut(exc: BaseException) -> bool:
     return type(exc).__name__ == "CutReplyError"
 
 
+Explain = Callable[[Sequence[Memo], str | None], Awaitable[Explanation]]
+
+RETRY = Option("retry", "Try again", "The diagnostic is attached; a new round may fix it.")
+STOP = Option("stop", "Stop the run", "Review the phase by hand before continuing.")
+
+
+def _escalation_question(
+    key: str, agent: str, what: str, limit: int, feedback: str | None, explained: Memo, phase: str
+) -> QuestionSpec:
+    """The decision card when attempts run out: with an explanation, its options (each with its confidence) and
+    the files as evidence; without one, retry or stop with the diagnostic alone."""
+    recommended = _option(explained.get("recommended")) or RETRY
+    alternatives = tuple(o for o in (_option(a) for a in explained.get("alternatives") or []) if o) or (STOP,)
+    if all(o.key != "stop" for o in (recommended, *alternatives)):
+        alternatives = (*alternatives, STOP)
+    summary = str(explained.get("summary") or "")
+    context = (f"{summary}\n\n" if summary else "") + (feedback or "")
+    return QuestionSpec(
+        key=key,
+        agent=agent,
+        text=f"{what} did not pass verification after {limit} attempts. How do we continue?",
+        context=context[:4000],
+        reason="retriesExhausted",
+        impact="high",
+        recommended=recommended,
+        confidence=float(explained.get("confidence") or recommended.confidence or 0.5),
+        alternatives=alternatives,
+        evidence=tuple(Evidence(**e) for e in explained.get("evidence") or []),
+        affects=(phase,),
+    )
+
+
+def _option(data: Any) -> Option | None:
+    if not isinstance(data, dict) or not data.get("key"):
+        return None
+    return Option(str(data["key"]), str(data.get("label") or data["key"]), str(data.get("rationale") or ""),
+                  data.get("confidence"), str(data.get("instruction") or ""))  # fmt: skip
+
+
+def _instruction(answer: Answer, question: QuestionSpec) -> str:
+    """What the next round is told: the person's comment, their free-text answer, or the instruction the chosen
+    option carries (an analysis proposed it)."""
+    if answer.comment.strip():
+        return answer.comment.strip()
+    if answer.option is None and answer.text.strip():
+        return answer.text.strip()
+    chosen = next((o for o in (question.recommended, *question.alternatives) if o.key == answer.option), None)
+    return chosen.instruction if chosen else ""
+
+
 class PhaseContext:
     def __init__(
         self,
@@ -135,7 +194,8 @@ class PhaseContext:
         answer = self.answers.get(str(question_id))
         if answer is None:
             raise NeedsAnswer([(question_id, question)])
-        return Answer(option=answer.get("option"), text=str(answer.get("text", "")), by=answer.get("by"))
+        return Answer(option=answer.get("option"), text=str(answer.get("text", "")), by=answer.get("by"),
+                      comment=str(answer.get("comment") or ""))  # fmt: skip
 
     async def fan_out(self, shards: Sequence[str], fn: Callable[["PhaseContext"], Awaitable[T]]) -> list[T]:
         """Run the same work over independent shards in parallel (subagents, 10.3). Questions from several shards
@@ -200,9 +260,12 @@ class PhaseContext:
         verify: Callable[[Any], Awaitable[Verification]],
         *,
         what: str,
+        explain: Explain | None = None,
     ) -> Attempt:
         """Work, verify deterministically, correct with the concrete error: at most `max_iterations` attempts per
-        round. When they run out, a person decides (retry or stop); the phase never advances half done (11.1)."""
+        round. When they run out, a person decides (retry, retry with an instruction, or stop) with the files and
+        an analysis in view when the phase provides them (`explain`, ADR-0045); the phase never advances half done
+        (11.1)."""
         limit = self.run.max_iterations
         feedback: str | None = None
         round_number = 0
@@ -210,12 +273,14 @@ class PhaseContext:
         while True:
             first = iteration + 1
             spent = 0  # attempts without progress: the ones that count (ADR-0043)
+            memos: list[Memo] = []
             while spent < limit and iteration < first - 1 + limit * ATTEMPTS_AT_MOST:
                 iteration += 1
                 memo = await self.step(
                     f"dvc/{agent}/{iteration}",
                     partial(self._attempt, agent, iteration, first, feedback, work, verify, what, spent),
                 )
+                memos.append(memo)
                 if memo["ok"]:
                     return Attempt(memo["artifact"], memo["summary"], _usage_from(memo["usage"]))
                 feedback = memo["diagnostic"]
@@ -226,23 +291,38 @@ class PhaseContext:
                 f"escalated/{agent}/{round_number}",
                 partial(self._escalated, agent, what, limit, feedback),
             )
-            answer = self.ask(
-                QuestionSpec(
-                    key=escalation_key,
-                    agent=agent,
-                    text=f"{what} did not pass verification after {limit} attempts. How do we continue?",
-                    context=(feedback or "")[:2000],
-                    reason="retriesExhausted",
-                    impact="high",
-                    recommended=Option("retry", "Try again", "The diagnostic is attached; a new round may fix it."),
-                    confidence=0.5,
-                    alternatives=(Option("stop", "Stop the run", "Review the phase by hand before continuing."),),
-                    affects=(self.phase.key,),
-                )
+            explained = await self.step(
+                f"explained/{agent}/{round_number}", partial(self._explained, explain, memos, feedback, what)
             )
-            if answer.option != "retry":
-                raise RunStoppedError(f"{what} stopped after escalation: {answer.text or answer.option}")
+            question = _escalation_question(escalation_key, agent, what, limit, feedback, explained, self.phase.key)
+            answer = self.ask(question)
+            if answer.option == "stop":
+                raise RunStoppedError(f"{what} stopped after escalation: {answer.comment or answer.option}")
+            instruction = _instruction(answer, question)
+            if instruction:
+                feedback = f"{feedback or ''}\n\nInstruction from the reviewer: {instruction}".strip()
             round_number += 1
+
+    async def _explained(
+        self, explain: "Explain | None", memos: Sequence[Memo], feedback: str | None, what: str
+    ) -> Memo:
+        """The explanation of a round, journaled: a failure to explain never blocks the question (the person
+        still decides, with the diagnostic alone)."""
+        if explain is None:
+            return {}
+        try:
+            found = await explain(memos, feedback)
+        except Exception as exc:
+            await self.store.event("info", "failed", f"{what}: the escalation could not be explained: {exc}"[:500],
+                                   phase=self.phase.key)  # fmt: skip
+            return {}
+        return {
+            "evidence": [asdict(e) for e in found.evidence],
+            "recommended": asdict(found.recommended) if found.recommended else None,
+            "alternatives": [asdict(o) for o in found.alternatives],
+            "confidence": found.confidence,
+            "summary": found.summary,
+        }
 
     async def _attempt(
         self,

@@ -2242,7 +2242,21 @@
     "bulkAccepted_one": "{{count}} recommendation accepted.",
     "bulkAccepted_other": "{{count}} recommendations accepted.",
     "empty": "Nothing here. Agents keep working and will ask when they need you.",
-    "addComment": "+ Add a comment"
+    "addComment": "+ Add a comment",
+    "evidence": {
+      "analysis": "Platform analysis",
+      "cause": "Cause",
+      "change": "What changed between attempts",
+      "instruction": "Instruction for the next attempt",
+      "diagnostic": "Diagnostic",
+      "code": "Code of the last attempt ({{file}}, attempt {{attempt}})",
+      "errorLines_one": "{{count}} line flagged",
+      "errorLines_other": "{{count}} lines flagged",
+      "diff": "Difference with the version before ({{file}})",
+      "linesChanged_one": "{{count}} line changed",
+      "linesChanged_other": "{{count}} lines changed",
+      "noChange": "No change against the version before"
+    }
   },
   "hitl": {
     "autonomyTitle": "Autonomy level",

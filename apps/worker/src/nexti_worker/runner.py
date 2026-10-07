@@ -96,7 +96,7 @@ async def _resume_value(
             rows = (
                 await conn.execute(
                     text(
-                        "SELECT id, answer, recommended, alternatives, answered_by FROM question "
+                        "SELECT id, answer, recommended, alternatives, answered_by, comment FROM question "
                         "WHERE run_id = :run AND id = ANY(:ids) AND status = 'answered'"
                     ),
                     {"run": run_id, "ids": ids},
@@ -121,7 +121,8 @@ def _answer(row: Any) -> dict[str, Any]:
     chosen, the person's text otherwise)."""
     keys = {row.recommended.get("key")} | {a.get("key") for a in row.alternatives}
     answer = str(row.answer)
-    return {"option": answer if answer in keys else None, "text": answer, "by": str(row.answered_by)}
+    return {"option": answer if answer in keys else None, "text": answer, "by": str(row.answered_by),
+            "comment": str(getattr(row, "comment", None) or "")}  # fmt: skip
 
 
 async def execute_run(runtime: Runtime, run_id: uuid.UUID, tenant_id: uuid.UUID) -> str:

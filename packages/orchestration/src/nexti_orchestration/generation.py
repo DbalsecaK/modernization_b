@@ -26,6 +26,7 @@ from nexti_core.spec.characterization import GoldenMaster
 from nexti_core.spec.model import Rule
 from nexti_orchestration import frontend, infrastructure
 from nexti_orchestration.context import Attempt, PhaseContext, Verification
+from nexti_orchestration.escalation import explainer, single_file
 from nexti_orchestration.extraction import ModelCaller, ReplyError, is_cut, parse_json, raise_if_cut
 from nexti_orchestration.fidelity import (
     DEVELOPER_OBLIGATIONS,
@@ -597,7 +598,8 @@ class GenerationPhases:
                 return Verification(True)
             return Verification(False, build.diagnostic(2000))
 
-        attempt = await ctx.do_verify_correct(TESTER, work, verify, what=what)
+        explain = explainer(self.port, self.port.models, what, single_file(pack.test_path(design, use_case)))
+        attempt = await ctx.do_verify_correct(TESTER, work, verify, what=what, explain=explain)
         return await self.port.load_file(attempt.artifact["file"])
 
     async def _service(
@@ -640,7 +642,12 @@ class GenerationPhases:
                 return Verification(False, "no test ran: the test class did not compile or was not found")
             return Verification(False, build.diagnostic())
 
-        attempt = await ctx.do_verify_correct(DEVELOPER, work, verify, what=f"{use_case.name}Service")
+        # When attempts run out the person sees the files and an analysis (ADR-0045); the analyst is called only
+        # in guided runs (the recorded runs never escalate, and must not start calling a model if they did).
+        explain = explainer(self.port, self.port.models if program else None, f"{use_case.name}Service",
+                            single_file(target))  # fmt: skip
+        attempt = await ctx.do_verify_correct(DEVELOPER, work, verify, what=f"{use_case.name}Service",
+                                              explain=explain)  # fmt: skip
         return await self.port.load_file(attempt.artifact["file"])
 
     async def _adapter(
@@ -674,5 +681,7 @@ class GenerationPhases:
             build = await pack.compile_and_test(sandbox, candidate, run_tests=False)
             return Verification(build.compiled, build.compile_errors[:4000])
 
-        attempt = await ctx.do_verify_correct(DEVELOPER, work, verify, what=f"Adapter {adapter}")
+        explain = explainer(self.port, self.port.models if guided_enabled(ctx.run.options) else None,
+                            f"Adapter {adapter}", single_file(target))  # fmt: skip
+        attempt = await ctx.do_verify_correct(DEVELOPER, work, verify, what=f"Adapter {adapter}", explain=explain)
         return await self.port.load_file(attempt.artifact["file"])

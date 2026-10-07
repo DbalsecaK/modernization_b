@@ -25,6 +25,7 @@ from nexti_orchestration.correction import (
     legacy_excerpts,
     named_in,
 )
+from nexti_orchestration.escalation import explainer, many_files
 from nexti_orchestration.extraction import ModelCaller, ReplyError, raise_if_cut
 from nexti_orchestration.packs import BackendPack
 from nexti_orchestration.scope import scope_files
@@ -448,7 +449,9 @@ async def converge(
         # A kept correction is progress: it does not count against the attempts of the round (ADR-0043).
         return Verification(False, summary + tests_note, progress=kept != "discarded")
 
-    await ctx.do_verify_correct(DEVELOPER, work, verify, what=f"{use_case.name} against the golden master")
+    what = f"{use_case.name} against the golden master"
+    explain = explainer(port, port.models, what, many_files, lambda: state["files"])
+    await ctx.do_verify_correct(DEVELOPER, work, verify, what=what, explain=explain)
     outcomes = state["outcomes"]
     result = Convergence(len(outcomes), differing(outcomes), int(state["iterations"]), tuple(sorted(state["changed"])),
                          list(state["findings"]))  # fmt: skip
