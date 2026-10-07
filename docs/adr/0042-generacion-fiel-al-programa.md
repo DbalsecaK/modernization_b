@@ -60,3 +60,15 @@ Sin la opción, ninguna petición cambia: las grabaciones (M4, M6, M6c, M8b, M10
   entradas en el diseño no se corrige aquí: aparecerá como diferencias persistentes y escalará a la persona.
 - Los flujos 3 (baseline), 2 (evidencia y ambigüedades) y 4 (clasificación de hallazgos) se alinearán en hitos
   posteriores (M25, M26).
+
+
+## Precisión P31 (2026-10-07): las pruebas se compilan antes de que el desarrollador las vea
+
+Una corrida real gastó los tres intentos del desarrollador (1,3 USD) en un archivo de pruebas que no compilaba por
+sí mismo: el test engineer usó un campo que no había declarado en su propio helper, y el paso del servicio solo
+deja al desarrollador escribir el servicio. Desde P31, en modo guiado, el paso de pruebas verifica cada respuesta
+del test engineer compilándola en el sandbox contra los contratos del diseño y un **servicio de relleno** que el pack
+genera con la forma que fijan los prompts (constructor con los puertos en el orden del caso de uso, `execute`): un
+archivo que no compila vuelve al test engineer con el diagnóstico del compilador, con los mismos intentos y
+escalado que cualquier otro paso. El modo no guiado no cambia (las grabaciones siguen iguales). Pendiente: el
+servicio de relleno en los packs .NET y Go (sin él, el paso se comporta como antes).

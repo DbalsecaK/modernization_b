@@ -483,7 +483,7 @@ class GenerationPhases:
             piece = ctx.for_shard(f"use-case:{use_case.name}")
             files[pack.test_path(design, use_case)] = await self._tests(
                 piece, pack, design, use_case, rules, files, criteria.get(use_case.name, ""),
-                programs.get(use_case.name, ""), tester_prompt,
+                programs.get(use_case.name, ""), tester_prompt, sandbox,
             )  # fmt: skip
             files[pack.service_path(design, use_case)] = await self._service(
                 piece, pack, design, use_case, rules, files, sandbox, programs.get(use_case.name, ""),
@@ -544,8 +544,9 @@ class GenerationPhases:
     async def _tests(
         self, ctx: PhaseContext, pack: BackendPack, design: Design, use_case: UseCase, rules: dict[str, Rule],
         files: dict[str, str], criteria: str = "", program: str = "", system_prompt: str = "",
+        sandbox: Sandbox | None = None,
     ) -> str:  # fmt: skip
-        async def work() -> Attempt:
+        async def work(iteration: int = 1, feedback: str | None = None) -> Attempt:
             request = (f"Design:\n{design.model_dump_json(indent=1)}\n\nUse case: {use_case.name}\n\n"
                        f"Rules:\n{_rules_text([rules[r] for r in use_case.rules if r in rules])}\n\n"
                        f"Existing files:\n{pack.existing(files, design)}")  # fmt: skip
@@ -560,11 +561,17 @@ class GenerationPhases:
                     "come only from the criteria and the rule scenarios: never compute a new expected amount yourself, "
                     f"and do not assert what no scenario states:\n{criteria}"
                 )
+            if feedback:
+                request += (
+                    "\n\nYour previous test file does not compile against the contracts of the design (the request "
+                    "and response records, the ports, BusinessError) or against itself; fix it and answer with the "
+                    f"whole file again:\n{feedback}"
+                )
             messages = [
                 {"role": "system", "content": system_prompt or prompt(pack.tester_prompt)},
                 {"role": "user", "content": request},
             ]
-            reply = await self.port.models.complete(TESTER, "generation", messages)
+            reply = await self.port.models.complete(TESTER, "generation", messages, iteration=iteration)
             try:
                 code = code_block(pack, reply.content)
             except ReplyError as exc:
@@ -573,7 +580,24 @@ class GenerationPhases:
             reference = await self.port.save_file(pack.test_path(design, use_case), code)
             return Attempt({"file": reference}, f"tests of {use_case.name}", reply.usage)
 
-        attempt = await ctx.invoke(TESTER, work, what=f"Tests of {use_case.name} from the rule scenarios")
+        what = f"Tests of {use_case.name} from the rule scenarios"
+        placeholder = getattr(pack, "placeholder_service", None)
+        if not program or sandbox is None or placeholder is None:
+            attempt = await ctx.invoke(TESTER, work, what=what)
+            return await self.port.load_file(attempt.artifact["file"])
+
+        # Behaviour-preserving generation (P31): the tests must compile against the design's contracts and a
+        # placeholder service before the developer sees them (a real run spent the developer's three attempts on
+        # a test file that referenced a field its own helper did not declare).
+        async def verify(artifact: dict[str, Any]) -> Verification:
+            candidate = {**files, pack.test_path(design, use_case): await self.port.load_file(artifact["file"])}
+            candidate.update(placeholder(design, use_case))
+            build: BuildResult = await pack.compile_and_test(sandbox, candidate)
+            if build.compiled:
+                return Verification(True)
+            return Verification(False, build.diagnostic(2000))
+
+        attempt = await ctx.do_verify_correct(TESTER, work, verify, what=what)
         return await self.port.load_file(attempt.artifact["file"])
 
     async def _service(

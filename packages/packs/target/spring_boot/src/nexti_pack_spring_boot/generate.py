@@ -132,6 +132,27 @@ def contract_files(design: Design, use_case: UseCase) -> list[tuple[str, str]]:
     ]
 
 
+def placeholder_service(design: Design, use_case: UseCase) -> tuple[str, str]:
+    """A service that compiles and does nothing, with the shape the prompts fix for the real one (one constructor
+    with the ports in the order the use case lists them, `execute(request)`): the tests are compiled against it
+    before the developer writes the service, so a test file that does not compile goes back to the test engineer
+    instead of burning the developer's attempts (ADR-0042, P31)."""
+    package = f"{design.base_package}.application"
+    ports = [next(p for p in design.ports if p.name == name) for name in use_case.ports]
+    params = ", ".join(f"{p.name} {p.name[:1].lower() + p.name[1:]}" for p in ports)
+    imports = "".join(f"import {design.base_package}.domain.port.{p.name};\n" for p in ports)
+    contracts = f"{design.base_package}.adapters.in.rest"
+    body = (
+        f"package {package};\n\n{imports}import {contracts}.{use_case.name}Request;\n"
+        f"import {contracts}.{use_case.name}Response;\n\n"
+        "/** Placeholder: the tests are compiled against it before the service exists. */\n"
+        f"public class {use_case.name}Service {{\n\n    public {use_case.name}Service({params}) {{\n    }}\n\n"
+        f"    public {use_case.name}Response execute({use_case.name}Request request) {{\n"
+        '        throw new UnsupportedOperationException("placeholder");\n    }\n}\n'
+    )
+    return service_path(design, use_case), body
+
+
 def controller_file(design: Design, use_case: UseCase) -> tuple[str, str]:
     package = f"{design.base_package}.adapters.in.rest"
     service = f"{design.base_package}.application.{use_case.name}Service"
