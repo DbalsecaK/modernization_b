@@ -95,3 +95,15 @@ primero). Desde P33: el resumen de diferencias conserva el final del mensaje de 
 la petición de corrección incluye el esquema destino cuando un adaptador está entre los archivos, y la verificación
 prepara el SQL de cada adaptador corregido contra el esquema antes de correr el golden master (el mensaje de la
 base de datos es el diagnóstico, y se ahorra la corrida de los casos).
+
+
+## Precisión P35 (2026-10-07): con el golden master como oráculo, las pruebas unitarias no bloquean antes de la convergencia
+
+El diseño corregido por P34 llevó la corrida hasta el paso del servicio, que escaló porque una prueba unitaria
+escrita por el modelo esperaba un argumento distinto del que producía el servicio. Esa prueba puede estar mal: el
+oráculo de la generación fiel es el golden master, no las pruebas del modelo. Desde P35, con generación fiel y un
+golden master congelado, el servicio y la compilación final exigen que el proyecto compile y que las pruebas corran;
+las que fallan pasan a la convergencia, que solo termina cuando coinciden todos los casos **y** pasan todas las
+pruebas (el desarrollador alinea con el programa las que lo contradicen). Si el golden master coincide al primer
+intento pero hay pruebas que fallan, la convergencia ya no sale: entra al bucle con esas pruebas en la primera
+petición. Sin golden master, o en modo no guiado, nada cambia.
