@@ -9,7 +9,7 @@ from typing import Any
 
 from nexti_core.spec.characterization import GoldenMaster, Scalar
 from nexti_core.spec.equivalence import EquivalenceRun
-from nexti_pack_spring_boot import mongodb, mysql, oracle
+from nexti_pack_spring_boot import mongodb, mysql, oracle, sqlprobe
 from nexti_pack_spring_boot.build import IMAGE, compile_and_test
 from nexti_pack_spring_boot.canary import Mutation, mutations
 from nexti_pack_spring_boot.design import Design, Port, UseCase
@@ -132,6 +132,10 @@ class SpringBootPack:
     ) -> BuildResult:
         return await compile_and_test(sandbox, files, run_tests=run_tests)
 
+    async def probe_sql(self, sandbox: Sandbox, files: Mapping[str, str], path: str) -> str:
+        """The errors PostgreSQL reports when the adapter's SQL is prepared against the schema (P32), or ""."""
+        return await sqlprobe.probe_sql(sandbox, files, path)
+
     async def run_equivalence(
         self, sandbox: Sandbox, files: dict[str, str], design: Design, use_case: UseCase, master: GoldenMaster,
         defaults: dict[str, Scalar] | None = None,
@@ -162,6 +166,9 @@ class SpringBootOraclePack(SpringBootPack):
             "<scope>runtime</scope></dependency>",
         )
         return files
+
+    async def probe_sql(self, sandbox: Sandbox, files: Mapping[str, str], path: str) -> str:
+        return ""  # another engine: the SQL probe is PostgreSQL's for now (P32)
 
     def adapter_request(self, design: Design, port: str, files: Mapping[str, str]) -> str:
         return (
@@ -201,6 +208,9 @@ class SpringBootMySqlPack(SpringBootPack):
         )
         return files
 
+    async def probe_sql(self, sandbox: Sandbox, files: Mapping[str, str], path: str) -> str:
+        return ""  # another engine: the SQL probe is PostgreSQL's for now (P32)
+
     def adapter_request(self, design: Design, port: str, files: Mapping[str, str]) -> str:
         return (
             f"Write the JDBC adapter Jdbc{port} of the port {port}. The database is MySQL 8.4 with a strict sql_mode: "
@@ -227,6 +237,9 @@ class SpringBootMongoDbPack(SpringBootPack):
     project instead of Spring JDBC and PostgreSQL, and the golden master compared by collection against MongoDB in its
     sandbox. The adapters are `Mongo<Port>` in `<base>.adapters.out.mongodb`, next to the platform's
     MongoTransaction."""
+
+    async def probe_sql(self, sandbox: Sandbox, files: Mapping[str, str], path: str) -> str:
+        return ""  # another engine: the SQL probe is PostgreSQL's for now (P32)
 
     image = mongodb.IMAGE
     database = "mongodb"

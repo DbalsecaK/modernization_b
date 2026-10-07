@@ -328,3 +328,30 @@ def test_a_block_without_a_path_is_matched_by_the_type_it_declares() -> None:
     assert files_from_reply(inside, known) == {"src/main/java/x/JdbcOrders.java": "class JdbcOrders {}\n"}
     with pytest.raises(ReplyError):  # a type none of the given files declares
         files_from_reply("```java\nclass Other {}\n```", known)
+
+
+def test_the_files_where_the_cases_crashed_reach_the_developer_even_when_nothing_names_them() -> None:
+    from nexti_orchestration.correction import failure_files, frame_of
+
+    port = next(p for p in DESIGN.ports if not p.legacy_program)
+    stub_port = next(p for p in DESIGN.ports if p.legacy_program)
+    adapter = adapter_path(DESIGN, port)
+    stub_adapter = adapter_path(DESIGN, stub_port)
+    files = {SERVICE: "svc", adapter: "class A {}", stub_adapter: "class S {}"}
+    crash = (
+        "org.springframework.jdbc.BadSqlGrammarException: PreparedStatementCallback; bad SQL grammar [SELECT x] at "
+        f"com.bank.pay.adapters.out.persistence.Jdbc{port.name}.find(Jdbc{port.name}.java:42)"
+    )
+    stub_name = f"Jdbc{stub_port.name}"
+    stub_crash = f"java.lang.IllegalStateException: boom at com.bank.pay.adapters.{stub_name}.go({stub_name}.java:7)"
+    assert frame_of(crash) == f"Jdbc{port.name}(Jdbc{port.name}.java:42)"
+    assert frame_of("no frame here") is None
+    assert failure_files([crash, crash, stub_crash, None], files) == {adapter: 2, stub_adapter: 1}
+    # The crash sites come right after the service, the stubbed port's adapter included when a crash names it.
+    chosen = list(files_to_correct(SPRING, DESIGN, USE_CASE, files, set(), [crash, stub_crash]))
+    assert chosen == [SERVICE, adapter, stub_adapter]
+    assert list(files_to_correct(SPRING, DESIGN, USE_CASE, files, set())) == [SERVICE]
+    # The digest says where the crash happened, even when the message is long.
+    long_message = "x" * 400 + " at com.bank.pay.application.PayOrderService.execute(PayOrderService.java:12)"
+    (line, *_rest) = difference_digest([CaseOutcome("d", ("RULE-001",), (), long_message)]).splitlines()
+    assert line.endswith(" [at PayOrderService(PayOrderService.java:12)]")

@@ -72,3 +72,16 @@ genera con la forma que fijan los prompts (constructor con los puertos en el ord
 archivo que no compila vuelve al test engineer con el diagnóstico del compilador, con los mismos intentos y
 escalado que cualquier otro paso. El modo no guiado no cambia (las grabaciones siguen iguales). Pendiente: el
 servicio de relleno en los packs .NET y Go (sin él, el paso se comporta como antes).
+
+
+## Precisión P32 (2026-10-07): el SQL del adaptador se prueba contra el esquema, y las caídas nombran su archivo
+
+La corrida completa desde inventario llegó a Generation con 68 de 73 casos caídos por `BadSqlGrammarException`: el
+adaptador del catálogo consultaba una tabla de búsqueda del legado que el diseño no conserva. El paso de
+adaptadores solo compilaba, y la convergencia nunca entregó ese archivo al desarrollador (elige por los nombres
+legados que aparecen en las diferencias, y una excepción no los nombra). Desde P32: (1) en modo guiado, cada
+adaptador se verifica además **preparando su SQL contra el esquema destino** en el sandbox (`PREPARE` de
+PostgreSQL; `pack.probe_sql`, por ahora solo en el pack PostgreSQL); un error vuelve al desarrollador con la
+sentencia; (2) `files_to_correct` incluye los archivos que nombran los marcos de pila de las caídas (el arnés
+conserva el primer marco del paquete generado), justo después del servicio, y el resumen de diferencias dice dónde
+cayó cada caso.

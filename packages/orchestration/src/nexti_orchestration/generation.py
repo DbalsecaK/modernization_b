@@ -674,12 +674,22 @@ class GenerationPhases:
                 raise
             return Attempt({"file": await self.port.save_file(target, code)}, adapter, reply.usage)
 
+        probe_sql = getattr(pack, "probe_sql", None) if guided_enabled(ctx.run.options) else None
+
         async def verify(artifact: dict[str, Any]) -> Verification:
             candidate = dict(files)
             candidate[target] = await self.port.load_file(artifact["file"])
             candidate.update(pack.probe(design, target))
             build = await pack.compile_and_test(sandbox, candidate, run_tests=False)
-            return Verification(build.compiled, build.compile_errors[:4000])
+            if not build.compiled:
+                return Verification(False, build.compile_errors[:4000])
+            # The SQL must run on the target schema (P32): a query on a table or column the design does not keep
+            # compiles fine and crashes every golden-master case later, in a step that cannot show this file.
+            errors = await probe_sql(sandbox, candidate, target) if probe_sql else ""
+            if errors:
+                return Verification(False, "the SQL of the adapter does not run on the target schema (only the "
+                                    f"tables and columns of the schema exist):\n{errors[:3500]}")  # fmt: skip
+            return Verification(True)
 
         explain = explainer(self.port, self.port.models if guided_enabled(ctx.run.options) else None,
                             f"Adapter {adapter}", single_file(target))  # fmt: skip

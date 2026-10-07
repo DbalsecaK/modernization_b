@@ -90,8 +90,10 @@ def difference_digest(outcomes: Sequence[CaseOutcome], at_most: int = 12) -> str
     if failures:
         # A case that could not run comes first: nothing of it could be compared, and the exception names the
         # cause (a BigDecimal scale without a rounding mode, a null the legacy tolerates, an unmapped type).
+        where = frame_of(failures[0].failure)
         lines.insert(0, f"- {len(failures)} case(s) could not run on the target (first to fix: the legacy ran them), "
-                        f"e.g. {failures[0].name}: {str(failures[0].failure)[:300]}")  # fmt: skip
+                        f"e.g. {failures[0].name}: {str(failures[0].failure)[:300]}"
+                        + (f" [at {where}]" if where else ""))  # fmt: skip
     return "\n".join(lines)
 
 
@@ -202,18 +204,50 @@ def case_examples(master: GoldenMaster | None, outcomes: Sequence[CaseOutcome], 
     return "\n".join(out)
 
 
+FRAME = re.compile(r"\bat ([A-Za-z_][\w.]*)\.[\w$<>]+\(([\w$]+\.\w+):(\d+)\)")
+
+
+def frame_of(failure: str | None) -> str | None:
+    """Where a crash happened in the generated code, as the harness reports it: `Class.method(File.java:12)`."""
+    match = FRAME.search(failure or "")
+    return f"{match.group(1).rsplit('.', 1)[-1]}({match.group(2)}:{match.group(3)})" if match else None
+
+
+def failure_files(failures: Sequence[str | None], files: Mapping[str, str]) -> dict[str, int]:
+    """The files the stack frames of the crashes name (the harness keeps the first frame inside the generated
+    package), by how many cases crashed in them (P32: a real run crashed 68 cases in an adapter the developer never
+    saw)."""
+    counts: Counter[str] = Counter()
+    for failure in failures:
+        for match in FRAME.finditer(failure or ""):
+            class_name = match.group(1).rsplit(".", 1)[-1].split("$", 1)[0]
+            path = next((p for p in files if p.rsplit("/", 1)[-1].rsplit(".", 1)[0] == class_name), None)
+            if path:
+                counts[path] += 1
+    return dict(counts)
+
+
 def files_to_correct(
-    pack: BackendPack, design: Design, use_case: UseCase, files: Mapping[str, str], names: Mapping[str, int] | set[str]
+    pack: BackendPack,
+    design: Design,
+    use_case: UseCase,
+    files: Mapping[str, str],
+    names: Mapping[str, int] | set[str],
+    failures: Sequence[str | None] = (),
 ) -> dict[str, str]:
-    """The service of the use case and the adapters of the entities that name a table or program of the
-    differences (by their legacy name, or by the entity that keeps it), the service first and then the adapters the
-    differences point at most; at most `FILES_AT_MOST`. The adapters of ports that replace legacy programs are left
-    out: the harness stubs those ports, so their code never runs in the verification."""
+    """The service of the use case, the files where the cases crashed, and the adapters of the entities that name
+    a table or program of the differences (by their legacy name, or by the entity that keeps it): the service
+    first, then the crash sites, then the adapters the differences point at most; at most `FILES_AT_MOST`. The
+    adapters of ports that replace legacy programs are left out unless a crash names them: the harness stubs those
+    ports, so their code never runs in the verification."""
     weights: dict[str, int] = dict(names) if isinstance(names, Mapping) else dict.fromkeys(names, 1)
     service = pack.service_path(design, use_case)
     chosen: dict[str, str] = {}
     if service in files:
         chosen[service] = files[service]
+    for path, _count in sorted(failure_files(failures, files).items(), key=lambda item: -item[1]):
+        if path not in chosen and len(chosen) < FILES_AT_MOST:
+            chosen[path] = files[path]
     aliases: dict[str, int] = dict(weights)
     for entity in design.entities:
         if entity.legacy_table and (table := entity.legacy_table.rsplit(".", 1)[-1].lower()) in weights:
