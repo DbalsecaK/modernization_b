@@ -109,7 +109,10 @@ class SourceAdapter(Protocol):
 
 
 class LegacyUnavailableError(RuntimeError):
-    """The legacy cannot be run now: its engine is missing or did not start, or a replay has no recording."""
+    """The legacy cannot be run now: its engine is missing or did not start, or a replay has no recording.
+    `transient` says a new try may work (the engine did not start or answer in time, typically a busy host)."""
+
+    transient: bool = False
 
 
 class LegacyRunner(Protocol):

@@ -265,3 +265,43 @@ async def test_the_guided_suite_comes_in_pieces_and_a_diagnostic_re_asks_only_it
     covered = {r for recorded in port.master.results for r in recorded.case.rules}
     assert covered >= {r.id for r in RULES}
     assert "case(s) frozen" in result.summary
+
+
+async def test_a_late_engine_is_tried_again_before_the_phase_waits(monkeypatch: pytest.MonkeyPatch) -> None:
+    # ADR-0046: a busy host makes Sybase late; the phase tries again after short waits before waiting for a
+    # person, and an engine that never comes still makes the phase wait.
+    from nexti_adapter_sybase.ase import LegacyEngineTimeoutError
+    from nexti_orchestration import characterization
+
+    slept: list[float] = []
+
+    async def no_sleep(seconds: float) -> None:
+        slept.append(seconds)
+
+    monkeypatch.setattr(characterization, "engine_sleep", no_sleep)
+    recorded = RecordedRunner(FIXTURES / "golden", "replay")
+
+    class LateRunner:
+        engine = recorded.engine
+
+        def __init__(self, late: int) -> None:
+            self.late = late
+
+        async def run(self, files: list[SourceFile], suite: Suite) -> GoldenMaster:
+            if self.late:
+                self.late -= 1
+                raise LegacyEngineTimeoutError("the Sybase engine did not answer within 300 s")
+            return await recorded.run(files, suite)
+
+    port = MemoryPort(LateRunner(late=2), [SUITE])
+    ctx, store = _context()
+    result = await CharacterizationPhases(port).characterization(ctx)
+    assert result.summary.startswith("Golden master: 12 case(s) frozen")
+    assert slept == [60, 180]
+    assert sum("The legacy engine is late" in e.message for e in store.events) == 2
+    # Never comes: after the waits the phase waits for a person, as before.
+    slept.clear()
+    ctx, _ = _context()
+    with pytest.raises(PhaseUnavailableError, match="did not answer"):
+        await CharacterizationPhases(MemoryPort(LateRunner(late=9), [SUITE])).characterization(ctx)
+    assert slept == [60, 180]

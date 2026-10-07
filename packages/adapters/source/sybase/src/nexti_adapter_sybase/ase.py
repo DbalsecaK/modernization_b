@@ -22,6 +22,12 @@ _SA = ("sa", "myPassword", "MYSYBASE")
 _ISQL = ". /opt/sybase/SYBASE.sh && isql -U{0} -P{1} -S{2} -w 32000 -b"
 
 
+class LegacyEngineTimeoutError(LegacyUnavailableError):
+    """The engine did not start or answer in time: a new try may work (a busy host, ADR-0046)."""
+
+    transient = True
+
+
 class LegacyEngineError(LegacyUnavailableError):
     """The engine could not be started or did not answer."""
 
@@ -64,7 +70,7 @@ class AseRunner:
         except FileNotFoundError as exc:
             raise LegacyEngineError(f"{self.docker} is not installed") from exc
         if code != 0:
-            raise LegacyEngineError(f"the Sybase engine did not start: {output[:300]}")
+            raise LegacyEngineTimeoutError(f"the Sybase engine did not start: {output[:300]}")
         deadline = time.monotonic() + self.start_seconds
         while time.monotonic() < deadline:
             # The image's entrypoint resizes master and creates its login before it prints this line.
@@ -73,7 +79,7 @@ class AseRunner:
                 return name
             await asyncio.sleep(3)
         await self._stop(name)
-        raise LegacyEngineError(f"the Sybase engine did not answer within {self.start_seconds} s")
+        raise LegacyEngineTimeoutError(f"the Sybase engine did not answer within {self.start_seconds} s")
 
     async def _stop(self, name: str) -> None:
         await asyncio.to_thread(self._cli, ["kill", name], None, 60)

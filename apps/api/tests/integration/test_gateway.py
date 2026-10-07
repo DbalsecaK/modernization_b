@@ -608,3 +608,31 @@ async def test_a_tenants_local_models_are_invisible_to_other_tenants(
                     tenant_id=tenant_a,
                 )
             )
+
+
+async def test_a_provider_outage_is_waited_out_instead_of_failing_the_run(
+    app_engine: AsyncEngine, owner_engine: AsyncEngine, http: httpx.AsyncClient, tenant: Tenant
+) -> None:
+    # ADR-0046: every plan failed with 503 (a provider outage); the gateway waits and tries the chain again.
+    pauses: list[float] = []
+
+    async def record_sleep(seconds: float) -> None:
+        pauses.append(seconds)
+
+    patient = ModelGateway(app_engine, secrets_store(http), OpenRouterClient(http), sleep=record_sleep,
+                           patience_seconds=(30.0, 60.0))  # fmt: skip
+    outage = [httpx.Response(503, json={"error": {"message": "overloaded", "code": 503}})] * 6
+    with mock_openrouter() as router:
+        router.post(f"{BASE_URL}/chat/completions").mock(side_effect=[*outage, httpx.Response(200, json=CHAT)])
+        result = await patient.complete(CallContext(tenant.id), MESSAGES)
+    assert result.content
+    assert 30.0 in pauses  # the patient pause between rounds, besides the short backoffs inside a plan
+    # A refusal that is not transient fails at once, without patience.
+    pauses.clear()
+    with mock_openrouter() as router:
+        router.post(f"{BASE_URL}/chat/completions").mock(
+            return_value=httpx.Response(400, json={"error": {"message": "bad request", "code": 400}})
+        )
+        with pytest.raises(ProviderCallError):
+            await patient.complete(CallContext(tenant.id), MESSAGES)
+    assert 30.0 not in pauses

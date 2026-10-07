@@ -323,3 +323,23 @@ async def test_a_failed_run_is_queued_again_to_retry_from_its_failed_phase(
     redone = api.post(f"/api/v1/projects/{project_id}/runs/{run['id']}:retry", json={"phase": "design"},
                       headers=headers)  # fmt: skip
     assert (redone.status_code, redone.json()["status"]) == (200, "queued"), redone.text
+
+
+async def test_a_run_waiting_for_an_unavailable_phase_is_queued_again_without_a_reset(
+    api: TestClient, app_engine: AsyncEngine, owner_engine: AsyncEngine, fga: OpenFga, world: World
+) -> None:
+    # ADR-0046: the legacy engine did not come back in time; a person queues the run again (no manual SQL).
+    headers = sign_in(api, world.a_user)
+    project_id = await configured_project(owner_engine, world)
+    await reconcile(app_engine, fga)
+    run = api.post(f"/api/v1/projects/{project_id}/runs", json={"kind": "pipeline"}, headers=headers).json()
+    await execute(owner_engine, "UPDATE run SET status = 'waiting', waiting_reason = 'phaseUnavailable', "
+                                "current_phase = 'characterization' WHERE id = :r", r=uuid.UUID(run["id"]))  # fmt: skip
+    await execute(owner_engine, "UPDATE procrastinate_jobs SET status = 'succeeded' WHERE args->>'run_id' = :r",
+                  r=run["id"])  # fmt: skip
+    queued = api.post(f"/api/v1/projects/{project_id}/runs/{run['id']}:retry", headers=headers)
+    assert queued.status_code == 200, queued.text
+    assert (queued.json()["status"], queued.json()["currentPhase"]) == ("waiting", "characterization")
+    assert [j["status"] for j in await jobs_of(owner_engine, uuid.UUID(run["id"]))] == ["succeeded", "todo"]
+    (row,) = await fetch(owner_engine, "SELECT retry_from FROM run WHERE id = :r", r=uuid.UUID(run["id"]))
+    assert row["retry_from"] is None  # nothing reset: the phase resumes where it waited
