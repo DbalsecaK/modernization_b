@@ -69,3 +69,13 @@ permitidas. Sin la opción no cambia ningún pedido: las grabaciones (M4, M6, M6
   con el motivo.
 - Recomendación operativa: marcar C3 como compuerta obligatoria en los proyectos reales; la verificación por código
   reduce el riesgo, no sustituye la revisión del arquitecto humano.
+
+
+## Precisión P34 (2026-10-07): toda tabla que el programa lee se conserva o se enmascara
+
+El golden master carga en el destino las filas que un caso prepara solo a través de la entidad que conserva la
+tabla. Un diseño real omitió dos tablas que el programa lee (destinos de crédito e histórico): sus filas nunca
+llegaron al destino, los lookups devolvían vacío y cuatro casos difirieron seis rondas seguidas en los argumentos
+de la notificación, sin que ningún código pudiera arreglarlo. Desde P34, en el diseño guiado, cada tabla que el
+programa lee necesita una entidad con `legacy_table` o una máscara `tables:` con su razón (visible en C3 y en el
+veredicto); nunca se omite en silencio.

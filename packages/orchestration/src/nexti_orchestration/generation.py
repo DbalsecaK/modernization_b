@@ -250,6 +250,17 @@ def mask_problems(
     if missing:
         problems.append("legacy tables the program writes need an entity with legacy_table: "
                         f"{', '.join(missing)}")  # fmt: skip
+    # The golden master inserts the rows of every table a case sets up only when an entity keeps the table (P34):
+    # a table the program reads and the design drops leaves every lookup empty on the target, and no code can
+    # fix it (a real run spent six rounds on four cases whose destination rows never reached the target). A read
+    # table is an entity, or a declared mask with its reason, never silently dropped.
+    masked = {table_of(m.path.partition(":")[2]) for m in design.masks if m.path.startswith("tables:")}
+    dropped = sorted(t for t in (read or set()) if t not in kept and t not in masked)
+    if dropped:
+        problems.append("legacy tables the program reads need an entity with legacy_table (the golden master loads "
+                        "their rows on the target through the entity; without it every lookup returns nothing) or, "
+                        "when the target truly does not need them, a `tables:` mask with its reason: "
+                        f"{', '.join(dropped)}")  # fmt: skip
     return problems
 
 

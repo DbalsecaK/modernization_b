@@ -410,3 +410,32 @@ def test_a_guided_design_gives_one_method_to_a_port_that_replaces_a_program() ->
     ]
     # Not guided: the recorded runs keep their designs as they are.
     assert design_problems(Design.model_validate(data), RULES) == []
+
+
+def test_a_guided_design_keeps_or_masks_every_table_the_program_reads() -> None:
+    from nexti_core.adapters import SourceFile as File
+    from nexti_core.spec.design import Design
+    from nexti_core.spec.model import Rule as SpecRule
+    from nexti_orchestration.generation import design_problems
+
+    # P34: the golden master loads a case's rows on the target only through an entity; a read table the design
+    # drops silently leaves every lookup empty (a real run spent six rounds on four cases for this).
+    source = "create proc sp_p as\nselect @c = cta from db_a..cl_destino where id = 1\nselect @v = 1\n"
+    files = [File("p.sp", source)]
+    rule = SpecRule.model_validate({"id": "RULE-001", "name": "rule name", "category": "validation", "priority": "P1",
+                                    "statement": "a statement long enough",
+                                    "sources": [{"file": "p.sp", "line_start": 3, "line_end": 3}]})  # fmt: skip
+    design = Design.model_validate({
+        "context": "x", "base_package": "com.x.y", "use_cases": [{"name": "Uc", "rules": ["RULE-001"]}],
+        "masks": [{"path": "tables:db_a..pg_config", "reason": "a lookup the target does not need"}],
+    })  # fmt: skip
+    read = {"cl_destino", "pg_config"}
+    assert design_problems(design, [rule], files=files, written=set(), read=read) == []  # not guided: as before
+    (problem,) = design_problems(design, [rule], hints=True, files=files, written=set(), read=read)
+    assert problem.startswith("legacy tables the program reads need an entity with legacy_table")
+    assert problem.endswith("a `tables:` mask with its reason: cl_destino")  # pg_config is masked with a reason
+    kept = design.model_copy(update={"entities": [
+        {"name": "Destino", "table": "destination", "legacy_table": "db_a..cl_destino", "fields": [
+            {"name": "id", "type": "integer(32,signed)", "legacy": "id"}]}]})  # fmt: skip
+    kept = Design.model_validate(kept.model_dump())
+    assert design_problems(kept, [rule], hints=True, files=files, written=set(), read=read) == []
