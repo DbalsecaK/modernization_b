@@ -67,3 +67,37 @@ def test_traces_are_recognised_and_described_for_the_engineer() -> None:
     assert "the golden master of PAGOORD comes from its recorded traces" in digest
     assert "trace saldo_insuficiente" in digest
     assert "table ORDENES (key ORD_NUMERO, ORD_EMPRESA)" in digest
+
+
+def _with_executed(files: list[SourceFile], ran: dict[str, list[str]]) -> list[SourceFile]:
+    """The workspace with the trace tool's `executed` added to the named results (step 11 of the plan)."""
+    out = []
+    for file in files:
+        if is_trace(file):
+            data = json.loads(file.text)
+            for result in data["results"]:
+                if result["case"]["name"] in ran:
+                    result["executed"] = ran[result["case"]["name"]]
+            file = SourceFile(file.path, json.dumps(data))
+        out.append(file)
+    return out
+
+
+async def test_the_paragraphs_each_trace_ran_are_the_coverage_of_the_legacy() -> None:
+    # Step 11 of the plan (ADR-0047): with what the trace tool saw each case run, the golden master measures the
+    # paragraphs; a paragraph no traced case ran is a gap like a Sybase branch.
+    files = workspace()
+    branches = CobolAdapter().coverage_branches(files, "PAGOORD")
+    assert len(branches) >= 2
+    assert {b.kind for b in branches} == {"paragraph"}
+    first = branches[0].id
+    traced = _with_executed(files, {"pago_web_exitoso": [first], "orden_invalida": [first]})
+    cases = (Case(name="pago_web_exitoso", rules=["RULE-006"]), Case(name="orden_invalida", rules=["RULE-001"]))
+    master = await TraceRunner(branches=CobolAdapter().coverage_branches).run(traced, suite(*cases))
+    assert master.coverage is not None
+    assert master.coverage.exercised == {first}
+    assert len(master.coverage.not_exercised) == len(branches) - 1
+    # Without `executed` in every case nothing is measured: a silent case is not a case that ran nothing.
+    partial = _with_executed(files, {"pago_web_exitoso": [first]})
+    assert (await TraceRunner(branches=CobolAdapter().coverage_branches).run(partial, suite(*cases))).coverage is None
+    assert (await TraceRunner().run(traced, suite(*cases))).coverage is None  # no adapter, no branches

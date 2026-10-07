@@ -28,7 +28,7 @@ from nexti_adapter_cobol.parser import (
 from nexti_adapter_cobol.traces import TraceRunner, TraceSet, is_trace, load_traces
 from nexti_adapter_cobol.types import TypeMapping, to_neutral
 from nexti_core.adapters import Edge, EdgeType, Inventory, Node, SliceView, SourceFile
-from nexti_core.spec.characterization import EngineQuirk
+from nexti_core.spec.characterization import CoveredBranch, EngineQuirk
 from nexti_core.spec.screens import ScreenSpec
 
 PROGRAM_EXTENSIONS = (".cbl", ".cob", ".cobol")
@@ -305,6 +305,16 @@ class CobolAdapter:
     def engine_quirks(self, files: list[SourceFile]) -> list[EngineQuirk]:
         """No engine quirk catalogued for this technology yet (M28)."""
         return []
+
+    def coverage_branches(self, files: list[SourceFile], program: str) -> list[CoveredBranch]:
+        """The paragraphs of a program, the unit a CICS trace tool reports as executed (step 11 of the plan,
+        ADR-0047): a trace result lists the paragraphs it ran under `executed`."""
+        programs, _ = self._programs(files)
+        found = next((p for p in programs if p.name.upper() == program.upper()), None)
+        if found is None:
+            return []
+        return [CoveredBranch(id=p.name, kind="paragraph", line_start=p.line_start, line_end=p.line_end,
+                              file=found.file) for p in found.paragraphs]  # fmt: skip
 
     def digest(self, files: list[SourceFile]) -> str:
         """Transactions, programs with what they use, file records and, when the legacy cannot run, the traces the

@@ -9,7 +9,7 @@ of the traces (by name, or by the same inputs), and the observation is the recor
 observation: a case without a trace is an error that goes back to the engineer with the traces available."""
 
 import json
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from pathlib import PurePosixPath
 
@@ -18,6 +18,8 @@ from pydantic import ValidationError
 from nexti_core.adapters import SourceFile
 from nexti_core.spec.characterization import (
     TRACE_ENGINES,
+    Coverage,
+    CoveredBranch,
     GoldenMaster,
     Recorded,
     Schema,
@@ -35,6 +37,7 @@ class TraceSet:
     schema: Schema
     results: tuple[Recorded, ...]
     engine: str = "cics-trace"
+    executed: Mapping[str, tuple[str, ...]] | None = None  # trace name -> branches it ran, when the tool says
 
 
 def is_trace(file: SourceFile) -> bool:
@@ -53,10 +56,13 @@ def load_traces(files: list[SourceFile]) -> tuple[list[TraceSet], list[str]]:
             if data.get("engine") not in TRACE_ENGINES:
                 problems.append(f"{file.path}: not a recorded trace (engine {data.get('engine')!r})")
                 continue
-            results = tuple(Recorded.model_validate(r) for r in data["results"])
+            # `executed` (step 11 of the plan): the paragraphs or methods the trace tool saw the case run.
+            raw = [dict(r) for r in data["results"]]
+            ran = {str(r["case"]["name"]): tuple(str(b) for b in r.pop("executed")) for r in raw if "executed" in r}
+            results = tuple(Recorded.model_validate(r) for r in raw)
             sets.append(TraceSet(str(data["program"]).upper(), str(data.get("transaction", "")).upper(), file.path,
                                  Schema.model_validate(data.get("schema", {})), results,
-                                 str(data["engine"])))  # fmt: skip
+                                 str(data["engine"]), ran or None))  # fmt: skip
         except (ValueError, KeyError, ValidationError) as exc:
             problems.append(f"{file.path}: unreadable trace ({str(exc)[:200]})")
     return sets, problems
@@ -74,6 +80,10 @@ class TraceRunner:
 
     engine = "cics-trace"  # until a run reads the traces: then the engine they were recorded with
 
+    def __init__(self, branches: Callable[[list[SourceFile], str], list[CoveredBranch]] | None = None) -> None:
+        # The branches of the program (COBOL paragraphs, page methods) from its source adapter (step 11 of the plan).
+        self.branches = branches
+
     async def run(self, files: list[SourceFile], suite: Suite) -> GoldenMaster:
         sets, problems = load_traces(files)
         program = suite.program.rsplit(".", 1)[-1].upper()
@@ -84,6 +94,7 @@ class TraceRunner:
                              + (f"; {'; '.join(problems)}" if problems else ""))  # fmt: skip
         results: list[Recorded] = []
         missing: list[str] = []
+        ran: dict[str, list[str]] = {}
         for case in suite.cases:
             recorded = next((r for r in trace.results if r.case.name == case.name), None) or next(
                 (r for r in trace.results if _same_inputs(r.case.inputs, case.inputs)), None
@@ -94,11 +105,22 @@ class TraceRunner:
             # The trace decides the inputs, the data and the observation; the engineer decides the rules it covers.
             results.append(Recorded(case=recorded.case.model_copy(update={"rules": case.rules}),
                                     observation=recorded.observation))  # fmt: skip
+            if trace.executed is not None and recorded.case.name in trace.executed:
+                ran[case.name] = sorted(trace.executed[recorded.case.name])
         if missing:
             available = ", ".join(r.case.name for r in trace.results)
             raise ValueError(f"these cases have no recorded trace: {', '.join(missing)}. Use the traces of "
                              f"{trace.program} by name: {available}")  # fmt: skip
         # The same inputs the verification digests later (source intact, 11.3 check 6): the traces are part of them.
         self.engine = trace.engine
+        measured = None
+        if ran and self.branches is not None:
+            # Coverage only when every case says what it ran: a case without `executed` would look like one that
+            # entered nothing.
+            branches = self.branches(files, trace.program)
+            if branches and len(ran) == len(results):
+                listed = {b.id for b in branches}
+                measured = Coverage(branches=branches, executed={n: [b for b in ids if b in listed]
+                                                                 for n, ids in ran.items()})  # fmt: skip
         return GoldenMaster(program=trace.program, source_sha256=source_digest(files), engine=trace.engine,
-                            schema_=trace.schema, results=results)  # fmt: skip
+                            schema_=trace.schema, results=results, coverage=measured)  # fmt: skip

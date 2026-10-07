@@ -23,7 +23,7 @@ from nexti_core.jobs import defer_backlog_sync
 from nexti_core.object_store import ObjectStore
 from nexti_core.run_phase import CURRENT_PHASE
 from nexti_core.secrets import SecretStore
-from nexti_core.spec.characterization import GoldenMaster, Suite
+from nexti_core.spec.characterization import CoveredBranch, GoldenMaster, Suite
 from nexti_core.spec.model import Capability, Rule
 from nexti_core.spec.screens import ScreenSpec
 from nexti_graph import GraphStore, Scope
@@ -46,6 +46,15 @@ from nexti_ui import PrototypeBuild, base_tokens
 from nexti_verification import Verdict
 from nexti_verification.evaluation import Evaluation
 from nexti_worker.ui_chat import insert_prototype, store_draft
+
+
+def _branches(files: list[SourceFile], program: str) -> list[CoveredBranch]:
+    """The branches of a traced program from its source adapter, when it has the capability (step 11 of the plan)."""
+    try:
+        found = getattr(pick_adapter(files), "coverage_branches", None)
+    except Exception:
+        return []
+    return list(found(files, program)) if callable(found) else []
 
 
 class GatewayCaller:
@@ -91,7 +100,7 @@ class SourceRunner:
     async def run(self, files: list[SourceFile], suite: Suite) -> GoldenMaster:
         runner: LegacyRunner
         if any(is_trace(f) for f in files):
-            runner = TraceRunner()
+            runner = TraceRunner(branches=_branches)
         elif self._engine is not None:
             runner = self._engine()
         else:

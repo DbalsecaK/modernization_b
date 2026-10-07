@@ -53,3 +53,16 @@ en vivo con Sybase: la grabación se reproduce y la cobertura es confiable en lo
   desplegable con el código numerado, para que el aprobador revise la regla contra el programa sin salir de la
   pantalla. Es un artefacto de documentación del proyecto, como el resto del código del legado en el espacio de
   trabajo; no entra en fixtures ni en el repositorio.
+
+## Precisión paso 11 (2026-10-07): cobertura de COBOL y ASPX desde las trazas
+
+COBOL/CICS y WebForms no corren en la plataforma: su golden master son trazas (ADR-0015, ADR-0020). Su cobertura
+también sale de ellas:
+
+- **La unidad** la da el adaptador (`coverage_branches`): los párrafos de un programa COBOL y los métodos del
+  code-behind y de App_Code de una página. Es lo que las herramientas de trazas de esos entornos reportan.
+- **La traza** puede traer, por resultado, `executed`: los párrafos o métodos que la herramienta vio ejecutar. El
+  runner de trazas arma la cobertura solo si todos los casos lo traen; un caso sin `executed` no es un caso que no
+  ejecutó nada.
+- Desde ahí todo es igual que en Sybase: huecos, tarjeta de decisión de ADR-0050 y "no probado". El veredicto de
+  trazas sigue limitado a PARTLY PROVEN.
