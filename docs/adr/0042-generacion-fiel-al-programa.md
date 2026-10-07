@@ -85,3 +85,13 @@ PostgreSQL; `pack.probe_sql`, por ahora solo en el pack PostgreSQL); un error vu
 sentencia; (2) `files_to_correct` incluye los archivos que nombran los marcos de pila de las caídas (el arnés
 conserva el primer marco del paquete generado), justo después del servicio, y el resumen de diferencias dice dónde
 cayó cada caso.
+
+
+## Precisión P33 (2026-10-07): esquema a la vista y sonda de SQL dentro de la convergencia
+
+Con P32 el adaptador caído llegó al desarrollador, que lo reescribió tres veces contra la misma tabla de búsqueda
+del legado: no veía el esquema destino, y el diagnóstico cortaba el mensaje de la base de datos (el SQL largo iba
+primero). Desde P33: el resumen de diferencias conserva el final del mensaje de una caída (la causa y el marco),
+la petición de corrección incluye el esquema destino cuando un adaptador está entre los archivos, y la verificación
+prepara el SQL de cada adaptador corregido contra el esquema antes de correr el golden master (el mensaje de la
+base de datos es el diagnóstico, y se ahorra la corrida de los casos).

@@ -279,6 +279,15 @@ def convergence_request(
 KEPT = "kept as the new base"
 
 
+def _is_adapter(path: str) -> bool:
+    return "/adapters/" in path or "/Adapters/" in path or "/adapter/" in path
+
+
+def _schema_of(pack: BackendPack) -> str | None:
+    found = getattr(pack, "schema_path", None)
+    return str(found()) if callable(found) and found() else None
+
+
 async def rebuild_base(
     ctx: PhaseContext,
     port: FidelityPort,
@@ -370,6 +379,13 @@ async def converge(
         if test_path in current:
             involved = {**involved, test_path: current[test_path]}
         context = pack.existing({p: c for p, c in current.items() if p not in involved}, design)
+        schema = _schema_of(pack)
+        if schema and schema in current and any(_is_adapter(p) for p in involved):
+            # A developer who corrects an adapter must see the only tables and columns that exist (P33: a real
+            # round rewrote a query three times against a legacy lookup table the design does not keep).
+            context += (
+                f"\n\nTarget schema (the only tables and columns that exist; do not query others):\n{current[schema]}"
+            )
         request = convergence_request(use_case, program, design, state["outcomes"], master, source, rules, involved,
                                       feedback, context)  # fmt: skip
         messages = [{"role": "system", "content": system_prompt}, {"role": "user", "content": request}]
@@ -404,6 +420,15 @@ async def converge(
         build = await pack.compile_and_test(sandbox, candidate)
         if not build.compiled:
             return Verification(False, f"the corrected project does not compile:\n{build.diagnostic(1500)}")
+        # The SQL of a corrected adapter must prepare against the schema before the golden master runs (P33):
+        # the database's own message is the precise diagnostic, and the run of every case is spared.
+        probe = getattr(pack, "probe_sql", None)
+        for path in artifact["files"]:
+            if probe and _is_adapter(path):
+                errors = await probe(sandbox, candidate, path)
+                if errors:
+                    return Verification(False, f"the SQL of {path} does not run on the target schema (only the "
+                                        f"tables and columns of the schema exist):\n{errors[:3000]}")  # fmt: skip
         # Failing unit tests do not stop the comparison with the legacy: the golden master decides, and a test that
         # contradicts it is reported back for the developer to align with the program.
         tests_note = (
