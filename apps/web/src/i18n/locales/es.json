@@ -2242,7 +2242,21 @@
     "bulkAccepted_one": "{{count}} recomendación aceptada.",
     "bulkAccepted_other": "{{count}} recomendaciones aceptadas.",
     "empty": "No hay nada aquí. Los agentes siguen trabajando y te preguntarán cuando te necesiten.",
-    "addComment": "+ Agregar un comentario"
+    "addComment": "+ Agregar un comentario",
+    "evidence": {
+      "analysis": "Análisis de la plataforma",
+      "cause": "Causa",
+      "change": "Qué cambió entre intentos",
+      "instruction": "Instrucción para el siguiente intento",
+      "diagnostic": "Diagnóstico",
+      "code": "Código del último intento ({{file}}, intento {{attempt}})",
+      "errorLines_one": "{{count}} línea señalada",
+      "errorLines_other": "{{count}} líneas señaladas",
+      "diff": "Diferencia con la versión anterior ({{file}})",
+      "linesChanged_one": "{{count}} línea cambiada",
+      "linesChanged_other": "{{count}} líneas cambiadas",
+      "noChange": "Sin cambios respecto a la versión anterior"
+    }
   },
   "hitl": {
     "autonomyTitle": "Nivel de autonomía",

@@ -60,7 +60,7 @@ class RunContext:
 
 @dataclass(frozen=True)
 class Evidence:
-    kind: Literal["code", "document", "test", "rule", "log"]
+    kind: Literal["code", "document", "test", "rule", "log", "analysis"]
     reference: str
     excerpt: str = ""
 
@@ -70,6 +70,20 @@ class Option:
     key: str
     label: str
     rationale: str = ""
+    confidence: float | None = None  # when an analysis proposed it (ADR-0045)
+    instruction: str = ""  # what the next attempt is told when this option is chosen
+
+
+@dataclass(frozen=True)
+class Explanation:
+    """What a person sees when attempts run out (ADR-0045): the files of the last attempt and the version before,
+    the diagnostic, and an analysis with proposed answers. Built by the phase, which knows the files."""
+
+    evidence: tuple[Evidence, ...] = ()
+    recommended: Option | None = None
+    alternatives: tuple[Option, ...] = ()
+    confidence: float | None = None
+    summary: str = ""  # the cause in plain words, shown before the diagnostic
 
 
 @dataclass(frozen=True)
@@ -94,6 +108,7 @@ class Answer:
     option: str | None  # the chosen option key, or None for a free-text answer
     text: str
     by: str | None = None
+    comment: str = ""  # the person's comment: with a retry it is the instruction for the next attempt
 
 
 class PhaseUnavailableError(Exception):

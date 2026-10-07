@@ -494,7 +494,7 @@ async def test_a_correction_that_is_not_closer_spends_the_attempt_and_ends_the_r
     ctx, store = _ctx(max_iterations=1)
     with pytest.raises(NeedsAnswer):
         await _converge(ctx, port, pack, {SERVICE: "v1"})
-    assert len(port.models.requests) == 3
+    assert len([r for r in port.models.requests if r[0]["content"] == "SYSTEM PROMPT"]) == 3  # plus the analyst
     assert [i["status"] for i in store.invocations.values()] == ["failed", "failed", "escalated"]
 
 

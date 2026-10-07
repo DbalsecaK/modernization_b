@@ -1,15 +1,17 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { CheckCircle2, FileText, Sparkles, UserRound } from 'lucide-react'
+import { CheckCircle2, Sparkles, UserRound } from 'lucide-react'
 import { cn } from '@/lib/cn'
 import { ApiError } from '@/api/client'
 import { useAcceptRecommended, useAnswerQuestion, type Question } from '@/api/runs'
 import { Badge, Button, Card, CardBody, Field, Select } from '@/components/ui/primitives'
 import { Textarea, toast } from '@/components/ui/overlay'
+import { EvidencePanels } from './EvidencePanels'
+import type { EvidenceItem } from './model'
 
 const OTHER = '__other'
 
-type Option = { key: string; label: string; rationale?: string }
+type Option = { key: string; label: string; rationale?: string; confidence?: number; instruction?: string }
 
 function options(question: Question): Option[] {
   return [question.recommended as Option, ...(question.alternatives as Option[])]
@@ -62,18 +64,7 @@ export function QuestionCard({ question, canAnswer }: { question: Question; canA
           <h3 className="text-base font-semibold text-text">{question.questionText}</h3>
           {question.context && <p className="mt-1 text-sm whitespace-pre-line text-text-2">{question.context}</p>}
         </div>
-        {question.evidence.length > 0 && (
-          <div className="flex flex-wrap gap-2">
-            {question.evidence.map((e, i) => (
-              <span
-                key={i}
-                className="inline-flex items-center gap-1.5 rounded-md border border-border px-2 py-1 font-mono text-xs text-text-2"
-              >
-                <FileText size={12} /> {String((e as { reference?: string }).reference ?? '')}
-              </span>
-            ))}
-          </div>
-        )}
+        {question.evidence.length > 0 && <EvidencePanels evidence={question.evidence as EvidenceItem[]} />}
 
         {!open ? (
           <div className="flex items-start gap-2 rounded-md bg-good/10 p-3 text-sm">
@@ -112,13 +103,19 @@ export function QuestionCard({ question, canAnswer }: { question: Question; canA
                 <div className="flex items-center gap-1.5 text-xs font-medium text-text">
                   {option.key === recommended.key && <Sparkles size={12} className="text-accent-ink" />}
                   {option.key === recommended.key ? t('decisions.whyRecommended') : t('decisions.whyOption')}
-                  {option.key === recommended.key && recommended.confidence !== undefined && (
+                  {option.confidence !== undefined && (
                     <Badge className="ml-auto">
-                      {t('questions.confidence', { value: Math.round(recommended.confidence * 100) })}
+                      {t('questions.confidence', { value: Math.round(option.confidence * 100) })}
                     </Badge>
                   )}
                 </div>
                 <p className="mt-1 text-text-2">{option.rationale}</p>
+                {option.instruction && (
+                  <p className="mt-1 text-xs text-text-2">
+                    <span className="font-medium">{t('decisions.evidence.instruction')}: </span>
+                    {option.instruction}
+                  </p>
+                )}
               </div>
             )}
             {choice === OTHER && (
