@@ -173,7 +173,9 @@ class SpringBootOraclePack(SpringBootPack):
         return files
 
     async def probe_sql(self, sandbox: Sandbox, files: Mapping[str, str], path: str) -> str:
-        return ""  # another engine: the SQL probe is PostgreSQL's for now (P32)
+        from nexti_pack_spring_boot.sqlprobe_engines import probe_oracle
+
+        return await probe_oracle(sandbox, files, path)  # EXPLAIN PLAN in its sandbox (P32, step 12)
 
     def adapter_request(self, design: Design, port: str, files: Mapping[str, str]) -> str:
         return (
@@ -214,7 +216,9 @@ class SpringBootMySqlPack(SpringBootPack):
         return files
 
     async def probe_sql(self, sandbox: Sandbox, files: Mapping[str, str], path: str) -> str:
-        return ""  # another engine: the SQL probe is PostgreSQL's for now (P32)
+        from nexti_pack_spring_boot.sqlprobe_engines import probe_mysql
+
+        return await probe_mysql(sandbox, files, path)  # PREPARE in its sandbox (P32, step 12)
 
     def adapter_request(self, design: Design, port: str, files: Mapping[str, str]) -> str:
         return (

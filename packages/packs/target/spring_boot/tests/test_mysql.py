@@ -137,3 +137,24 @@ def test_the_reference_target_reproduces_the_golden_master_on_mysql(mysql_sandbo
     different = {c.name: (c.failure, c.expected, c.actual) for c in run.cases if c.failure or c.expected != c.actual}
     assert len(run.cases) == 12
     assert different == {}
+
+
+def test_the_sql_probe_accepts_the_reference_adapters_and_names_a_missing_table(mysql_sandbox: DockerSandbox) -> None:
+    # P32 for this pack (step 12 of the plan): the reference adapters prepare against the schema; one that reads a
+    # table the design does not keep comes back with the error and its statement.
+    import re as _re
+
+    files = reference_project(DESIGN)
+    checked = 0
+    for port in DESIGN.ports:
+        path = MYSQL_PACK.adapter_path(DESIGN, port)
+        if path not in files or not _re.search(r"(?i)\bFROM\s+\w", files[path]):
+            continue
+        assert asyncio.run(MYSQL_PACK.probe_sql(mysql_sandbox, files, path)) == "", path
+        broken = _re.sub(r"(?i)\bFROM(\s+)[\w.\"]+", r"FROM\1legacy_lookup", files[path], count=1)
+        errors = asyncio.run(MYSQL_PACK.probe_sql(mysql_sandbox, {**files, path: broken}, path))
+        assert "legacy_lookup" in errors.lower(), errors
+        assert "statement: " in errors
+        checked += 1
+        break
+    assert checked == 1

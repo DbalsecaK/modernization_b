@@ -316,3 +316,34 @@ def test_an_adapter_with_another_constructor_does_not_compile(go_sandbox: Docker
     build = asyncio.run(PACK.compile_and_test(go_sandbox, files, run_tests=False))
     assert not build.compiled
     assert "probe.go" in build.compile_errors
+
+
+def test_the_tests_compile_against_the_placeholder_service(go_sandbox: DockerSandbox) -> None:
+    # P31 for this pack (step 12 of the plan): the reference tests compile against the placeholder and fail at run
+    # time, so a test file that does not compile is told apart before the developer writes the service.
+    files = reference_project(DESIGN)
+    files.update(PACK.placeholder_service(DESIGN, PAY))
+    build = asyncio.run(PACK.compile_and_test(go_sandbox, files))
+    assert build.compiled, build.compile_errors
+    assert build.failed > 0
+
+
+def test_the_sql_probe_accepts_the_reference_adapters_and_names_a_missing_table(go_sandbox: DockerSandbox) -> None:
+    # P32 for this pack (step 12 of the plan): the reference adapters prepare against the schema; one that reads a
+    # table the design does not keep comes back with the error and its statement.
+    import re as _re
+
+    files = reference_project(DESIGN)
+    checked = 0
+    for port in DESIGN.ports:
+        path = PACK.adapter_path(DESIGN, port)
+        if path not in files or not _re.search(r"(?i)\bFROM\s+\w", files[path]):
+            continue
+        assert asyncio.run(PACK.probe_sql(go_sandbox, files, path)) == "", path
+        broken = _re.sub(r"(?i)\bFROM(\s+)[\w.\"]+", r"FROM\1legacy_lookup", files[path], count=1)
+        errors = asyncio.run(PACK.probe_sql(go_sandbox, {**files, path: broken}, path))
+        assert "legacy_lookup" in errors.lower(), errors
+        assert "statement: " in errors
+        checked += 1
+        break
+    assert checked == 1

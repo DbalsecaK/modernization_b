@@ -115,3 +115,18 @@ La sonda de P32 tomaba como sentencia el fragmento literal de un `UPDATE … IN 
 adaptador arma en tiempo de ejecución, y PostgreSQL lo rechazaba como error de sintaxis: un falso positivo que escaló
 un adaptador correcto. Desde P38, una sentencia concatenada con código (y no solo con literales) se considera
 dinámica y no se prueba; sus errores, si los hay, los sigue mostrando el golden master.
+
+## Precisión paso 12 (2026-10-07): sonda de SQL y servicio provisional en todos los packs
+
+P31 (servicio provisional) y P32 (sonda de SQL) existían solo para Spring Boot con PostgreSQL. Ahora:
+
+- **Servicio provisional** en .NET y Go, con la forma que fija cada prompt (constructor con los puertos en orden y
+  `Execute`): las pruebas compilan contra él antes de que el desarrollador escriba el servicio.
+- **Sonda de SQL** en cada motor, en su sandbox y sin ejecutar nada:
+  - PostgreSQL (Spring Boot y Go): `PREPARE`.
+  - MySQL (Spring Boot): `PREPARE ... FROM`, con el error por línea del archivo de la sonda.
+  - Oracle (Spring Boot y .NET): `EXPLAIN PLAN FOR`, con los `?` como binds.
+  - SQL Server (.NET): `sp_describe_undeclared_parameters`, que resuelve tablas, columnas y parámetros.
+- **Extracción neutral** (`nexti_sandbox.sqlprobe`): cada pack da la sintaxis de sus literales (Java, C# con
+  cadenas crudas, textuales e interpoladas, Go con cadenas crudas) y la sentencia armada con código no se sonda (P38).
+- MongoDB no tiene SQL: no se sonda.
