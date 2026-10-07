@@ -13,7 +13,7 @@ from pydantic import ValidationError
 
 from nexti_agents import prompt
 from nexti_core.adapters import LegacyRunner, LegacyUnavailableError, SourceFile
-from nexti_core.spec.characterization import Case, GoldenMaster, Schema, Suite
+from nexti_core.spec.characterization import Case, CoveredBranch, GoldenMaster, Schema, Suite
 from nexti_core.spec.model import Rule
 from nexti_orchestration.context import Attempt, PhaseContext, Verification
 from nexti_orchestration.extraction import JSON_ERRORS, ModelCaller, ReplyError, parse_json, raise_if_cut
@@ -155,6 +155,33 @@ def groups_of(rules: Sequence[Rule], size: int = GROUP) -> list[list[Rule]]:
     return [ordered[i : i + size] for i in range(0, len(ordered), size)] or [[]]
 
 
+BRANCHES_AT_MOST = 25  # branches named in one request: the rest come in the report
+
+
+def branch_request(missed: Sequence[CoveredBranch], files: Sequence[SourceFile], rules: Sequence[Rule]) -> str:
+    """The branches no case entered, each with its lines of code and the rules citing them (so the pieces of the
+    guided suite that own them are asked again), and what to do: keep every case, add cases that enter them."""
+    texts = {f.path: f.text.splitlines() for f in files}
+    blocks = []
+    for branch in missed[:BRANCHES_AT_MOST]:
+        lines = texts.get(branch.file) or next(iter(texts.values()), [])
+        start = max(branch.line_start - 2, 0)
+        end = min(branch.line_end + 1, len(lines), start + 14)
+        code = "\n".join(f"{n + 1:5}  {lines[n]}" for n in range(start, end))
+        citing = sorted({r.id for r in rules for ref in r.sources
+                         if ref.line_start <= branch.line_end and ref.line_end >= branch.line_start})  # fmt: skip
+        blocks.append(f"- {branch.kind} at lines {branch.line_start}-{branch.line_end}"
+                      + (f" (rules {', '.join(citing)})" if citing else "") + f":\n{code}")  # fmt: skip
+    more = len(missed) - BRANCHES_AT_MOST
+    return (
+        f"No case of the suite enters {len(missed)} branch(es) of the program, so the golden master cannot prove "
+        "what they do. Keep every case you already wrote and add cases whose inputs, rows and stub answers make "
+        "the program enter each branch below (a branch that no input can reach: say so instead of inventing one):\n"
+        + "\n".join(blocks)
+        + (f"\n... and {more} more branch(es)" if more > 0 else "")
+    )
+
+
 def affected_groups(feedback: str, groups: Sequence[Sequence[Rule]], cases: Mapping[int, Sequence[Case]]) -> set[int]:
     """The groups a diagnostic points at (by rule id or case name); every group when it points at none."""
     ids = set(RULE_ID.findall(feedback))
@@ -232,6 +259,7 @@ class CharacterizationPhases:
                 f"Source:\n{_sources(files)}")},
         ]  # fmt: skip
         master: dict[str, GoldenMaster] = {}
+        branch_round: list[bool] = []  # M27b: the branches without a case are asked once
         guided = guided_enabled(ctx.run.options)
 
         async def work_single(iteration: int, feedback: str | None) -> Attempt:
@@ -279,6 +307,12 @@ class CharacterizationPhases:
                 return Verification(False, "the engine failed these cases:\n" + "\n".join(failed)[:3000])
             await self.port.save_golden_master(recorded)
             master["run"] = recorded
+            # M27b (ADR-0047): the branches of the program no case entered go back to the test engineer once, with
+            # their code and the rules that cite them; what stays uncovered after that round is reported, not looped.
+            measured = recorded.coverage
+            if guided and measured is not None and measured.not_exercised and not branch_round:
+                branch_round.append(True)
+                return Verification(False, branch_request(measured.not_exercised, files, rules))
             return Verification(True)
 
         # Guided (ADR-0036): the schema first, then the cases a few rules at a time, so a long program never needs

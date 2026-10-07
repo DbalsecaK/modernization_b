@@ -137,6 +137,7 @@ class CoveredBranch(CharacterizationModel):
     line_start: int
     line_end: int
     measurable: bool = True
+    file: str = Field(default="", max_length=500, description="The source file the lines belong to")
 
 
 class Coverage(CharacterizationModel):

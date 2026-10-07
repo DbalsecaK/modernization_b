@@ -305,3 +305,41 @@ async def test_a_late_engine_is_tried_again_before_the_phase_waits(monkeypatch: 
     with pytest.raises(PhaseUnavailableError, match="did not answer"):
         await CharacterizationPhases(MemoryPort(LateRunner(late=9), [SUITE])).characterization(ctx)
     assert slept == [60, 180]
+
+
+async def test_the_branches_no_case_enters_go_back_to_the_test_engineer_once() -> None:
+    # M27b (ADR-0047): the coverage shows a branch no case entered; the test engineer gets its code and the rules
+    # citing it once; what stays uncovered after that round is reported, never looped.
+    from nexti_core.spec.characterization import Coverage, CoveredBranch
+
+    cited = next(r for r in RULES if r.sources)
+    ref = cited.sources[0]
+
+    class CoveringRunner(EchoRunner):
+        def __init__(self) -> None:
+            self.runs = 0
+
+        async def run(self, files: list[SourceFile], suite: Suite) -> GoldenMaster:
+            self.runs += 1
+            master = await super().run(files, suite)
+            branch = CoveredBranch(id="b1", kind="if-true", line_start=ref.line_start, line_end=ref.line_end,
+                                   file=ref.file)  # fmt: skip
+            return master.model_copy(update={"coverage": Coverage(branches=[branch], executed={})})
+
+    runner = CoveringRunner()
+    port = MemoryPort(runner, [SUITE])
+    port.tester = GuidedTester()
+    port.models = port.tester
+    phase = PhaseSpec("characterization", None, True)
+    run = RunContext(uuid.uuid4(), uuid.uuid4(), uuid.uuid4(), "pipeline", "modernization", (phase,), ("C1",),
+                     "balanced", 3, (), target={"backend": "spring-boot"},
+                     options={"guided_extraction": True})  # fmt: skip
+    ctx = PhaseContext(run, MemoryStore(), phase, None)
+    result = await CharacterizationPhases(port).characterization(ctx)
+    asked = [r[-1]["content"] for r in port.tester.requests if "No case of the suite enters" in r[-1]["content"]]
+    assert asked
+    assert f"rules {cited.id}" in asked[0]
+    assert f"if-true at lines {ref.line_start}-{ref.line_end}" in asked[0]
+    assert "Keep every case you already wrote" in asked[0]
+    assert runner.runs >= 2  # recorded again after the round, then accepted with the branch still uncovered
+    assert "legacy coverage: 0 of 1 measurable branches exercised" in result.summary

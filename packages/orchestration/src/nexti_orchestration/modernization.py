@@ -32,6 +32,8 @@ DETECT_THRESHOLD = 0.5
 CLASSIFICATION = "inventory/classification.json"  # the statements with their class, for the Inventory tab
 MAX_CLASSIFIED = 20000
 COVERAGE = "inventory/coverage.json"  # business statements in no slice, or cited by no rule
+CITATIONS = "rules/citations.json"  # the code each rule cites, for the review at C1 (M27b, ADR-0047)
+CITED_LINES_AT_MOST = 80  # lines kept per citation: the card shows the code, the program stays in the inputs
 LARGE_SLICE = (200, 20)  # lines and pieces of a slice that may duplicate a larger one
 CONTAINED = 0.9
 
@@ -322,6 +324,10 @@ class ModernizationPhases:
             if warnings:
                 report["warnings"] = warnings
             await self.port.save_artifacts({COVERAGE: json.dumps(report, indent=1)}, {COVERAGE: "docs"}, {})
+        if guided_on and hasattr(self.port, "save_artifacts"):
+            # The reviewer at C1 reads each rule against the lines it cites (M27b): prose is checked with the code.
+            cited = json.dumps(cited_code(rules, files), ensure_ascii=False, indent=1)
+            await self.port.save_artifacts({CITATIONS: cited}, {CITATIONS: "docs"}, {})
         p0 = sum(1 for r in rules if r.priority == "P0")
         summary = f"{len(rules)} rule(s), {p0} P0, from {len(views)} slice(s)"
         if failed:
@@ -514,3 +520,22 @@ def domain_map(inventory: Inventory) -> dict[str, list[str]]:
         name = tables[0].split(":")[-1].split(".")[-1] if tables else members[0].split(":")[-1]
         named[name] = sorted(members)
     return dict(sorted(named.items()))
+
+
+def cited_code(rules: Sequence[Rule], files: Sequence[SourceFile]) -> dict[str, list[dict[str, Any]]]:
+    """Per rule, each citation with its numbered lines of code (at most CITED_LINES_AT_MOST)."""
+    texts = {f.path: f.text.splitlines() for f in files}
+    by_base = {f.path.rsplit("/", 1)[-1].lower(): f.path for f in files}
+    out: dict[str, list[dict[str, Any]]] = {}
+    for rule in rules:
+        items = []
+        for ref in rule.sources:
+            path = ref.file if ref.file in texts else by_base.get(ref.file.rsplit("/", 1)[-1].lower(), "")
+            lines = texts.get(path, [])
+            start, end = max(ref.line_start, 1), min(ref.line_end, len(lines))
+            shown = list(range(start, min(end, start + CITED_LINES_AT_MOST - 1) + 1))
+            items.append({"file": ref.file, "lineStart": ref.line_start, "lineEnd": ref.line_end,
+                          "lines": [{"n": n, "text": lines[n - 1]} for n in shown if 0 < n <= len(lines)],
+                          "truncated": end - start + 1 > CITED_LINES_AT_MOST})  # fmt: skip
+        out[rule.id] = items
+    return out

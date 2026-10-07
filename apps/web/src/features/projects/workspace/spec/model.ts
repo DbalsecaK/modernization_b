@@ -209,3 +209,45 @@ export function newProblems(before: PlanProblem[], after: PlanProblem[]): PlanPr
   const seen = new Set(before.map(id))
   return after.filter((p) => !seen.has(id(p)))
 }
+
+/** The code of a citation, as the extraction saved it for the review at C1 (rules/citations.json, M27b). */
+export type CitedCode = {
+  file: string
+  lineStart: number
+  lineEnd: number
+  lines: { n: number; text: string }[]
+  truncated: boolean
+}
+
+export const CITATIONS_PATH = 'rules/citations.json'
+
+/** Rule id -> its citations with code; an empty map when the artifact is missing or not valid. */
+export function parseCitations(content: string | undefined): Record<string, CitedCode[]> {
+  if (!content) return {}
+  try {
+    const data = JSON.parse(content) as Record<string, unknown>
+    const out: Record<string, CitedCode[]> = {}
+    for (const [rule, items] of Object.entries(data)) {
+      if (!Array.isArray(items)) continue
+      out[rule] = items
+        .filter((i): i is Record<string, unknown> => !!i && typeof i === 'object')
+        .map((i) => ({
+          file: String(i.file ?? ''),
+          lineStart: Number(i.lineStart ?? 0),
+          lineEnd: Number(i.lineEnd ?? 0),
+          lines: Array.isArray(i.lines)
+            ? (i.lines as Record<string, unknown>[]).map((l) => ({ n: Number(l.n ?? 0), text: String(l.text ?? '') }))
+            : [],
+          truncated: i.truncated === true,
+        }))
+    }
+    return out
+  } catch {
+    return {}
+  }
+}
+
+/** The cited code of a reference, matched by file and lines. */
+export function codeOf(cited: CitedCode[] | undefined, ref: SourceRef): CitedCode | undefined {
+  return cited?.find((c) => c.file === ref.file && c.lineStart === ref.lineStart && c.lineEnd === ref.lineEnd)
+}
