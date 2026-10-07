@@ -13,7 +13,16 @@ from pydantic import ValidationError
 
 from nexti_agents import prompt
 from nexti_core.adapters import LegacyRunner, LegacyUnavailableError, SourceFile
-from nexti_core.spec.characterization import Case, CoveredBranch, GoldenMaster, Schema, Suite
+from nexti_core.spec.characterization import (
+    Case,
+    CoveredBranch,
+    EngineQuirk,
+    GoldenMaster,
+    Schema,
+    Suite,
+    quirk_combinations,
+    unresolved_quirks,
+)
 from nexti_core.spec.model import Rule
 from nexti_orchestration.context import Attempt, PhaseContext, Verification
 from nexti_orchestration.extraction import JSON_ERRORS, ModelCaller, ReplyError, parse_json, raise_if_cut
@@ -158,9 +167,13 @@ def groups_of(rules: Sequence[Rule], size: int = GROUP) -> list[list[Rule]]:
 BRANCHES_AT_MOST = 25  # branches named in one request: the rest come in the report
 
 
-def branch_request(missed: Sequence[CoveredBranch], files: Sequence[SourceFile], rules: Sequence[Rule]) -> str:
+def branch_request(
+    missed: Sequence[CoveredBranch], files: Sequence[SourceFile], rules: Sequence[Rule],
+    quirks: Sequence[EngineQuirk] = (),
+) -> str:  # fmt: skip
     """The branches no case entered, each with its lines of code and the rules citing them (so the pieces of the
-    guided suite that own them are asked again), and what to do: keep every case, add cases that enter them."""
+    guided suite that own them are asked again), the engine quirks no case reaches (M28), and what to do: keep
+    every case, add cases that enter them."""
     texts = {f.path: f.text.splitlines() for f in files}
     blocks = []
     for branch in missed[:BRANCHES_AT_MOST]:
@@ -173,13 +186,34 @@ def branch_request(missed: Sequence[CoveredBranch], files: Sequence[SourceFile],
         blocks.append(f"- {branch.kind} at lines {branch.line_start}-{branch.line_end}"
                       + (f" (rules {', '.join(citing)})" if citing else "") + f":\n{code}")  # fmt: skip
     more = len(missed) - BRANCHES_AT_MOST
-    return (
+    text = (
         f"No case of the suite enters {len(missed)} branch(es) of the program, so the golden master cannot prove "
         "what they do. Keep every case you already wrote and add cases whose inputs, rows and stub answers make "
         "the program enter each branch below (a branch that no input can reach: say so instead of inventing one):\n"
         + "\n".join(blocks)
         + (f"\n... and {more} more branch(es)" if more > 0 else "")
-    )
+    ) if missed else "Keep every case you already wrote."  # fmt: skip
+    if quirks:
+        text += (
+            "\n\nThe program relies on these behaviours of the legacy engine and no case runs the lines that use "
+            "them, so the golden master does not show what the engine does there; add a case that runs at least "
+            "one of their lines, with values that make the behaviour visible in the outputs:\n"
+            + "\n".join(f"- {q.id} ({q.severity}) at lines {', '.join(str(n) for n in q.lines[:10])}: {q.behavior}"
+                        for q in quirks)
+        )  # fmt: skip
+    return text
+
+
+def quirk_note(master: GoldenMaster) -> str:
+    confirmed = sum(1 for q in master.quirks if q.confirmed)
+    text = f"engine quirks: {len(master.quirks)} ({confirmed} confirmed on the engine"
+    unreached = unresolved_quirks(master)
+    if unreached:
+        text += f", {len(unreached)} no case reaches"
+    untested = [c for c in quirk_combinations(master) if not c[3]]
+    if untested:
+        text += f", {len(untested)} severe combination(s) without a case"
+    return text + f"); environment: {len(master.environment)} setting(s)"
 
 
 def affected_groups(feedback: str, groups: Sequence[Sequence[Rule]], cases: Mapping[int, Sequence[Case]]) -> set[int]:
@@ -310,9 +344,10 @@ class CharacterizationPhases:
             # M27b (ADR-0047): the branches of the program no case entered go back to the test engineer once, with
             # their code and the rules that cite them; what stays uncovered after that round is reported, not looped.
             measured = recorded.coverage
-            if guided and measured is not None and measured.not_exercised and not branch_round:
+            unreached = unresolved_quirks(recorded)  # M28: the engine quirks no case reaches go in the same round
+            if guided and measured is not None and (measured.not_exercised or unreached) and not branch_round:
                 branch_round.append(True)
-                return Verification(False, branch_request(measured.not_exercised, files, rules))
+                return Verification(False, branch_request(measured.not_exercised, files, rules, unreached))
             return Verification(True)
 
         # Guided (ADR-0036): the schema first, then the cases a few rules at a time, so a long program never needs
@@ -380,4 +415,6 @@ class CharacterizationPhases:
             cases = f"{len(recorded.results)} case(s) frozen, {rejected} of them rejected by the legacy"
             if recorded.coverage is not None:  # ADR-0047: what of the legacy the cases exercised
                 cases += f"; legacy coverage: {recorded.coverage.note()}"
+            if recorded.quirks:  # M28: the engine behaviours the program relies on
+                cases += f"; {quirk_note(recorded)}"
         return PhaseResult(summary=f"Golden master: {cases} ({runner.engine})")

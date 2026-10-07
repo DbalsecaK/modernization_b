@@ -343,3 +343,36 @@ async def test_the_branches_no_case_enters_go_back_to_the_test_engineer_once() -
     assert "Keep every case you already wrote" in asked[0]
     assert runner.runs >= 2  # recorded again after the round, then accepted with the branch still uncovered
     assert "legacy coverage: 0 of 1 measurable branches exercised" in result.summary
+
+
+async def test_the_engine_quirks_no_case_reaches_go_in_the_branch_round_and_the_summary() -> None:
+    # M28: a quirk inside a branch no case enters is asked with that branch; the summary counts the register.
+    from nexti_core.spec.characterization import Coverage, CoveredBranch, EngineQuirk, EnvironmentItem
+
+    ref = next(r for r in RULES if r.sources).sources[0]
+
+    class QuirkRunner(EchoRunner):
+        async def run(self, files: list[SourceFile], suite: Suite) -> GoldenMaster:
+            master = await super().run(files, suite)
+            branch = CoveredBranch(id="b1", kind="if-true", line_start=ref.line_start, line_end=ref.line_end)
+            quirk = EngineQuirk(id="null-compare", severity="critical", behavior="NULL = NULL is true.", target="t.",
+                                lines=[ref.line_start], probe="p", expected="true", observed="true")  # fmt: skip
+            return master.model_copy(update={
+                "coverage": Coverage(branches=[branch], executed={}), "quirks": [quirk],
+                "environment": [EnvironmentItem(key="language", value="us_english", source="engine")],
+            })  # fmt: skip
+
+    port = MemoryPort(QuirkRunner(), [SUITE])
+    port.tester = GuidedTester()
+    port.models = port.tester
+    phase = PhaseSpec("characterization", None, True)
+    run = RunContext(uuid.uuid4(), uuid.uuid4(), uuid.uuid4(), "pipeline", "modernization", (phase,), ("C1",),
+                     "balanced", 3, (), target={"backend": "spring-boot"},
+                     options={"guided_extraction": True})  # fmt: skip
+    result = await CharacterizationPhases(port).characterization(PhaseContext(run, MemoryStore(), phase, None))
+    asked = [r[-1]["content"] for r in port.tester.requests if "behaviours of the legacy engine" in r[-1]["content"]]
+    assert len(asked) == 1
+    assert f"- null-compare (critical) at lines {ref.line_start}: NULL = NULL is true." in asked[0]
+    assert "engine quirks: 1 (1 confirmed on the engine, 1 no case reaches); environment: 1 setting(s)" in (
+        result.summary
+    )

@@ -11,6 +11,7 @@ from nexti_adapter_sybase.lexer import LexError, tokenize
 from nexti_adapter_sybase.parser import ParseError, Procedure, Statement, name_at, parse
 from nexti_adapter_sybase.types import to_neutral
 from nexti_core.adapters import Edge, Inventory, Node, SliceView, SourceFile
+from nexti_core.spec.characterization import EngineQuirk
 
 EXTENSIONS = (".sp", ".sql", ".prc", ".proc", ".tsql", ".syb")
 _CREATE_PROC = re.compile(r"\bcreate\s+proc(edure)?\b", re.IGNORECASE)
@@ -241,6 +242,12 @@ class SybaseAdapter:
                 views.append(SliceView(f"{proc.name}#{target}", file.path, readable(cut.lines),
                                        tuple(cut.parameters), tuple(cut.tables)))  # fmt: skip
         return views
+
+    def engine_quirks(self, files: list[SourceFile]) -> list[EngineQuirk]:
+        """The behaviours of the engine each procedure relies on (M28), found in the code; the runner probes them."""
+        from nexti_adapter_sybase import quirks
+
+        return [q for source, proc in _procedures(files) for q in quirks.detect(source, proc)]
 
     def digest(self, files: list[SourceFile]) -> str:
         inventory = self.inventory(files)

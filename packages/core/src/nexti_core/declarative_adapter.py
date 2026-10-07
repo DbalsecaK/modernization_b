@@ -16,6 +16,7 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from nexti_core.adapters import Edge, Inventory, Node, SliceView, SourceFile
+from nexti_core.spec.characterization import EngineQuirk
 
 KEY = re.compile(r"^[a-z][a-z0-9-]{1,40}$")
 WORD = r"(?<![A-Za-z0-9_]){}(?![A-Za-z0-9_])"
@@ -259,6 +260,10 @@ class DeclarativeAdapter:
                     if any(a <= line <= b for a, b in ranges):
                         writes.add(table)
         return frozenset(reads), frozenset(writes)
+
+    def engine_quirks(self, files: list[SourceFile]) -> list[EngineQuirk]:
+        """A declared adapter catalogues no engine quirk (M28)."""
+        return []
 
     def digest(self, files: list[SourceFile]) -> str:
         inventory = self.inventory(files)

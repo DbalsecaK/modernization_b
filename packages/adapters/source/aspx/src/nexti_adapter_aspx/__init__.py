@@ -22,6 +22,7 @@ from nexti_adapter_aspx.parser import (
 from nexti_adapter_aspx.uplift import UpliftItem, assess
 from nexti_adapter_cobol.traces import is_trace, load_traces
 from nexti_core.adapters import Edge, Inventory, Node, SliceView, SourceFile
+from nexti_core.spec.characterization import EngineQuirk
 from nexti_core.spec.model import SourceRef
 from nexti_core.spec.screens import ScreenAction, ScreenField, ScreenSpec
 
@@ -308,6 +309,10 @@ class AspxAdapter:
 
     def uplift(self, files: list[SourceFile]) -> list[UpliftItem]:
         return assess(files)
+
+    def engine_quirks(self, files: list[SourceFile]) -> list[EngineQuirk]:
+        """No engine quirk catalogued for this technology yet (M28)."""
+        return []
 
     def digest(self, files: list[SourceFile]) -> str:
         workspace = self._workspace(files)

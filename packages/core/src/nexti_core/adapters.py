@@ -9,7 +9,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Literal, Protocol
 
 if TYPE_CHECKING:
-    from nexti_core.spec.characterization import GoldenMaster, Suite
+    from nexti_core.spec.characterization import EngineQuirk, GoldenMaster, Suite
 
 # Code and data layers (what adapters produce) and knowledge / target layers (spec 5.1).
 NodeLabel = Literal[
@@ -105,6 +105,12 @@ class SourceAdapter(Protocol):
     def digest(self, files: list[SourceFile]) -> str:
         """The inventory in a few lines for the agents (entry points, their inputs, the data they use, the external
         programs they call, and how the legacy can be observed)."""
+        ...
+
+    def engine_quirks(self, files: list[SourceFile]) -> "list[EngineQuirk]":
+        """The behaviours of the legacy engine the programs rely on and a modern stack does differently (M28), found
+        in the code with their lines; the legacy runner probes them on the real engine. Empty when the technology
+        has none catalogued yet."""
         ...
 
 

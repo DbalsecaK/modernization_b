@@ -13,13 +13,14 @@ import uuid
 from pathlib import Path
 from typing import Literal
 
-from nexti_adapter_sybase import coverage, golden
+from nexti_adapter_sybase import coverage, golden, quirks
 from nexti_adapter_sybase.parser import Procedure
 from nexti_core.adapters import LegacyUnavailableError, SourceFile
 from nexti_core.spec.characterization import (
     Case,
     Coverage,
     CoveredBranch,
+    EnvironmentItem,
     GoldenMaster,
     Observation,
     Recorded,
@@ -67,6 +68,10 @@ class AseRunner:
         self.coverage = coverage
         # The branches each case exercised on the instrumented copy, and whether that run matched the original.
         self._covered: dict[str, tuple[list[str], bool]] = {}
+        # M28: what this engine answered to each quirk probe and the settings it runs under (measured once).
+        self._probed: dict[str, str] = {}
+        self._asked: set[str] = set()  # probes already run (an unanswered one is not asked again)
+        self._environment: list[EnvironmentItem] | None = None
 
     def _cli(self, args: list[str], stdin: str | None = None, timeout: int = 60) -> tuple[int, str]:
         # Bytes, not text: on Windows text mode turns each newline into CRLF and isql ignores such a `go`.
@@ -123,6 +128,7 @@ class AseRunner:
             if failures:
                 detail = "\n".join(failures)[:3000]
                 raise golden.GoldenError(f"the code or the schema do not load in Sybase:\n{detail}")
+            await self._engine_facts(name, files, plan)
             for start in range(0, len(pending), self.batch_size):
                 await self._run_batch(name, plan, pending[start : start + self.batch_size], keys)
             if uncovered:
@@ -130,6 +136,17 @@ class AseRunner:
         finally:
             await self._stop(name)
         return self._master(files, suite, keys)
+
+    async def _engine_facts(self, name: str, files: list[SourceFile], plan: golden.Plan) -> None:
+        """The environment of the engine and its answer to the probes of the quirks the program relies on (M28):
+        measured on the engine that records the golden master, each probe in its own batch."""
+        if self._environment is None:
+            self._environment = quirks.engine_environment(await self._isql(name, quirks.environment_script(), 120))
+        source, procedure = _program_source(files, plan)
+        unprobed = [q for q in quirks.detect(source, procedure) if q.probe and q.id not in self._asked]
+        if unprobed:
+            self._asked.update(q.id for q in unprobed)
+            self._probed.update(quirks.probe_answers(await self._isql(name, quirks.probe_script(unprobed), 120)))
 
     async def _run_batch(self, name: str, plan: golden.Plan, cases: list[Case], keys: dict[str, str]) -> None:
         """One isql session for several cases (each starts by resetting the data, as alone): a marker before each
@@ -192,9 +209,12 @@ class AseRunner:
                 executed={c.name: self._covered[keys[c.name]][0] for c in suite.cases},
                 unreliable=[c.name for c in suite.cases if not self._covered[keys[c.name]][1]],
             )  # fmt: skip
+        source, procedure = _program_source(files, golden.plan(files, suite))
+        register = [q.model_copy(update={"observed": self._probed.get(q.id)}) for q in quirks.detect(source, procedure)]
+        environment = [*(self._environment or []), *quirks.program_environment(files, source, procedure)]
         return GoldenMaster(program=suite.program, source_sha256=source_digest(files), engine=self.engine,
                             schema_=suite.schema_, results=results, unassigned_outputs=unassigned,
-                            coverage=measured)  # fmt: skip
+                            coverage=measured, quirks=register, environment=environment)  # fmt: skip
 
 
 def _program_source(files: list[SourceFile], plan: golden.Plan) -> tuple[SourceFile, Procedure]:
