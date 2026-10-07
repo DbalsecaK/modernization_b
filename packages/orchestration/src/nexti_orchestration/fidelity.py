@@ -361,7 +361,8 @@ async def converge(
 
     async def work(iteration: int, feedback: str | None) -> Attempt:
         current: dict[str, str] = state["files"]
-        involved = files_to_correct(pack, design, use_case, current, named_in(state["outcomes"]))
+        involved = files_to_correct(pack, design, use_case, current, named_in(state["outcomes"]),
+                                    [o.failure for o in state["outcomes"] if o.failure])  # fmt: skip
         # The unit tests came from the program too; one that contradicts the golden master is wrong, and only the
         # developer can align it (a real run spent its attempts on tests that expected an error the legacy does
         # not raise on those inputs).
