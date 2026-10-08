@@ -3,6 +3,7 @@ engine it was given otherwise, and a clear wait when there is neither (ADR-0015)
 
 import uuid
 from collections.abc import Awaitable, Callable
+from pathlib import Path
 
 import pytest
 
@@ -53,6 +54,9 @@ def setting(execution: LegacyExecution | None) -> Callable[[], Awaitable[LegacyE
 
 
 SOURCE = [SourceFile("qrpglesrc/ACTSALDO.rpgle", "**FREE\nreturn;\n")]
+RPG_ROOT = Path(__file__).resolve().parents[3] / "packages/adapters/source/rpg/tests/fixtures/cooperativa"
+RPG_FILES = [SourceFile(p.relative_to(RPG_ROOT).as_posix(), p.read_text(encoding="utf-8"))
+             for p in sorted(RPG_ROOT.rglob("*")) if p.is_file()]  # fmt: skip
 TRACE = SourceFile("traces/ACTSALDO.json", '{"engine": "ibmi-trace", "program": "OTRO", "results": []}')
 
 
@@ -83,3 +87,12 @@ async def test_the_project_setting_chooses_traces_or_the_live_system_and_never_f
         await SourceRunner(Engine, setting(without), {"ibmi": factory}).run(SOURCE, SUITE)
     # No setting (or `auto`) keeps the behaviour by inputs.
     assert (await SourceRunner(Engine, setting(None)).run(SOURCE, SUITE)).engine == "sybase-ase-16.0"
+
+
+async def test_traced_rpg_brings_the_quirks_of_its_code() -> None:
+    # R4: traces record what the legacy did; the behaviours its code relies on come from the RPG catalog.
+    suite = Suite(program="ACTSALDO", cases=[Case(name="debito_con_comision", rules=["RULE-001"])])
+    master = await SourceRunner(None, setting(LegacyExecution("traces"))).run(RPG_FILES, suite)
+    assert master.engine == "ibmi-trace"
+    assert [q.id for q in master.quirks] == ["decimal-truncation", "record-not-found", "immediate-writes"]
+    assert ("rpg:datfmt", "*ISO (default)") in [(e.key, e.value) for e in master.environment]

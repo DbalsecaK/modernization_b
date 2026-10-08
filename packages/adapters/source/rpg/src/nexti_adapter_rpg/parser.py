@@ -53,7 +53,9 @@ class Statement:
     factor1: str = ""
     factor2: str = ""  # in free form, the whole operand text
     result: str = ""
-    extender: str = ""  # H, E, N...
+    extender: str = ""  # H, E, N... (RPG III half adjust in column 53 is H too)
+    indicators: str = ""  # the resulting indicators of a fixed-form operation (hi, lo, eq)
+    level: str = ""  # L1..L9 or LR: the control level of a fixed-form calculation (the RPG cycle)
 
     @property
     def base(self) -> str:
@@ -96,6 +98,7 @@ class FileDecl:
     keyed: bool
     line: int
     external: bool = True
+    primary: bool = False  # the primary file of the RPG cycle: the program reads it record by record implicitly
 
 
 @dataclass
@@ -131,6 +134,7 @@ class RpgProgram:
     routines: list[Routine] = field(default_factory=list)
     copies: list[tuple[str, int]] = field(default_factory=list)
     nomain: bool = False  # a module of a service program (*SRVPGM)
+    control: str = ""  # the H spec / ctl-opt keywords (DATFMT, EXPROPTS...) and each file's keywords, upper case
     problems: list[str] = field(default_factory=list)
 
     def statements(self) -> list[Statement]:
@@ -245,6 +249,7 @@ class _Builder:
             opcode, _, extender = opcode[:-1].partition("(")
         if opcode in ("CTL-OPT", "H"):
             self.p.nomain = self.p.nomain or "NOMAIN" in rest.upper()
+            self.p.control += f" {rest.upper()}"
             return
         if opcode == "DCL-F":
             self._dcl_f(start, rest)
@@ -315,6 +320,7 @@ class _Builder:
         elif re.search(r"USAGE\([^)]*\*OUTPUT", upper) and "*INPUT" not in upper:
             usage = "O"
         self.p.files.append(FileDecl(parts[0].upper(), usage, device, "KEYED" in upper, line))
+        self.p.control += f" FILE({parts[0].upper()}: {upper})"
 
     def _dcl_field(self, line: int, text: str, opcode: str) -> None:
         parts = text.split(None, 1)
@@ -336,6 +342,7 @@ class _Builder:
         spec = line[5].upper()
         if spec == "H":
             self.p.nomain = self.p.nomain or "NOMAIN" in line.upper()
+            self.p.control += f" {line[6:].upper()}"
         elif spec == "F":
             self._f_spec(number, line, rpg3)
         elif spec == "D" and not rpg3:
@@ -358,12 +365,15 @@ class _Builder:
         if rpg3:
             name, usage, device = _col(line, 7, 14), _col(line, 15, 15), _col(line, 40, 46)
             keyed, external = _col(line, 31, 31).upper() == "K", _col(line, 19, 19).upper() == "E"
+            primary = _col(line, 16, 16).upper() == "P"
         else:
             name, usage, device = _col(line, 7, 16), _col(line, 17, 17), _col(line, 36, 42)
             keyed, external = _col(line, 34, 34).upper() == "K", _col(line, 22, 22).upper() == "E"
+            primary = _col(line, 18, 18).upper() == "P"
         if name:
             self.p.files.append(FileDecl(name.upper(), usage.upper() or "I", device.upper() or "DISK", keyed, number,
-                                         external))  # fmt: skip
+                                         external, primary))  # fmt: skip
+            self.p.control += f" FILE({name.upper()}: {_col(line, 44 if not rpg3 else 54, 80).upper()})"
 
     def _d_spec(self, number: int, line: str) -> None:
         name = _col(line, 7, 21).upper()
@@ -418,11 +428,14 @@ class _Builder:
         if rpg3:
             factor1, opcode, factor2 = _col(line, 18, 27), _col(line, 28, 32), _col(line, 33, 42)
             result, length, decimals = _col(line, 43, 48), _int(_col(line, 49, 51)), _int(_col(line, 52, 52))
+            half, indicators = _col(line, 53, 53).upper() == "H", _col(line, 54, 59)
         else:
             factor1, opcode, factor2 = _col(line, 12, 25), _col(line, 26, 35), _col(line, 36, 49)
             result, length, decimals = _col(line, 50, 63), _int(_col(line, 64, 68)), _int(_col(line, 69, 70))
+            half, indicators = False, _col(line, 71, 76)
         opcode, _, extender = opcode.upper().partition("(")
-        extender = extender.rstrip(")")
+        extender = extender.rstrip(")") or ("H" if half else "")
+        level = _col(line, 7, 8).upper()  # L1..L9, LR: a calculation of the cycle's level breaks
         if not rpg3 and opcode in EXTENDED:
             factor2, result = _col(line, 36, 80), ""
         if not opcode:  # a continuation of the extended factor 2 of the previous statement
@@ -451,7 +464,10 @@ class _Builder:
                         item.role = "parameter"
             return
         self.entry_plist = False
-        self._statement(Statement(opcode, number, number, factor1, factor2, result, extender))
+        if not rpg3 and opcode in EXTENDED:
+            indicators = ""  # columns 71-76 belong to the extended factor 2
+        self._statement(Statement(opcode, number, number, factor1, factor2, result, extender, indicators,
+                                  level if level.startswith("L") else ""))  # fmt: skip
 
     # -- routines -----------------------------------------------------------------------------------------------
     def _statement(self, statement: Statement) -> None:

@@ -49,6 +49,33 @@ formato de fecha, idioma, juego de caracteres, zona horaria, opciones SET, trigg
 | integer-division | medium | `7 / 2` → 3 |
 | date-style | medium | estilo 103 → `05/03/2024` |
 
+## Catálogo de RPG / IBM i (R4 del plan RPG, 2026-10-08)
+
+Detectado en el programa analizado, sin sonda: el puente de IBM i (ADR-0053) ejecuta programas, no sentencias
+sueltas, así que cada quirk queda «no sondeado» y el golden master muestra lo que hizo el sistema. Con trazas, el
+worker agrega el catálogo del adaptador al golden master (las trazas no traen quirks).
+
+| Quirk | Severidad | Se detecta por |
+|---|---|---|
+| rpg-cycle | critical | archivo primario (F con designación P), cálculos LR |
+| decimal-truncation | critical | aritmética sin (H): ADD, SUB, MULT, DIV, Z-ADD, EVAL que calcula |
+| level-breaks | high | cálculos con nivel L1-L9 |
+| half-adjust | high | (H) en el código de operación o en la columna 53 (RPG III) |
+| fixed-overflow | high | aritmética de formato fijo (pierde dígitos altos sin error) |
+| move-semantics | high | MOVE, MOVEL, MOVEA |
+| record-not-found | high | CHAIN y lecturas (no fallan; los campos conservan su valor) |
+| ebcdic-order | high | comparaciones `<` `>` de texto, SORTA, LOOKUP, lecturas en secuencia por clave |
+| errors-handled-by-program | high | extensor (E), MONITOR, %ERROR, indicadores resultantes, *PSSR |
+| immediate-writes | high | escrituras a tablas sin control de compromiso |
+| commitment-control | high | COMMIT, ROLBK |
+| intermediate-precision | medium | EVAL con división |
+| division-remainder | medium | MVR |
+| initialization-subroutine | medium | *INZSR |
+| page-overflow | medium | OFLIND en un archivo de impresora |
+
+El entorno del programa sale de sus palabras clave de control (DATFMT, EXPROPTS, FIXNBR, TRUNCNBR, CCSID...) y, si
+no fija DATFMT, del formato por omisión *ISO.
+
 ## Consecuencias
 
 - Un lote más por arranque del motor (sondas y entorno, segundos).

@@ -175,10 +175,14 @@ class IbmiRunner:
             results.append(Recorded(case=case, observation=observation))
         system = answer.get("system", {})
         release, ccsid = str(system.get("version", "")), str(system.get("ccsid", self.config.ccsid))
+        from nexti_adapter_rpg import RpgAdapter  # the package imports this module's siblings, not this one
+
+        relied, program_set = RpgAdapter().program_quirks(files, suite.program)  # R4
         environment = [EnvironmentItem(key="os_release", value=release, source="engine"),
-                       EnvironmentItem(key="ccsid", value=ccsid, source="engine")]  # fmt: skip
+                       EnvironmentItem(key="ccsid", value=ccsid, source="engine"), *program_set]  # fmt: skip
         return GoldenMaster(program=suite.program, source_sha256=source_digest(files), engine=self.engine,
-                            schema_=suite.schema_, results=results, environment=environment)  # fmt: skip
+                            schema_=suite.schema_, results=results, quirks=relied,
+                            environment=environment)  # fmt: skip
 
     def _request(self, program: RpgProgram, parameters: list[Parameter], suite: Suite) -> dict[str, Any]:
         tables = [{"name": t.name, "key": list(t.key)} for t in suite.schema_.tables]

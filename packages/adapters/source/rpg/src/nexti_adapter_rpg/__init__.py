@@ -10,7 +10,7 @@ from pathlib import PurePosixPath
 from typing import Any
 
 from nexti_adapter_cobol.traces import load_traces
-from nexti_adapter_rpg import cl, dds
+from nexti_adapter_rpg import cl, dds, quirks
 from nexti_adapter_rpg.parser import (
     CONTROL,
     INFRASTRUCTURE,
@@ -28,7 +28,7 @@ from nexti_adapter_rpg.parser import (
 )
 from nexti_adapter_rpg.types import TypeMapping, to_neutral
 from nexti_core.adapters import Edge, EdgeType, Inventory, Node, SliceView, SourceFile
-from nexti_core.spec.characterization import CoveredBranch, EngineQuirk
+from nexti_core.spec.characterization import CoveredBranch, EngineQuirk, EnvironmentItem
 
 _ASSIGN = re.compile(r"^\s*([A-Za-z_#$@*][\w#$@]*(?:\([^)]*\))?(?:\.[\w#$@]+)?)\s*(?:[-+*/]?=)\s*(.*)$", re.S)
 _ARITHMETIC = {"ADD", "SUB", "MULT", "DIV", "Z-ADD", "Z-SUB", "MOVE", "MOVEL", "MOVEA", "XFOOT", "SQRT", "MVR",
@@ -331,8 +331,18 @@ class RpgAdapter:
         return frozenset(reads), frozenset(writes)
 
     def engine_quirks(self, files: list[SourceFile]) -> list[EngineQuirk]:
-        """The RPG quirk catalog (cycle, (H) rounding, MOVE, EBCDIC...) comes with R4 of the RPG plan."""
-        return []
+        """The RPG behaviours every program relies on (R4: cycle, truncation and (H), MOVE, EBCDIC order...)."""
+        programs, _ = self._programs(files)
+        formats = device_formats(self._dds(files))
+        return [q for p in programs for q in quirks.detect(p, formats)]
+
+    def program_quirks(self, files: list[SourceFile], program: str) -> tuple[list[EngineQuirk], list[EnvironmentItem]]:
+        """The quirks and the program-set environment of one program (empty when it is not in the inputs)."""
+        programs, _ = self._programs(files)
+        found = next((p for p in programs if p.name == program.rsplit(".", 1)[-1].upper()), None)
+        if found is None:
+            return [], []
+        return quirks.detect(found, device_formats(self._dds(files))), quirks.program_environment(found)
 
     def coverage_branches(self, files: list[SourceFile], program: str) -> list[CoveredBranch]:
         """The subroutines and procedures of a program: the units an IBM i trace or coverage tool reports as run."""
@@ -388,6 +398,11 @@ def column_type(d: dds.DdsFile, item: dds.DdsField, by_name: dict[str, dds.DdsFi
             if found is not None:
                 return column_type(by_name[based], found, by_name)
     return to_neutral(item.kind or ("P" if item.decimals is not None else "A"), item.length, item.decimals)
+
+
+def device_formats(described: list[dds.DdsFile]) -> set[str]:
+    """The record formats of the display and printer files: what a WRITE to them sends to a device."""
+    return {r.name for d in described if d.kind in ("DSPF", "PRTF") for r in d.records}
 
 
 def _devices(described: list[dds.DdsFile]) -> dict[str, str]:
