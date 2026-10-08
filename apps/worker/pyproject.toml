@@ -13,6 +13,7 @@ dependencies = [
   "structlog>=25.4",
   "nexti-adapter-bms",
   "nexti-adapter-cobol",
+  "nexti-adapter-rpg",
   "nexti-pack-frontend",
   "nexti-adapter-sybase",
   "nexti-core",
@@ -30,6 +31,7 @@ dependencies = [
 nexti-integrations = { workspace = true }
 nexti-adapter-bms = { workspace = true }
 nexti-adapter-cobol = { workspace = true }
+nexti-adapter-rpg = { workspace = true }
 nexti-pack-frontend = { workspace = true }
 nexti-adapter-sybase = { workspace = true }
 nexti-core = { workspace = true }

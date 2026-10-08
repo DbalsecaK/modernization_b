@@ -94,6 +94,7 @@ worker:
       - nexti-sandbox-java-quarkus:1
       - nexti-sandbox-dotnet:1
       - nexti-sandbox-dotnet-oracle:1
+      - nexti-ibmi-bridge:1
       - nexti-sandbox-go:1
       - nexti-sandbox-frontend:2
       - nexti-sandbox-web:1
