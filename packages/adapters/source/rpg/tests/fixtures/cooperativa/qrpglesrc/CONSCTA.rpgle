@@ -1,6 +1,6 @@
 00100HDFTACTGRP(*NO)
-00200FCONSCTAD  C    E             WORKSTN
-00300FCUENTASL1 I    E           K DISK
+00200FCONSCTAD  CF   E             WORKSTN
+00300FCUENTASL1 IF   E           K DISK
 00400DWSALIR           S               N
 00500C                   DOW       NOT *IN03
 00600C                   EXFMT     PANTALLA
