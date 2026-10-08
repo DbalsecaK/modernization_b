@@ -587,3 +587,36 @@ async def test_a_guided_design_keeps_each_attempt_with_the_run() -> None:
     design, _ = await propose_design(Once(), RULES, "inventory", save=save)
     assert design.context
     assert sorted(saved) == ["design/attempt-1-reply.md", "design/attempt-1-request.md"]
+
+
+async def test_the_first_rpg_design_passes_the_guided_checks() -> None:
+    # The real reply of the first RPG run (fictitious ACTSALDO): it was refused because fixed-form RPG glues names to
+    # their sequence and specification letter (00400DACTSALDO) and because it pointed legacy_message at the numeric
+    # result code PRESULT. The adapter's names and the cleared numeric message make it a valid design.
+    from decimal import Decimal
+
+    from nexti_core.adapters import SourceFile as File
+    from nexti_core.spec.model import Rule as SpecRule
+    from nexti_orchestration.extraction import ModelReply
+    from nexti_orchestration.generation import adapter_names, legacy_names, read_tables, written_tables
+    from nexti_orchestration.store import Usage
+
+    fixture = Path(__file__).parent / "fixtures" / "rpg_design"
+    cooperativa = ROOT / "packages/adapters/source/rpg/tests/fixtures/cooperativa"
+    files = [File(path, (cooperativa / path).read_text(encoding="utf-8"))
+             for path in ("qrpglesrc/ACTSALDO.rpgle", "qddssrc/CUENTAS.pf", "qddssrc/MOVIMI.pf")]  # fmt: skip
+    rules = [SpecRule.model_validate(r) for r in json.loads((fixture / "rules.json").read_text(encoding="utf-8"))]
+    reply = (fixture / "reply.md").read_text(encoding="utf-8")
+
+    class Replay:
+        async def complete(self, agent: str, phase: str, messages: list[dict[str, str]], *, iteration: int = 1,
+                           judge: int = 0) -> ModelReply:  # fmt: skip
+            return ModelReply(reply, Usage(None, 0, 0, Decimal(0)), None)
+
+    assert "actsaldo" not in legacy_names(files)  # the words of the text miss it
+    names = legacy_names(files) | adapter_names(files)
+    assert {"actsaldo", "movimi", "cuentas", "presult"} <= names
+    design, _ = await propose_design(Replay(), rules, "inventory", max_iterations=1, names=names, hints=True,
+                                     files=files, written=written_tables(files), read=read_tables(files))  # fmt: skip
+    (use_case,) = design.use_cases
+    assert (use_case.legacy_program, use_case.legacy_message) == ("ACTSALDO", None)

@@ -1,0 +1,197 @@
+[
+ {
+  "id": "RULE-001",
+  "name": "Debit with commission and sufficient funds check",
+  "category": "calculation",
+  "priority": "P0",
+  "statement": "A debit (type 'D') costs the amount plus a fixed commission of 1.50. If the balance is less than amount plus commission, the debit is rejected with result 20. Otherwise the new balance is balance minus amount minus 1.50.",
+  "condition": "PTIPO = 'D'; reject if CTSALD < PMONTO + 1.50, else WNUEVO = CTSALD - PMONTO - 1.50",
+  "action": "Reject with PRESULT = 20 and no update, or compute the new balance and save it",
+  "inputs": [
+   {
+    "name": "PTIPO",
+    "type": "text(fixed,1,ebcdic)",
+    "description": ""
+   },
+   {
+    "name": "PMONTO",
+    "type": "decimal(11,2,signed)",
+    "description": ""
+   },
+   {
+    "name": "CTSALD",
+    "type": "decimal(11,2,signed)",
+    "description": ""
+   }
+  ],
+  "outputs": [
+   {
+    "name": "WNUEVO",
+    "type": "decimal(11,2,signed)",
+    "description": ""
+   },
+   {
+    "name": "PRESULT",
+    "type": "decimal(3,0,signed)",
+    "description": ""
+   }
+  ],
+  "scenarios": [
+   "Scenario: Sufficient funds\n Given balance 100.00\n When a debit of 50.00 is requested\n Then the new balance is 48.50 and PRESULT is 0",
+   "Scenario: Balance exactly covers amount plus commission\n Given balance 51.50\n When a debit of 50.00 is requested\n Then the new balance is 0.00 and PRESULT is 0",
+   "Scenario: Insufficient funds\n Given balance 50.00\n When a debit of 50.00 is requested\n Then PRESULT is 20 and the balance is unchanged"
+  ],
+  "sources": [
+   {
+    "file": "qrpglesrc/ACTSALDO.rpgle",
+    "line_start": 10,
+    "line_end": 10
+   },
+   {
+    "file": "qrpglesrc/ACTSALDO.rpgle",
+    "line_start": 18,
+    "line_end": 23
+   }
+  ]
+ },
+ {
+  "id": "RULE-002",
+  "name": "Account must exist to apply a movement",
+  "category": "validation",
+  "priority": "P0",
+  "statement": "If the account number passed in is not found in CUENTAS, the balance update is rejected and result code 10 is returned.",
+  "condition": "CHAIN on CUENTAS with PCUENTA finds no record",
+  "action": "PRESULT = 10 and the program returns without updating the balance or writing a movement",
+  "inputs": [
+   {
+    "name": "PCUENTA",
+    "type": "text(fixed,10,ebcdic)",
+    "description": ""
+   }
+  ],
+  "outputs": [
+   {
+    "name": "PRESULT",
+    "type": "decimal(3,0,signed)",
+    "description": ""
+   }
+  ],
+  "scenarios": [
+   "Scenario: Account does not exist\n Given no account '0000000999' in CUENTAS\n When a debit of 100.00 is requested for it\n Then PRESULT is 10\n And no balance is updated and no movement is written"
+  ],
+  "sources": [
+   {
+    "file": "qrpglesrc/ACTSALDO.rpgle",
+    "line_start": 12,
+    "line_end": 16
+   }
+  ]
+ },
+ {
+  "id": "RULE-003",
+  "name": "Credit adds amount to balance",
+  "category": "calculation",
+  "priority": "P0",
+  "statement": "Any movement type other than 'D' is treated as a credit: the amount is added to the balance with no commission and no limit.",
+  "condition": "PTIPO <> 'D'",
+  "action": "WNUEVO = CTSALD + PMONTO",
+  "inputs": [
+   {
+    "name": "PTIPO",
+    "type": "text(fixed,1,ebcdic)",
+    "description": ""
+   },
+   {
+    "name": "PMONTO",
+    "type": "decimal(11,2,signed)",
+    "description": ""
+   },
+   {
+    "name": "CTSALD",
+    "type": "decimal(11,2,signed)",
+    "description": ""
+   }
+  ],
+  "outputs": [
+   {
+    "name": "WNUEVO",
+    "type": "decimal(11,2,signed)",
+    "description": ""
+   }
+  ],
+  "scenarios": [
+   "Scenario: Credit\n Given balance 100.00\n When type 'C' and amount 25.00\n Then the new balance is 125.00",
+   "Scenario: Unknown type\n Given type 'X'\n When amount 10.00 is applied\n Then it is handled as a credit"
+  ],
+  "sources": [
+   {
+    "file": "qrpglesrc/ACTSALDO.rpgle",
+    "line_start": 24,
+    "line_end": 26
+   }
+  ]
+ },
+ {
+  "id": "RULE-004",
+  "name": "Save new balance and record movement",
+  "category": "lifecycle",
+  "priority": "P0",
+  "statement": "After a successful calculation the new balance is saved on the account and a movement is written with the account number and the requested amount. Result 0 is returned.",
+  "condition": "Debit accepted or credit calculated",
+  "action": "CTSALD = WNUEVO; update the account; MVCTA = PCUENTA; MVMONT = PMONTO (rounded); write the movement; PRESULT = 0",
+  "inputs": [
+   {
+    "name": "WNUEVO",
+    "type": "decimal(11,2,signed)",
+    "description": ""
+   },
+   {
+    "name": "PCUENTA",
+    "type": "text(fixed,10,ebcdic)",
+    "description": ""
+   },
+   {
+    "name": "PMONTO",
+    "type": "decimal(11,2,signed)",
+    "description": ""
+   }
+  ],
+  "outputs": [
+   {
+    "name": "CTSALD",
+    "type": "decimal(11,2,signed)",
+    "description": ""
+   },
+   {
+    "name": "MVCTA",
+    "type": "text(fixed,10,ebcdic)",
+    "description": ""
+   },
+   {
+    "name": "MVMONT",
+    "type": "decimal(11,2,signed)",
+    "description": ""
+   },
+   {
+    "name": "PRESULT",
+    "type": "decimal(3,0,signed)",
+    "description": ""
+   }
+  ],
+  "scenarios": [
+   "Scenario: Successful credit\n Given account '0000000001' with balance 100.00\n When a credit of 25.00 is applied\n Then the balance is 125.00, a movement of 25.00 is written and PRESULT is 0"
+  ],
+  "sources": [
+   {
+    "file": "qrpglesrc/ACTSALDO.rpgle",
+    "line_start": 27,
+    "line_end": 28
+   },
+   {
+    "file": "qrpglesrc/ACTSALDO.rpgle",
+    "line_start": 30,
+    "line_end": 36
+   }
+  ]
+ }
+]
