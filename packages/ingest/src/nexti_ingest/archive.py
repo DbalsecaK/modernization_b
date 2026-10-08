@@ -18,6 +18,7 @@ TEXT_SUFFIXES = {
     ".cbl", ".cob", ".cpy", ".jcl", ".bms", ".mac", ".asm", ".sql", ".sp", ".prc", ".cs", ".vb", ".aspx", ".ascx",
     ".master", ".config", ".xml", ".json", ".properties", ".yaml", ".yml", ".ini", ".env", ".txt", ".md", ".java",
     ".js", ".ts", ".py", ".sh", ".bat", ".ps1", ".cfg", ".conf",
+    ".rpg", ".rpgle", ".sqlrpgle", ".rpgleinc", ".clp", ".clle", ".cl",  # RPG and CL (ADR-0051)
 }  # fmt: skip
 
 
@@ -96,9 +97,12 @@ def inspect_zip(stream: BinaryIO, limits: Limits, findings: SecretFindings | Non
 
 # The legacy code the pipeline reads from an accepted archive (already inspected at upload by `inspect_zip`): Sybase
 # procedures (M4), BMS maps (M5), COBOL programs, copybooks, CICS definitions and traces (M6), ASP.NET WebForms pages,
-# code-behind and configuration (M8); each source adapter adds its languages.
+# code-behind and configuration (M8), RPG programs with their DDS and CL (ADR-0051); each source adapter adds its
+# languages.
+IBMI_SUFFIXES = (".rpg", ".rpg36", ".rpg38", ".rpg400", ".rpgle", ".sqlrpgle", ".rpgile", ".rpg4", ".rpgleinc",
+                 ".pf", ".lf", ".dspf", ".prtf", ".dds", ".pf38", ".lf38", ".clp", ".clle", ".cl", ".cl38")  # fmt: skip
 SOURCE_SUFFIXES = (".sp", ".sql", ".prc", ".proc", ".tsql", ".syb", ".txt", ".bms", ".cbl", ".cob", ".cobol", ".cpy",
-                   ".copy", ".csd", ".json", ".aspx", ".ascx", ".master", ".cs", ".config")  # fmt: skip
+                   ".copy", ".csd", ".json", ".aspx", ".ascx", ".master", ".cs", ".config", *IBMI_SUFFIXES)  # fmt: skip
 MAX_SOURCE_FILE_BYTES = 5 * 1024 * 1024
 MAX_SOURCE_TOTAL_BYTES = 50 * 1024 * 1024
 
