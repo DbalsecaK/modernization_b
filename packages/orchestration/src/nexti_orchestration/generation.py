@@ -145,6 +145,32 @@ def legacy_names(files: Sequence[SourceFile]) -> set[str]:
     return names
 
 
+def adapter_names(files: Sequence[SourceFile]) -> set[str]:
+    """The names the source adapter reads from the code (programs, tables, columns, fields, routines), lowercase:
+    in fixed-form RPG a name is glued to its sequence number and specification letter (`00400DACTSALDO`), so the
+    words of the text alone miss it."""
+    from nexti_orchestration.modernization import pick_adapter
+
+    try:
+        inventory = pick_adapter(list(files)).inventory(list(files))
+    except Exception:
+        return set()
+    return {node.name.lower() for node in inventory.nodes if node.name}
+
+
+def without_numeric_messages(design: Design) -> Design:
+    """`legacy_message` names the TEXT of a rejection; pointing it at a numeric output (an RPG result code) means the
+    program returns no message text: it is cleared, as the guided rule asks, instead of failing the design."""
+    use_cases = []
+    for use_case in design.use_cases:
+        message = next((f for f in use_case.outputs if use_case.legacy_message
+                        and (f.legacy or "").lower() == use_case.legacy_message.lower()), None)  # fmt: skip
+        if message is not None and not message.type.startswith("text"):
+            use_case = use_case.model_copy(update={"legacy_message": None})
+        use_cases.append(use_case)
+    return design.model_copy(update={"use_cases": use_cases})
+
+
 _INVISIBLE = re.compile(r"[\u200b-\u200f\u2060\ufeff\u00a0\s]")
 
 
@@ -512,6 +538,8 @@ async def propose_design(
         try:
             data = design_json(reply.content) if hints else parse_json(reply.content)
             design = Design.model_validate(data)
+            if hints:
+                design = without_numeric_messages(design)
             problems = design_problems(design, rules, names, hints=hints, files=files, written=written,
                                        package_root=package_root, read=read)  # fmt: skip
             if problems:
@@ -552,9 +580,11 @@ class GenerationPhases:
                     )  # fmt: skip
                 else:
                     files = await self.port.source_files()
+                    guided = guided_enabled(ctx.run.options)
                     design, usage = await propose_design(
                         self.port.models, rules, await self.port.inventory_digest(),
-                        max_iterations=ctx.run.max_iterations, names=legacy_names(files),
+                        max_iterations=ctx.run.max_iterations,
+                        names=legacy_names(files) | (adapter_names(files) if guided else set()),
                         source="\n\n".join(f"// {f.path}\n{f.text}" for f in files),
                         hints=guided_enabled(ctx.run.options), files=files, written=written_tables(files),
                         read=read_tables(files), guidance=stack_guidance(ctx.run.target),
