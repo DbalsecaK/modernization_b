@@ -1,5 +1,5 @@
 00100H
-00200FCUENTAS IF  E           K        DISK
+00200FCUENTAS IP  E           K        DISK
 00300FREPINT  O   E                    PRINTER
 00400C* Calcula el interes diario de cada cuenta de ahorro (ficticio)
 00500C           *ENTRY    PLIST

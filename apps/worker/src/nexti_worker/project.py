@@ -24,7 +24,7 @@ from nexti_core.legacy_execution import Credentials
 from nexti_core.object_store import ObjectStore
 from nexti_core.run_phase import CURRENT_PHASE
 from nexti_core.secrets import SecretStore
-from nexti_core.spec.characterization import CoveredBranch, GoldenMaster, Suite
+from nexti_core.spec.characterization import CoveredBranch, EngineQuirk, EnvironmentItem, GoldenMaster, Suite
 from nexti_core.spec.model import Capability, Rule
 from nexti_core.spec.screens import ScreenSpec
 from nexti_graph import GraphStore, Scope
@@ -56,6 +56,15 @@ def _branches(files: list[SourceFile], program: str) -> list[CoveredBranch]:
     except Exception:
         return []
     return list(found(files, program)) if callable(found) else []
+
+
+def _program_quirks(files: list[SourceFile], program: str) -> tuple[list[EngineQuirk], list[EnvironmentItem]]:
+    """The quirks and program-set environment of a traced program, when its source adapter has a catalog (R4)."""
+    try:
+        found = getattr(pick_adapter(files), "program_quirks", None)
+    except Exception:
+        return [], []
+    return found(files, program) if callable(found) else ([], [])
 
 
 class GatewayCaller:
@@ -125,7 +134,15 @@ class SourceRunner:
         setting = await self._execution() if self._execution is not None else None
         runner = self._runner(files, setting or LegacyExecution("auto"))
         self.engine = runner.engine
-        return await runner.run(files, suite)
+        master = await runner.run(files, suite)
+        if master.quirks or not master.from_traces:
+            return master
+        relied, program_set = _program_quirks(files, suite.program)
+        if not relied and not program_set:
+            return master
+        # Traces carry what the legacy did, not the behaviours its code relies on: those come from the source
+        # adapter's catalog (R4), not probed (the engine is not here).
+        return master.model_copy(update={"quirks": relied, "environment": [*master.environment, *program_set]})
 
     def _runner(self, files: list[SourceFile], setting: LegacyExecution) -> LegacyRunner:
         traced = any(is_trace(f) for f in files)

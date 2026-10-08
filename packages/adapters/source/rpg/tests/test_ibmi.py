@@ -63,7 +63,12 @@ def test_the_request_carries_the_typed_parameters_the_rows_and_the_test_library(
     assert observation.outputs["PRESULT"] == "0"
     assert observation.outputs["PMONTO"] == "40.00"
     assert observation.tables["CUENTAS"][0]["CTSALD"] == "58.50"
-    assert [(e.key, e.value) for e in master.environment] == [("os_release", "V7R5M0"), ("ccsid", "284")]
+    assert [(e.key, e.value) for e in master.environment] == [
+        ("os_release", "V7R5M0"), ("ccsid", "284"),  # measured on the IBM i
+        ("rpg:dftactgrp", "*NO"), ("rpg:actgrp", "*CALLER"), ("rpg:datfmt", "*ISO (default)"),  # set by the program
+    ]  # fmt: skip
+    # R4: the behaviours the program relies on travel with the golden master to the developer.
+    assert [q.id for q in master.quirks] == ["decimal-truncation", "record-not-found", "immediate-writes"]
 
 
 def test_failures_say_whether_to_wait_retry_or_correct_the_suite() -> None:
