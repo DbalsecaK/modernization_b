@@ -1,0 +1,32 @@
+{
+ "program": "CONSCTA",
+ "engine": "ibmi-trace",
+ "note": "Fictitious 5250 session traces of the Cooperativa Andina (invented): each case is what the user typed on the PANTALLA screen and the key pressed (KEY), and what the screen showed after it.",
+ "schema": {"tables": [
+  {"name": "CUENTASL1", "key": ["CTNUME"], "columns": [
+   {"name": "CTNUME", "type": "A(10)", "nullable": false},
+   {"name": "CTSALD", "type": "P(11:2)", "nullable": false}]}]},
+ "results": [
+  {"case": {"name": "consulta_cuenta_existente", "description": "An existing account shows its balance",
+            "rules": ["RULE-001"], "inputs": {"SCCTA": "0000000001", "KEY": "ENTER"},
+            "setup": {"CUENTASL1": [{"CTNUME": "0000000001", "CTSALD": "1250.75"}]}},
+   "observation": {"returns": null, "outputs": {"SCCTA": "0000000001", "SCSALD": "1250.75", "SCMSG": ""},
+                   "tables": {"CUENTASL1": [{"CTNUME": "0000000001", "CTSALD": "1250.75"}]},
+                   "calls": [], "messages": [], "error": null},
+   "executed": []},
+  {"case": {"name": "consulta_cuenta_inexistente", "description": "An unknown account shows the message",
+            "rules": ["RULE-002"], "inputs": {"SCCTA": "0000000099", "KEY": "ENTER"},
+            "setup": {"CUENTASL1": []}},
+   "observation": {"returns": null, "outputs": {"SCCTA": "0000000099", "SCSALD": "0.00", "SCMSG": "CUENTA NO EXISTE"},
+                   "tables": {"CUENTASL1": []},
+                   "calls": [], "messages": [], "error": null},
+   "executed": []},
+  {"case": {"name": "salir_con_f3", "description": "F3 ends the program without querying",
+            "rules": ["RULE-003"], "inputs": {"SCCTA": "", "KEY": "PF3"},
+            "setup": {"CUENTASL1": []}},
+   "observation": {"returns": null, "outputs": {"SCCTA": "", "SCSALD": "0.00", "SCMSG": ""},
+                   "tables": {"CUENTASL1": []},
+                   "calls": [], "messages": [], "error": null},
+   "executed": []}
+ ]
+}

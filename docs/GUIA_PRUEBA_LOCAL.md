@@ -171,10 +171,14 @@ imágenes de sandbox reales. El caso real del cliente llegó a PROVEN con 65 USD
 La firma final **C4** sigue en **Ejecuciones** (owner o arquitecto, nunca quien lanzó la ejecución); antes de firmar,
 lee **«Lo que esto no prueba»** en Validación.
 
-### Escenario 8 — Origen RPG / IBM i (solo análisis)
+### Escenario 8 — Origen RPG / IBM i
 
-Desde R1 la plataforma lee programas RPG (RPG III, RPG IV fijo, mixto y libre), sus DDS y el CL que los arranca. El
-golden master de RPG llega con R2: una ejecución RPG no puede pasar de la caracterización.
+La plataforma lee programas RPG (RPG III, RPG IV fijo, mixto y libre), sus DDS y el CL que los arranca (R1). El
+proyecto elige cómo corre el legado en **Insumos → Ejecución del legado**: trazas grabadas (PARTLY PROVEN como
+máximo) o un IBM i del cliente en vivo (R2). Los quirks de RPG (ciclo, truncamiento y (H), MOVE, orden EBCDIC...)
+viajan al desarrollador con el golden master (R4). Las pantallas DSPF de los programas interactivos aparecen en
+**Diseño UI** como las de CICS; su golden master sale de trazas de sesión 5250 (R3). El espacio de trabajo ficticio
+trae trazas de `ACTSALDO` (batch) y `CONSCTA` (interactivo).
 
 1. Comprime el espacio de trabajo ficticio del repositorio:
    `Compress-Archive packages\adapters\source\rpg\tests\fixtures\cooperativa\* .local\demo-inputs\cooperativa-rpg.zip`
@@ -201,8 +205,8 @@ golden master de RPG llega con R2: una ejecución RPG no puede pasar de la carac
 
 | Funcionalidad | Cuándo |
 |---|---|
-| Golden master de RPG (conexión a IBM i o trazas, elegido por proyecto) | R2 |
-| Programas RPG interactivos (pantallas 5250) y su destino web | R3 |
-| Quirks del motor de RPG | R4 |
+| Golden master de RPG en un IBM i real | Construido (R2b); falta validarlo en PUB400 o en un IBM i de prueba |
+| Programas RPG interactivos en vivo (emulación 5250) | Posterior: hoy por trazas de sesión (R3) |
+| Procedimientos de un programa de servicio (*SRVPGM) en vivo | Posterior |
 | Cobertura y quirks en los proyectos de demo | No aplica: las demos reproducen grabaciones (ver escenario 7) |
 | Inicio de sesión con un tenant real de Entra ID | Requiere credenciales del cliente |

@@ -91,6 +91,9 @@ def program_of(files: list[SourceFile], suite: Suite) -> RpgProgram:
 
 
 def parameters_of(program: RpgProgram) -> list[Parameter]:
+    if any(f.device == "WORKSTN" for f in program.files):
+        raise IbmiUnavailableError(f"{program.name} is interactive (a display file): its golden master comes from "
+                                   "recorded 5250 session traces; it cannot be called without a terminal")  # fmt: skip
     if program.nomain:
         raise IbmiUnavailableError(f"{program.name} is a service program module: its procedures cannot be called "
                                    "on the IBM i yet (only programs)")  # fmt: skip
