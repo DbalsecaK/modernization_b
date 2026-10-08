@@ -11,6 +11,8 @@ adapters:
   - {key: sybase-sp, name: "Sybase ASE stored procedures", level: certified, version: 0.9.0, validation: goldenMasterLocal}
   - {key: aspx-dotnet, name: "ASP.NET WebForms / .NET Framework", level: assisted, version: 0.6.0, validation: windowsRunner}
   - {key: plsql, name: "PL/SQL (Oracle)", level: experimental, version: 0.2.0, validation: goldenMasterLocal}
+  # ADR-0051: deterministic parser and inventory from R1; the golden master (IBM i connection or traces) comes with R2.
+  - {key: rpg-ibmi, name: "RPG / IBM i (+ DDS, CL)", level: assisted, version: 0.1.0, validation: none}
 
 options:
   - {key: cobol, name: "COBOL", flow: [modernization, independentValidation], adapter: cobol-batch}
@@ -32,6 +34,7 @@ options:
     adapter: aspx-dotnet
     versions:
       - {key: "4.8", name: ".NET Framework 4.8", level: assisted, default: true}
+  - {key: rpg, name: "RPG (IBM i)", flow: [modernization, independentValidation], adapter: rpg-ibmi}
   - {key: user-stories, name: "User stories (Jira)", flow: [newFeature, extendExisting]}
   - {key: functional-document, name: "Functional document (Word)", flow: [newFeature, extendExisting]}
   - {key: user-manual, name: "User manual (PDF)", flow: [newFeature, extendExisting]}
