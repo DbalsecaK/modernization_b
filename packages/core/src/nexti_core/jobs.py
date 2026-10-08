@@ -57,6 +57,25 @@ async def defer_ui_change(
     )
 
 
+LEGACY_CHECK_TASK = "nexti:check_legacy"
+
+
+async def defer_legacy_check(conn: AsyncConnection, project_id: uuid.UUID, tenant_id: uuid.UUID) -> bool:
+    """Enqueue the sign-on check of the project's live legacy system (ADR-0052) in the caller's transaction: the
+    worker signs on with the stored credentials and checks the test library. At most one waiting per project."""
+    args = json.dumps({"project_id": str(project_id), "tenant_id": str(tenant_id)})
+    lock = f"legacy:{project_id}"
+    try:
+        async with conn.begin_nested():
+            await conn.execute(
+                _DEFER, {"queue": RUNS_QUEUE, "task": LEGACY_CHECK_TASK, "lock": lock, "queueing_lock": lock,
+                         "args": args},
+            )  # fmt: skip
+    except IntegrityError:
+        return False
+    return True
+
+
 BACKLOG_SYNC_TASK = "nexti:sync_backlog"
 
 

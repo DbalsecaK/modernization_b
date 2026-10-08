@@ -165,6 +165,43 @@ class SourceRunner:
         raise LegacyUnavailableError("there is no engine to run this legacy and no recorded traces")
 
 
+async def check_legacy_execution(
+    engine: AsyncEngine,
+    secrets: SecretStore | None,
+    live: Mapping[str, LiveRunnerFactory],
+    tenant_id: uuid.UUID,
+    project_id: uuid.UUID,
+) -> str:
+    """The sign-on check of a project's live legacy system (ADR-0052), asked by the connection test: the runner of
+    its kind signs on with the stored credentials and checks the libraries; the row gets the outcome. The credentials
+    are read here and given only to the runner."""
+    scope = DbScope(tenant_id=tenant_id)
+    async with scoped_connection(engine, scope) as conn:
+        row = (
+            await conn.execute(
+                text("SELECT mode, kind, config, vault_path FROM project_legacy_execution WHERE project_id = :p"),
+                {"p": project_id},
+            )
+        ).first()  # fmt: skip
+    if row is None or row.mode != "live":
+        return "nothing to check"
+    stored = await secrets.get(row.vault_path) if secrets is not None and row.vault_path else None
+    factory = live.get(row.kind or "")
+    checker = getattr(factory(dict(row.config), Credentials.model_validate_json(stored)), "check", None) \
+        if factory is not None and stored else None  # fmt: skip
+    if checker is None:
+        ok, detail = False, "this worker cannot sign on to it (no credentials, or no runner of its kind)"
+    else:
+        ok, detail = await checker()
+    async with scoped_connection(engine, scope) as conn:
+        await conn.execute(
+            text("UPDATE project_legacy_execution SET status = :s, last_check_detail = :d, last_checked_at = now() "
+                 "WHERE project_id = :p"),
+            {"s": "ok" if ok else "failed", "d": detail[:2000], "p": project_id},
+        )  # fmt: skip
+    return detail
+
+
 class LiveFigma:
     """Figma read with the tenant's integration (ADR-0018): the newest Figma integration that has a token; the token
     is read from the secrets store for each file and never kept."""

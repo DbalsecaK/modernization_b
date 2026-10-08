@@ -94,6 +94,16 @@ def test_failures_say_whether_to_wait_retry_or_correct_the_suite() -> None:
             program="NOEXISTE", cases=[Case(name="nada_aqui", rules=["RULE-001"])])))  # fmt: skip
 
 
+def test_the_connection_check_signs_on_without_calling_a_program() -> None:
+    seen: list[dict[str, Any]] = []
+    credentials = Credentials(user="NXUSER", password=PASSWORD)
+    ok = IbmiRunner(CONFIG, credentials, bridge({"system": {"version": "V7R5M0"}, "cases": []}, seen))
+    assert asyncio.run(ok.check()) == (True, "signed on to ibmi.example.com (V7R5M0); library NXTEST, NXPGM usable")
+    assert (seen[0]["cases"], seen[0]["parameters"]) == ([], [])
+    refused = IbmiRunner(CONFIG, credentials, bridge({"error": {"kind": "signon", "message": "sign-on refused"}}, []))
+    assert asyncio.run(refused.check()) == (False, "sign-on refused")
+
+
 def test_parameter_types_the_bridge_can_pass() -> None:
     assert parameter("X", "P", 7, 2).type == "packed"
     assert parameter("X", "INT", 10, None) == parameter("X", "I", 10, None)

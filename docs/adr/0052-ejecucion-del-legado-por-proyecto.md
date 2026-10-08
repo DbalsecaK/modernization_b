@@ -25,7 +25,10 @@ hasta que las conexiones de cada cliente estén disponibles, y la decisión es d
    secretos (`tenants/{t}/legacy/{p}`, JSON usuario/contraseña), escritas por la API y nunca devueltas.
 3. **Probar la conexión** abre una conexión TCP al puerto del host server con la misma protección contra direcciones
    internas que las herramientas del tenant (SSRF). Un IBM i suele estar en la red privada del cliente: solo una
-   instalación on-premises la permite (`legacy_allow_private_hosts`). El inicio de sesión lo hace el worker al correr.
+   instalación on-premises la permite (`legacy_allow_private_hosts`). Si el host responde y hay credenciales, la
+   prueba encola un trabajo: el worker inicia sesión con las credenciales guardadas mediante el runner de su tipo y
+   comprueba las bibliotecas, sin llamar a ningún programa, y deja el resultado en la configuración (precisión
+   2026-10-08). La API nunca lee las credenciales ni inicia procesos.
 4. **El worker nunca cambia de modo en silencio.** `SourceRunner` lee la configuración del proyecto al caracterizar:
    `traces` sin trazas, `live` sin un runner de ese tipo en el worker o sin credenciales, dejan la fase en espera
    (`phaseUnavailable`) con el motivo; corregida la configuración, se reintenta.

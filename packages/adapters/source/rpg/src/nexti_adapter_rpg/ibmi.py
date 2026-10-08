@@ -187,6 +187,26 @@ class IbmiRunner:
                             schema_=suite.schema_, results=results, quirks=relied,
                             environment=environment)  # fmt: skip
 
+    async def check(self) -> tuple[bool, str]:
+        """Signs on and puts the test and program libraries first in the library list, without calling anything
+        (the project's connection test, ADR-0052): (ok, what happened)."""
+        request = {
+            "connection": {"host": self.config.host, "tls": self.config.tls, "ccsid": self.config.ccsid,
+                           "user": self.credentials.user, "password": self.credentials.password},
+            "library": self.config.library, "programs": self.config.programs or self.config.library,
+            "program": "NXCHECK", "parameters": [], "tables": [], "cases": [],
+        }  # fmt: skip
+        try:
+            answer = await self.transport(request)
+        except LegacyUnavailableError as exc:
+            return False, str(exc)
+        error = answer.get("error")
+        if error:
+            return False, str(error.get("message", "the IBM i refused the check"))
+        libraries = ", ".join(dict.fromkeys([self.config.library, self.config.programs or self.config.library]))
+        release = answer.get("system", {}).get("version", "")
+        return True, f"signed on to {self.config.host} ({release}); library {libraries} usable"
+
     def _request(self, program: RpgProgram, parameters: list[Parameter], suite: Suite) -> dict[str, Any]:
         tables = [{"name": t.name, "key": list(t.key)} for t in suite.schema_.tables]
         cases = [{"name": c.name, "inputs": c.inputs, "setup": c.setup} for c in suite.cases]

@@ -227,6 +227,8 @@ export const useLegacyExecution = (id: string) =>
     queryKey: keys.legacyExecution(id),
     queryFn: () =>
       unwrap(api.GET('/api/v1/projects/{project_id}/legacy-execution', { params: { path: { project_id: id } } })),
+    // While the worker signs on (the connection test), the card follows the outcome.
+    refetchInterval: (query) => (query.state.data?.lastCheckDetail?.endsWith('...') ? 3000 : false),
   })
 
 export const useSetLegacyExecution = (id: string) =>
