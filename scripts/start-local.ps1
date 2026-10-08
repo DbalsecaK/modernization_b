@@ -146,7 +146,8 @@ try {
       @('nexti-sandbox-java-mongodb:1', @('build', '-q', '-t', 'nexti-sandbox-java-mongodb:1', 'infra/sandbox/java-mongodb')),
       @('nexti-sandbox-java-quarkus:1', @('build', '-q', '-t', 'nexti-sandbox-java-quarkus:1', 'infra/sandbox/java-quarkus')),
       @('nexti-sandbox-iac:2', @('build', '-q', '-t', 'nexti-sandbox-iac:2', 'infra/sandbox/iac')),
-      @('nexti-sandbox-hardening:1', @('build', '-q', '-t', 'nexti-sandbox-hardening:1', 'infra/sandbox/hardening'))
+      @('nexti-sandbox-hardening:1', @('build', '-q', '-t', 'nexti-sandbox-hardening:1', 'infra/sandbox/hardening')),
+      @('nexti-ibmi-bridge:1', @('build', '-q', '-t', 'nexti-ibmi-bridge:1', 'infra/sandbox/ibmi-bridge'))
     )
     foreach ($image in $images) {
       docker image inspect $image[0] *> $null

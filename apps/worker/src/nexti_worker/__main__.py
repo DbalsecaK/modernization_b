@@ -11,6 +11,7 @@ import httpx
 import structlog
 from sqlalchemy.ext.asyncio import create_async_engine
 
+from nexti_adapter_rpg.ibmi import DockerBridge, IbmiRunner
 from nexti_adapter_sybase.ase import AseRunner, RecordedRunner
 from nexti_core.adapters import LegacyRunner
 from nexti_core.instances import beat_forever
@@ -22,6 +23,7 @@ from nexti_graph import GraphStore
 from nexti_model_gateway.service import GatewayService
 from nexti_model_gateway.service import SecretsConfig as GatewaySecrets
 from nexti_sandbox import DEFAULT_IMAGE, DockerSandbox
+from nexti_worker.project import LiveRunnerFactory
 from nexti_worker.queue import MAINTENANCE_QUEUE, create_app
 from nexti_worker.runner import Runtime
 from nexti_worker.settings import WorkerSettings, get_settings
@@ -52,6 +54,12 @@ def legacy_runner(settings: WorkerSettings) -> LegacyRunner:
     if settings.golden_master_mode == "live":
         return live
     return RecordedRunner(Path(settings.golden_master_dir), settings.golden_master_mode, live)
+
+
+def live_runners(settings: WorkerSettings) -> dict[str, LiveRunnerFactory]:
+    """The runners on a customer's live system, by kind (ADR-0052): the IBM i through its bridge (ADR-0053)."""
+    bridge = DockerBridge(image=settings.ibmi_bridge_image, docker=settings.sandbox_docker)
+    return {"ibmi": lambda config, credentials: IbmiRunner(config, credentials, bridge)}
 
 
 async def run_worker(settings: WorkerSettings, *, name: str | None = None, wait: bool = True) -> None:
@@ -89,6 +97,7 @@ async def run_worker(settings: WorkerSettings, *, name: str | None = None, wait:
             ) if settings.secrets_url else None,
             sandboxes=lambda image: DockerSandbox(image=image, docker=settings.sandbox_docker),
             legacy=lambda: legacy_runner(settings),
+            live=live_runners(settings),
             graph=GraphStore.connect(
                 settings.graph_uri, settings.graph_user, settings.graph_password.get_secret_value()
             ) if settings.graph_uri else None,

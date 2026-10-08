@@ -38,6 +38,8 @@ class WorkerSettings(BaseSettings):
     osv_url: str = "https://api.osv.dev"
     sandbox_image: str = ""
     sandbox_docker: str = "docker"
+    # The bridge that runs RPG programs on a customer's IBM i (ADR-0053).
+    ibmi_bridge_image: str = "nexti-ibmi-bridge:1"
     # Models (M4): through the gateway with the tenant's connection; OpenRouter base URL for tests.
     openrouter_url: str | None = None
     # False in the air-gapped profile (ADR-0030): OpenRouter is never called, only openai-compatible servers.
