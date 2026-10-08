@@ -156,6 +156,9 @@ def test_only_the_isolated_containers_start_processes() -> None:
     allowed = {
         ROOT / "packages" / "sandbox" / "src" / "nexti_sandbox" / "__init__.py",
         ROOT / "packages" / "adapters" / "source" / "sybase" / "src" / "nexti_adapter_sybase" / "ase.py",
+        # The IBM i bridge (ADR-0053): a container without privileges that runs only the platform's JTOpen client; the
+        # customer's programs run on the customer's own IBM i, never on the platform.
+        ROOT / "packages" / "adapters" / "source" / "rpg" / "src" / "nexti_adapter_rpg" / "ibmi.py",
     }
     offenders = sorted(
         str(p.relative_to(ROOT))
