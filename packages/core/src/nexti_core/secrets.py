@@ -28,6 +28,11 @@ def repository_path(tenant_id: uuid.UUID, project_id: uuid.UUID) -> str:
     return f"tenants/{tenant_id}/repositories/{project_id}"
 
 
+def legacy_path(tenant_id: uuid.UUID, project_id: uuid.UUID) -> str:
+    """Where the credentials of the system a project's legacy runs on live (ADR-0052): a JSON {user, password}."""
+    return f"tenants/{tenant_id}/legacy/{project_id}"
+
+
 def integration_path(tenant_id: uuid.UUID, integration_id: uuid.UUID) -> str:
     """Where the token of a tenant integration (Figma, Jira, Azure DevOps) lives (ADR-0018)."""
     return f"tenants/{tenant_id}/integrations/{integration_id}"

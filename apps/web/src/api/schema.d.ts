@@ -1498,6 +1498,42 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/projects/{project_id}/legacy-execution": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Legacy Execution */
+        get: operations["get_legacy_execution_api_v1_projects__project_id__legacy_execution_get"];
+        /** Set Legacy Execution */
+        put: operations["set_legacy_execution_api_v1_projects__project_id__legacy_execution_put"];
+        post?: never;
+        /** Delete Legacy Execution */
+        delete: operations["delete_legacy_execution_api_v1_projects__project_id__legacy_execution_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/projects/{project_id}/legacy-execution:test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Test Legacy Execution */
+        post: operations["test_legacy_execution_api_v1_projects__project_id__legacy_execution_test_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/projects/{project_id}/plan": {
         parameters: {
             query?: never;
@@ -4613,6 +4649,54 @@ export interface components {
             problems: string[];
             /** Report */
             report: string | null;
+        };
+        /** LegacyExecutionIn */
+        LegacyExecutionIn: {
+            /**
+             * Clearcredentials
+             * @default false
+             */
+            clearCredentials: boolean;
+            /** Config */
+            config?: {
+                [key: string]: unknown;
+            };
+            /** Kind */
+            kind?: "ibmi" | null;
+            /**
+             * Mode
+             * @enum {string}
+             */
+            mode: "auto" | "traces" | "live";
+            /** Password */
+            password?: string | null;
+            /** User */
+            user?: string | null;
+        };
+        /** LegacyExecutionOut */
+        LegacyExecutionOut: {
+            /** Config */
+            config: {
+                [key: string]: unknown;
+            };
+            /** Hascredentials */
+            hasCredentials: boolean;
+            /** Kind */
+            kind: "ibmi" | null;
+            /** Lastcheckdetail */
+            lastCheckDetail: string | null;
+            /** Lastcheckedat */
+            lastCheckedAt: string | null;
+            /**
+             * Mode
+             * @enum {string}
+             */
+            mode: "auto" | "traces" | "live";
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "untested" | "ok" | "failed";
         };
         /** LicenseOut */
         LicenseOut: {
@@ -9917,6 +10001,132 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["IvvOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_legacy_execution_api_v1_projects__project_id__legacy_execution_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LegacyExecutionOut"] | null;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    set_legacy_execution_api_v1_projects__project_id__legacy_execution_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LegacyExecutionIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LegacyExecutionOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_legacy_execution_api_v1_projects__project_id__legacy_execution_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    test_legacy_execution_api_v1_projects__project_id__legacy_execution_test_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LegacyExecutionOut"];
                 };
             };
             /** @description Validation Error */

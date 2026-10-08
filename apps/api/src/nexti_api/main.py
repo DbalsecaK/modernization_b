@@ -37,7 +37,7 @@ from nexti_api.graph import insights as graph_insights
 from nexti_api.graph import router as graph_router
 from nexti_api.keycloak_admin import KeycloakAdmin
 from nexti_api.observability import RequestLogMiddleware, configure_logging, log
-from nexti_api.projects import backlog, catalog_api, inputs, repository
+from nexti_api.projects import backlog, catalog_api, inputs, legacy, repository
 from nexti_api.projects import router as projects_router
 from nexti_api.projects import services as input_services
 from nexti_api.resources import Resources
@@ -190,6 +190,7 @@ def create_app(settings: Settings | None = None, health_checks: dict[str, health
         catalog_api.router,
         inputs.router,
         repository.router,
+        legacy.router,
         backlog.router,
         runs_router.router,
         runs_questions.router,

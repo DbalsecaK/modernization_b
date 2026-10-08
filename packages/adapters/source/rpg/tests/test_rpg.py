@@ -1,10 +1,13 @@
 """The RPG / IBM i source adapter (ADR-0051, R1) on the fictitious Cooperativa Andina workspace: one program per RPG
 form (RPG III, RPG IV fixed, mixed and fully free), the DDS of its files and the CL that starts the batch."""
 
+import asyncio
 from pathlib import Path
 
+from nexti_adapter_cobol import TraceRunner
 from nexti_adapter_rpg import RpgAdapter, cl, dds, flow, kind_of, parse
 from nexti_core.adapters import SourceFile
+from nexti_core.spec.characterization import Case, Suite
 
 FIXTURES = Path(__file__).parent / "fixtures" / "cooperativa"
 ADAPTER = RpgAdapter()
@@ -136,6 +139,26 @@ def test_data_of_names_variables_and_files_not_builtins_or_subroutines() -> None
     reads, writes = flow(program, [(12, 36)], {"RCUENTA": "CUENTAS", "RMOVIM": "MOVIMI"})
     assert reads == {"CUENTAS", "CTSALD", "PTIPO", "PCUENTA", "WNUEVO", "PMONTO", "WCOMIS"}
     assert writes == {"CUENTAS", "MOVIMI", "CTSALD", "WNUEVO", "PRESULT", "MVCTA", "MVMONT"}
+
+
+def test_recorded_ibm_i_traces_are_a_capped_golden_master_with_coverage_by_subroutine() -> None:
+    # ADR-0052: without a live IBM i, the golden master comes from traces captured on the customer's system.
+    suite = Suite(program="ACTSALDO", cases=[
+        Case(name="debito_con_comision", rules=["RULE-001"], inputs={}),
+        Case(name="debito_sin_saldo", rules=["RULE-002"], inputs={}),
+        Case(name="cuenta_inexistente", rules=["RULE-003"], inputs={}),
+    ])  # fmt: skip
+    runner = TraceRunner(branches=ADAPTER.coverage_branches)
+    master = asyncio.run(runner.run(workspace(), suite))
+    assert (master.engine, master.from_traces) == ("ibmi-trace", True)
+    first = master.results[0].observation
+    assert first.outputs == {"PRESULT": "0"}
+    assert first.tables["CUENTAS"][0]["CTSALD"] == "58.50"  # 100.00 - 40.00 - the 1.50 commission
+    assert master.coverage is not None
+    assert [b.id for b in master.coverage.branches] == ["GRABAR"]
+    assert master.coverage.executed["debito_con_comision"] == ["GRABAR"]
+    assert master.coverage.executed["debito_sin_saldo"] == []
+    assert "golden master of ACTSALDO comes from its recorded traces" in ADAPTER.digest(workspace())
 
 
 def test_coverage_branches_and_digest() -> None:

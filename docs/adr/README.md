@@ -57,5 +57,6 @@ reemplaza y se marca el anterior como "Reemplazado por ADR-NNNN".
 | [0049](0049-cobertura-del-destino.md) | Cobertura del destino bajo el golden master | Aceptada |
 | [0050](0050-veredicto-con-cobertura-y-decisiones-firmadas.md) | PROVEN exige el legado cubierto o cada hueco con una decisión firmada | Aceptada |
 | [0051](0051-adaptador-rpg-ibm-i.md) | Adaptador de origen RPG / IBM i | Aceptada |
+| [0052](0052-ejecucion-del-legado-por-proyecto.md) | Ejecución del legado por proyecto: automática, trazas o sistema del cliente en vivo | Aceptada |
 
 Plantilla: contexto, decisión, alternativas consideradas, consecuencias y cómo se valida.

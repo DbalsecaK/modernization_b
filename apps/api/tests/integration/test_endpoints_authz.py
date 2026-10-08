@@ -43,6 +43,7 @@ from nexti_core.db.models import (
     PriceVersion,
     Project,
     ProjectBacklog,
+    ProjectLegacyExecution,
     ProjectRepository,
     ProviderConnection,
     Release,
@@ -422,6 +423,16 @@ class Ctx:
             await conn.execute(
                 pg_insert(ProjectRepository)
                 .values(tenant_id=self.world.tenant_a, project_id=self.world.project_a, url=REPOSITORY_URL)
+                .on_conflict_do_nothing()
+            )
+        return self.world.project_a
+
+    async def legacy_execution(self) -> uuid.UUID:
+        """Project A observing its legacy from traces (nothing to connect to: the test answers without network)."""
+        async with self.owner.begin() as conn:
+            await conn.execute(
+                pg_insert(ProjectLegacyExecution)
+                .values(tenant_id=self.world.tenant_a, project_id=self.world.project_a, mode="traces")
                 .on_conflict_do_nothing()
             )
         return self.world.project_a
@@ -1206,6 +1217,23 @@ CASES = [
     Case(
         "DELETE", "/api/v1/projects/{project_id}/repository", "admin", "member",
         _with("repository", "/api/v1/projects/{id}/repository"),
+    ),
+    # How the legacy runs for the golden master (ADR-0052): project.view to see it, project.configure to change it.
+    Case(
+        "GET", "/api/v1/projects/{project_id}/legacy-execution", "member", "outsider",
+        fixed("/api/v1/projects/{project_a}/legacy-execution"),
+    ),
+    Case(
+        "PUT", "/api/v1/projects/{project_id}/legacy-execution", "admin", "member",
+        fixed("/api/v1/projects/{project_a}/legacy-execution", {"mode": "traces"}),
+    ),
+    Case(
+        "POST", "/api/v1/projects/{project_id}/legacy-execution:test", "admin", "member",
+        _with("legacy_execution", "/api/v1/projects/{id}/legacy-execution:test"),
+    ),
+    Case(
+        "DELETE", "/api/v1/projects/{project_id}/legacy-execution", "admin", "member",
+        _with("legacy_execution", "/api/v1/projects/{id}/legacy-execution"),
     ),
     # The backlog in Jira / Azure DevOps (M7b): project.view to see it, project.configure to link and sync.
     Case(

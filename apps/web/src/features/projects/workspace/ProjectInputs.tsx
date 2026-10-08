@@ -46,6 +46,7 @@ import {
 import { Drawer, Textarea, toast } from '@/components/ui/overlay'
 import { Notice } from '../NewProjectWizard'
 import { FIGMA_LINK } from '../ProjectSetupSections'
+import { LegacyExecutionCard } from './LegacyExecutionCard'
 
 const KIND_ICON = {
   source_archive: FileArchive,
@@ -65,7 +66,7 @@ const FILE_KINDS: Record<ProjectDetail['flow'], FileKind[]> = {
   extendExisting: ['source_archive', 'document'],
 }
 
-function useErrorText() {
+export function useErrorText() {
   const { t } = useTranslation()
   return (error: unknown) =>
     error instanceof ApiError ? t(`inputs.rejections.${error.code}`, { defaultValue: error.message }) : String(error)
@@ -102,6 +103,9 @@ export function ProjectInputs({ project }: { project: ProjectDetail }) {
   return (
     <div className="space-y-6">
       {project.flow !== 'newFeature' && <RepositoryCard project={project} canEdit={canUpload} />}
+      {(project.flow === 'modernization' || project.flow === 'independentValidation') && (
+        <LegacyExecutionCard project={project} canEdit={hasProjectPermission(project, 'configure')} />
+      )}
       <Card>
         <AddInputDrawer key={opened} project={project} open={open} onClose={() => setOpen(false)} />
         <CardHeader

@@ -44,7 +44,7 @@ class RepositoryIn(ApiModel):
     clear_token: bool = False
 
 
-def _secrets(request: Request) -> SecretStore:
+def secret_store(request: Request) -> SecretStore:
     settings = request.app.state.settings
     if not settings.secrets_url:
         raise ProblemError(503, "secrets_unavailable", "The secrets store is not configured.")
@@ -56,7 +56,7 @@ async def repository_token(request: Request, vault_path: str | None) -> str | No
     """The token of the project's repository, for a push of the delivery (ADR-0023); never returned to a client."""
     if not vault_path or not request.app.state.settings.secrets_url:
         return None
-    return await _secrets(request).get(vault_path)
+    return await secret_store(request).get(vault_path)
 
 
 async def _row(request: Request, auth: Authorized, project_id: uuid.UUID) -> Any:
@@ -93,10 +93,10 @@ async def set_repository(
     vault_path = current.vault_path if current else None
     path = repository_path(auth.tenant_id, project_id)
     if body.token:
-        await _secrets(request).put(path, body.token)
+        await secret_store(request).put(path, body.token)
         vault_path = path
     elif body.clear_token and vault_path:
-        await _secrets(request).delete(vault_path)
+        await secret_store(request).delete(vault_path)
         vault_path = None
     values = {"url": url, "branch": body.branch, "vault_path": vault_path, "status": "untested",
               "last_checked_at": None, "last_check_detail": None}  # fmt: skip
@@ -120,7 +120,7 @@ async def test_repository(request: Request, project_id: uuid.UUID, auth: UploadI
     row = await _row(request, auth, project_id)
     if row is None:
         raise not_found("repository")
-    token = await _secrets(request).get(row.vault_path) if row.vault_path else None
+    token = await secret_store(request).get(row.vault_path) if row.vault_path else None
     settings = request.app.state.settings
     rejection: Rejection | None = None
     branches: list[str] = []
@@ -158,4 +158,4 @@ async def delete_repository(request: Request, project_id: uuid.UUID, auth: Uploa
         await conn.execute(delete(ProjectRepository).where(ProjectRepository.project_id == project_id))
         await audit(conn, auth, "repository.delete", f"project:{project_id}", {"url": row.url})
     if row.vault_path:
-        await _secrets(request).delete(row.vault_path)
+        await secret_store(request).delete(row.vault_path)

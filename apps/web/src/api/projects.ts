@@ -17,6 +17,8 @@ export type ConfigVersion = Schemas['ConfigVersionOut']
 export type InputItem = Schemas['InputOut']
 export type Repository = Schemas['RepositoryOut']
 export type RepositoryInput = Schemas['RepositoryIn']
+export type LegacyExecutionInput = Schemas['LegacyExecutionIn']
+export type LegacyExecution = Schemas['LegacyExecutionOut']
 export type Target = Schemas['TargetIn']
 export type Flow = ProjectCreateInput['flow']
 export type FileKind = 'source_archive' | 'target_archive' | 'document' | 'screenshot'
@@ -51,6 +53,7 @@ const keys = {
   project: (id: string) => ['projects', id],
   inputs: (id: string) => ['projects', id, 'inputs'],
   repository: (id: string) => ['projects', id, 'repository'],
+  legacyExecution: (id: string) => ['projects', id, 'legacy-execution'],
   versions: (id: string) => ['projects', id, 'versions'],
 } as const
 
@@ -216,4 +219,33 @@ export const useDeleteRepository = (id: string) =>
   useRefreshing(
     () => unwrap(api.DELETE('/api/v1/projects/{project_id}/repository', { params: { path: { project_id: id } } })),
     () => [keys.repository(id)],
+  )
+
+// How the legacy runs for the golden master (ADR-0052)
+export const useLegacyExecution = (id: string) =>
+  useQuery({
+    queryKey: keys.legacyExecution(id),
+    queryFn: () =>
+      unwrap(api.GET('/api/v1/projects/{project_id}/legacy-execution', { params: { path: { project_id: id } } })),
+  })
+
+export const useSetLegacyExecution = (id: string) =>
+  useRefreshing(
+    (body: LegacyExecutionInput) =>
+      unwrap(api.PUT('/api/v1/projects/{project_id}/legacy-execution', { params: { path: { project_id: id } }, body })),
+    () => [keys.legacyExecution(id)],
+  )
+
+export const useTestLegacyExecution = (id: string) =>
+  useRefreshing(
+    () =>
+      unwrap(api.POST('/api/v1/projects/{project_id}/legacy-execution:test', { params: { path: { project_id: id } } })),
+    () => [keys.legacyExecution(id)],
+  )
+
+export const useDeleteLegacyExecution = (id: string) =>
+  useRefreshing(
+    () =>
+      unwrap(api.DELETE('/api/v1/projects/{project_id}/legacy-execution', { params: { path: { project_id: id } } })),
+    () => [keys.legacyExecution(id)],
   )
