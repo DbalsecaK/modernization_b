@@ -34,9 +34,11 @@ from nexti_core.db.models import (
     Role,
     RoleAssignment,
 )
+from nexti_core.legacy_execution import Credentials
 from nexti_core.object_store import ObjectStore, ObjectStoreConfig
 from nexti_core.secrets import SecretsConfig, SecretStore, legacy_path, repository_path
 from nexti_ingest import ClamdScanner
+from nexti_worker.project import check_legacy_execution
 
 from .conftest import SETTINGS, World
 
@@ -316,7 +318,12 @@ async def test_inputs_of_another_tenant_are_unreachable(api: TestClient, admin: 
 
 
 async def test_the_live_legacy_keeps_its_credentials_in_the_secrets_store_and_the_check_has_no_ssrf(
-    api: TestClient, admin: dict[str, str], owner_engine: AsyncEngine, world: World, monkeypatch: pytest.MonkeyPatch
+    api: TestClient,
+    admin: dict[str, str],
+    owner_engine: AsyncEngine,
+    app_engine: AsyncEngine,
+    world: World,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     # ADR-0052: how the legacy runs for the golden master, with an IBM i of the customer.
     url = f"/api/v1/projects/{world.project_a}/legacy-execution"
@@ -358,8 +365,33 @@ async def test_the_live_legacy_keeps_its_credentials_in_the_secrets_store_and_th
     monkeypatch.setattr(legacy, "_reach", reach)
     api.app.state.inputs.git_resolver = public  # type: ignore[attr-defined]
     tested = api.post(f"{url}:test", headers=admin)
-    assert (tested.status_code, tested.json()["status"]) == (200, "ok"), tested.text
+    assert tested.status_code == 200, tested.text
     assert reached == [("ibmi.bank.example", 8476)]
+    # The host answers; the worker signs on with the stored credentials (a job) and records the outcome.
+    assert (tested.json()["status"], tested.json()["lastCheckDetail"]) == (
+        "untested",
+        "ibmi.bank.example:8476 answers; signing on and checking the library...",
+    )
+    async with owner_engine.connect() as conn:
+        queued: int = (await conn.execute(text(
+            "SELECT count(*) FROM procrastinate_jobs WHERE task_name = 'nexti:check_legacy' AND status = 'todo' "
+            "AND args->>'project_id' = :p"), {"p": str(world.project_a)})).scalar_one()  # fmt: skip
+    assert queued >= 1
+    signed: list[tuple[str, str]] = []
+
+    class Runner:
+        def __init__(self, config: dict[str, Any], credentials: Credentials) -> None:
+            signed.append((config["library"], credentials.user))
+
+        async def check(self) -> tuple[bool, str]:
+            return True, "signed on to ibmi.bank.example (V7R5M0); library NXTEST usable"
+
+    async with httpx.AsyncClient() as http:
+        secrets = SecretStore(SecretsConfig(SETTINGS.secrets_url, SETTINGS.secrets_token.get_secret_value()), http)
+        await check_legacy_execution(app_engine, secrets, {"ibmi": Runner}, world.tenant_a, world.project_a)  # type: ignore[dict-item]
+    assert signed == [("NXTEST", "NXUSER")]
+    assert (api.get(url).json()["status"], api.get(url).json()["lastCheckDetail"]) == (
+        "ok", "signed on to ibmi.bank.example (V7R5M0); library NXTEST usable")  # fmt: skip
     # An internal address is refused unless the installation allows it (on-premises).
     api.app.state.inputs.git_resolver = internal  # type: ignore[attr-defined]
     refused = api.post(f"{url}:test", headers=admin)

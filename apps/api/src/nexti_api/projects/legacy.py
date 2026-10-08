@@ -21,6 +21,7 @@ from nexti_api.projects import services
 from nexti_api.projects.repository import secret_store
 from nexti_api.schemas import ApiModel
 from nexti_core.db.models import Project, ProjectLegacyExecution
+from nexti_core.jobs import defer_legacy_check
 from nexti_core.legacy_execution import Credentials, Kind, Mode, checked_config
 from nexti_core.secrets import legacy_path
 from nexti_ingest import Rejection
@@ -132,6 +133,7 @@ async def test_legacy_execution(request: Request, project_id: uuid.UUID, auth: C
     if row is None:
         raise not_found("legacy_execution")
     rejection: Rejection | None = None
+    signing_on = False
     if row.mode != "live" or not row.config:
         ok, detail = True, "nothing to connect to: the legacy is observed from its inputs or recorded traces"
     else:
@@ -145,16 +147,27 @@ async def test_legacy_execution(request: Request, project_id: uuid.UUID, auth: C
             ok, detail = True, f"{host}:{port} answers"
             if row.vault_path is None:
                 ok, detail = False, f"{host}:{port} answers, but there are no credentials to sign on"
+            else:
+                signing_on = True
         except Rejection as exc:
             rejection, ok, detail = exc, False, exc.detail
         except (OSError, TimeoutError):
             ok, detail = False, f"{host}:{port} does not answer"
+    if signing_on:  # the worker signs on with the stored credentials and checks the library (it updates the row)
+        detail = f"{detail}; signing on and checking the library..."
     async with transaction(request, auth) as conn:
         await conn.execute(
             update(ProjectLegacyExecution)
             .where(ProjectLegacyExecution.project_id == project_id)
-            .values(status="ok" if ok else "failed", last_checked_at=datetime.now(UTC), last_check_detail=detail)
+            .values(
+                status="untested" if signing_on else "ok" if ok else "failed",
+                last_checked_at=datetime.now(UTC),
+                last_check_detail=detail,
+            )
         )
+        if signing_on:
+            assert auth.tenant_id is not None  # noqa: S101
+            await defer_legacy_check(conn, project_id, auth.tenant_id)
         await audit(
             conn, auth, "legacy_execution.test", f"project:{project_id}",
             {"ok": ok, "code": rejection.code if rejection else None}, outcome="success" if ok else "failure",

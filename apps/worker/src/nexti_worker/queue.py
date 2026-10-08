@@ -7,8 +7,9 @@ import uuid
 import structlog
 from procrastinate import App, Blueprint, JobContext, PsycopgConnector, RetryStrategy
 
-from nexti_core.jobs import BACKLOG_SYNC_TASK, EXECUTE_RUN_TASK, RUNS_QUEUE, UI_CHANGE_TASK
+from nexti_core.jobs import BACKLOG_SYNC_TASK, EXECUTE_RUN_TASK, LEGACY_CHECK_TASK, RUNS_QUEUE, UI_CHANGE_TASK
 from nexti_worker.backlog import bug_fixer, sync_backlog, tracker_for
+from nexti_worker.project import check_legacy_execution
 from nexti_worker.runner import Runtime, execute_run, fail_run
 from nexti_worker.ui_chat import apply_ui_change
 
@@ -71,6 +72,15 @@ async def sync_backlog_task(context: JobContext, project_id: str, tenant_id: str
                                  uuid.UUID(project_id), reason, bug_fixer(runtime, uuid.UUID(tenant_id),
                                                                           uuid.UUID(project_id)))  # fmt: skip
     log.info("backlog.job_done", project_id=project_id, reason=reason, summary=summary)
+
+
+@tasks.task(name=LEGACY_CHECK_TASK.partition(":")[2], queue=RUNS_QUEUE, pass_context=True)
+async def check_legacy_task(context: JobContext, project_id: str, tenant_id: str) -> None:
+    """The sign-on check of a project's live legacy system (ADR-0052), asked by its connection test."""
+    runtime = _runtime(context)
+    detail = await check_legacy_execution(runtime.engine, runtime.secrets, runtime.live, uuid.UUID(tenant_id),
+                                          uuid.UUID(project_id))  # fmt: skip
+    log.info("legacy.check_done", project_id=project_id, detail=detail)
 
 
 @tasks.periodic(cron="* * * * * */5")
