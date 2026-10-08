@@ -552,3 +552,38 @@ def test_the_architect_leaves_out_outputs_never_assigned_and_keeps_the_columns_t
             {"name": "valor", "type": number, "legacy": "valor"}]}]})  # fmt: skip
     found = design_problems(fixed, [rule], hints=True, files=files, written=set(), read={"t_val"})
     assert not any("never assigns" in p or "loads these of its columns" in p for p in found)
+
+
+def test_a_guided_design_is_found_among_other_json_in_the_reply() -> None:
+    from nexti_orchestration.generation import design_json
+
+    # The first RPG run (RPGTEST) failed three times with "context: Field required": the reply's first JSON value
+    # was not the design. The guided reader takes the object with the design's fields, or unwraps {"design": {...}}.
+    design = json.loads(DESIGN_JSON)
+    mapping = '```json\n{"PCUENTA": "accountNumber", "PMONTO": "amount"}\n```'
+    assert design_json(f"Mapping first:\n{mapping}\nThe design:\n```json\n{DESIGN_JSON}\n```") == design
+    assert design_json(json.dumps({"design": design})) == design
+    assert design_json(DESIGN_JSON) == design
+    assert design_json('{"other": 1}') == {"other": 1}  # nothing like a design: the first value, as before
+
+
+async def test_a_guided_design_keeps_each_attempt_with_the_run() -> None:
+    from decimal import Decimal
+
+    from nexti_orchestration.extraction import ModelReply
+    from nexti_orchestration.generation import propose_design
+    from nexti_orchestration.store import Usage
+
+    class Once:
+        async def complete(self, agent: str, phase: str, messages: list[dict[str, str]], *, iteration: int = 1,
+                           judge: int = 0) -> ModelReply:  # fmt: skip
+            return ModelReply(DESIGN_JSON, Usage(None, 0, 0, Decimal(0)), None)
+
+    saved: dict[str, str] = {}
+
+    async def save(files: dict[str, str]) -> None:
+        saved.update(files)
+
+    design, _ = await propose_design(Once(), RULES, "inventory", save=save)
+    assert design.context
+    assert sorted(saved) == ["design/attempt-1-reply.md", "design/attempt-1-request.md"]

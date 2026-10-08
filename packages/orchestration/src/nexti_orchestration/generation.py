@@ -14,7 +14,7 @@ import difflib
 import json
 import re
 import unicodedata
-from collections.abc import Mapping, Sequence
+from collections.abc import Awaitable, Callable, Mapping, Sequence
 from typing import Any, Protocol, cast
 
 from pydantic import ValidationError
@@ -453,14 +453,43 @@ def _rules_text(rules: Sequence[Rule]) -> str:
     )  # fmt: skip
 
 
+_DESIGN_KEYS = {"context", "base_package", "use_cases"}
+
+
+def design_json(content: str) -> Any:
+    """The design in a reply that may carry several JSON values (an example, a mapping table, then the design): the
+    first object with the design's top-level fields, unwrapped when it comes under a single key ({"design": {...}});
+    otherwise the first JSON value, as before."""
+    values: list[Any] = []
+    for block in re.findall(r"```(?:json)?\s*(.*?)```", content, re.DOTALL) or [content]:
+        text, decoder = block.strip(), json.JSONDecoder()
+        position = 0
+        while (start := next((i for i in range(position, len(text)) if text[i] in "{["), -1)) >= 0:
+            try:
+                value, end = decoder.raw_decode(text[start:])
+            except json.JSONDecodeError:
+                position = start + 1
+                continue
+            values.append(value)
+            position = start + end
+    for value in values:
+        if isinstance(value, dict) and len(value) == 1 and isinstance(next(iter(value.values())), dict):
+            value = next(iter(value.values()))
+        if isinstance(value, dict) and _DESIGN_KEYS & set(value):
+            return value
+    return parse_json(content)
+
+
 async def propose_design(
     caller: ModelCaller, rules: Sequence[Rule], inventory: str, *, max_iterations: int = 3,
     names: set[str] | None = None, source: str = "", system: str = ARCHITECT, label: str = "Inventory",
     hints: bool = False, files: Sequence[SourceFile] = (), written: set[str] | None = None, guidance: str = "",
     package_root: str | None = None, read: set[str] | None = None,
+    save: Callable[[dict[str, str]], Awaitable[None]] | None = None,
 ) -> tuple[Design, list[Usage]]:  # fmt: skip
     """The design from the rules. Flow 1 gives the inventory of the legacy; Flow 2 gives the approved screens and
-    stories (`label`) and its own prompt (`system`), with no legacy to map."""
+    stories (`label`) and its own prompt (`system`), with no legacy to map. With `save` (guided runs) every attempt's
+    request and reply stay with the run as documents, so a failed design can be diagnosed."""
     messages = [
         {"role": "system", "content": prompt(system)},
         {
@@ -477,8 +506,11 @@ async def propose_design(
     for iteration in range(1, max_iterations + 1):
         reply = await caller.complete(ARCHITECT, "design", messages, iteration=iteration)
         usage.append(reply.usage)
+        if save is not None:
+            await save({f"design/attempt-{iteration}-request.md": messages[-1]["content"],
+                        f"design/attempt-{iteration}-reply.md": reply.content})  # fmt: skip
         try:
-            data = parse_json(reply.content)
+            data = design_json(reply.content) if hints else parse_json(reply.content)
             design = Design.model_validate(data)
             problems = design_problems(design, rules, names, hints=hints, files=files, written=written,
                                        package_root=package_root, read=read)  # fmt: skip
@@ -502,6 +534,10 @@ class GenerationPhases:
     def __init__(self, port: GenerationPort) -> None:
         self.port = port
 
+    async def _save_docs(self, files: dict[str, str]) -> None:
+        """Files that stay with the run as documents (never delivered): the exchanges with the models."""
+        await self.port.save_artifacts(files, dict.fromkeys(files, "docs"), {})
+
     async def design(self, ctx: PhaseContext) -> PhaseResult:
         rules = await self.port.load_rules()
         if not rules:
@@ -523,6 +559,7 @@ class GenerationPhases:
                         hints=guided_enabled(ctx.run.options), files=files, written=written_tables(files),
                         read=read_tables(files), guidance=stack_guidance(ctx.run.target),
                         package_root=ctx.run.target.get("package_root"),
+                        save=self._save_docs if guided_enabled(ctx.run.options) else None,
                     )  # fmt: skip
             except ReplyError as exc:
                 raise PhaseFailedError(str(exc)[:1500]) from exc
