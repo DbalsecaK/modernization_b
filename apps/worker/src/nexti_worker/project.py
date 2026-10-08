@@ -8,8 +8,8 @@ import io
 import json
 import uuid
 import zipfile
-from collections.abc import Callable, Sequence
-from dataclasses import dataclass
+from collections.abc import Awaitable, Callable, Mapping, Sequence
+from dataclasses import dataclass, field
 from typing import Any
 
 import httpx
@@ -20,6 +20,7 @@ from nexti_adapter_cobol import TraceRunner, is_trace
 from nexti_core.adapters import Edge, Inventory, LegacyRunner, LegacyUnavailableError, Node, SourceFile
 from nexti_core.db.session import DbScope, scoped_connection
 from nexti_core.jobs import defer_backlog_sync
+from nexti_core.legacy_execution import Credentials
 from nexti_core.object_store import ObjectStore
 from nexti_core.run_phase import CURRENT_PHASE
 from nexti_core.secrets import SecretStore
@@ -89,24 +90,62 @@ def read_zip(data: bytes, prefix: str = "") -> list[SourceFile]:
     return [SourceFile(path, text) for path, text in read_text_files(data, prefix)]
 
 
-class SourceRunner:
-    """The legacy runner chosen by the inputs: recorded CICS traces when the archive has them (the legacy cannot run
-    here, ADR-0015), otherwise the engine the worker was given (Sybase ASE, live or recorded)."""
+@dataclass(frozen=True)
+class LegacyExecution:
+    """The project's choice of how its legacy runs (ADR-0052), with the credentials read from the secrets store."""
 
-    def __init__(self, engine: Callable[[], LegacyRunner] | None) -> None:
+    mode: str  # auto, traces, live
+    kind: str | None = None
+    config: dict[str, Any] = field(default_factory=dict)
+    credentials: Credentials | None = None
+
+
+# A runner on a live system of the customer, by kind (R2b: the IBM i): built per run from its config and credentials.
+LiveRunnerFactory = Callable[[dict[str, Any], Credentials], LegacyRunner]
+
+
+class SourceRunner:
+    """The legacy runner chosen by the project's setting (ADR-0052). `auto` (no setting): recorded traces when the
+    archive has them (ADR-0015), otherwise the engine the worker was given (Sybase ASE, live or recorded). `traces`:
+    only the recorded traces. `live`: the customer's system, through the worker's factory for its kind. Whatever is
+    missing makes the phase wait (LegacyUnavailableError), never a silent change of mode."""
+
+    def __init__(
+        self,
+        engine: Callable[[], LegacyRunner] | None,
+        execution: Callable[[], Awaitable[LegacyExecution | None]] | None = None,
+        live: Mapping[str, LiveRunnerFactory] | None = None,
+    ) -> None:
         self._engine = engine
+        self._execution = execution
+        self._live = live or {}
         self.engine = "none"
 
     async def run(self, files: list[SourceFile], suite: Suite) -> GoldenMaster:
-        runner: LegacyRunner
-        if any(is_trace(f) for f in files):
-            runner = TraceRunner(branches=_branches)
-        elif self._engine is not None:
-            runner = self._engine()
-        else:
-            raise LegacyUnavailableError("there is no engine to run this legacy and no recorded traces")
+        setting = await self._execution() if self._execution is not None else None
+        runner = self._runner(files, setting or LegacyExecution("auto"))
         self.engine = runner.engine
         return await runner.run(files, suite)
+
+    def _runner(self, files: list[SourceFile], setting: LegacyExecution) -> LegacyRunner:
+        traced = any(is_trace(f) for f in files)
+        if setting.mode == "traces":
+            if not traced:
+                raise LegacyUnavailableError("the project observes its legacy from recorded traces and the inputs "
+                                             "have none (a traces/<program>.json file)")  # fmt: skip
+            return TraceRunner(branches=_branches)
+        if setting.mode == "live":
+            factory = self._live.get(setting.kind or "")
+            if factory is None:
+                raise LegacyUnavailableError(f"this worker cannot run a legacy on a live {setting.kind} yet")
+            if setting.credentials is None:
+                raise LegacyUnavailableError(f"the project's live {setting.kind} has no credentials")
+            return factory(setting.config, setting.credentials)
+        if traced:
+            return TraceRunner(branches=_branches)
+        if self._engine is not None:
+            return self._engine()
+        raise LegacyUnavailableError("there is no engine to run this legacy and no recorded traces")
 
 
 class LiveFigma:
@@ -161,6 +200,7 @@ class WorkerProjectPort:
         legacy: Callable[[], LegacyRunner] | None = None,
         figma_reader: figma.FigmaReader | None = None,
         delivery: DeliveryServices | None = None,
+        live: Mapping[str, LiveRunnerFactory] | None = None,
     ) -> None:
         self.engine = engine
         self.run = run
@@ -174,6 +214,7 @@ class WorkerProjectPort:
         self._legacy = legacy
         self._figma = figma_reader
         self._delivery = delivery or DeliveryServices()
+        self._live = live or {}
 
     def _db(self) -> Any:
         return scoped_connection(self.engine, DbScope(tenant_id=self.run.tenant_id))
@@ -614,8 +655,24 @@ class WorkerProjectPort:
 
     # -- characterization (M4) -----------------------------------------------------------------------------------
     def legacy_runner(self) -> LegacyRunner | None:
-        """How this legacy is observed, chosen by its inputs (see SourceRunner)."""
-        return SourceRunner(self._legacy)
+        """How this legacy is observed, chosen by the project's setting and its inputs (see SourceRunner)."""
+        return SourceRunner(self._legacy, self.legacy_execution, self._live)
+
+    async def legacy_execution(self) -> LegacyExecution | None:
+        async with self._db() as conn:
+            row = (
+                await conn.execute(
+                    text("SELECT mode, kind, config, vault_path FROM project_legacy_execution WHERE project_id = :p"),
+                    {"p": self.run.project_id},
+                )
+            ).first()  # fmt: skip
+        if row is None:
+            return None
+        credentials = None
+        if row.vault_path and self._delivery.secrets is not None:
+            stored = await self._delivery.secrets.get(row.vault_path)
+            credentials = Credentials.model_validate_json(stored) if stored else None
+        return LegacyExecution(row.mode, row.kind, dict(row.config or {}), credentials)
 
     async def save_golden_master(self, master: GoldenMaster) -> None:
         path = "characterization/golden_master.json"

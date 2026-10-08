@@ -11,7 +11,7 @@ finishes or waits for a person again.
 
 import uuid
 from collections.abc import Callable, Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 import httpx
@@ -37,7 +37,7 @@ from nexti_sandbox import Sandbox
 from nexti_worker.backlog import TrackerFactory
 from nexti_worker.loading import load_run
 from nexti_worker.probe import ServicesProbe
-from nexti_worker.project import DeliveryServices, LiveFigma, WorkerProjectPort
+from nexti_worker.project import DeliveryServices, LiveFigma, LiveRunnerFactory, WorkerProjectPort
 from nexti_worker.store import DbRunStore
 
 log = structlog.get_logger("nexti_worker")
@@ -59,6 +59,8 @@ class Runtime:
     graph: GraphStore | None = None
     sandboxes: Callable[[str], Sandbox] | None = None  # the sandbox of a pack, by image (M4)
     legacy: Callable[[], LegacyRunner] | None = None  # the engine that runs the legacy for the golden master (M4)
+    # Runners on a customer's live system, by kind (ADR-0052): a project in `live` mode without one waits.
+    live: Mapping[str, LiveRunnerFactory] = field(default_factory=dict)
     figma: FigmaReader | None = None  # Figma answers (tests and demo); by default the tenant's integration (M7)
     trackers: TrackerFactory | None = None  # Jira / Azure DevOps clients (tests and demo); by default the real ones
     osv_url: str | None = None  # dependencies of the generated code in OSV (M9a); None: not checked (tests)
@@ -147,6 +149,7 @@ async def execute_run(runtime: Runtime, run_id: uuid.UUID, tenant_id: uuid.UUID)
             runtime.legacy,
             runtime.figma or LiveFigma(runtime.engine, tenant_id, runtime.secrets, runtime.http, runtime.figma_url),
             DeliveryServices(runtime.http, runtime.secrets, runtime.osv_url, runtime.allow_private_hosts),
+            runtime.live,
         )
         if runtime.gateway is not None
         else None

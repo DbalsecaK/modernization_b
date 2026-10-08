@@ -693,6 +693,29 @@ class ProjectRepository(Base):
     updated_at: Mapped[datetime] = _now()
 
 
+class ProjectLegacyExecution(Base):
+    """How the project's legacy runs for the golden master (migration 0026, ADR-0052)."""
+
+    __tablename__ = "project_legacy_execution"
+    __table_args__ = (
+        ForeignKeyConstraint(["project_id", "tenant_id"], ["project.id", "project.tenant_id"], ondelete="CASCADE"),
+    )
+    tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    project_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
+    mode: Mapped[str] = mapped_column(Text, nullable=False, server_default="auto")
+    kind: Mapped[str | None] = mapped_column(Text)
+    # Where the system is (host, port, test library...); never a credential.
+    config: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))
+    # Where the credentials live in the secrets store (ADR-0007); never the credentials themselves.
+    vault_path: Mapped[str | None] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(Text, nullable=False, server_default="untested")
+    last_checked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    last_check_detail: Mapped[str | None] = mapped_column(Text)
+    created_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("app_user.id"))
+    created_at: Mapped[datetime] = _now()
+    updated_at: Mapped[datetime] = _now()
+
+
 # Integrations of the tenant (migration 0011, ADR-0018): Figma now, Jira / Azure DevOps / Git in M7b.
 class TenantIntegration(Base):
     __tablename__ = "tenant_integration"

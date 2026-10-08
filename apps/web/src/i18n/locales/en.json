@@ -469,6 +469,39 @@
     "branches": "Branches: {{branches}}",
     "targetArchiveHint": "A zip with the third party's source and its runnable artifact (a Spring Boot jar), or its loose source files."
   },
+  "legacyExecution": {
+    "title": "Legacy execution",
+    "hint": "How the original program runs to record the golden master: it decides how far the verdict can go.",
+    "configure": "Configure",
+    "none": "Automatic: traces when the inputs bring them; otherwise the platform engine (Sybase ASE).",
+    "mode": "Mode",
+    "modes": {
+      "auto": "Automatic (by the inputs)",
+      "traces": "Recorded traces",
+      "live": "Customer's live system (IBM i)"
+    },
+    "modeHint": {
+      "auto": "Traces when the inputs bring them; otherwise the platform engine.",
+      "traces": "Only the traces recorded on the customer's system: the verdict cannot pass PARTLY PROVEN.",
+      "live": "The program runs on the customer's IBM i with a test library: the verdict can reach PROVEN."
+    },
+    "host": "IBM i host",
+    "hostHint": "Name or IPv4, without scheme or port.",
+    "port": "Port",
+    "portHint": "Sign-on server (8476) or another host server port.",
+    "library": "Test library",
+    "libraryHint": "Where each case's rows are loaded. Never a production library.",
+    "programs": "Program library",
+    "programsHint": "Optional: when the programs live in another library.",
+    "user": "User",
+    "password": "Password",
+    "credentialsKept": "Credentials are stored: leave it empty to keep them.",
+    "withCredentials": "with credentials",
+    "tracesCeiling": "With recorded traces the verdict cannot pass PARTLY PROVEN: fresh inputs cannot be checked.",
+    "saved": "Legacy execution saved.",
+    "removed": "Legacy execution removed: it is automatic again.",
+    "confirmRemove": "Remove the legacy execution? The stored credentials are deleted."
+  },
   "inventory": {
     "programs": "Programs",
     "copybooks": "Copybooks",

@@ -469,6 +469,39 @@
     "branches": "Ramas: {{branches}}",
     "targetArchiveHint": "Un zip con el código fuente del tercero y su artefacto ejecutable (un jar de Spring Boot), o sus archivos fuente sueltos."
   },
+  "legacyExecution": {
+    "title": "Ejecución del legado",
+    "hint": "Cómo corre el programa original para grabar el golden master: decide hasta dónde puede llegar el veredicto.",
+    "configure": "Configurar",
+    "none": "Automática: trazas si los insumos las traen; si no, el motor de la plataforma (Sybase ASE).",
+    "mode": "Modo",
+    "modes": {
+      "auto": "Automático (por los insumos)",
+      "traces": "Trazas grabadas",
+      "live": "Sistema del cliente en vivo (IBM i)"
+    },
+    "modeHint": {
+      "auto": "Trazas si los insumos las traen; si no, el motor de la plataforma.",
+      "traces": "Solo las trazas grabadas en el sistema del cliente: el veredicto no pasa de PARTLY PROVEN.",
+      "live": "El programa corre en un IBM i del cliente con una biblioteca de prueba: el veredicto puede llegar a PROVEN."
+    },
+    "host": "Host del IBM i",
+    "hostHint": "Nombre o IPv4, sin protocolo ni puerto.",
+    "port": "Puerto",
+    "portHint": "Servidor de sign-on (8476) u otro puerto de los host servers.",
+    "library": "Biblioteca de prueba",
+    "libraryHint": "Donde se cargan las filas de cada caso. Nunca una biblioteca de producción.",
+    "programs": "Biblioteca de programas",
+    "programsHint": "Opcional: si los programas están en otra biblioteca.",
+    "user": "Usuario",
+    "password": "Contraseña",
+    "credentialsKept": "Hay credenciales guardadas: déjalo vacío para conservarlas.",
+    "withCredentials": "con credenciales",
+    "tracesCeiling": "Con trazas grabadas el veredicto no pasa de PARTLY PROVEN: no se pueden probar entradas nuevas.",
+    "saved": "Ejecución del legado guardada.",
+    "removed": "Ejecución del legado quitada: vuelve a ser automática.",
+    "confirmRemove": "¿Quitar la ejecución del legado? Las credenciales guardadas se borran."
+  },
   "inventory": {
     "programs": "Programas",
     "copybooks": "Copybooks",

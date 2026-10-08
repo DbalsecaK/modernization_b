@@ -75,6 +75,9 @@ class Settings(BaseSettings):
     max_screenshot_mb: int = 10
     # Only for local tests against a Git server on the developer's machine; never outside development/test.
     git_allow_private_hosts: bool = False
+    # A customer's IBM i (ADR-0052) usually sits on its private network: an on-premises installation that reaches it
+    # turns this on; a shared cloud installation keeps it off (no internal addresses on behalf of a tenant).
+    legacy_allow_private_hosts: bool = False
     openfga_url: str = ""
     openfga_api_key: SecretStr = SecretStr("")
     # Outside development/test the store and model are pinned; locally they are created/updated from the repo.

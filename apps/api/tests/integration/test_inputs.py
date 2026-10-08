@@ -3,6 +3,7 @@ is rejected and nothing is stored; an invalid Figma link is rejected; a screensh
 versions, downloads, deletion, isolation, fail-closed scanning and the Git connection without SSRF."""
 
 import io
+import json
 import struct
 import uuid
 import zipfile
@@ -21,10 +22,20 @@ from sqlalchemy.ext.asyncio import AsyncEngine
 from nexti_api.authz.fga import OpenFga
 from nexti_api.authz.reconcile import reconcile
 from nexti_api.main import create_app
+from nexti_api.projects import legacy
 from nexti_api.settings import Settings
-from nexti_core.db.models import AppUser, AuditLog, InputArtifact, Membership, ProjectRepository, Role, RoleAssignment
+from nexti_core.db.models import (
+    AppUser,
+    AuditLog,
+    InputArtifact,
+    Membership,
+    ProjectLegacyExecution,
+    ProjectRepository,
+    Role,
+    RoleAssignment,
+)
 from nexti_core.object_store import ObjectStore, ObjectStoreConfig
-from nexti_core.secrets import SecretsConfig, SecretStore, repository_path
+from nexti_core.secrets import SecretsConfig, SecretStore, legacy_path, repository_path
 from nexti_ingest import ClamdScanner
 
 from .conftest import SETTINGS, World
@@ -302,6 +313,70 @@ async def test_inputs_of_another_tenant_are_unreachable(api: TestClient, admin: 
     # An input of project A addressed through another project id is not found.
     mine = upload(api, admin, world.project_a, f"y-{uuid.uuid4().hex[:4]}.png", png(), "screenshot").json()["id"]
     assert api.get(f"/api/v1/projects/{b}/inputs/{mine}/content").status_code in (403, 404)
+
+
+async def test_the_live_legacy_keeps_its_credentials_in_the_secrets_store_and_the_check_has_no_ssrf(
+    api: TestClient, admin: dict[str, str], owner_engine: AsyncEngine, world: World, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # ADR-0052: how the legacy runs for the golden master, with an IBM i of the customer.
+    url = f"/api/v1/projects/{world.project_a}/legacy-execution"
+    assert api.put(url, json={"mode": "live"}, headers=admin).status_code == 422  # a live legacy needs its kind
+    ssh = {"host": "ibmi.bank.example", "port": 22, "library": "NXTEST"}
+    bad = api.put(url, json={"mode": "live", "kind": "ibmi", "config": ssh}, headers=admin)
+    assert (bad.status_code, bad.json()["code"]) == (422, "invalid_legacy_config")
+    password = f"pw-{uuid.uuid4().hex}"
+    body = {"mode": "live", "kind": "ibmi", "config": {"host": "IBMI.bank.example", "library": "nxtest"},
+            "user": "NXUSER", "password": password}  # fmt: skip
+    saved = api.put(url, json=body, headers=admin)
+    assert saved.status_code == 200, saved.text
+    assert saved.json()["config"] == {"host": "ibmi.bank.example", "port": 8476, "library": "NXTEST", "programs": None,
+                                      "ccsid": 284, "tls": False}  # fmt: skip
+    assert (saved.json()["hasCredentials"], saved.json()["status"]) == (True, "untested")
+    assert password not in saved.text
+    async with owner_engine.connect() as conn:
+        row = (
+            await conn.execute(
+                select(ProjectLegacyExecution).where(ProjectLegacyExecution.project_id == world.project_a)
+            )
+        ).one()
+    assert row.vault_path == legacy_path(world.tenant_a, world.project_a)
+    async with httpx.AsyncClient() as http:
+        secrets = SecretStore(SecretsConfig(SETTINGS.secrets_url, SETTINGS.secrets_token.get_secret_value()), http)
+        assert json.loads(await secrets.get(row.vault_path) or "{}") == {"user": "NXUSER", "password": password}
+
+    reached: list[tuple[str, int]] = []
+
+    async def reach(host: str, port: int) -> None:
+        reached.append((host, port))
+
+    async def public(host: str, port: int) -> list[str]:
+        return ["8.8.8.8"]
+
+    async def internal(host: str, port: int) -> list[str]:
+        return ["10.1.2.3"]
+
+    monkeypatch.setattr(legacy, "_reach", reach)
+    api.app.state.inputs.git_resolver = public  # type: ignore[attr-defined]
+    tested = api.post(f"{url}:test", headers=admin)
+    assert (tested.status_code, tested.json()["status"]) == (200, "ok"), tested.text
+    assert reached == [("ibmi.bank.example", 8476)]
+    # An internal address is refused unless the installation allows it (on-premises).
+    api.app.state.inputs.git_resolver = internal  # type: ignore[attr-defined]
+    refused = api.post(f"{url}:test", headers=admin)
+    assert (refused.status_code, refused.json()["code"]) == (422, "host_not_allowed")
+    assert api.get(url).json()["status"] == "failed"
+    assert len(reached) == 1  # never connected to the internal address
+
+    # Traces need nothing to connect to; deleting removes the credentials too.
+    assert (
+        api.put(url, json={"mode": "traces", "clearCredentials": True}, headers=admin).json()["hasCredentials"] is False
+    )
+    assert api.post(f"{url}:test", headers=admin).json()["lastCheckDetail"].startswith("nothing to connect to")
+    assert api.delete(url, headers=admin).status_code == 204
+    assert api.get(url).json() is None
+    async with httpx.AsyncClient() as http:
+        secrets = SecretStore(SecretsConfig(SETTINGS.secrets_url, SETTINGS.secrets_token.get_secret_value()), http)
+        assert await secrets.get(legacy_path(world.tenant_a, world.project_a)) is None
 
 
 async def test_the_repository_token_lives_in_the_secrets_store_and_the_check_has_no_ssrf(
