@@ -10,7 +10,7 @@ from pathlib import PurePosixPath
 from typing import Any
 
 from nexti_adapter_cobol.traces import load_traces
-from nexti_adapter_rpg import cl, dds, quirks
+from nexti_adapter_rpg import cl, dds, quirks, screens
 from nexti_adapter_rpg.parser import (
     CONTROL,
     INFRASTRUCTURE,
@@ -29,6 +29,7 @@ from nexti_adapter_rpg.parser import (
 from nexti_adapter_rpg.types import TypeMapping, to_neutral
 from nexti_core.adapters import Edge, EdgeType, Inventory, Node, SliceView, SourceFile
 from nexti_core.spec.characterization import CoveredBranch, EngineQuirk, EnvironmentItem
+from nexti_core.spec.screens import ScreenSpec
 
 _ASSIGN = re.compile(r"^\s*([A-Za-z_#$@*][\w#$@]*(?:\([^)]*\))?(?:\.[\w#$@]+)?)\s*(?:[-+*/]?=)\s*(.*)$", re.S)
 _ARITHMETIC = {"ADD", "SUB", "MULT", "DIV", "Z-ADD", "Z-SUB", "MOVE", "MOVEL", "MOVEA", "XFOOT", "SQRT", "MVR",
@@ -329,6 +330,10 @@ class RpgAdapter:
         formats = {r.name: d.name for d in self._dds(files) for r in d.records}
         reads, writes = flow(program, ranges, formats)
         return frozenset(reads), frozenset(writes)
+
+    def screens(self, files: list[SourceFile]) -> list[ScreenSpec]:
+        """The 5250 screens: each record of the display files (R3), like the BMS maps of CICS."""
+        return screens.screens(self._dds(files))
 
     def engine_quirks(self, files: list[SourceFile]) -> list[EngineQuirk]:
         """The RPG behaviours every program relies on (R4: cycle, truncation and (H), MOVE, EBCDIC order...)."""

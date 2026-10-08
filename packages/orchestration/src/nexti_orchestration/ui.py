@@ -11,6 +11,7 @@ from typing import Any, Literal, Protocol, cast
 
 from nexti_adapter_aspx import AspxAdapter
 from nexti_adapter_bms import BmsAdapter
+from nexti_adapter_rpg import RpgAdapter
 from nexti_agents import prompt
 from nexti_core.adapters import SourceFile
 from nexti_core.spec.screens import ScreenSpec
@@ -46,12 +47,15 @@ class UiPort(Protocol):
 
 
 def screens_of(files: list[SourceFile]) -> list[ScreenSpec]:
-    """The screens the legacy defines: BMS maps (M5) or ASP.NET WebForms pages (M8)."""
+    """The screens the legacy defines: BMS maps (M5), ASP.NET WebForms pages (M8) or 5250 display files (RPG R3)."""
     bms = BmsAdapter()
     if bms.detect(files) > 0:
         return bms.screens(files)
     aspx = AspxAdapter()
-    return aspx.screens(files) if aspx.detect(files) > 0 else []
+    if aspx.detect(files) > 0:
+        return aspx.screens(files)
+    rpg = RpgAdapter()
+    return rpg.screens(files) if rpg.detect(files) > 0 else []
 
 
 def tsx_block(content: str) -> str:
