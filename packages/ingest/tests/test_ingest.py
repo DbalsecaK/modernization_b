@@ -285,6 +285,19 @@ async def test_without_the_scanner_the_upload_fails_closed() -> None:
         await validate(png_bytes(), "login.png", "screenshot", LIMITS, scanner)
 
 
+def test_the_source_of_an_ibm_i_archive_is_read() -> None:
+    # ADR-0051: RPG programs, their DDS and the CL reach the source adapter (an accepted zip read none of them).
+    from nexti_ingest.archive import read_text_files
+
+    names = ["qrpglesrc/ACTSALDO.rpgle", "qrpgsrc/CALCINT.rpg", "qrpglesrc/VALCTA.sqlrpgle", "qddssrc/CUENTAS.pf",
+             "qddssrc/CUENTASL1.lf", "qddssrc/CONSCTAD.dspf", "qddssrc/REPINT.prtf", "qclsrc/CIERRE.clle"]  # fmt: skip
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w") as archive:
+        for name in names:
+            archive.writestr(name, "     A          R RECORD\n")
+    assert [path for path, _ in read_text_files(buffer.getvalue())] == names
+
+
 def test_a_target_archive_is_read_whole_with_its_binaries() -> None:
     from nexti_ingest.archive import read_all_files
 
