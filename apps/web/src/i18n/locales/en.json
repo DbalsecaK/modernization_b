@@ -2952,6 +2952,7 @@
       "info": "Info"
     },
     "retry": "Retry from this phase",
+    "retryPhase": "Retry the phase",
     "retried": "Run queued again: it goes on from the chosen phase.",
     "retryFrom": "Retry from phase"
   },

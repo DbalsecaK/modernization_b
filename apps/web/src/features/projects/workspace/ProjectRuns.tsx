@@ -181,13 +181,34 @@ function RunView({ project, run }: { project: ProjectDetail; run: RunDetail }) {
           })}
           action={
             live && project.permissions.includes('pipeline.run') ? (
-              <Button
-                size="sm"
-                disabled={cancel.isPending}
-                onClick={() => cancel.mutate(run.id, { onError: (e) => toast(errorText(e, t('common.error'))) })}
-              >
-                <Square size={14} /> {t('runsPage.cancel')}
-              </Button>
+              <div className="flex items-center gap-2">
+                {run.status === 'waiting' && run.waitingReason === 'phaseUnavailable' && (
+                  // The phase waited for its engine or the legacy system (ADR-0046): once it is back, run it again.
+                  <Button
+                    size="sm"
+                    variant="primary"
+                    disabled={retry.isPending}
+                    onClick={() =>
+                      retry.mutate(
+                        { runId: run.id, phase: null },
+                        {
+                          onSuccess: () => toast(t('runsPage.retried')),
+                          onError: (e) => toast(errorText(e, t('common.error'))),
+                        },
+                      )
+                    }
+                  >
+                    <RotateCw size={14} /> {t('runsPage.retryPhase')}
+                  </Button>
+                )}
+                <Button
+                  size="sm"
+                  disabled={cancel.isPending}
+                  onClick={() => cancel.mutate(run.id, { onError: (e) => toast(errorText(e, t('common.error'))) })}
+                >
+                  <Square size={14} /> {t('runsPage.cancel')}
+                </Button>
+              </div>
             ) : (run.status === 'failed' || run.status === 'succeeded') &&
               project.permissions.includes('pipeline.run') ? (
               <div className="flex items-center gap-2">
