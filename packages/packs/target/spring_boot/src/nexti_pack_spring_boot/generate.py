@@ -327,7 +327,7 @@ def program_adapter_file(design: Design, port: Port) -> tuple[str, str]:
             answer = ""
         methods.append(
             f"    @Override\n    public {result} {method.name}({params}) {{\n"
-            f'        java.util.Map<String, Object> row = jdbc.queryForMap(\n            "{batch}"{binds});\n'
+            f'        java.util.Map<String, Object> row = call(\n            "{batch}"{binds});\n'
             f'        int status = ((Number) row.get("{SP_STATUS}")).intValue();\n'
             f"        if (status != 0) {{\n"
             f'            throw new IllegalStateException("{program} answered " + status);\n        }}\n'
@@ -348,9 +348,45 @@ def program_adapter_file(design: Design, port: Port) -> tuple[str, str]:
         "    private final JdbcTemplate jdbc;\n\n"
         f"    public Jdbc{port.name}(JdbcTemplate jdbc) {{\n        this.jdbc = jdbc;\n    }}\n\n"
         + "\n".join(methods)
+        + CALL_HELPER
         + "\n    private static <T> T nullable(Object value, java.util.function.Function<Object, T> convert) {\n"
         "        return value == null ? null : convert.apply(value);\n    }\n}\n"
     )
+
+
+# The batch of a legacy program may return result sets of its own (a substitute prints the call it received, a real
+# procedure may select rows) before the final SELECT with the status: the row that carries the status is the answer.
+CALL_HELPER = (
+    "\n    /** Runs the batch and returns the row of its last SELECT (the status and the outputs); the program's own"
+    " result sets are skipped. */\n"
+    "    private java.util.Map<String, Object> call(String batch, Object... arguments) {\n"
+    "        java.util.Map<String, Object> found = jdbc.execute("
+    "(org.springframework.jdbc.core.ConnectionCallback<java.util.Map<String, Object>>) connection -> {\n"
+    "            try (java.sql.PreparedStatement statement = connection.prepareStatement(batch)) {\n"
+    "                for (int i = 0; i < arguments.length; i++) {\n"
+    "                    statement.setObject(i + 1, arguments[i]);\n                }\n"
+    "                java.util.Map<String, Object> last = null;\n"
+    "                boolean results = statement.execute();\n"
+    "                while (true) {\n"
+    "                    if (results) {\n"
+    "                        try (java.sql.ResultSet rs = statement.getResultSet()) {\n"
+    "                            java.sql.ResultSetMetaData meta = rs.getMetaData();\n"
+    "                            if (rs.next()) {\n"
+    "                                java.util.Map<String, Object> row = new java.util.LinkedHashMap<>();\n"
+    "                                for (int c = 1; c <= meta.getColumnCount(); c++) {\n"
+    "                                    row.put(meta.getColumnLabel(c), rs.getObject(c));\n"
+    "                                }\n"
+    f'                                if (row.containsKey("{SP_STATUS}")) {{\n'
+    "                                    last = row;\n"
+    "                                }\n                            }\n                        }\n"
+    "                    } else if (statement.getUpdateCount() == -1) {\n"
+    "                        break;\n                    }\n"
+    "                    results = statement.getMoreResults();\n                }\n"
+    "                return last;\n            }\n        });\n"
+    "        if (found == null) {\n"
+    '            throw new IllegalStateException("the program returned no status");\n        }\n'
+    "        return found;\n    }\n"
+)
 
 
 def generated_adapters(design: Design) -> dict[str, str]:
