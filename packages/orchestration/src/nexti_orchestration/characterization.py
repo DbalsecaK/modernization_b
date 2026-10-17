@@ -236,28 +236,34 @@ def unique_names(cases: Sequence[Case]) -> list[Case]:
 
 
 def parse_suite(content: str, *, guided: bool = False) -> Suite:
-    """The suite of the reply. With `guided` (guided extraction, ADR-0033) a key marked on the columns is read as
-    the table's key, and the format errors go back in words instead of the validator's raw records. Without it the
-    parse is the strict one the recordings were made with."""
+    """The suite of the reply. A key marked on the columns (the way database tools show it) is read as the table's
+    key in every mode. With `guided` (guided extraction, ADR-0033) the format errors go back in words instead of
+    the validator's raw records."""
     data = parse_json(content)
     try:
-        return Suite.model_validate(table_keys_from_columns(data) if guided else data)
+        return Suite.model_validate(table_keys_from_columns(data))
     except ValidationError as exc:
         detail = format_problems(exc) if guided else str(exc.errors()[:5])
         raise ReplyError(f"the suite does not follow the format: {detail}") from exc
 
 
 def coverage_problems(suite: Suite, rules: Sequence[Rule], required: Sequence[Rule] | None = None) -> list[str]:
-    """Every required rule needs a case (all of them unless a scope says otherwise); cases cite known rules only."""
+    """Every required rule needs a case (all of them unless a scope says otherwise) or a declaration that no input
+    can reach it, with the reason; cases and declarations cite known rules only."""
     covered = {r for case in suite.cases for r in case.rules}
     known = {r.id for r in rules}
     problems = []
-    missing = sorted({r.id for r in (rules if required is None else required)} - covered)
+    declared = {rule for rule, why in suite.unreachable.items() if why.strip()}
+    missing = sorted({r.id for r in (rules if required is None else required)} - covered - declared)
     if missing:
-        problems.append(f"rules without a case: {', '.join(missing)}")
-    unknown = sorted(covered - known)
+        problems.append(f"rules without a case: {', '.join(missing)} (a rule no input can reach: declare it in "
+                        "`unreachable` with the reason instead of inventing a case)")  # fmt: skip
+    unknown = sorted((covered | set(suite.unreachable)) - known)
     if unknown:
         problems.append(f"cases cite rules that do not exist: {', '.join(unknown)}")
+    blank = sorted(set(suite.unreachable) - declared)
+    if blank:
+        problems.append(f"unreachable rules without a reason: {', '.join(blank)}")
     return problems
 
 

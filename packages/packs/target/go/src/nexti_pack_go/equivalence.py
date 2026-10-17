@@ -150,10 +150,13 @@ def glue(design: Design, use_case: UseCase) -> str:
         + ("\tdb := s.(*pg.DB)\n" if uses_db else "\t_ = s\n")
         + ("" if fakes else "\t_ = rec\n")
         # ADR-0055: the effects of a substitute run on the transaction the context carries (db.Q), as the adapters do.
-        + ("\trec.exec = func(ctx context.Context, query string) (int64, error) {\n"
-           "\t\tresult, err := db.Q(ctx).ExecContext(ctx, query)\n"
-           "\t\tif err != nil {\n\t\t\treturn 0, err\n\t\t}\n\t\treturn result.RowsAffected()\n\t}\n"
-           if uses_db and fakes else "")
+        + (
+            "\trec.exec = func(ctx context.Context, query string) (int64, error) {\n"
+            "\t\tresult, err := db.Q(ctx).ExecContext(ctx, query)\n"
+            "\t\tif err != nil {\n\t\t\treturn 0, err\n\t\t}\n\t\treturn result.RowsAffected()\n\t}\n"
+            if uses_db and fakes
+            else ""
+        )
         + f"\tservice := app.New{use_case.name}Service({arguments})\n"
         "\treturn func(ctx context.Context, in map[string]*string) (map[string]*string, error) {\n"
         f"\t\t{'response' if use_case.outputs else '_'}, err := service.Execute(ctx, app.{use_case.name}Request{{\n{request}\t\t}})\n"

@@ -45,7 +45,7 @@ class Client(LiveAseRunner):
         if "NXREADY" in script:
             return 0, " NXREADY|Adaptive Server Enterprise/16.0 SP03\n"
         if "NXMISSING" in script:
-            return 0, self.missing
+            return 0, self.missing or " (1 row affected)\n"
         count = script.count("select 'NXCASE|")
         return 0, "\n".join(f"NXCASE|{i}\nNXR|1:0\nNXKN|0" for i in range(count))
 

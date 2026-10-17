@@ -111,8 +111,22 @@ class Suite(CharacterizationModel):
     program: str = Field(min_length=1, max_length=200, description="The legacy entry point, e.g. dbo.sp_x")
     schema_: Schema = Field(alias="schema", default_factory=Schema)
     cases: list[Case] = Field(min_length=1)
+    unreachable: dict[str, str] = Field(
+        default_factory=dict,
+        description="Rule -> why no input can make the program reach it (a defensive branch, dead code): declared "
+        "instead of a case the legacy could never enter, and listed by the verdict as not proven (ADR-0050)",
+    )
 
     model_config = ConfigDict(extra="forbid", frozen=True, populate_by_name=True)
+
+    @model_serializer(mode="wrap")
+    def _without_empty_unreachable(self, handler: SerializerFunctionWrapHandler) -> Any:
+        # A suite without declarations serialises as before the field existed: the names of the recordings (the
+        # suite's JSON) stay valid.
+        data = handler(self)
+        if isinstance(data, dict) and not data.get("unreachable"):
+            data.pop("unreachable", None)
+        return data
 
     @model_validator(mode="after")
     def unique_names(self) -> "Suite":
@@ -245,6 +259,9 @@ class GoldenMaster(CharacterizationModel):
     )
     environment: list[EnvironmentItem] = Field(
         default_factory=list, description="The settings the legacy ran under (M28)"
+    )
+    unreachable: dict[str, str] = Field(
+        default_factory=dict, description="Rules the test engineer declared no input can reach, with the reason"
     )
 
     model_config = ConfigDict(extra="forbid", frozen=True, populate_by_name=True)

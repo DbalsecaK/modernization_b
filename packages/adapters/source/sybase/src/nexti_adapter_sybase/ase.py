@@ -220,7 +220,8 @@ class AseRunner:
         environment = [*(self._environment or []), *quirks.program_environment(files, source, procedure)]
         return GoldenMaster(program=suite.program, source_sha256=source_digest(files), engine=self.engine,
                             schema_=suite.schema_, results=results, unassigned_outputs=unassigned,
-                            coverage=measured, quirks=register, environment=environment)  # fmt: skip
+                            coverage=measured, quirks=register, environment=environment,
+                            unreachable=dict(suite.unreachable))  # fmt: skip
 
 
 class LiveAseRunner(AseRunner):

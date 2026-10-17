@@ -275,6 +275,8 @@ class VerificationPhases:
         if stubbed_programs(master):
             not_proven.append("External programs are replaced by stubs that answer as the case says; their own logic "
                               "and their effects on the database are not verified here (ADR-0055)")  # fmt: skip
+        not_proven += [f"{rule}: declared unreachable by the test engineer, no case enters it ({why})"
+                       for rule, why in sorted(master.unreachable.items())]  # fmt: skip
         if master.coverage is not None:  # ADR-0047: the branches of the legacy no case exercised are not proven
             missed = master.coverage.not_exercised
             not_proven.append(f"Legacy coverage: {master.coverage.note()}")

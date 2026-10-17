@@ -19,6 +19,9 @@ You receive the source of the program, its approved business rules with their ci
      called and writes its effects inside the caller's transaction, so a rollback undoes them as it would the
      real program's writes.
    Use small, readable values and dates in ISO format (`2026-03-02T09:30:00`).
+3. `unreachable` (optional): rule -> why no input, row or stub answer can make the program reach it (a defensive
+   check after a lookup that already proved the row exists, dead code). Declare it instead of inventing a case the
+   legacy could never enter; the verdict lists it as not proven.
 
 Do not invent behaviour: the legacy decides the expected results when it runs. Answer with one JSON object only:
-{"program": "<name as created>", "schema": {"tables": [...]}, "cases": [...]}.
+{"program": "<name as created>", "schema": {"tables": [...]}, "cases": [...], "unreachable": {}}.
