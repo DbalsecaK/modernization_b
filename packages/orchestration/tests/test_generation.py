@@ -334,6 +334,8 @@ def test_the_stack_and_the_preferences_become_guidance_only_when_the_run_has_the
     assert text.startswith("Target stack: architecture preserve-topology, backend spring-boot 3.5, database postgresql")
     assert "one service per legacy program" in text
     assert "Migration strategy strangler-fig" in text
+    assert "Data strategy: same_database; the data and the programs the legacy calls stay" in text  # ADR-0055
+    assert "Data strategy: migration" in stack_guidance({"backend": "spring-boot", "strategy": "big-bang"})
     assert "Deployment artifact: packaged as a container image" in text
     assert "solid:" in text
     assert "tdd:" in text
