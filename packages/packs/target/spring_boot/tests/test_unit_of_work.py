@@ -63,7 +63,8 @@ def test_with_the_same_database_the_driver_is_the_legacys_and_the_called_program
     assert 'throw new IllegalStateException("db_cuentas..sp_debito answered " + status);' in adapter
     assert "public long debit(String account, String type, java.math.BigDecimal amount, String reference)" in adapter
     assert "return value == null ? 0L : ((Number) value).longValue();" in adapter
-    assert "jdbc.queryForMap(" in adapter
+    assert "row = call(" in adapter
+    assert "statement.getMoreResults()" in adapter  # the program's own result sets are skipped
     assert ", account, type, amount, reference);" in adapter
     # With the data migrated nothing is generated for those ports: a developer writes them against the new tables.
     assert generated_adapters(DESIGN) == {}

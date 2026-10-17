@@ -317,7 +317,7 @@ def setup_script(p: Plan, with_sources: bool = True) -> str:
         columns = ", ".join(f"{c.name} {c.type} {'null' if c.nullable else 'not null'}" for c in table.columns)
         out.append(_go(f"create table {table.name} ({columns})"))
     for program, stub in p.stubs.items():  # placeholders, so the procedures below resolve their calls
-        out.append(_use(_database(program) or p.work) + _go(_stub_body(stub, [], p.work)))
+        out.append(_use(_database(program) or p.work) + _go(_stub_body(stub, [], p.work)) + _go(_anymode(program)))
     for source in p.sources if with_sources else []:
         out.append(_use(p.work) + source.text.rstrip() + "\ngo\n")
     return "".join(out)
@@ -342,6 +342,7 @@ def case_setup_batches(p: Plan, case: Case) -> list[str]:
         batches.append(f"use {_database(program) or p.work}")
         batches.append(f"if object_id('{_local(program)}') is not null drop procedure {_local(program)}")
         batches.append(_stub_body(stub, answers, p.work, p.schema))
+        batches.append(_anymode(program))
     batches.append(f"use {p.work}")
     return batches
 
@@ -400,6 +401,13 @@ def _effects(schema: Schema | None, answer: StubAnswer) -> list[str]:
     return out
 
 
+def _anymode(program: str) -> str:
+    """A substitute runs in any transaction mode (ADR-0055): a target that calls it from a JDBC transaction works in
+    chained mode, and a procedure created in unchained mode would refuse it. A real procedure of the customer needs
+    the same (`sp_procxmode ... 'anymode'`) before a chained caller can use it."""
+    return f"exec sp_procxmode '{_local(program)}', 'anymode'"
+
+
 def _stub_body(stub: Stub, answers: list[StubAnswer], work: str = WORK_DB, schema: Schema | None = None) -> str:
     params = ", ".join(f"{s.name} {s.type} = null{' output' if s.output else ''}" for s in stub.parameters)
     args = _joined([_prefixed(s.name, s.type) for s in stub.parameters if not s.output])
@@ -444,6 +452,7 @@ def case_script(p: Plan, case: Case) -> str:
         out.append(_use(database))
         out.append(_go(f"if object_id('{_local(program)}') is not null drop procedure {_local(program)}"))
         out.append(_go(_stub_body(stub, answers, p.work, p.schema)))
+        out.append(_go(_anymode(program)))
     params = p.program.parameters
     declares = ", ".join(["@nx_rc int"] + [f"{q.name} {q.type}" for q in params if q.output])
     inputs = {k.lower(): v for k, v in case.inputs.items()}
