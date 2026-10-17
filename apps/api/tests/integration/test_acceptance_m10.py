@@ -12,6 +12,7 @@ import hashlib
 import io
 import json
 import os
+import re
 import uuid
 import zipfile
 from collections.abc import Iterator
@@ -204,10 +205,13 @@ async def test_a_third_party_target_is_validated_against_the_legacy(
                 "rules_covered": "failed", "behaviour_boundary": "not_checked"}  # fmt: skip
     assert (verdict["verdict"], statuses) == ("NOT PROVEN", expected), verdict["checks"]
     details = {c["key"]: c["detail"] for c in verdict["checks"]}
-    assert (
-        "comision_separada_falla_deshace_pago: tables:db_cuentas..ct_cuenta[0].cta_saldo: 500.0000 != 400.0000"
-        in (details["same_behaviour"])
-    )
+    # The amounts come from the characterization the model wrote for M4 (re-recorded with every prompt change):
+    # what is fixed is the case and the column, the balance the legacy restored and BillPay could not.
+    assert re.search(
+        r"comision_separada_falla_deshace_pago: tables:db_cuentas\.\.ct_cuenta\[0\]\.cta_saldo: "
+        r"\d+\.\d{4} != \d+\.\d{4}",
+        details["same_behaviour"],
+    ), details["same_behaviour"]
     assert verdict["proof_pack_key"]
     ivv = api.get(f"{base}/ivv", headers=headers).json()
     assert f"**{verdict['verdict']}**" in ivv["report"]
