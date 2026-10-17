@@ -193,9 +193,16 @@ def expected_view(design: Design, use_case: UseCase, observed: Observation, foun
         tables[table] = _sorted([{c: canonical(by_legacy[c.lower()].type, v) for c, v in row.items()
                                   if c.lower() in by_legacy and not _masked(f"tables:{table}.{c}", found)}
                                  for row in rows])  # fmt: skip
+    return Observation(returns=observed.returns, outputs=outputs, tables=tables,
+                       calls=_legacy_calls(design, observed.calls, found),
+                       undone=_legacy_calls(design, observed.undone, found))  # fmt: skip
+
+
+def _legacy_calls(design: Design, observed: list[Call], found: list[Mask]) -> list[Call]:
+    """The legacy's calls without the masked programs, each argument in the canonical text of its port's type."""
     calls = []
     ports = {(p.legacy_program or "").lower(): p for p in design.ports if p.legacy_program}
-    for call in observed.calls:
+    for call in observed:
         if _masked(f"calls:{call.program}", found):
             continue
         port = ports.get(call.program.lower())
@@ -203,7 +210,7 @@ def expected_view(design: Design, use_case: UseCase, observed: Observation, foun
         calls.append(Call(program=call.program, arguments={
             n: canonical(types.get(n.lower()), v) for n, v in call.arguments.items() if not port or n.lower() in types
         }))  # fmt: skip
-    return Observation(returns=observed.returns, outputs=outputs, tables=tables, calls=calls)
+    return calls
 
 
 def actual_view(
@@ -233,8 +240,18 @@ def actual_view(
             {f.legacy: canonical(f.type, row.get(column_of(f.name, f.column))) for f in entity.fields if f.legacy}
             for row in rows
         ])  # fmt: skip
+    # The harness reports the calls of the fakes that are in the final state and, apart, the ones its rollback
+    # undid (ADR-0055); the undone ones are diagnostic, the comparison is on what survived.
+    return Observation(returns=returns, outputs=outputs, tables=tables,
+                       calls=_target_calls(design, raw.get("calls", [])),
+                       undone=_target_calls(design, raw.get("undone", [])))  # fmt: skip
+
+
+def _target_calls(design: Design, raw: list[dict[str, Any]]) -> list[Call]:
+    """The calls of the harness's fakes in legacy terms: the program of the port, the arguments by the method's
+    input mapping."""
     calls = []
-    for call in raw.get("calls", []):
+    for call in raw:
         port = next((p for p in design.ports if p.name == call.get("port")), None)
         method = next((m for m in port.methods if m.name == call.get("method")), None) if port else None
         if port is None or method is None or not port.legacy_program:
@@ -242,7 +259,7 @@ def actual_view(
         arguments = {f.legacy: canonical(f.type, v) for f, v in zip(method.inputs, call.get("arguments", []),
                                                                      strict=False) if f.legacy}  # fmt: skip
         calls.append(Call(program=port.legacy_program, arguments=arguments))
-    return Observation(returns=returns, outputs=outputs, tables=tables, calls=calls)
+    return calls
 
 
 def _sorted(rows: list[dict[str, str | None]]) -> list[dict[str, str | None]]:

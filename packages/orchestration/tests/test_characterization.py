@@ -97,7 +97,11 @@ async def test_the_golden_master_is_what_the_legacy_did_with_the_corrected_suite
     port = MemoryPort(RecordedRunner(FIXTURES / "golden", "replay"), [_without("account_type_not_allowed"), SUITE])
     ctx, store = _context()
     result = await CharacterizationPhases(port).characterization(ctx)
-    assert result.summary == "Golden master: 12 case(s) frozen, 7 of them rejected by the legacy (sybase-ase-16.0)"
+    # The recording carries what the real engine measured: coverage, quirks and environment (ADR-0047, M28).
+    assert result.summary == (
+        "Golden master: 12 case(s) frozen, 7 of them rejected by the legacy; legacy coverage: 24 of 26 measurable "
+        "branches exercised; engine quirks: 4 (3 confirmed on the engine); environment: 8 setting(s) (sybase-ase-16.0)"
+    )
     assert port.master is not None
     assert len(port.master.results) == 12
     assert "rules without a case: RULE-001" in port.tester.requests[1][-1]["content"]

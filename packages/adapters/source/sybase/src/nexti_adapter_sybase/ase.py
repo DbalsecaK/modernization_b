@@ -7,15 +7,18 @@ recording without starting Sybase (plan M4, golden master decision)."""
 
 import asyncio
 import hashlib
+import shlex
 import subprocess
 import time
 import uuid
+from dataclasses import replace
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal
 
 from nexti_adapter_sybase import coverage, golden, quirks
 from nexti_adapter_sybase.parser import Procedure
 from nexti_core.adapters import LegacyUnavailableError, SourceFile
+from nexti_core.legacy_execution import Credentials, SybaseConfig
 from nexti_core.spec.characterization import (
     Case,
     Coverage,
@@ -34,6 +37,9 @@ IMAGE = "datagrip/sybase:16.0"
 _SA = ("sa", "myPassword", "MYSYBASE")
 # stderr joins stdout in order: in a batch of cases, an engine message must stay inside the case that raised it.
 _ISQL = ". /opt/sybase/SYBASE.sh && isql -U{0} -P{1} -S{2} -w 32000 -b 2>&1"
+# The client of a customer's server (LiveAseRunner): the password is the first line of standard input, never an
+# argument (it would show in the process list of the worker's host and in its logs).
+_ISQL_CLIENT = '. /opt/sybase/SYBASE.sh && read -r NXPWD && isql -U{0} -P"$NXPWD" -S{1} -w 32000 -b 2>&1'
 CASE_MARK = "NXCASE|"
 
 
@@ -215,6 +221,96 @@ class AseRunner:
         return GoldenMaster(program=suite.program, source_sha256=source_digest(files), engine=self.engine,
                             schema_=suite.schema_, results=results, unassigned_outputs=unassigned,
                             coverage=measured, quirks=register, environment=environment)  # fmt: skip
+
+
+class LiveAseRunner(AseRunner):
+    """The legacy on a Sybase ASE test server of the customer (`kind = sybase` of ADR-0052, ADR-0055): the same
+    scripts, sent by a throw-away client container (the isql of the platform's image, no engine) to the customer's
+    server. Nothing of the platform is installed there but the call log in the program's database: the program,
+    its tables and the programs it calls are the customer's and run for real, so no case may stub a call and no
+    instrumented copy replaces the program (coverage is not measured). A test server, never production: the cases
+    empty and reload the tables they set up."""
+
+    engine = "sybase-ase-customer"
+
+    def __init__(self, config: dict[str, Any] | SybaseConfig, credentials: Credentials, image: str = IMAGE,
+                 docker: str = "docker", case_seconds: int = 120, batch_size: int = 25) -> None:  # fmt: skip
+        super().__init__(image=image, docker=docker, case_seconds=case_seconds, batch_size=batch_size, coverage=False)
+        self.config = config if isinstance(config, SybaseConfig) else SybaseConfig.model_validate(config)
+        self.credentials = credentials
+
+    async def _start(self) -> str:
+        name = f"nexti-ase-client-{uuid.uuid4().hex[:12]}"
+        limits = ["--memory", "512m", "--memory-swap", "512m", "--pids-limit", "128", "--security-opt",
+                  "no-new-privileges"]  # fmt: skip
+        args = ["run", "-d", "--rm", "--name", name, *limits, "--entrypoint", "sleep", self.image, "infinity"]
+        try:
+            code, output = await asyncio.to_thread(self._cli, args, None, 120)
+        except FileNotFoundError as exc:
+            raise LegacyEngineError(f"{self.docker} is not installed") from exc
+        if code != 0:
+            raise LegacyEngineError(f"the Sybase client did not start: {output[:300]}")
+        return name
+
+    async def _isql(self, name: str, script: str, seconds: int) -> str:
+        server = f"{self.config.host}:{self.config.port}"
+        command = ["exec", "-i", name, "bash", "-c", _ISQL_CLIENT.format(shlex.quote(self.credentials.user), server)]
+        try:
+            _, output = await asyncio.to_thread(self._cli, command, self.credentials.password + "\n" + script, seconds)
+        except subprocess.TimeoutExpired:
+            return ""
+        return output
+
+    async def run(self, files: list[SourceFile], suite: Suite) -> GoldenMaster:
+        stubbed = sorted({c.name for c in suite.cases if c.stubs})
+        if stubbed:
+            raise ValueError("on the customer's Sybase the programs it calls run for real: these cases cannot stub "
+                             "calls: " + ", ".join(stubbed))  # fmt: skip
+        full = replace(golden.plan(files, suite), work=self.config.database)
+        plan = replace(full, stubs={})  # the called programs are the customer's: nothing to install or answer
+        setup_script = golden.live_setup_script(full)
+        keys = {case.name: _case_key(setup_script, case) for case in suite.cases}
+        pending = [case for case in suite.cases if keys[case.name] not in self._observed]
+        if pending:
+            name = await self._start()
+            try:
+                setup = await self._isql(name, setup_script, 300)
+                if not setup.strip():
+                    raise LegacyEngineTimeoutError(f"{self.config.host}:{self.config.port} did not answer the setup")
+                missing = golden.missing_objects(setup)
+                if missing:
+                    raise golden.GoldenError(
+                        "the customer's Sybase lacks what the program needs: " + ", ".join(missing)
+                    )
+                failures = golden.engine_errors(setup)
+                if failures:
+                    raise golden.GoldenError("the customer's Sybase refused the setup:\n" + "\n".join(failures)[:3000])
+                await self._engine_facts(name, files, plan)
+                for start in range(0, len(pending), self.batch_size):
+                    await self._run_batch(name, plan, pending[start : start + self.batch_size], keys)
+            finally:
+                await self._stop(name)
+        return self._master(files, suite, keys)
+
+    async def check(self) -> tuple[bool, str]:
+        """Signs on and uses the program's database without running anything (the project's connection test,
+        ADR-0052): (ok, what happened)."""
+        try:
+            name = await self._start()
+        except LegacyUnavailableError as exc:
+            return False, str(exc)
+        try:
+            output = await self._isql(name, golden.live_check_script(self.config.database), 60)
+        finally:
+            await self._stop(name)
+        version = next((x.strip()[len("NXREADY|") :] for x in output.splitlines() if x.strip().startswith("NXREADY|")),
+                       None)  # fmt: skip
+        where = f"{self.config.host}:{self.config.port}"
+        if version is None:
+            errors = golden.engine_errors(output)
+            detail = "; ".join(errors) if errors else (output.strip()[-300:] or "no answer")
+            return False, f"{where} did not sign on: {detail}"
+        return True, f"signed on to {where}, database {self.config.database} usable ({version[:60]})"
 
 
 def _program_source(files: list[SourceFile], plan: golden.Plan) -> tuple[SourceFile, Procedure]:

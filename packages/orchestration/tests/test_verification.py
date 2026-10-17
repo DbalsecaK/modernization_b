@@ -90,11 +90,16 @@ class MemoryPort:
         return "proof-pack.zip"
 
 
-def _context() -> PhaseContext:
+def _context(accept_gaps: bool = False) -> PhaseContext:
     phase = PhaseSpec("verification", "C4", True)
     run = RunContext(uuid.uuid4(), uuid.uuid4(), uuid.uuid4(), "pipeline", "modernization", (phase,), ("C4",),
                      "balanced", 3, (), target={"backend": "spring-boot"})  # fmt: skip
-    return PhaseContext(run, MemoryStore(), phase, None)
+    ctx = PhaseContext(run, MemoryStore(), phase, None)
+    if accept_gaps:
+        # ADR-0050: the recording carries the coverage and quirks the real engine measured; their gaps (branches
+        # without a case, a quirk no case reaches) need a signed decision before any work. Accepted, as a person would.
+        ctx.answers[str(ctx.question_id("legacy-gaps"))] = {"option": "accept", "by": "Carlos Ruiz", "text": ""}
+    return ctx
 
 
 def _image_available() -> bool:
@@ -115,13 +120,16 @@ def java_sandbox() -> DockerSandbox:
 
 async def test_the_reference_target_is_proven_by_code(java_sandbox: DockerSandbox) -> None:
     port = MemoryPort(java_sandbox, RECORDINGS)
-    result = await VerificationPhases(port).verification(_context())
+    result = await VerificationPhases(port).verification(_context(accept_gaps=True))
     # ADR-0055: the six checks pass, but the golden master replaced sp_debito by a stub and never compared the final
     # state of the database, so the seventh check cannot pass and the verdict says so instead of claiming PROVEN.
-    assert result.summary == "PayOrder: PARTLY PROVEN (6 of 7 checks passed)"
+    assert result.summary == "PayOrder: PARTLY PROVEN (6 of 8 checks passed)"
     ((verdict, pack),) = port.saved
     statuses = {c.key: (c.status, c.detail) for c in verdict.checks}
     assert statuses["behaviour_boundary"][0] == "not_checked"
+    # ADR-0050: the recording's coverage leaves gaps a person accepted as not proven (the eighth check).
+    assert statuses["legacy_covered"][0] == "not_checked"
+    assert "accepted as not proven by Carlos Ruiz" in statuses["legacy_covered"][1]
     assert "db_cuentas..sp_debito" in statuses["behaviour_boundary"][1]
     assert "unit of work" in statuses["behaviour_boundary"][1]
     assert statuses["tests_ran"] == ("passed", "7 test(s) passed in a clean build (JUnit XML)")
@@ -138,8 +146,8 @@ async def test_the_reference_target_is_proven_by_code(java_sandbox: DockerSandbo
 
 async def test_without_an_engine_for_fresh_inputs_it_is_partly_proven(java_sandbox: DockerSandbox) -> None:
     port = MemoryPort(java_sandbox, None)
-    result = await VerificationPhases(port).verification(_context())
-    assert result.summary == "PayOrder: PARTLY PROVEN (5 of 7 checks passed)"
+    result = await VerificationPhases(port).verification(_context(accept_gaps=True))
+    assert result.summary == "PayOrder: PARTLY PROVEN (5 of 8 checks passed)"
     ((verdict, _),) = port.saved
     assert "Fresh inputs: there is no engine to run the legacy with fresh inputs" in verdict.not_proven
 

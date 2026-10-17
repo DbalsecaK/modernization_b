@@ -230,6 +230,9 @@ class Plan:
     stubs: dict[str, Stub]
     databases: list[str]
     sources: list[SourceFile]
+    # The database the program is called in and the call log lives in: the platform's work database on its own
+    # engine, the program's own database on a Sybase of the customer (ADR-0055).
+    work: str = WORK_DB
 
 
 def unassigned_outputs(program: Procedure) -> list[str]:
@@ -293,35 +296,57 @@ def setup_script(p: Plan) -> str:
     for database in p.databases:
         out.append(_go(f"create database {database} on nxdev = '{DATABASE_MB}m'"))
         out.append(_go(f"exec sp_dboption {database}, 'trunc log on chkpt', true"))
-    out.append(_use(WORK_DB))
-    out.append(_go("create table nx_call (seq numeric(10,0) identity, program varchar(200), args varchar(1700) null)"))
+    out.append(_use(p.work))
+    out.append(_go(_CALL_LOG))
     for table in p.schema.tables:
         columns = ", ".join(f"{c.name} {c.type} {'null' if c.nullable else 'not null'}" for c in table.columns)
         out.append(_go(f"create table {table.name} ({columns})"))
     for program, stub in p.stubs.items():  # placeholders, so the procedures below resolve their calls
-        out.append(_use(_database(program) or WORK_DB) + _go(_stub_body(stub, [])))
+        out.append(_use(_database(program) or p.work) + _go(_stub_body(stub, [], p.work)))
     for source in p.sources:
-        out.append(_use(WORK_DB) + source.text.rstrip() + "\ngo\n")
+        out.append(_use(p.work) + source.text.rstrip() + "\ngo\n")
     return "".join(out)
 
 
-def install_script(procedure: str, text: str) -> str:
+_CALL_LOG = "create table nx_call (seq numeric(10,0) identity, program varchar(200), args varchar(1700) null)"
+
+
+def live_setup_script(p: Plan) -> str:
+    """On a Sybase of the customer (`kind = sybase`, ADR-0055): nothing of the platform is installed but the call
+    log in the program's database (`p.work`). The program, its tables and the programs it calls are the customer's
+    and run for real: each one is checked to exist (`NXMISSING|` lines, read by `missing_objects`)."""
+    checks = [f"if object_id('{p.program.name}') is null select 'NXMISSING|procedure {p.program.name}'"]
+    checks += [f"if object_id('{t.name}') is null select 'NXMISSING|table {t.name}'" for t in p.schema.tables]
+    checks += [f"if object_id('{program}') is null select 'NXMISSING|procedure {program}'" for program in p.stubs]
+    return _use(p.work) + _go(*checks) + _go("if object_id('nx_call') is not null drop table nx_call", _CALL_LOG)
+
+
+def live_check_script(database: str) -> str:
+    """The connection test on a Sybase of the customer: sign on, use the program's database, say the version."""
+    return _use(database) + _go("select 'NXREADY|' + @@version")
+
+
+def missing_objects(output: str) -> list[str]:
+    return [line.strip()[len("NXMISSING|") :] for line in output.splitlines() if line.strip().startswith("NXMISSING|")]
+
+
+def install_script(procedure: str, text: str, work: str = WORK_DB) -> str:
     """Replaces the program with another text of it (the instrumented copy of ADR-0047), in the same engine."""
-    return _use(WORK_DB) + _go(f"drop procedure {procedure}") + text.rstrip() + "\ngo\n"
+    return _use(work) + _go(f"drop procedure {procedure}") + text.rstrip() + "\ngo\n"
 
 
-def _stub_body(stub: Stub, answers: list[StubAnswer]) -> str:
+def _stub_body(stub: Stub, answers: list[StubAnswer], work: str = WORK_DB) -> str:
     params = ", ".join(f"{s.name} {s.type} = null{' output' if s.output else ''}" for s in stub.parameters)
     args = _joined([_prefixed(s.name, s.type) for s in stub.parameters if not s.output])
     lines = [
         f"create procedure {_local(stub.program)} {params} as",
         "begin",
         "  declare @nx_n int",
-        f"  select @nx_n = count(*) + 1 from {WORK_DB}..nx_call where program = {_quote(stub.program)}",
-        f"  insert {WORK_DB}..nx_call (program, args) values ({_quote(stub.program)}, {args})",
-        # The call is reported the moment it happens, as a result set the client already holds: a `rollback`
-        # after it undoes the row in nx_call (the count that picks the answer) but not the fact that the program
-        # was called, which is what the comparison with the target needs (ADR-0044).
+        f"  select @nx_n = count(*) + 1 from {work}..nx_call where program = {_quote(stub.program)}",
+        f"  insert {work}..nx_call (program, args) values ({_quote(stub.program)}, {args})",
+        # The attempt is reported the moment it happens (`NXC|`), as a result set the client already holds. Whether
+        # the call is still in the final state is read from nx_call at the end of the case (`NXK|`, ADR-0055): a
+        # `rollback` after it undoes the row, as it undoes every other effect of the program. This replaces P29.
         f"  select 'NXC|' + {_quote(stub.program)} + '|' + {args}",
     ]
     for n, answer in enumerate(answers or [StubAnswer()], start=1):
@@ -336,7 +361,7 @@ def _stub_body(stub: Stub, answers: list[StubAnswer]) -> str:
 
 def case_script(p: Plan, case: Case) -> str:
     """Resets the data, writes the stubs with the case's answers, calls the program and prints what it did."""
-    out = [_use(WORK_DB), _go("truncate table nx_call")]
+    out = [_use(p.work), _go("truncate table nx_call")]
     resets = [f"truncate table {t.name}" for t in p.schema.tables]
     for table_name, rows in case.setup.items():
         table = p.schema.table(table_name)
@@ -349,10 +374,10 @@ def case_script(p: Plan, case: Case) -> str:
     out.append(_go(*resets))
     for program, stub in p.stubs.items():
         answers = next((a for n, a in case.stubs.items() if n.lower() == program or _short(n) == _short(program)), [])
-        database = _database(program) or WORK_DB
+        database = _database(program) or p.work
         out.append(_use(database))
         out.append(_go(f"if object_id('{_local(program)}') is not null drop procedure {_local(program)}"))
-        out.append(_go(_stub_body(stub, answers)))
+        out.append(_go(_stub_body(stub, answers, p.work)))
     params = p.program.parameters
     declares = ", ".join(["@nx_rc int"] + [f"{q.name} {q.type}" for q in params if q.output])
     inputs = {k.lower(): v for k, v in case.inputs.items()}
@@ -366,7 +391,11 @@ def case_script(p: Plan, case: Case) -> str:
     call = f"exec @nx_rc = {p.program.name} " + ", ".join(arguments)
     prints = ["select 'NXR|' + " + _prefixed("@nx_rc", "int")]
     prints += [f"select 'NXO|{q.name}|' + {_prefixed(q.name, q.type)}" for q in params if q.output]
-    out.append(_use(WORK_DB) + _go(f"declare {declares}", *presets, call, *prints))
+    out.append(_use(p.work) + _go(f"declare {declares}", *presets, call, *prints))
+    # The calls that survived the program's unit of work (ADR-0055): the count first, so an empty log is told
+    # apart from a case that never reached this point.
+    out.append(_go("select 'NXKN|' + convert(varchar(10), count(*)) from nx_call",
+                   "select 'NXK|' + program + '|' + isnull(args, '') from nx_call order by seq"))  # fmt: skip
     for table in p.schema.tables:
         order = ", ".join(table.key or [c.name for c in table.columns])
         printed = _joined([_prefixed(c.name, c.type) for c in table.columns])
@@ -396,7 +425,8 @@ def observe(p: Plan, output: str) -> Observation:
     returns: int | None = None
     outputs: dict[str, str | None] = {}
     tables: dict[str, list[dict[str, str | None]]] = {t.name: [] for t in p.schema.tables}
-    calls: list[Call] = []
+    attempted: list[str] = []
+    survived: list[str] | None = None
     messages: list[str] = []
     errors: list[str] = []
     types = {q.name: q.type for q in p.program.parameters}
@@ -426,16 +456,43 @@ def observe(p: Plan, output: str) -> Observation:
                 tables[table.name].append({c.name: canonical(_neutral(c.type), v)
                                            for c, v in zip(table.columns, values, strict=False)})  # fmt: skip
         elif line.startswith("NXC|"):
-            program, rest = line[4:].split("|", 1)
-            stub = p.stubs.get(program)
-            values = read_values(rest) if rest else []
-            params = [s for s in stub.parameters if not s.output] if stub else []
-            calls.append(Call(program=program, arguments={
-                s.name: canonical(_neutral(s.type), v) for s, v in zip(params, values, strict=False)}))  # fmt: skip
+            attempted.append(line[4:])
+        elif line.startswith("NXKN|"):
+            survived = []
+        elif line.startswith("NXK|") and survived is not None:
+            survived.append(line[4:])
+    calls, undone = _calls(p, attempted, survived)
     error = "; ".join(errors)[:2000] if errors else None
     if returns is None and error is None:
         error = "the program did not return (no result was printed)"
-    return Observation(returns=returns, outputs=outputs, tables=tables, calls=calls, messages=messages, error=error)
+    return Observation(returns=returns, outputs=outputs, tables=tables, calls=calls, undone=undone,
+                       messages=messages, error=error)  # fmt: skip
+
+
+def _calls(p: Plan, attempted: list[str], survived: list[str] | None) -> tuple[list[Call], list[Call]]:
+    """The calls in the final state (the rows of nx_call at the end of the case) and the attempts a rollback undid,
+    each attempt matched in order against the rows (ADR-0055). Without the dump (the case was cut before it) every
+    attempt counts as a call, which is what the recordings before the dump mean."""
+    if survived is None:
+        return [_call(p, text) for text in attempted], []
+    calls: list[Call] = []
+    undone: list[Call] = []
+    pending = list(survived)
+    for text in attempted:
+        if pending and pending[0] == text:
+            calls.append(_call(p, pending.pop(0)))
+        else:
+            undone.append(_call(p, text))
+    return calls + [_call(p, text) for text in pending], undone
+
+
+def _call(p: Plan, text: str) -> Call:
+    program, rest = text.split("|", 1)
+    stub = p.stubs.get(program)
+    values = read_values(rest) if rest else []
+    params = [s for s in stub.parameters if not s.output] if stub else []
+    return Call(program=program, arguments={
+        s.name: canonical(_neutral(s.type), v) for s, v in zip(params, values, strict=False)})  # fmt: skip
 
 
 def parameter_defaults(files: list[SourceFile], program: str) -> dict[str, Scalar]:

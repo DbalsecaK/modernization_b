@@ -137,6 +137,7 @@ public final class EquivalenceHarness {
         ObjectNode out = JSON.createObjectNode();
         out.put("name", testCase.get("name").asText());
         List<ObjectNode> calls = new ArrayList<>();
+        List<ObjectNode> undone = new ArrayList<>();
         try {
             for (JsonNode sql : plan.get("reset")) {
                 execute(jdbc, sql.asText());
@@ -150,11 +151,14 @@ public final class EquivalenceHarness {
             try {
                 out.set("response", fields(inTransaction(jdbc, execute, service, request)));
             } catch (RuntimeException e) {
-                // The calls stay: they are what the service did before it rejected, as the legacy's calls before
-                // its `return code` are (ADR-0044); the rollback undoes the tables, which are dumped after it.
+                // The rollback undoes the tables (dumped after it) and the effects of the calls made inside the
+                // transaction: they are reported apart, as `undone`, like the legacy's calls its rollback erased
+                // (ADR-0055).
                 if (!e.getClass().getSimpleName().equals("BusinessError")) {
                     throw e;
                 }
+                undone.addAll(calls);
+                calls.clear();
                 ObjectNode error = out.putObject("error");
                 error.put("code", String.valueOf(call(e, "code")));
                 error.put("legacy_code", String.valueOf(call(e, "legacyCode")));
@@ -170,6 +174,8 @@ public final class EquivalenceHarness {
             }
             ArrayNode recorded = out.putArray("calls");
             calls.forEach(recorded::add);
+            ArrayNode erased = out.putArray("undone");
+            undone.forEach(erased::add);
         } catch (Exception e) {
             Throwable cause = e instanceof InvocationTargetException ite ? ite.getCause() : e;
             out.put("failure", cause.getClass().getName() + ": " + cause.getMessage() + where(cause, plan));

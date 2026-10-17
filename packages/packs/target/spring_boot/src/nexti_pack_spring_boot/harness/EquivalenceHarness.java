@@ -28,7 +28,8 @@ import org.springframework.transaction.support.TransactionTemplate;
  * Runs the golden master cases on the generated service (NexTI verification, spec 11.3 check 3). Written by the
  * platform, never by a model: the real JDBC adapters against PostgreSQL, the external programs replaced by fakes that
  * record their calls and answer what the case says, and the use case inside one transaction (a rejection undoes its
- * writes and its external calls, as in the legacy). One JSON line per case, prefixed with "NXE ".
+ * writes and its external calls, as in the legacy: those calls are reported as "undone", ADR-0055). One JSON line per
+ * case, prefixed with "NXE ".
  */
 public final class EquivalenceHarness {
 
@@ -61,6 +62,7 @@ public final class EquivalenceHarness {
         ObjectNode out = JSON.createObjectNode();
         out.put("name", testCase.get("name").asText());
         List<ObjectNode> calls = new ArrayList<>();
+        List<ObjectNode> undone = new ArrayList<>();
         try {
             for (JsonNode sql : plan.get("reset")) {
                 jdbc.execute(sql.asText());
@@ -76,11 +78,14 @@ public final class EquivalenceHarness {
                 transaction.executeWithoutResult(status -> response[0] = invoke(execute, service, request));
                 out.set("response", fields(response[0]));
             } catch (RuntimeException e) {
-                // The calls stay: they are what the service did before it rejected, as the legacy's calls before
-                // its `return code` are (ADR-0044); the rollback undoes the tables, which are dumped after it.
+                // The rollback undoes the tables (dumped after it) and the effects of the calls made inside the
+                // transaction: they are reported apart, as `undone`, like the legacy's calls its rollback erased
+                // (ADR-0055).
                 if (!e.getClass().getSimpleName().equals("BusinessError")) {
                     throw e;
                 }
+                undone.addAll(calls);
+                calls.clear();
                 ObjectNode error = out.putObject("error");
                 error.put("code", String.valueOf(call(e, "code")));
                 error.put("legacy_code", String.valueOf(call(e, "legacyCode")));
@@ -96,6 +101,8 @@ public final class EquivalenceHarness {
             });
             ArrayNode recorded = out.putArray("calls");
             calls.forEach(recorded::add);
+            ArrayNode erased = out.putArray("undone");
+            undone.forEach(erased::add);
         } catch (Exception e) {
             Throwable cause = e instanceof InvocationTargetException ite ? ite.getCause() : e;
             out.put("failure", cause.getClass().getName() + ": " + cause.getMessage() + where(cause, plan));

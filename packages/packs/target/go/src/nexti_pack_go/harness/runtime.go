@@ -128,14 +128,18 @@ func run(ctx context.Context, db store, p plan, c testCase) (out map[string]any)
 		response, err = service(ctx, c.Request)
 		return err
 	})
+	calls := rec.calls
+	var undone []map[string]any
 	if err != nil {
 		found, ok := rejection(err)
 		if !ok {
 			out["failure"] = fmt.Sprintf("%T: %v", err, err)
 			return out
 		}
-		// The calls stay: what the service did before it rejected, as the legacy calls before its return (ADR-0044).
+		// The rollback undoes the tables and the effects of the calls made inside the transaction: they are
+		// reported apart, as "undone", like the legacy calls its rollback erased (ADR-0055).
 		out["error"] = found
+		undone, calls = calls, nil
 	} else {
 		out["response"] = response
 	}
@@ -149,11 +153,14 @@ func run(ctx context.Context, db store, p plan, c testCase) (out map[string]any)
 		tables[d.Table] = rows
 	}
 	out["tables"] = tables
-	calls := rec.calls
 	if calls == nil {
 		calls = []map[string]any{}
 	}
+	if undone == nil {
+		undone = []map[string]any{}
+	}
 	out["calls"] = calls
+	out["undone"] = undone
 	return out
 }
 

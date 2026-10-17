@@ -4662,7 +4662,7 @@ export interface components {
                 [key: string]: unknown;
             };
             /** Kind */
-            kind?: "ibmi" | null;
+            kind?: "ibmi" | "sybase" | null;
             /**
              * Mode
              * @enum {string}
@@ -4682,7 +4682,7 @@ export interface components {
             /** Hascredentials */
             hasCredentials: boolean;
             /** Kind */
-            kind: "ibmi" | null;
+            kind: "ibmi" | "sybase" | null;
             /** Lastcheckdetail */
             lastCheckDetail: string | null;
             /** Lastcheckedat */
