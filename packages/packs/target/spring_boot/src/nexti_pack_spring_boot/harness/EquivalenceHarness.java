@@ -103,6 +103,14 @@ public final class EquivalenceHarness {
             calls.forEach(recorded::add);
             ArrayNode erased = out.putArray("undone");
             undone.forEach(erased::add);
+            if (plan.hasNonNull("calls")) { // the legacy's engine logged the calls that survived (ADR-0055)
+                ArrayNode logged = out.putArray("legacy_calls");
+                for (Map<String, Object> row : jdbc.queryForList(plan.get("calls").asText())) {
+                    ObjectNode call = logged.addObject();
+                    call.put("program", text(row.get("program")));
+                    call.put("args", text(row.get("args")));
+                }
+            }
         } catch (Exception e) {
             Throwable cause = e instanceof InvocationTargetException ite ? ite.getCause() : e;
             out.put("failure", cause.getClass().getName() + ": " + cause.getMessage() + where(cause, plan));

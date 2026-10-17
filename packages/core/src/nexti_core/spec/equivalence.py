@@ -10,7 +10,7 @@ with its reason: infrastructure programs (6.2), legacy columns or tables the tar
 the target never calls is not masked: it is a difference."""
 
 import json
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from typing import Any
 
@@ -33,6 +33,36 @@ class Mask:
     path: str  # outputs:@x, tables:db..t, tables:db..t.column, calls:db..proc
     reason: str
     when: str = "always"  # or "rejected": only in the cases the legacy rejected
+
+
+@dataclass(frozen=True)
+class EngineTarget:
+    """The legacy's engine a target runs its golden master against (ADR-0055, `same_database`): started by the
+    verification with the suite's tables, the transactional substitutes of the called programs and the call log,
+    reachable from the sandbox on `network`. `setup_for` gives the batches that reset and prepare one case (its
+    rows, the substitutes with the case's answers); `calls_query` reads the calls that survived the use case's
+    transaction; `parse_args` and `programs` turn each logged call into legacy arguments by name."""
+
+    name: str  # the engine's host name on the network
+    network: str
+    jdbc_url: str
+    user: str
+    password: str
+    setup_for: Callable[[Any], list[str]]  # Case -> batches (no `go`)
+    calls_query: str
+    programs: dict[str, list[str]]  # program -> names of its input parameters, in order
+    parse_args: Callable[[str], list[str | None]]
+
+    def calls(self, rows: Sequence[dict[str, Any]]) -> list[Call]:
+        found = []
+        for row in rows:
+            program = str(row.get("program") or "")
+            values = self.parse_args(str(row.get("args") or "")) if row.get("args") is not None else []
+            names = self.programs.get(program.lower()) or self.programs.get(program) or []
+            found.append(
+                Call(program=program, arguments={n: canonical(None, v) for n, v in zip(names, values, strict=False)})
+            )
+        return found
 
 
 @dataclass(frozen=True)
@@ -247,9 +277,12 @@ def _legacy_calls(design: Design, observed: list[Call], found: list[Mask]) -> li
 
 
 def actual_view(
-    design: Design, use_case: UseCase, raw: dict[str, Any], found: list[Mask], rejected: bool = False
-) -> Observation:
-    """What the target did, in the same view as `expected_view`; `rejected` says whether the legacy rejected."""
+    design: Design, use_case: UseCase, raw: dict[str, Any], found: list[Mask], rejected: bool = False,
+    legacy_calls: Sequence[Call] | None = None,
+) -> Observation:  # fmt: skip
+    """What the target did, in the same view as `expected_view`; `rejected` says whether the legacy rejected. With
+    `legacy_calls` (the target ran against the legacy's engine, ADR-0055) the calls are the ones the engine logged,
+    already in legacy terms, filtered by the masks."""
     outputs: dict[str, str | None] = {}
     error = raw.get("error")
     for field in use_case.outputs:
@@ -275,6 +308,9 @@ def actual_view(
         ])  # fmt: skip
     # The harness reports the calls of the fakes that are in the final state and, apart, the ones its rollback
     # undid (ADR-0055); the undone ones are diagnostic, the comparison is on what survived.
+    if legacy_calls is not None:
+        calls = _legacy_calls(design, list(legacy_calls), found)
+        return Observation(returns=returns, outputs=outputs, tables=tables, calls=calls)
     return Observation(returns=returns, outputs=outputs, tables=tables,
                        calls=_target_calls(design, raw.get("calls", [])),
                        undone=_target_calls(design, raw.get("undone", [])))  # fmt: skip

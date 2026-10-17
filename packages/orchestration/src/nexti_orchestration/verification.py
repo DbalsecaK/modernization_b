@@ -47,6 +47,33 @@ def stubbed_programs(master: GoldenMaster) -> list[str]:
     return sorted({program for recorded in master.results for program in recorded.case.stubs})
 
 
+def same_engine(design: Design, source: Sequence[SourceFile], master: GoldenMaster) -> Any:
+    """The legacy's engine for the target to run against (ADR-0055), when the design keeps the data where it is and
+    the legacy is Sybase: `async with same_engine(...) as engine` gives an EngineTarget, or None otherwise."""
+    if design.data_strategy != "same_database" or master.from_traces:
+        return _nothing()
+    from nexti_orchestration.modernization import pick_adapter
+
+    try:
+        adapter = pick_adapter(list(source))
+    except Exception:
+        return _nothing()
+    if not adapter.name.startswith("sybase"):
+        return _nothing()
+    from nexti_adapter_sybase.ase import SameEngine
+
+    suite = Suite(program=master.program, schema_=master.schema_, cases=[r.case for r in master.results])
+    return SameEngine(list(source), suite)
+
+
+class _nothing:
+    async def __aenter__(self) -> None:
+        return None
+
+    async def __aexit__(self, *_: object) -> None:
+        return None
+
+
 def unit_of_work(files: Sequence[SourceFile], program: str) -> list[tuple[int, str]]:
     """The lines where the legacy program starts, saves, confirms or undoes its work (ADR-0055); the
     characterization uses the same (`nexti_orchestration.scope`)."""
@@ -207,7 +234,23 @@ class VerificationPhases:
 
         await ctx.store.event("started", "running", "Clean build, tests and golden master on the target",
                               phase=ctx.phase.key)  # fmt: skip
-        golden_run = await backend.run_equivalence(sandbox, files, design, use_case, master, defaults)
+        # ADR-0055 (point 10): with the data kept where it is, the target runs its golden master against the
+        # legacy's engine (tables, transactional substitutes, call log), on a network of the run.
+        async with same_engine(design, source, master) as engine:
+            return await self._verify_with(ctx, gaps, decision, design, master, files, traced, rules, source,
+                                           use_case, backend, sandbox, defaults, case_rules, engine)  # fmt: skip
+
+    async def _verify_with(
+        self, ctx: PhaseContext, gaps: Sequence[str], decision: Any, design: Design, master: GoldenMaster,
+        files: dict[str, str], traced: Any, rules: Sequence[Rule], source: list[SourceFile], use_case: UseCase,
+        backend: BackendPack, sandbox: Sandbox, defaults: dict[str, Any], case_rules: dict[str, list[str]],
+        engine: Any | None,
+    ) -> dict[str, Any]:  # fmt: skip
+        if engine is not None:
+            await ctx.store.event("info", "running", f"The target runs against the legacy's engine ({engine.name}): "
+                                  "its tables, the substitutes of the called programs and the call log",
+                                  phase=ctx.phase.key)  # fmt: skip
+        golden_run = await backend.run_equivalence(sandbox, files, design, use_case, master, defaults, engine=engine)
         golden = outcomes(golden_run, case_rules)
         rounds: list[Round] = []
         if (
@@ -219,7 +262,7 @@ class VerificationPhases:
             # The developer sees the differences and corrects, at most twice, before the verdict (ADR-0041).
             files, golden_run, golden, rounds = await correct(
                 ctx, cast(CorrectionPort, self.port), backend, sandbox, design, use_case, master, defaults, files,
-                traced, lambda run: outcomes(run, case_rules), golden_run, golden, source, rules,
+                traced, lambda run: outcomes(run, case_rules), golden_run, golden, source, rules, engine=engine,
             )  # fmt: skip
         found: list[Any] = [
             checks.tests_ran(golden_run.build.passed, golden_run.build.failed, bool(golden_run.build.junit_xml)),
@@ -242,11 +285,11 @@ class VerificationPhases:
         found.append(behaviour)
 
         fresh, unavailable = await self._fresh(ctx, backend, source, master, design, use_case, files, sandbox,
-                                               defaults)  # fmt: skip
+                                               defaults, engine)  # fmt: skip
         found.append(checks.fresh_inputs(fresh, unavailable))
         if behaviour.status == "passed":
             found.append(checks.canary(await self._canary(ctx, backend, design, use_case, master, files, sandbox,
-                                                          defaults)))  # fmt: skip
+                                                          defaults, engine)))  # fmt: skip
         else:  # red before any change: a caught canary would prove nothing
             found.append(checks.Check("canary", "not_checked", "the unchanged code does not reproduce the golden "
                                       "master, so a deliberate change cannot be told apart"))  # fmt: skip
@@ -254,9 +297,12 @@ class VerificationPhases:
         # ADR-0055: where the equivalence was measured. Until the comparison runs on the final state of the database
         # with the called programs real, the verdict says so and stays PARTLY PROVEN.
         work = unit_of_work(source, master.program)
+        # The unit of work is a gap until the design declares it and the pack generates its boundary (phase D);
+        # the state is compared when the target ran against the legacy's engine (phase E).
+        generated = use_case.unit_of_work is not None
         found.append(checks.behaviour_boundary(
-            stubbed_programs(master), [line for line, _ in work],
-            rollbacks_without_case(work, master), state_compared=False,
+            stubbed_programs(master), [] if generated else [line for line, _ in work],
+            rollbacks_without_case(work, master), state_compared=engine is not None,
         ))  # fmt: skip
         if master.coverage is not None:  # ADR-0050: the legacy covered, or each gap with a signed decision
             found.append(checks.legacy_covered(gaps, decision.option if decision else None,
@@ -328,6 +374,7 @@ class VerificationPhases:
     async def _fresh(
         self, ctx: PhaseContext, pack: BackendPack, source: list[SourceFile], master: GoldenMaster, design: Design,
         use_case: UseCase, files: dict[str, str], sandbox: Sandbox, defaults: dict[str, Any],
+        engine: Any | None = None,
     ) -> tuple[list[CaseOutcome] | None, str]:  # fmt: skip
         if master.from_traces:
             return None, ("the golden master comes from recorded traces and the legacy does not run here, so fresh "
@@ -343,20 +390,20 @@ class VerificationPhases:
             return None, f"the legacy could not run fresh inputs: {exc}"[:500]
         await ctx.store.event("info", "running", f"{len(fresh.cases)} fresh inputs ran on the legacy",
                               phase=ctx.phase.key)  # fmt: skip
-        run = await pack.run_equivalence(sandbox, files, design, use_case, legacy, defaults)
+        run = await pack.run_equivalence(sandbox, files, design, use_case, legacy, defaults, engine=engine)
         if run.problem:
             return None, f"the fresh inputs could not run on the target: {run.problem}"[:500]
         return outcomes(run, {r.case.name: r.case.rules for r in legacy.results}), ""
 
     async def _canary(
         self, ctx: PhaseContext, pack: BackendPack, design: Design, use_case: UseCase, master: GoldenMaster,
-        files: dict[str, str], sandbox: Sandbox, defaults: dict[str, Any],
+        files: dict[str, str], sandbox: Sandbox, defaults: dict[str, Any], engine: Any | None = None,
     ) -> list[dict[str, Any]]:  # fmt: skip
         target = pack.service_path(design, use_case)
         attempts: list[dict[str, Any]] = []
         for mutation in pack.mutations(files.get(target, "")):
             run = await pack.run_equivalence(sandbox, {**files, target: mutation.source}, design, use_case, master,
-                                             defaults)  # fmt: skip
+                                             defaults, engine=engine)  # fmt: skip
             failing = [f"test {t.name}" for t in run.build.tests if t.status == "failed"]
             if not run.build.compiled:
                 failing = ["the compiler"]

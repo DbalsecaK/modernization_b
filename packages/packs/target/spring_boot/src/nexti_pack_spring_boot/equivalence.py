@@ -3,12 +3,14 @@
 `nexti_core.spec.equivalence` run by the platform's Java harness against PostgreSQL in the sandbox."""
 
 import json
+from dataclasses import replace
 from importlib.resources import files as package_files
 from typing import Any
 
 from nexti_core.spec.characterization import GoldenMaster, Observation, Scalar
 from nexti_core.spec.equivalence import (
     CaseRun,
+    EngineTarget,
     EquivalenceRun,
     Mask,
     actual_view,
@@ -17,7 +19,7 @@ from nexti_core.spec.equivalence import (
     masks,
 )
 from nexti_core.spec.equivalence import target_case as neutral_target_case
-from nexti_pack_spring_boot.build import compile_and_test
+from nexti_pack_spring_boot.build import LIMITS, compile_and_test
 from nexti_pack_spring_boot.design import Design, UseCase
 from nexti_pack_spring_boot.generate import adapter_path, sql_type
 from nexti_sandbox import Sandbox
@@ -37,12 +39,15 @@ def harness_source(flavour: str = "") -> str:
     )
 
 
-def plan(design: Design, use_case: UseCase) -> dict[str, Any]:
-    """What the harness needs: the classes, the ports (adapter or fake), how to reset and how to read the tables."""
+def plan(design: Design, use_case: UseCase, engine: EngineTarget | None = None) -> dict[str, Any]:
+    """What the harness needs: the classes, the ports (adapter or fake), how to reset and how to read the tables.
+    Against the legacy's engine (ADR-0055) every port has its adapter (the called programs are the engine's
+    substitutes), each case resets the engine itself, and the calls come from the engine's log."""
     ports = []
     for name in use_case.ports:
         port = next(p for p in design.ports if p.name == name)
-        adapter = None if port.legacy_program else adapter_path(design, port).split("src/main/java/", 1)[1]
+        real = engine is not None or not port.legacy_program
+        adapter = adapter_path(design, port).split("src/main/java/", 1)[1] if real else None
         ports.append({"interface": f"{design.base_package}.domain.port.{name}",
                       "adapter": adapter.removesuffix(".java").replace("/", ".") if adapter else None})  # fmt: skip
     tables = [e for e in design.entities if e.table]
@@ -51,6 +56,13 @@ def plan(design: Design, use_case: UseCase) -> dict[str, Any]:
         columns = ", ".join(column_of(f.name, f.column) for f in entity.fields)
         order = ", ".join(column_of(k, next(f.column for f in entity.fields if f.name == k)) for k in entity.key)
         dump[entity.table] = f"SELECT {columns} FROM {entity.table}" + (f" ORDER BY {order}" if order else "")
+    if engine is not None:
+        return {
+            "jdbc_url": engine.jdbc_url, "user": engine.user, "password": engine.password,
+            "service": f"{design.base_package}.application.{use_case.name}Service",
+            "request": f"{design.base_package}.adapters.in.rest.{use_case.name}Request",
+            "ports": ports, "reset": [], "dump": dump, "calls": engine.calls_query,
+        }  # fmt: skip
     return {
         "jdbc_url": JDBC_URL,
         "user": "nexti",
@@ -63,10 +75,15 @@ def plan(design: Design, use_case: UseCase) -> dict[str, Any]:
 
 
 def target_case(
-    design: Design, use_case: UseCase, case: Any, defaults: dict[str, Scalar] | None = None
-) -> dict[str, Any]:
-    """A legacy case in target terms, with PostgreSQL types for the rows to insert."""
-    return neutral_target_case(design, use_case, case, defaults, sql_type)
+    design: Design, use_case: UseCase, case: Any, defaults: dict[str, Scalar] | None = None,
+    engine: EngineTarget | None = None,
+) -> dict[str, Any]:  # fmt: skip
+    """A legacy case in target terms, with PostgreSQL types for the rows to insert. Against the legacy's engine the
+    setup is the engine's own (rows and substitutes, ADR-0055) and no port is faked."""
+    found = neutral_target_case(design, use_case, case, defaults, sql_type)
+    if engine is not None:
+        found = {**found, "setup": engine.setup_for(case), "stubs": {}}
+    return found
 
 
 SCRIPT = r"""
@@ -101,6 +118,31 @@ fi
 pg_ctl -D /work/pg -m fast stop > /dev/null 2>&1 || true
 """
 
+# ADR-0055: the golden master against the legacy's engine on the run's network; no database of the sandbox's own.
+ENGINE_SCRIPT = r"""
+mkdir -p /work/harness-out
+if ! javac -nowarn -encoding UTF-8 -d /work/harness-out -cp "/work/out:/opt/lib/*" \
+    /input/harness/EquivalenceHarness.java 2> /work/javac.txt; then
+  echo "===HARNESS-FAILED==="; cat /work/javac.txt; exit 4
+fi
+for i in $(seq 1 90); do (exec 3<>/dev/tcp/ENGINE_HOST/ENGINE_PORT) > /dev/null 2>&1 && break; sleep 2; done
+AGENT=""
+[ -f /opt/coverage/jacocoagent.jar ] && AGENT="-javaagent:/opt/coverage/jacocoagent.jar=destfile=/work/jacoco.exec"
+echo "===EQUIVALENCE==="
+java $AGENT -cp "/work/out:/work/harness-out:/opt/lib/*" nexti.equivalence.EquivalenceHarness \
+  /input/harness/plan.json /input/harness/cases.json 2>&1 || true
+echo "===EQUIVALENCE-END==="
+if [ -n "$AGENT" ] && [ -f /work/jacoco.exec ] && java -jar /opt/coverage/jacococli.jar report /work/jacoco.exec \
+    --classfiles /work/out --xml /work/jacoco.xml > /dev/null 2>&1; then
+  echo "===COVERAGE jacoco==="; gzip -c /work/jacoco.xml | base64 | tr -d "\n"; echo; echo "===COVERAGE-END==="
+fi
+"""
+
+
+def engine_script(engine: EngineTarget) -> str:
+    host, port = engine.jdbc_url.split("//", 1)[1].split("/", 1)[0].split(":")
+    return ENGINE_SCRIPT.replace("ENGINE_HOST", host).replace("ENGINE_PORT", port)
+
 
 async def run_equivalence(
     sandbox: Sandbox,
@@ -110,17 +152,23 @@ async def run_equivalence(
     master: GoldenMaster,
     defaults: dict[str, Scalar] | None = None,
     harness: str | None = None,
+    engine: EngineTarget | None = None,
 ) -> EquivalenceRun:
     """Compiles the project (tests included, counted from JUnit XML) and runs every golden case on it. `harness` is the
-    source of the harness when the project's framework is not Spring (Quarkus, ADR-0028)."""
+    source of the harness when the project's framework is not Spring (Quarkus, ADR-0028). With `engine` the cases
+    run against the legacy's engine on the run's network instead of the sandbox's PostgreSQL (ADR-0055)."""
     recorded = [r for r in master.results if r.observation.error is None]
-    cases = [target_case(design, use_case, r.case, defaults) for r in recorded]
+    cases = [target_case(design, use_case, r.case, defaults, engine) for r in recorded]
     extra = {
         "harness/EquivalenceHarness.java": harness if harness is not None else harness_source(),
-        "harness/plan.json": json.dumps(plan(design, use_case)),
+        "harness/plan.json": json.dumps(plan(design, use_case, engine)),
         "harness/cases.json": json.dumps(cases),
     }
-    build = await compile_and_test(sandbox, files, extra_inputs=extra, after=SCRIPT)
+    if engine is not None:
+        build = await compile_and_test(sandbox, files, extra_inputs=extra, after=engine_script(engine),
+                                       limits=replace(LIMITS, network=engine.network))  # fmt: skip
+    else:
+        build = await compile_and_test(sandbox, files, extra_inputs=extra, after=SCRIPT)
     found = masks(design, use_case, master)
     if not build.compiled:
         return EquivalenceRun(build, [], found, f"the project does not compile: {build.compile_errors[:300]}")
@@ -140,7 +188,8 @@ async def run_equivalence(
             runs.append(CaseRun(recorded_case.case.name, expected, Observation(), failure))
             continue
         rejected = recorded_case.observation.returns not in (0, None)
-        actual = actual_view(design, use_case, item, found, rejected)
+        logged = engine.calls(item.get("legacy_calls", [])) if engine is not None else None
+        actual = actual_view(design, use_case, item, found, rejected, logged)
         if master.from_traces and actual.returns not in (0, None):
             # A trace has no legacy return code (a CICS program just shows its message): it can only say that the
             # program rejected (-1, ADR-0015). The target's rejection is compared as that, its message as usual.

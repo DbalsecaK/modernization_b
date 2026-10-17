@@ -303,8 +303,9 @@ def _use(database: str) -> str:
     return _go(f"use {database}")
 
 
-def setup_script(p: Plan) -> str:
-    """Once per engine: databases, tables, the call log and the procedures of the source files."""
+def setup_script(p: Plan, with_sources: bool = True) -> str:
+    """Once per engine: databases, tables, the call log and the procedures of the source files. Without the sources
+    (ADR-0055) the engine is the one a target runs against: the tables and the substitutes, not the program."""
     out = [_go("use master")]
     out.append(_go(f"disk init name = 'nxdev', physname = '/opt/sybase/data/nxdev.dat', size = '{DEVICE_MB}m'"))
     for database in p.databases:
@@ -317,9 +318,35 @@ def setup_script(p: Plan) -> str:
         out.append(_go(f"create table {table.name} ({columns})"))
     for program, stub in p.stubs.items():  # placeholders, so the procedures below resolve their calls
         out.append(_use(_database(program) or p.work) + _go(_stub_body(stub, [], p.work)))
-    for source in p.sources:
+    for source in p.sources if with_sources else []:
         out.append(_use(p.work) + source.text.rstrip() + "\ngo\n")
     return "".join(out)
+
+
+def case_setup_batches(p: Plan, case: Case) -> list[str]:
+    """What `case_script` does before calling the program, as batches a JDBC client runs one by one (ADR-0055): the
+    data reset to the case's rows and the substitutes written with the case's answers."""
+    batches = [f"use {p.work}", "truncate table nx_call"]
+    for table in p.schema.tables:
+        batches.append(f"truncate table {table.name}")
+    for table_name, rows in case.setup.items():
+        spec = p.schema.table(table_name)
+        if spec is None:  # plan() already rejected it
+            raise GoldenError(f"{case.name}: the table {table_name} is not in the schema")
+        for row in rows:
+            columns = ", ".join(row)
+            values = ", ".join(literal(v, (spec.column(c) or spec.columns[0]).type) for c, v in row.items())
+            batches.append(f"insert {spec.name} ({columns}) values ({values})")
+    for program, stub in p.stubs.items():
+        answers = next((a for n, a in case.stubs.items() if n.lower() == program or _short(n) == _short(program)), [])
+        batches.append(f"use {_database(program) or p.work}")
+        batches.append(f"if object_id('{_local(program)}') is not null drop procedure {_local(program)}")
+        batches.append(_stub_body(stub, answers, p.work, p.schema))
+    batches.append(f"use {p.work}")
+    return batches
+
+
+CALLS_QUERY = f"select program, args from {WORK_DB}..nx_call order by seq"
 
 
 _CALL_LOG = "create table nx_call (seq numeric(10,0) identity, program varchar(200), args varchar(1700) null)"
