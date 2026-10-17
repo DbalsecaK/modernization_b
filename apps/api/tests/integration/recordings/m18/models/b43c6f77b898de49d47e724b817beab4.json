@@ -1,0 +1,28 @@
+{
+  "request_digest": "b43c6f77b898de49d47e724b817beab4",
+  "model": "anthropic/claude-sonnet-5.5",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You consolidate the business rules extracted from a legacy program by several agents, each of which read one part\nof it. Two rules found in different places may state the same business behaviour (the same calculation repeated in\ntwo branches, the same validation written for two callers).\n\nYou receive the rules, one JSON object per line, with their id, name, category, statement and citations. Group the\nids of rules that state the same business behaviour, so that a person reviews it once. Be conservative:\n\n- Same behaviour means the same decision with the same values and outcome. Rules that only touch the same table,\n  share a word or belong to the same process are different rules.\n- A rule and its exception, or two steps of one process, are different rules.\n- When in doubt, do not group.\n\nCode merges each group (keeping every citation, the highest priority and the lowest confidence); you only decide the\ngroups. Answer with one JSON object and nothing else, listing only groups of two or more ids:\n{\"groups\": [[\"RULE-003\", \"RULE-011\"]]}\nIf no rules state the same behaviour, answer {\"groups\": []}.\n"
+    },
+    {
+      "role": "user",
+      "content": "Rules:\n{\"id\": \"RULE-001\", \"name\": \"Only current, savings and virtual accounts can be debited\", \"category\": \"validation\", \"statement\": \"A payment order can only be charged to an account of type CTE (current), AHO (savings) or VIR (virtual). Any other account type is rejected with error 50001 'TIPO DE CUENTA NO PERMITIDO'.\", \"sources\": [\"sp/sp_pago_orden.sp:34-39\"]}\n{\"id\": \"RULE-002\", \"name\": \"Order must exist and be pending\", \"category\": \"lifecycle\", \"statement\": \"The payment order must exist for the company and be in pending state 'P'. A missing order gives error 50002 and an order in any other state gives error 50003.\", \"sources\": [\"sp/sp_pago_orden.sp:42-59\"]}\n{\"id\": \"RULE-003\", \"name\": \"Tariff lookup: company tariff first, else general service tariff\", \"category\": \"calculation\", \"statement\": \"The commission tariff comes from the company-specific tariff table, with its flag for charging the commission separately. If the company has no tariff for the service, the general service tariff is used and the commission is never separate. A missing tariff counts as 0.\", \"sources\": [\"sp/sp_pago_orden.sp:62-77\"]}\n{\"id\": \"RULE-004\", \"name\": \"Commission by channel; payroll is free\", \"category\": \"calculation\", \"statement\": \"Orders from the WEB channel pay half the tariff, rounded to 2 decimals. Other channels pay the full tariff. The NOMINA (payroll) service never pays commission, whatever the channel.\", \"sources\": [\"sp/sp_pago_orden.sp:80-86\"]}\n{\"id\": \"RULE-005\", \"name\": \"Total to debit includes the commission unless charged separately\", \"category\": \"calculation\", \"statement\": \"The first debit equals the order value plus the commission. If the commission is flagged as separate ('S'), the first debit is only the order value.\", \"sources\": [\"sp/sp_pago_orden.sp:89-92\"]}\n{\"id\": \"RULE-006\", \"name\": \"Sufficient funds: virtual accounts cannot overdraw, others up to 100.00\", \"category\": \"validation\", \"statement\": \"A virtual (VIR) account needs a balance at least equal to the total to debit. Current and savings accounts may overdraw by up to 100.00. Otherwise the payment is rejected with error 50004 'FONDOS INSUFICIENTES'.\", \"sources\": [\"sp/sp_pago_orden.sp:95-106\"]}\n{\"id\": \"RULE-007\", \"name\": \"Debit of the account and separate commission movement, undone on failure\", \"category\": \"lifecycle\", \"statement\": \"Inside one transaction the account is debited for the total with reference 'PAGO ORDEN', and the movement number is returned. If the commission is separate and greater than 0, a second movement 'COMISION PAGO' debits the commission. A failure in either debit undoes the transaction and returns error 50005 (debit) or 50006 (commission).\", \"sources\": [\"sp/sp_pago_orden.sp:108-141\"]}\n{\"id\": \"RULE-008\", \"name\": \"Order is marked paid with processing date and commission\", \"category\": \"lifecycle\", \"statement\": \"After the debits succeed, the order moves from pending to paid ('A') with the payment date set to the processing date and the commission charged recorded. If the update fails or touches no row, everything is undone and error 50007 is returned. Otherwise the result is 'PAGO REALIZADO'.\", \"sources\": [\"sp/sp_pago_orden.sp:144-164\"]}"
+    }
+  ],
+  "response": {
+    "request_id": "gen-1792272724-XVLlYWJgkIiJGcNP69Be",
+    "model": "anthropic/claude-sonnet-5.5",
+    "provider_name": "Anthropic",
+    "content": "{\"groups\": []}",
+    "usage": {
+      "input_tokens": 1536,
+      "output_tokens": 9,
+      "reasoning_tokens": 0,
+      "cache_read_tokens": 0,
+      "cache_write_tokens": 0,
+      "provider_cost_usd": "0.003162"
+    }
+  }
+}

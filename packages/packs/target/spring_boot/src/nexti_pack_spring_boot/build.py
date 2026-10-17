@@ -41,6 +41,43 @@ echo "===AFTER==="
 """
 DONE = '\necho "===DONE==="\n'
 
+# ADR-0055 (point 17): the schema of the design is created on a real PostgreSQL in the sandbox, nothing else.
+SCHEMA_SCRIPT = r"""
+set -u
+if ! initdb -D /work/pg -U nexti --auth=trust -E UTF8 --no-locale > /work/pg-init.log 2>&1; then
+  echo "===SCHEMA-ENGINE-FAILED==="; cat /work/pg-init.log; exit 5
+fi
+if ! pg_ctl -D /work/pg -l /work/pg.log -o "-k /work -c listen_addresses=localhost -c port=5432 -F" -w start \
+    > /dev/null; then
+  echo "===SCHEMA-ENGINE-FAILED==="; cat /work/pg.log; exit 5
+fi
+psql -h localhost -U nexti -d postgres -q -c "CREATE DATABASE nexti" > /dev/null
+if psql -h localhost -U nexti -d nexti -q -v ON_ERROR_STOP=1 -f /input/schema.sql > /work/schema.log 2>&1; then
+  echo "===SCHEMA-OK==="
+else
+  echo "===SCHEMA-FAILED==="; cat /work/schema.log
+fi
+pg_ctl -D /work/pg -m fast stop > /dev/null 2>&1 || true
+echo "===SCHEMA-END==="
+"""
+
+
+async def apply_schema(sandbox: Sandbox, schema: str, limits: Limits = LIMITS) -> str:
+    """Creates `schema` on a real PostgreSQL inside the sandbox: "" when it applied, else the engine's error."""
+    result = await sandbox.run(["sh", "-c", SCHEMA_SCRIPT], files={"schema.sql": schema.encode("utf-8")},
+                               limits=limits)  # fmt: skip
+    out = result.stdout
+    if "===SCHEMA-OK===" in out:
+        return ""
+    if "===SCHEMA-FAILED===" in out:
+        return out.split("===SCHEMA-FAILED===", 1)[1].split("===SCHEMA-END===", 1)[0].strip() or "unknown error"
+    if "===SCHEMA-ENGINE-FAILED===" in out:
+        return (
+            "the database engine of the sandbox did not start: "
+            + out.split("===SCHEMA-ENGINE-FAILED===", 1)[1][:800].strip()
+        )
+    return f"the schema check did not finish (exit {result.exit_code}): {(result.stderr or out)[-800:]}"
+
 
 async def compile_and_test(
     sandbox: Sandbox,

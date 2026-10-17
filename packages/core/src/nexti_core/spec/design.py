@@ -145,6 +145,30 @@ class ErrorSpec(DesignModel):
     message: str = ""
 
 
+class Savepoint(DesignModel):
+    name: JavaName
+    legacy_line: int = Field(ge=1, description="Line of the `save tran` (or its equivalent) in the legacy")
+
+
+class RollbackPoint(DesignModel):
+    """Where the legacy undoes its work: everything, and then rejects (`outcome` is an error code of the use
+    case), or back to a savepoint and goes on (`outcome` is `savepoint:<name>`)."""
+
+    legacy_line: int = Field(ge=1, description="Line of the `rollback tran` (or its equivalent) in the legacy")
+    outcome: str = Field(min_length=1, max_length=120, description="An error code of the use case, or savepoint:<name>")
+
+
+class UnitOfWork(DesignModel):
+    """The transaction of a use case as the legacy has it (ADR-0055): where it begins, where it confirms, its
+    savepoints and each rollback point with its outcome. The pack generates the boundary, the verifier checks it
+    is there, and the golden master needs a case per rollback point."""
+
+    begins_at: int = Field(ge=1, description="Line of the `begin tran` in the legacy")
+    commits_at: int | None = Field(default=None, ge=1, description="Line of the `commit tran`")
+    savepoints: list[Savepoint] = Field(default_factory=list)
+    rollbacks: list[RollbackPoint] = Field(default_factory=list)
+
+
 class UseCase(DesignModel):
     name: JavaName = Field(description="Service name without suffix, e.g. PayOrder")
     description: str = ""
@@ -156,9 +180,32 @@ class UseCase(DesignModel):
     http_method: str = Field(default="POST", pattern=r"^(GET|POST|PUT|PATCH|DELETE)$")
     path: str = Field(default="", pattern=r"^(/[a-z0-9{}-]+)*$")
     legacy_program: str | None = Field(default=None, description="The legacy program the use case replaces")
+    unit_of_work: UnitOfWork | None = Field(
+        default=None,
+        description="The transaction of the legacy program, when it has one (ADR-0055): the pack generates it",
+    )
     legacy_message: str | None = Field(
         default=None, description="The legacy output parameter that carries the message of a rejection"
     )
+
+
+WRITE_PREFIXES = ("save", "update", "delete", "insert", "record", "register", "create", "store", "write", "remove",
+                  "add", "apply", "post", "debit", "credit", "transfer", "cancel", "approve", "reject")  # fmt: skip
+
+
+def writes(design: "Design", use_case: UseCase) -> bool:
+    """Whether a use case changes data: one of its ports has a method that returns nothing or a boolean (a write
+    acknowledges, it does not read) or whose name says it writes. A use case that writes needs one unit of work
+    (ADR-0055): without a legacy to copy it from, the pack makes the request its transaction."""
+    ports = {p.name: p for p in design.ports}
+    for name in use_case.ports:
+        port = ports.get(name)
+        if port is None:
+            continue
+        for method in port.methods:
+            if method.returns in (None, "boolean") or method.name.lower().startswith(WRITE_PREFIXES):
+                return True
+    return False
 
 
 class EquivalenceMask(DesignModel):
@@ -190,6 +237,12 @@ class Design(DesignModel):
         description="Legacy programs that are infrastructure (error logging, auditing tables): not translated, the "
         "framework replaces them (6.2); their calls are masked when the golden master is compared",
     )
+    data_strategy: Literal["migration", "same_database"] | None = Field(
+        default=None,
+        description="Where the data lives (ADR-0055): `same_database` keeps the data and the called programs where "
+        "they are (the target uses the legacy's driver, its qualified table names and calls its procedures); "
+        "`migration` moves the data to the target database. Required when the design maps a legacy",
+    )
 
     @model_validator(mode="after")
     def references_exist(self) -> "Design":
@@ -218,6 +271,17 @@ class Design(DesignModel):
                                             f"{returned.name} does not have: {', '.join(unknown)}")  # fmt: skip
         for use_case in self.use_cases:
             problems += [f"use case {use_case.name} uses unknown port {p}" for p in use_case.ports if p not in ports]
+            if use_case.unit_of_work is not None:
+                codes = {e.code for e in use_case.errors}
+                savepoints = {s.name for s in use_case.unit_of_work.savepoints}
+                for point in use_case.unit_of_work.rollbacks:
+                    if point.outcome.startswith("savepoint:"):
+                        if point.outcome[len("savepoint:") :] not in savepoints:
+                            problems.append(f"{use_case.name}: rollback at line {point.legacy_line} goes back to an "
+                                            f"unknown savepoint {point.outcome}")  # fmt: skip
+                    elif point.outcome not in codes:
+                        problems.append(f"{use_case.name}: rollback at line {point.legacy_line} rejects with "
+                                        f"{point.outcome}, which is not an error of the use case")  # fmt: skip
         names = [u.name for u in self.use_cases] + [e.name for e in self.entities] + [p.name for p in self.ports]
         duplicates = sorted({n for n in names if names.count(n) > 1})
         if duplicates:

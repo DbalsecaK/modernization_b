@@ -51,6 +51,8 @@ FEATURE_CHECKS: tuple[tuple[str, str], ...] = (
     ("canary", "Canary"),
     ("questions_closed", "Questions closed"),
     ("traced_to_inputs", "Traced to inputs"),
+    ("unit_of_work", "Unit of work"),
+    ("schema_applies", "Schema applies"),
 )
 # The checks of a generated IaC (ADR-0021): it validates and meets the fitness functions of the deployment pack.
 IAC_CHECKS: tuple[tuple[str, str], ...] = (
@@ -79,6 +81,7 @@ EXTEND_CHECKS: tuple[tuple[str, str], ...] = (
     ("criteria_covered", "Criteria covered"),
     ("contract_kept", "Contract kept"),
     ("fitness", "Fitness functions"),
+    ("impact_bounded", "Impact bounded"),
     ("canary", "Canary"),
     ("traced_to_inputs", "Traced to inputs"),
 )
@@ -251,14 +254,19 @@ def behaviour_boundary(
     unit_of_work: Sequence[int],
     rollbacks_without_case: Sequence[int],
     state_compared: bool = False,
+    unobserved_tables: Sequence[str] = (),
 ) -> Check:
     """Where the equivalence was measured (ADR-0055). The first migration the platform proved (PROVEN 6/6) lost the
     whole transaction: the golden master compared the calls to stubs, not what the database held at the end. Until
     the comparison runs on the final state with the called programs real, and every rollback of the legacy has a
     case, this check cannot pass, and its detail says exactly what the verdict does not cover."""
     evidence = {"stubbed_programs": list(stubbed), "unit_of_work_lines": list(unit_of_work),
-                "rollbacks_without_case": list(rollbacks_without_case), "state_compared": state_compared}  # fmt: skip
+                "rollbacks_without_case": list(rollbacks_without_case), "state_compared": state_compared,
+                "unobserved_tables": list(unobserved_tables)}  # fmt: skip
     gaps: list[str] = []
+    if unobserved_tables:
+        gaps.append(f"the target's code reaches tables the mapping does not observe, their final state was not "
+                    f"compared: {', '.join(unobserved_tables[:8])}")  # fmt: skip
     if not state_compared:
         gaps.append("the equivalence compares the calls the legacy made and its own tables, not the final state of "
                     "the database after the called programs ran")  # fmt: skip
@@ -391,6 +399,57 @@ def rules_covered(traces: Sequence[RuleTrace]) -> Check:
 
 
 # -- delta on an existing application (ADR-0026) -------------------------------------------------------------------
+def impact_bounded(
+    outside: Sequence[str], unobserved: Sequence[str], tables: Sequence[str], transactions: Sequence[str]
+) -> Check:
+    """Zero differences outside the delta (ADR-0055, flow 3): every file the delta reaches outside itself must be
+    observed by a test that passed before and after it. `outside` are the files the delta reaches (in cascade by
+    the names they use) that the delta does not write; `unobserved` those of them no such test exercises;
+    `transactions` the affected files that hold a transaction boundary. A change that reaches a shared
+    transaction or a file nobody observes needs a before/after golden master, and until it has one the verdict
+    says so."""
+    evidence = {"outside": list(outside), "unobserved": list(unobserved), "tables": list(tables),
+                "transactions": list(transactions)}  # fmt: skip
+    if not outside:
+        return Check("impact_bounded", "passed", f"the delta reaches no file outside itself ({len(tables)} table(s) "
+                     "of its own)", evidence)  # fmt: skip
+    if unobserved:
+        shared = [t for t in transactions if t in unobserved]
+        detail = (f"{len(unobserved)} file(s) the delta reaches outside itself are observed by no test that passed "
+                  f"before and after it: {', '.join(unobserved[:6])}")  # fmt: skip
+        if shared:
+            detail += f"; among them a transaction boundary: {', '.join(shared[:4])}"
+        detail += " (a before/after golden master of the running application is needed to prove zero differences)"
+        return Check("impact_bounded", "failed", detail[:1000], evidence)
+    return Check("impact_bounded", "passed", f"the {len(outside)} file(s) the delta reaches outside itself are "
+                 f"observed by tests that passed before and after it ({len(tables)} table(s), "
+                 f"{len(transactions)} transaction boundary(ies))", evidence)  # fmt: skip
+
+
+def unit_of_work_generated(writing: Sequence[str], without: Sequence[str]) -> Check:
+    """Flow 2 (ADR-0055, point 17): every use case that writes runs inside one transaction the pack generated;
+    `without` names the writing use cases whose code holds no transaction boundary."""
+    evidence = {"writing_use_cases": list(writing), "without_boundary": list(without)}
+    if not writing:
+        return Check("unit_of_work", "passed", "no use case writes: nothing to confirm or undo", evidence)
+    if without:
+        return Check("unit_of_work", "failed", f"{len(without)} use case(s) write without a transaction boundary: "
+                     f"{', '.join(without[:8])}", evidence)  # fmt: skip
+    return Check("unit_of_work", "passed", f"the {len(writing)} use case(s) that write run inside one transaction "
+                 "each (a rejection undoes every write)", evidence)  # fmt: skip
+
+
+def schema_applies(outcome: str | None, reason: str = "") -> Check:
+    """Flow 2 (ADR-0055, point 17): the design's schema was created on a real database engine in the sandbox;
+    `outcome` is the engine's error text, "" when it applied, None when it could not be tried (`reason`)."""
+    if outcome is None:
+        return Check("schema_applies", "not_checked", reason or "the schema was not applied on a real engine")
+    if outcome:
+        return Check("schema_applies", "failed", f"the engine rejected the schema: {outcome[:600]}",
+                     {"error": outcome[:2000]})  # fmt: skip
+    return Check("schema_applies", "passed", "the schema of the design was created on a real database engine")
+
+
 def regression(baseline: Sequence[str], passed: Sequence[str], report_found: bool) -> Check:
     """Every test that passed in the baseline (the application before the delta) passes after it."""
     if not report_found:

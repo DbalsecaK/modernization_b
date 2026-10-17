@@ -334,6 +334,8 @@ def test_the_stack_and_the_preferences_become_guidance_only_when_the_run_has_the
     assert text.startswith("Target stack: architecture preserve-topology, backend spring-boot 3.5, database postgresql")
     assert "one service per legacy program" in text
     assert "Migration strategy strangler-fig" in text
+    assert "Data strategy: same_database; the data and the programs the legacy calls stay" in text  # ADR-0055
+    assert "Data strategy: migration" in stack_guidance({"backend": "spring-boot", "strategy": "big-bang"})
     assert "Deployment artifact: packaged as a container image" in text
     assert "solid:" in text
     assert "tdd:" in text
@@ -428,6 +430,7 @@ def test_a_guided_design_keeps_or_masks_every_table_the_program_reads() -> None:
     design = Design.model_validate({
         "context": "x", "base_package": "com.x.y", "use_cases": [{"name": "Uc", "rules": ["RULE-001"]}],
         "masks": [{"path": "tables:db_a..pg_config", "reason": "a lookup the target does not need"}],
+        "data_strategy": "migration",
     })  # fmt: skip
     read = {"cl_destino", "pg_config"}
     assert design_problems(design, [rule], files=files, written=set(), read=read) == []  # not guided: as before
@@ -473,6 +476,7 @@ def test_two_tables_with_the_same_name_in_different_databases_are_two_entities()
     one = Design.model_validate({
         "context": "x", "base_package": "com.x.y", "use_cases": [{"name": "Uc", "rules": ["RULE-001"]}],
         "entities": [{"name": "Det", "table": "det", "legacy_table": "db_a..t_det", "fields": [field]}],
+        "data_strategy": "migration",
     })  # fmt: skip
     read = {"t_det"}
     problems = design_problems(one, [rule], hints=True, files=files, written=set(), read=read)
@@ -620,3 +624,76 @@ async def test_the_first_rpg_design_passes_the_guided_checks() -> None:
                                      files=files, written=written_tables(files), read=read_tables(files))  # fmt: skip
     (use_case,) = design.use_cases
     assert (use_case.legacy_program, use_case.legacy_message) == ("ACTSALDO", None)
+
+
+def test_the_design_declares_the_unit_of_work_the_legacy_has_and_every_rollback_point() -> None:
+    # ADR-0055: the legacy's own lines decide. sp_pago_orden begins a transaction at 108 and undoes it at 119, 136
+    # and 155; a design without the unit of work, or with a rollback point missing, is sent back with those lines.
+    from nexti_orchestration.generation import legacy_units_text, unit_of_work_problems
+
+    files = [SourceFile("sp/sp_pago_orden.sp", SOURCE)]
+    design = Design.model_validate_json(DESIGN_JSON)
+    assert unit_of_work_problems(design, files) == []
+    assert design_problems(design, RULES, files=files) == []
+    data = json.loads(DESIGN_JSON)
+    data["use_cases"][0]["unit_of_work"] = None
+    (problem,) = unit_of_work_problems(Design.model_validate(data), files)
+    assert problem.startswith(
+        "PayOrder: dbo.sp_pago_orden works inside a transaction (begin tran at line 108, rollback at "
+        "line 119, rollback at line 136, rollback at line 155, commit at line 161): declare its "
+        "unit_of_work"
+    )
+    data["use_cases"][0]["unit_of_work"] = {
+        "begins_at": 108,
+        "commits_at": 161,
+        "rollbacks": [{"legacy_line": 120, "outcome": "DEBIT_FAILED"}],
+    }
+    (problem,) = unit_of_work_problems(Design.model_validate(data), files)
+    assert problem.startswith("PayOrder: the rollback points at lines 136, 155 have no entry in unit_of_work.rollbacks")
+    assert unit_of_work_problems(Design.model_validate(data), []) == []  # without the source nothing can be demanded
+    # The architect is told what the legacy does before designing.
+    assert legacy_units_text(files).startswith("- dbo.sp_pago_orden: begin tran at line 108, rollback at line 119")
+    # The data strategy is required for a design that maps a legacy, and same_database keeps the legacy names.
+    data = json.loads(DESIGN_JSON)
+    data.pop("data_strategy")
+    found = design_problems(Design.model_validate(data), RULES, files=files)
+    assert any(p.startswith("data_strategy is required") for p in found)
+    assert not any(p.startswith("data_strategy") for p in design_problems(Design.model_validate(data), RULES))
+    # ADR-0055: the strategy agrees with the project's target. A Sybase legacy may keep its data when the target
+    # names no database or Sybase itself; a target on Oracle migrates it (M8b: the Oracle flavour cannot run the
+    # golden master against ASE, and the data was asked to move).
+    same = Design.model_validate({**data, "data_strategy": "same_database"})
+
+    def target(database: str | None, legacy: str = "sybase-ase", design: Design = same) -> list[str]:
+        return [p for p in design_problems(design, RULES, database=database, legacy=legacy)
+                if p.startswith("the project's target")]  # fmt: skip
+
+    assert target(None) == []
+    assert target("sybase") == []
+    (problem,) = target("oracle")
+    assert problem.startswith("the project's target keeps its data in oracle: data_strategy must be 'migration'")
+    assert target("oracle", design=Design.model_validate({**data, "data_strategy": "migration"})) == []
+    data["data_strategy"] = "same_database"
+    (renamed,) = [p for p in design_problems(Design.model_validate(data), RULES) if p.startswith("with same_database")]
+    assert "PaymentOrder (payment_order vs db_pagos..pg_orden)" in renamed
+
+
+def test_production_code_with_stub_conventions_goes_back_to_the_developer() -> None:
+    # ADR-0055: the double check found "answered N" stubs and hard-coded answers in src/main of a PROVEN run; the
+    # generation now refuses such a file before compiling it, naming the lines.
+    from nexti_orchestration.generation import stub_conventions
+
+    code = "\n".join([
+        "public class JdbcDebitGateway implements DebitGateway {",
+        "    public long debit(String account) {",
+        "        // TODO call the real procedure",
+        "        if (account == null) { throw new IllegalStateException(\"sp_debito answered 1\"); }",
+        "        return 900001L; // hard-coded for the golden master",
+        "    }",
+        "}",
+    ])  # fmt: skip
+    found = stub_conventions(code)
+    assert found[0].startswith("line 3: a TODO/FIXME")
+    assert found[1].startswith("line 4: the harness's own stub convention")
+    assert found[2].startswith("line 5: a hard-coded, fake or mock answer")
+    assert stub_conventions("public class X { int debit() { return jdbc.queryForObject(SQL, Integer.class); } }") == []

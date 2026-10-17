@@ -22,6 +22,7 @@ from nexti_core.adapters import SourceFile
 from nexti_core.spec.characterization import (
     Call,
     Case,
+    Column,
     Observation,
     Scalar,
     Schema,
@@ -302,8 +303,9 @@ def _use(database: str) -> str:
     return _go(f"use {database}")
 
 
-def setup_script(p: Plan) -> str:
-    """Once per engine: databases, tables, the call log and the procedures of the source files."""
+def setup_script(p: Plan, with_sources: bool = True) -> str:
+    """Once per engine: databases, tables, the call log and the procedures of the source files. Without the sources
+    (ADR-0055) the engine is the one a target runs against: the tables and the substitutes, not the program."""
     out = [_go("use master")]
     out.append(_go(f"disk init name = 'nxdev', physname = '/opt/sybase/data/nxdev.dat', size = '{DEVICE_MB}m'"))
     for database in p.databases:
@@ -315,10 +317,37 @@ def setup_script(p: Plan) -> str:
         columns = ", ".join(f"{c.name} {c.type} {'null' if c.nullable else 'not null'}" for c in table.columns)
         out.append(_go(f"create table {table.name} ({columns})"))
     for program, stub in p.stubs.items():  # placeholders, so the procedures below resolve their calls
-        out.append(_use(_database(program) or p.work) + _go(_stub_body(stub, [], p.work)))
-    for source in p.sources:
+        out.append(_use(_database(program) or p.work) + _go(_stub_body(stub, [], p.work)) + _go(_anymode(program)))
+    for source in p.sources if with_sources else []:
         out.append(_use(p.work) + source.text.rstrip() + "\ngo\n")
     return "".join(out)
+
+
+def case_setup_batches(p: Plan, case: Case) -> list[str]:
+    """What `case_script` does before calling the program, as batches a JDBC client runs one by one (ADR-0055): the
+    data reset to the case's rows and the substitutes written with the case's answers."""
+    batches = [f"use {p.work}", "truncate table nx_call"]
+    for table in p.schema.tables:
+        batches.append(f"truncate table {table.name}")
+    for table_name, rows in case.setup.items():
+        spec = p.schema.table(table_name)
+        if spec is None:  # plan() already rejected it
+            raise GoldenError(f"{case.name}: the table {table_name} is not in the schema")
+        for row in rows:
+            columns = ", ".join(row)
+            values = ", ".join(literal(v, (spec.column(c) or spec.columns[0]).type) for c, v in row.items())
+            batches.append(f"insert {spec.name} ({columns}) values ({values})")
+    for program, stub in p.stubs.items():
+        answers = next((a for n, a in case.stubs.items() if n.lower() == program or _short(n) == _short(program)), [])
+        batches.append(f"use {_database(program) or p.work}")
+        batches.append(f"if object_id('{_local(program)}') is not null drop procedure {_local(program)}")
+        batches.append(_stub_body(stub, answers, p.work, p.schema))
+        batches.append(_anymode(program))
+    batches.append(f"use {p.work}")
+    return batches
+
+
+CALLS_QUERY = f"select program, args from {WORK_DB}..nx_call order by seq"
 
 
 _CALL_LOG = "create table nx_call (seq numeric(10,0) identity, program varchar(200), args varchar(1700) null)"
@@ -372,6 +401,13 @@ def _effects(schema: Schema | None, answer: StubAnswer) -> list[str]:
     return out
 
 
+def _anymode(program: str) -> str:
+    """A substitute runs in any transaction mode (ADR-0055): a target that calls it from a JDBC transaction works in
+    chained mode, and a procedure created in unchained mode would refuse it. A real procedure of the customer needs
+    the same (`sp_procxmode ... 'anymode'`) before a chained caller can use it."""
+    return f"exec sp_procxmode '{_local(program)}', 'anymode'"
+
+
 def _stub_body(stub: Stub, answers: list[StubAnswer], work: str = WORK_DB, schema: Schema | None = None) -> str:
     params = ", ".join(f"{s.name} {s.type} = null{' output' if s.output else ''}" for s in stub.parameters)
     args = _joined([_prefixed(s.name, s.type) for s in stub.parameters if not s.output])
@@ -416,6 +452,7 @@ def case_script(p: Plan, case: Case) -> str:
         out.append(_use(database))
         out.append(_go(f"if object_id('{_local(program)}') is not null drop procedure {_local(program)}"))
         out.append(_go(_stub_body(stub, answers, p.work, p.schema)))
+        out.append(_go(_anymode(program)))
     params = p.program.parameters
     declares = ", ".join(["@nx_rc int"] + [f"{q.name} {q.type}" for q in params if q.output])
     inputs = {k.lower(): v for k, v in case.inputs.items()}
@@ -531,6 +568,99 @@ def _call(p: Plan, text: str) -> Call:
     params = [s for s in stub.parameters if not s.output] if stub else []
     return Call(program=program, arguments={
         s.name: canonical(_neutral(s.type), v) for s, v in zip(params, values, strict=False)})  # fmt: skip
+
+
+# -- The customer's Sybase (ADR-0055, point 8): the tables the called programs touch ---------------------------------
+
+SOURCE_MARK = "NXSRC|"
+COLUMN_MARK = "NXCOL|"
+_CHUNK = re.compile(r"<<NX>>(.*?)<<XN>>", re.S)
+_SIZED = ("char", "varchar", "nchar", "nvarchar", "unichar", "univarchar", "binary", "varbinary")
+
+
+def source_script(programs: list[str], work: str) -> str:
+    """The text of each program as the customer's server keeps it (syscomments), each chunk between markers so the
+    rows isql prints can be joined back without the newlines it puts between them."""
+    out = []
+    for program in programs:
+        out.append(_use(_database(program) or work))
+        out.append(_go(f"select '{SOURCE_MARK}{program}'",
+                       "select '<<NX>>' + text + '<<XN>>' from syscomments "
+                       f"where id = object_id('{_local(program)}') order by colid"))  # fmt: skip
+    return "".join(out)
+
+
+def read_sources(output: str) -> dict[str, str]:
+    """Program -> its text, from the output of `source_script` (a program the server lacks has no text)."""
+    found: dict[str, str] = {}
+    current: str | None = None
+    buffer: list[str] = []
+    for raw in output.splitlines():
+        line = raw.strip()
+        if line.startswith(SOURCE_MARK):
+            if current is not None:
+                found[current] = "".join(_CHUNK.findall("\n".join(buffer)))
+            current, buffer = line[len(SOURCE_MARK) :], []
+        elif current is not None:
+            buffer.append(raw)
+    if current is not None:
+        found[current] = "".join(_CHUNK.findall("\n".join(buffer)))
+    return {program: text for program, text in found.items() if text.strip()}
+
+
+def dependencies(program: str, text: str, work: str) -> tuple[set[str], set[str]]:
+    """The tables a program reads or writes and the programs it calls, each qualified with its database (an
+    unqualified name lives in the program's own database); temporary tables and calls through variables are not
+    dependencies."""
+    database = _database(program) or work
+    tables: set[str] = set()
+    calls: set[str] = set()
+    for procedure in parse(text):
+        for stmt in procedure.statements():
+            for table in stmt.reads | stmt.writes:
+                if not table.startswith("#"):
+                    tables.add(table if ".." in table else f"{database}..{_short(table)}")
+            for callee in stmt.calls:
+                if not callee.startswith("@"):
+                    calls.add(callee if ".." in callee else f"{database}..{_short(callee)}")
+    return tables, calls
+
+
+def columns_script(tables: list[str], work: str) -> str:
+    """The columns of each table from the catalog: name, system type, length, precision, scale, nullability."""
+    out = []
+    for table in tables:
+        out.append(_use(_database(table) or work))
+        out.append(_go(
+            f"select '{COLUMN_MARK}{table}|' + c.name + '|' + (select min(s.name) from systypes s "
+            "where s.type = c.type and s.usertype < 100) + '|' + convert(varchar(10), c.length) + '|' + "
+            "convert(varchar(10), isnull(c.prec, 0)) + '|' + convert(varchar(10), isnull(c.scale, 0)) + '|' + "
+            "convert(varchar(2), "
+            f"c.status & 8) from syscolumns c where c.id = object_id('{_local(table)}') order by c.colid"
+        ))  # fmt: skip
+    return "".join(out)
+
+
+def read_columns(output: str) -> dict[str, list[Column]]:
+    """Table -> its columns with the legacy type written as the code would (char(10), numeric(19,4), int)."""
+    found: dict[str, list[Column]] = {}
+    for raw in output.splitlines():
+        line = raw.strip()
+        if not line.startswith(COLUMN_MARK):
+            continue
+        parts = line[len(COLUMN_MARK) :].split("|")
+        if len(parts) != 7:
+            continue
+        table, name, base, length, prec, scale, status = parts
+        base = base.lower()
+        if base in _SIZED:
+            legacy = f"{base}({length})"
+        elif base in ("numeric", "decimal"):
+            legacy = f"{base}({prec},{scale})"
+        else:
+            legacy = base
+        found.setdefault(table, []).append(Column(name=name, type=legacy, nullable=status == "8"))
+    return found
 
 
 def parameter_defaults(files: list[SourceFile], program: str) -> dict[str, Scalar]:

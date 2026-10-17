@@ -20,6 +20,7 @@ from dataclasses import asdict
 from typing import Any, Protocol
 
 from nexti_core.adapters import LegacyRunner, LegacyUnavailableError, SliceView, SourceFile
+from nexti_core.impact import SOURCE_SUFFIXES, target_impact
 from nexti_core.spec.characterization import GoldenMaster, Suite, source_digest
 from nexti_core.spec.model import Rule
 from nexti_ivv import mapping as ivv_mapping
@@ -277,6 +278,12 @@ class IvvPhases:
         masks = [f"{m.path} ({m.when}): {m.reason}" for p in mapping.programs for m in p.masks]
         source = await self.port.source_files()
         work = unit_of_work(source, master.program)
+        # ADR-0055 (point 15): the boundary of the certification is the data the target's code reaches; a table
+        # it touches that the mapping does not observe leaves part of the final state uncompared.
+        texts = {p: b.decode("utf-8", "ignore") for p, b in archive.items() if p.endswith(SOURCE_SUFFIXES)}
+        reach = target_impact(texts, sorted(texts))
+        observed = {t.table.lower() for p in mapping.programs for t in p.tables.values()}
+        unobserved = [t for t in reach.tables if t.rsplit(".", 1)[-1] not in observed]
         found_checks = [
             checks.target_runs(golden.ready, golden.diagnostic),
             checks.contract_mapped(problems, approved=True),
@@ -288,7 +295,8 @@ class IvvPhases:
             checks.source_intact(master.source_sha256, source_digest(source)),
             # ADR-0055: a third party's migration is certified on the same boundary; the verdict must say which.
             checks.behaviour_boundary(stubbed_programs(master), [line for line, _ in work],
-                                      rollbacks_without_case(work, master)),
+                                      rollbacks_without_case(work, master),
+                                      state_compared=golden.ready and not unobserved, unobserved_tables=unobserved),
         ]  # fmt: skip
         not_proven = [
             "The target is exercised through its HTTP endpoint and its tables: paths no case reaches are not observed",

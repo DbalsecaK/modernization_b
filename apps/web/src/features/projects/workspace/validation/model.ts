@@ -34,6 +34,8 @@ export const FEATURE_CHECK_KEYS = [
   'canary',
   'questions_closed',
   'traced_to_inputs',
+  'unit_of_work',
+  'schema_applies',
 ] as const
 
 /** The checks of the infrastructure's verdict (ADR-0021); its module is `iac-<cloud>`. */
@@ -63,6 +65,7 @@ export const DELTA_CHECK_KEYS = [
   'criteria_covered',
   'contract_kept',
   'fitness',
+  'impact_bounded',
   'canary',
   'traced_to_inputs',
 ] as const

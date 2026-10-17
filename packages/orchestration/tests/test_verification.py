@@ -10,7 +10,9 @@ import json
 import subprocess
 import uuid
 import zipfile
+from contextlib import AbstractAsyncContextManager
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -187,3 +189,26 @@ async def test_the_gaps_of_the_legacy_are_asked_before_any_work() -> None:
     assert "- branch 40-44 (else)" in question.context
     assert question.recommended.key == "accept"
     assert [o.key for o in question.alternatives] == ["unreachable"]
+
+
+def test_the_target_runs_against_the_legacys_engine_only_when_the_data_stays_there() -> None:
+    # ADR-0055 (point 10): with `migration` (or no Sybase legacy) there is no engine; the verdict's boundary says
+    # the state was not compared.
+    from nexti_orchestration.verification import same_engine
+
+    design = Design.model_validate_json(
+        (PACKAGES / "packs/target/spring_boot/tests/fixtures/pago_orden/design.json").read_text(encoding="utf-8")
+    )
+    master = asyncio.run(RECORDINGS.run(SOURCE, SUITE))
+    assert design.data_strategy == "migration"
+    assert asyncio.run(_enter(same_engine(design, SOURCE, master))) is None
+    same = design.model_copy(update={"data_strategy": "same_database"})
+    from nexti_adapter_sybase.ase import SameEngine
+
+    assert isinstance(same_engine(same, SOURCE, master), SameEngine)
+    assert asyncio.run(_enter(same_engine(same, [SourceFile("x.cbl", "IDENTIFICATION DIVISION.")], master))) is None
+
+
+async def _enter(context: AbstractAsyncContextManager[Any]) -> object:
+    async with context as engine:
+        return engine

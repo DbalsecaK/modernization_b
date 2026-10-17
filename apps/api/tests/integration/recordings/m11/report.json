@@ -6,6 +6,7 @@
     "criteria_covered": "passed",
     "contract_kept": "passed",
     "fitness": "passed",
+    "impact_bounded": "passed",
     "canary": "passed",
     "traced_to_inputs": "passed"
   },
@@ -14,18 +15,20 @@
     "criteria_covered": "4 acceptance criteria covered by passing tests",
     "contract_kept": "the 1 existing endpoint(s) are kept",
     "fitness": "the delta respects the application's architecture rules",
-    "canary": "line 21 changed (if (status.isEmpty() || status.get(0) != null) {) turned test ac_US001_2_a_paid_order_has_status_A() red",
+    "impact_bounded": "the 1 file(s) the delta reaches outside itself are observed by tests that passed before and after it (4 table(s), 0 transaction boundary(ies))",
+    "canary": "line 31 changed (return result.status() != null ? ResponseEntity.status(404).body(result) : Respo) turned test ac_US001_3_an_unknown_order_is_not_found() red",
     "traced_to_inputs": "2 element(s) traced to the lines of their inputs"
   },
   "added": [
-    "src/main/java/com/contoso/billpay/api/OrderController.java",
-    "src/main/java/com/contoso/billpay/api/OrderStatusResponse.java",
-    "src/main/java/com/contoso/billpay/domain/OrderService.java",
-    "src/test/java/com/contoso/billpay/domain/OrderServiceTest.java"
+    "src/main/java/com/contoso/billpay/api/OrderStatusResult.java",
+    "src/test/java/com/contoso/billpay/api/PaymentControllerOrderStatusTest.java"
   ],
-  "changed": [],
-  "model_calls": 5,
-  "cost_usd": "0.14120800",
+  "changed": [
+    "src/main/java/com/contoso/billpay/api/PaymentController.java",
+    "src/main/java/com/contoso/billpay/domain/PaymentService.java"
+  ],
+  "model_calls": 6,
+  "cost_usd": "0.19441600",
   "decisions": [
     "C1",
     "C3",

@@ -11,6 +11,16 @@ export interface BaselineView {
   failed: string[]
 }
 
+/** What the delta reaches in the application (ADR-0055): the files outside the delta it affects, the tables and
+ * transaction boundaries among them, and the affected files no test observed before and after. */
+export interface ImpactView {
+  affected: string[]
+  outside: string[]
+  unobserved: string[]
+  tables: string[]
+  transactions: string[]
+}
+
 export interface DeltaChange {
   name: string
   description: string
@@ -52,6 +62,18 @@ const fieldsOf = (v: unknown): TargetField[] =>
 export function baselineOf(raw: DeltaOut['baseline']): BaselineView | null {
   if (!raw) return null
   return { passed: strings(raw.passed), failed: strings(raw.failed) }
+}
+
+/** The impact of the delta; null before the validation measured it. */
+export function impactOf(raw: DeltaOut['impact']): ImpactView | null {
+  if (!raw) return null
+  return {
+    affected: strings(raw.affected),
+    outside: strings(raw.outside),
+    unobserved: strings(raw.unobserved),
+    tables: strings(raw.tables),
+    transactions: strings(raw.transactions),
+  }
 }
 
 /** `METHOD /path` of a change; just the path when the method is missing; null without a path. */

@@ -5,77 +5,64 @@
   "observations": 7,
   "scenarios": [
     {
-      "name": "A customer pays a pending order with sufficient funds and a commission included in the debit",
-      "steps": 9,
+      "name": "A company pays a pending order with enough balance",
+      "steps": 8,
       "rules": [
         "RULE-001",
         "RULE-002",
-        "RULE-003",
         "RULE-004",
         "RULE-005",
         "RULE-006",
         "RULE-007",
         "RULE-008",
-        "RULE-009",
-        "RULE-012",
-        "RULE-013",
-        "RULE-014",
-        "RULE-015"
+        "RULE-011",
+        "RULE-013"
       ]
     },
     {
-      "name": "A web payment with a separately charged commission",
+      "name": "Payment with a commission charged separately",
       "steps": 7,
       "rules": [
         "RULE-004",
+        "RULE-005",
         "RULE-006",
-        "RULE-007",
+        "RULE-008",
         "RULE-009",
-        "RULE-010",
-        "RULE-012",
-        "RULE-013",
-        "RULE-015"
+        "RULE-011",
+        "RULE-013"
       ]
     },
     {
-      "name": "Payment rejected because the account type, the order or its status is invalid",
-      "steps": 4,
+      "name": "The account type is not allowed",
+      "steps": 2,
       "rules": [
-        "RULE-001",
+        "RULE-001"
+      ]
+    },
+    {
+      "name": "The order does not exist or is not pending",
+      "steps": 3,
+      "rules": [
         "RULE-002",
         "RULE-003"
       ]
     },
     {
-      "name": "Payment rejected for insufficient funds",
+      "name": "The account has insufficient funds",
       "steps": 3,
       "rules": [
-        "RULE-007",
-        "RULE-008"
+        "RULE-006",
+        "RULE-007"
       ]
     },
     {
-      "name": "Failure while debiting, charging the commission or updating the order",
-      "steps": 5,
+      "name": "A debit, commission or order update fails and the payment is undone",
+      "steps": 4,
       "rules": [
+        "RULE-008",
         "RULE-009",
         "RULE-010",
-        "RULE-011",
-        "RULE-013",
-        "RULE-014"
-      ]
-    },
-    {
-      "name": "Payroll service or missing tariff pays no commission",
-      "steps": 5,
-      "rules": [
-        "RULE-004",
-        "RULE-005",
-        "RULE-006",
-        "RULE-007",
-        "RULE-009",
-        "RULE-012",
-        "RULE-015"
+        "RULE-012"
       ]
     }
   ],
@@ -84,10 +71,10 @@
     "classification/legacy-analyst/observations",
     "ruleReview/legacy-analyst/scenarios"
   ],
-  "new_recordings": 5,
-  "insights_cost_usd": "0.07160600",
-  "model_calls": 56,
-  "cost_usd": "0.90848200",
+  "new_recordings": 8,
+  "insights_cost_usd": "0.06224600",
+  "model_calls": 52,
+  "cost_usd": "0.84878400",
   "decisions": [
     "questions"
   ]

@@ -55,6 +55,9 @@ class GoPack:
 
     def code_block(self, content: str) -> str:
         match = re.search(r"```(?:go|golang)?\s*\n(.*?)```", content, re.DOTALL | re.IGNORECASE)
+        if match is None and len(re.findall(r"^```", content, re.MULTILINE)) % 2 == 1:
+            # An opened code block that never closes is a reply the output limit cut: nothing to compile.
+            raise ValueError("the code block is not closed: the answer was cut before its end")
         code = (match.group(1) if match else content).strip()
         if not re.search(r"^package\s+\w+", code, re.MULTILINE):
             raise ValueError("the answer has no Go file (a package clause) in a ```go block")
@@ -119,7 +122,7 @@ class GoPack:
 
     async def run_equivalence(
         self, sandbox: Sandbox, files: dict[str, str], design: Design, use_case: UseCase, master: GoldenMaster,
-        defaults: dict[str, Scalar] | None = None,
+        defaults: dict[str, Scalar] | None = None, engine: Any | None = None,
     ) -> EquivalenceRun:  # fmt: skip
         return await run_equivalence(sandbox, files, design, use_case, master, defaults)
 

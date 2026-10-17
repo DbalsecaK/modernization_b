@@ -294,6 +294,16 @@ STRATEGY_NOTES = {
     "of the legacy's shape leaks into the domain",
     "big-bang": "the target replaces the legacy at once",
 }
+# ADR-0055: where the data lives follows from the migration strategy; the design declares it as `data_strategy`.
+DATA_STRATEGY_NOTES = {
+    "strangler-fig": "same_database; the data and the programs the legacy calls stay in the legacy database, the "
+    "target uses the legacy's driver, its qualified table names as `table`, its columns as `column`, and calls the "
+    "procedures through generated adapters",
+    "anti-corruption-layer": "same_database; the data and the programs the legacy calls stay in the legacy database, "
+    "the target uses the legacy's driver, its qualified table names as `table`, its columns as `column`, and calls "
+    "the procedures through generated adapters",
+    "big-bang": "migration; the data moves to the target database with its own schema",
+}
 ARTIFACT_NOTES = {
     "container": "packaged as a container image",
     "serverless-function": "packaged as serverless functions (cold start and statelessness matter)",
@@ -344,6 +354,8 @@ def stack_guidance(target: Mapping[str, Any]) -> str:
     artifact = str(target.get("artifact") or "")
     if artifact in ARTIFACT_NOTES:
         lines.append(f"Deployment artifact: {ARTIFACT_NOTES[artifact]}.")
+    if strategy in DATA_STRATEGY_NOTES:  # ADR-0055: the migration strategy decides where the data lives
+        lines.append(f"Data strategy: {DATA_STRATEGY_NOTES[strategy]}.")
     practices = [p for p in str(target.get("practices") or "").split(",") if p in PRACTICE_NOTES]
     if practices:
         lines.append("Coding practices: " + "; ".join(f"{p}: {PRACTICE_NOTES[p]}" for p in practices) + ".")

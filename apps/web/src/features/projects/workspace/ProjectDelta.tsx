@@ -9,9 +9,11 @@ import { Notice } from '../NewProjectWizard'
 import { fieldLabel, inventoryOf, sourceLabel, type TargetInventoryView } from './ivv/model'
 import {
   baselineOf,
+  impactOf,
   designOf,
   isDeltaEmpty,
   type BaselineView,
+  type ImpactView,
   type DeltaChange,
   type DeltaDesignView,
 } from './delta/model'
@@ -60,12 +62,14 @@ export function ProjectDelta({ project, onOpenRuns }: { project: ProjectDetail; 
   const inventory = inventoryOf(data.inventory)
   const baseline = baselineOf(data.baseline)
   const design = designOf(data.design)
+  const impact = impactOf(data.impact)
 
   return (
     <div className="space-y-6">
       {inventory && <InventoryCard inventory={inventory} />}
       {baseline && <BaselineCard baseline={baseline} />}
       {design && <DesignCard design={design} />}
+      {impact && <ImpactCard impact={impact} />}
       {(data.added.length > 0 || data.changed.length > 0) && (
         <FilesCard projectId={project.id} added={data.added} changed={data.changed} />
       )}
@@ -155,6 +159,46 @@ function InventoryCard({ inventory }: { inventory: TargetInventoryView }) {
           </tbody>
         </Table>
       )}
+    </Card>
+  )
+}
+
+function ImpactCard({ impact }: { impact: ImpactView }) {
+  const { t } = useTranslation()
+  const tone = impact.unobserved.length > 0 ? 'warning' : 'good'
+  return (
+    <Card>
+      <CardHeader
+        title={t('delta.impact')}
+        subtitle={t('delta.impactHint')}
+        action={<Badge tone={tone}>{t('delta.reached', { count: impact.outside.length })}</Badge>}
+      />
+      <CardBody className="space-y-3">
+        {impact.outside.length === 0 && <p className="text-sm text-muted">{t('delta.nothingOutside')}</p>}
+        {impact.unobserved.length > 0 && (
+          <div className="space-y-2 rounded-md bg-warning/12 p-3 text-sm">
+            <p className="font-medium text-text">{t('delta.unobserved', { count: impact.unobserved.length })}</p>
+            <p className="text-xs text-muted">{t('delta.unobservedHint')}</p>
+            <ul className="list-disc space-y-1 pl-5 font-mono text-xs text-text-2">
+              {impact.unobserved.map((path) => (
+                <li key={path}>{path}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+        {impact.outside.length > 0 && (
+          <ul className="list-disc space-y-1 pl-5 font-mono text-xs text-text-2">
+            {impact.outside
+              .filter((path) => !impact.unobserved.includes(path))
+              .map((path) => (
+                <li key={path}>{path}</li>
+              ))}
+          </ul>
+        )}
+        <p className="text-xs text-muted">
+          {t('delta.impactTables', { tables: impact.tables.length, transactions: impact.transactions.length })}
+        </p>
+      </CardBody>
     </Card>
   )
 }

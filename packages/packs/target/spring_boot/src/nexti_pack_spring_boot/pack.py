@@ -10,7 +10,7 @@ from typing import Any
 from nexti_core.spec.characterization import GoldenMaster, Scalar
 from nexti_core.spec.equivalence import EquivalenceRun
 from nexti_pack_spring_boot import mongodb, mysql, oracle, sqlprobe
-from nexti_pack_spring_boot.build import IMAGE, compile_and_test
+from nexti_pack_spring_boot.build import IMAGE, apply_schema, compile_and_test
 from nexti_pack_spring_boot.canary import Mutation, mutations
 from nexti_pack_spring_boot.design import Design, Port, UseCase
 from nexti_pack_spring_boot.equivalence import run_equivalence
@@ -85,6 +85,9 @@ class SpringBootPack:
 
     def code_block(self, content: str) -> str:
         match = re.search(r"```(?:java)?\s*\n(.*?)```", content, re.DOTALL)
+        if match is None and len(re.findall(r"^```", content, re.MULTILINE)) % 2 == 1:
+            # An opened code block that never closes is a reply the output limit cut: nothing to compile.
+            raise ReplyFormatError("the code block is not closed: the answer was cut before its end")
         code = (match.group(1) if match else content).strip()
         if "class " not in code and "interface " not in code:
             raise ReplyFormatError("the answer has no Java class in a ```java block")
@@ -136,6 +139,13 @@ class SpringBootPack:
         """The errors PostgreSQL reports when the adapter's SQL is prepared against the schema (P32), or ""."""
         return await sqlprobe.probe_sql(sandbox, files, path)
 
+    async def apply_schema(self, sandbox: Sandbox, files: Mapping[str, str]) -> str | None:
+        """The design's schema created on a real PostgreSQL (ADR-0055, point 17): "" when it applied, the engine's
+        error otherwise, None when the project has no schema file."""
+        if SCHEMA not in files:
+            return None
+        return await apply_schema(sandbox, files[SCHEMA])
+
     def schema_path(self) -> str | None:
         """The file with the target schema (the only tables and columns that exist), shown to a developer who
         corrects an adapter (P33); None when the persistence has no schema file."""
@@ -143,9 +153,9 @@ class SpringBootPack:
 
     async def run_equivalence(
         self, sandbox: Sandbox, files: dict[str, str], design: Design, use_case: UseCase, master: GoldenMaster,
-        defaults: dict[str, Scalar] | None = None,
+        defaults: dict[str, Scalar] | None = None, engine: Any | None = None,
     ) -> EquivalenceRun:  # fmt: skip
-        return await run_equivalence(sandbox, files, design, use_case, master, defaults)
+        return await run_equivalence(sandbox, files, design, use_case, master, defaults, engine=engine)
 
     def mutations(self, source: str) -> Sequence[Mutation]:
         return mutations(source)
@@ -189,8 +199,10 @@ class SpringBootOraclePack(SpringBootPack):
 
     async def run_equivalence(
         self, sandbox: Sandbox, files: dict[str, str], design: Design, use_case: UseCase, master: GoldenMaster,
-        defaults: dict[str, Scalar] | None = None,
+        defaults: dict[str, Scalar] | None = None, engine: Any | None = None,
     ) -> EquivalenceRun:  # fmt: skip
+        if engine is not None:
+            raise NotImplementedError("the golden master against the legacy's engine runs on the Spring Boot pack")
         return await oracle.run_equivalence(sandbox, files, design, use_case, master, defaults)
 
     def describe(self) -> dict[str, Any]:
@@ -232,7 +244,7 @@ class SpringBootMySqlPack(SpringBootPack):
 
     async def run_equivalence(
         self, sandbox: Sandbox, files: dict[str, str], design: Design, use_case: UseCase, master: GoldenMaster,
-        defaults: dict[str, Scalar] | None = None,
+        defaults: dict[str, Scalar] | None = None, engine: Any | None = None,
     ) -> EquivalenceRun:  # fmt: skip
         return await mysql.run_equivalence(sandbox, files, design, use_case, master, defaults)
 
@@ -306,7 +318,7 @@ class SpringBootMongoDbPack(SpringBootPack):
 
     async def run_equivalence(
         self, sandbox: Sandbox, files: dict[str, str], design: Design, use_case: UseCase, master: GoldenMaster,
-        defaults: dict[str, Scalar] | None = None,
+        defaults: dict[str, Scalar] | None = None, engine: Any | None = None,
     ) -> EquivalenceRun:  # fmt: skip
         return await mongodb.run_equivalence(sandbox, files, design, use_case, master, defaults)
 

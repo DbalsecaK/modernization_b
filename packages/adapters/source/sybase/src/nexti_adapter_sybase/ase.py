@@ -27,10 +27,13 @@ from nexti_core.spec.characterization import (
     GoldenMaster,
     Observation,
     Recorded,
+    Schema,
     Suite,
+    Table,
     source_digest,
     suite_key,
 )
+from nexti_core.spec.equivalence import EngineTarget
 
 IMAGE = "datagrip/sybase:16.0"
 # The public default of the test image (not a secret): the engine has no network and lives for one suite.
@@ -41,6 +44,7 @@ _ISQL = ". /opt/sybase/SYBASE.sh && isql -U{0} -P{1} -S{2} -w 32000 -b 2>&1"
 # argument (it would show in the process list of the worker's host and in its logs).
 _ISQL_CLIENT = '. /opt/sybase/SYBASE.sh && read -r NXPWD && isql -U{0} -P"$NXPWD" -S{1} -w 32000 -b 2>&1'
 CASE_MARK = "NXCASE|"
+CALL_DEPTH = 8  # levels of calls followed on the customer's server for the tables they touch
 
 
 class LegacyEngineTimeoutError(LegacyUnavailableError):
@@ -95,9 +99,9 @@ class AseRunner:
             return ""  # no answer in time: the caller decides (a cut case, or an engine that stopped answering)
         return output
 
-    async def _start(self) -> str:
+    async def _start(self, network: str = "none") -> str:
         name = f"nexti-ase-{uuid.uuid4().hex[:12]}"
-        args = ["run", "-d", "--rm", "--name", name, "--network", "none", "--memory", f"{self.memory_mb}m",
+        args = ["run", "-d", "--rm", "--name", name, "--network", network, "--memory", f"{self.memory_mb}m",
                 "--memory-swap", f"{self.memory_mb}m", "--pids-limit", "512", "--security-opt", "no-new-privileges",
                 self.image]  # fmt: skip
         try:
@@ -224,6 +228,51 @@ class AseRunner:
                             unreachable=dict(suite.unreachable))  # fmt: skip
 
 
+class SameEngine:
+    """The engine a target runs its golden master against (ADR-0055, point 10): the platform's Sybase ASE with the
+    suite's tables, the transactional substitutes of the called programs and the call log, on a private network of
+    its own (`--internal`: no route out) that the sandbox of the target joins. The legacy program itself is not
+    installed: the target is what runs. Used as `async with SameEngine(files, suite) as engine`."""
+
+    PORT = 5000
+
+    def __init__(self, files: list[SourceFile], suite: Suite, runner: AseRunner | None = None) -> None:
+        self.files = files
+        self.suite = suite
+        self.runner = runner or AseRunner()
+        self.network = f"nexti-eq-{uuid.uuid4().hex[:12]}"
+        self.name: str | None = None
+
+    async def __aenter__(self) -> EngineTarget:
+        plan = golden.plan(self.files, self.suite)
+        code, output = await asyncio.to_thread(self.runner._cli, ["network", "create", "--internal", self.network],
+                                               None, 60)  # fmt: skip
+        if code != 0:
+            raise LegacyEngineError(f"the network of the engine could not be created: {output[:300]}")
+        try:
+            self.name = await self.runner._start(self.network)
+            setup = await self.runner._isql(self.name, golden.setup_script(plan, with_sources=False), 600)
+            failures = golden.engine_errors(setup)
+            if failures:
+                raise golden.GoldenError("the schema or the substitutes do not load in Sybase:" + chr(10)
+                                         + chr(10).join(failures)[:3000])  # fmt: skip
+        except BaseException:
+            await self.__aexit__(None, None, None)
+            raise
+        programs = {program: [s.name for s in stub.parameters if not s.output] for program, stub in plan.stubs.items()}
+        return EngineTarget(
+            name=self.name, network=self.network, jdbc_url=f"jdbc:jtds:sybase://{self.name}:{self.PORT}/{plan.work}",
+            user=_SA[0], password=_SA[1], setup_for=lambda case: golden.case_setup_batches(plan, case),
+            calls_query=golden.CALLS_QUERY, programs=programs, parse_args=golden.read_values,
+        )  # fmt: skip
+
+    async def __aexit__(self, *_: object) -> None:
+        if self.name is not None:
+            await self.runner._stop(self.name)
+            self.name = None
+        await asyncio.to_thread(self.runner._cli, ["network", "rm", self.network], None, 60)
+
+
 class LiveAseRunner(AseRunner):
     """The legacy on a Sybase ASE test server of the customer (`kind = sybase` of ADR-0052, ADR-0055): the same
     scripts, sent by a throw-away client container (the isql of the platform's image, no engine) to the customer's
@@ -240,7 +289,7 @@ class LiveAseRunner(AseRunner):
         self.config = config if isinstance(config, SybaseConfig) else SybaseConfig.model_validate(config)
         self.credentials = credentials
 
-    async def _start(self) -> str:
+    async def _start(self, network: str = "none") -> str:
         name = f"nexti-ase-client-{uuid.uuid4().hex[:12]}"
         limits = ["--memory", "512m", "--memory-swap", "512m", "--pids-limit", "128", "--security-opt",
                   "no-new-privileges"]  # fmt: skip
@@ -270,28 +319,56 @@ class LiveAseRunner(AseRunner):
         full = replace(golden.plan(files, suite), work=self.config.database)
         plan = replace(full, stubs={})  # the called programs are the customer's: nothing to install or answer
         setup_script = golden.live_setup_script(full)
-        keys = {case.name: _case_key(setup_script, case) for case in suite.cases}
-        pending = [case for case in suite.cases if keys[case.name] not in self._observed]
-        if pending:
-            name = await self._start()
-            try:
-                setup = await self._isql(name, setup_script, 300)
-                if not setup.strip():
-                    raise LegacyEngineTimeoutError(f"{self.config.host}:{self.config.port} did not answer the setup")
-                missing = golden.missing_objects(setup)
-                if missing:
-                    raise golden.GoldenError(
-                        "the customer's Sybase lacks what the program needs: " + ", ".join(missing)
-                    )
-                failures = golden.engine_errors(setup)
-                if failures:
-                    raise golden.GoldenError("the customer's Sybase refused the setup:\n" + "\n".join(failures)[:3000])
+        name = await self._start()
+        try:
+            setup = await self._isql(name, setup_script, 300)
+            if not setup.strip():
+                raise LegacyEngineTimeoutError(f"{self.config.host}:{self.config.port} did not answer the setup")
+            missing = golden.missing_objects(setup)
+            if missing:
+                raise golden.GoldenError("the customer's Sybase lacks what the program needs: " + ", ".join(missing))
+            failures = golden.engine_errors(setup)
+            if failures:
+                raise golden.GoldenError("the customer's Sybase refused the setup:\n" + "\n".join(failures)[:3000])
+            # ADR-0055 (point 8): the final state includes the tables the called programs touch, found on the
+            # server itself; the cases dump them as they dump the program's own.
+            called = await self._called_tables(name, full)
+            plan = replace(plan, schema=Schema(tables=[*plan.schema.tables, *called]))
+            keys = {case.name: _case_key(setup_script + "\0" + ",".join(t.name for t in called), case)
+                    for case in suite.cases}  # fmt: skip
+            pending = [case for case in suite.cases if keys[case.name] not in self._observed]
+            if pending:
                 await self._engine_facts(name, files, plan)
                 for start in range(0, len(pending), self.batch_size):
                     await self._run_batch(name, plan, pending[start : start + self.batch_size], keys)
-            finally:
-                await self._stop(name)
-        return self._master(files, suite, keys)
+        finally:
+            await self._stop(name)
+        master = self._master(files, suite, keys)
+        return master.model_copy(update={"schema_": plan.schema, "called_tables": [t.name for t in called]})
+
+    async def _called_tables(self, name: str, plan: golden.Plan) -> list[Table]:
+        """The tables the called programs touch, as the customer's server keeps them: the text of each program from
+        syscomments, parsed as the inputs are, the calls followed level by level; their columns from the catalog.
+        Tables the suite already names are not repeated."""
+        known = {t.name.lower() for t in plan.schema.tables}
+        pending = sorted(plan.stubs)
+        seen: set[str] = set()
+        tables: dict[str, None] = {}
+        for _ in range(CALL_DEPTH):
+            programs = [p for p in pending if p.lower() not in seen]
+            if not programs:
+                break
+            seen.update(p.lower() for p in programs)
+            texts = golden.read_sources(await self._isql(name, golden.source_script(programs, plan.work), 120))
+            pending = []
+            for program, text in texts.items():
+                touched, calls = golden.dependencies(program, text, plan.work)
+                tables.update({t: None for t in sorted(touched) if t.lower() not in known})
+                pending += sorted(c for c in calls if c.lower() not in seen)
+        if not tables:
+            return []
+        columns = golden.read_columns(await self._isql(name, golden.columns_script(list(tables), plan.work), 120))
+        return [Table(name=table, columns=found) for table in tables if (found := columns.get(table))]
 
     async def check(self) -> tuple[bool, str]:
         """Signs on and uses the program's database without running anything (the project's connection test,

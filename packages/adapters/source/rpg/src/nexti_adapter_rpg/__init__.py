@@ -341,6 +341,21 @@ class RpgAdapter:
         formats = device_formats(self._dds(files))
         return [q for p in programs for q in quirks.detect(p, formats)]
 
+    def unit_of_work(self, files: list[SourceFile], program: str) -> list[tuple[int, str]]:
+        """Where an RPG program confirms or undoes its work under commitment control (ADR-0055): COMMIT confirms,
+        ROLBK undoes, and the unit of work begins with the first statement. Empty without commitment control: every
+        write is immediate (the quirk `immediate-writes` says so)."""
+        programs, _ = self._programs(files)
+        found = next((p for p in programs if p.name == program.rsplit(".", 1)[-1].upper()), None)
+        if found is None:
+            return []
+        statements = found.statements()
+        work = [(s.line_start, "commit" if s.base == "COMMIT" else "rollback")
+                for s in statements if s.base in ("COMMIT", "ROLBK")]  # fmt: skip
+        if work:
+            work.insert(0, (statements[0].line_start, "begin_tran"))
+        return work
+
     def program_quirks(self, files: list[SourceFile], program: str) -> tuple[list[EngineQuirk], list[EnvironmentItem]]:
         """The quirks and the program-set environment of one program (empty when it is not in the inputs)."""
         programs, _ = self._programs(files)

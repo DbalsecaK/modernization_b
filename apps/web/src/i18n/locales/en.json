@@ -1047,7 +1047,10 @@
       "rulesCovered": "Rules covered",
       "regression": "Regression",
       "contractKept": "Contract kept",
-      "fitness": "Fitness functions"
+      "fitness": "Fitness functions",
+      "impactBounded": "Impact bounded",
+      "unitOfWork": "Unit of work",
+      "schemaApplies": "Schema applies"
     },
     "status": {
       "passed": "Passed",
@@ -3160,6 +3163,15 @@
     "alreadyFailing_one": "{{count}} test already failing before the delta",
     "alreadyFailing_other": "{{count}} tests already failing before the delta",
     "alreadyFailingHint": "They do not count as a regression.",
+    "impact": "Impact on the application",
+    "impactHint": "The files the delta reaches outside itself, in cascade by the names they use. Each must be observed by a test that passed before and after the delta: zero differences outside the delta.",
+    "reached_one": "{{count}} file reached outside the delta",
+    "reached_other": "{{count}} files reached outside the delta",
+    "nothingOutside": "The delta reaches no file outside itself.",
+    "unobserved_one": "{{count}} reached file is observed by no test that passed before and after",
+    "unobserved_other": "{{count}} reached files are observed by no test that passed before and after",
+    "unobservedHint": "A before/after golden master of the running application is needed to prove they did not change.",
+    "impactTables": "{{tables}} table(s) and {{transactions}} transaction boundary(ies) among the affected files.",
     "design": "Delta design",
     "designHint": "The changes the architect proposed from the approved stories and the AS-IS inventory. It is approved at gate C3.",
     "changes_one": "{{count}} change",

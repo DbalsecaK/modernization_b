@@ -15,6 +15,7 @@ from collections.abc import Mapping
 from typing import Any
 
 from nexti_core.spec.characterization import GoldenMaster, Scalar
+from nexti_core.spec.design import writes
 from nexti_core.spec.equivalence import EquivalenceRun
 from nexti_pack_spring_boot.design import Design, UseCase
 from nexti_pack_spring_boot.equivalence import harness_source, run_equivalence
@@ -51,6 +52,12 @@ def resource_file(design: Design, use_case: UseCase) -> tuple[str, str]:
                "jakarta.ws.rs.Produces", "jakarta.ws.rs.core.MediaType"]  # fmt: skip
     if method not in _BODY_METHODS and use_case.inputs:
         imports.append("jakarta.ws.rs.QueryParam")
+    # ADR-0055: the unit of work of the legacy is the transaction of the request (a rejection undoes everything).
+    # ADR-0055 (point 17): a use case that writes without a legacy makes the request its transaction too.
+    bounded = use_case.unit_of_work is not None or (use_case.legacy_program is None and writes(design, use_case))
+    transactional = "    @Transactional\n" if bounded else ""
+    if bounded:
+        imports.append("jakarta.transaction.Transactional")
     lines = "".join(f"import {i};\n" for i in sorted(imports))
     return _path(package, f"{use_case.name}Resource"), (
         f"package {package};\n\n{lines}\n"
@@ -61,7 +68,7 @@ def resource_file(design: Design, use_case: UseCase) -> tuple[str, str]:
         f"    private final {service} service;\n\n"
         f"    @Inject\n"
         f"    public {use_case.name}Resource({service} service) {{\n        this.service = service;\n    }}\n\n"
-        f'    @{method}\n    @Path("{path}")\n'
+        f'    @{method}\n    @Path("{path}")\n{transactional}'
         f"    public {use_case.name}Response handle({params}) {{\n"
         f"        return service.execute({argument});\n    }}\n}}\n"
     )
@@ -116,6 +123,7 @@ def pom_file(design: Design) -> tuple[str, str]:
     <dependency><groupId>io.quarkus</groupId><artifactId>quarkus-rest-jackson</artifactId></dependency>
     <dependency><groupId>io.quarkus</groupId><artifactId>quarkus-agroal</artifactId></dependency>
     <dependency><groupId>io.quarkus</groupId><artifactId>quarkus-jdbc-postgresql</artifactId></dependency>
+    <dependency><groupId>io.quarkus</groupId><artifactId>quarkus-narayana-jta</artifactId></dependency>
     <dependency><groupId>io.quarkus</groupId><artifactId>quarkus-arc</artifactId></dependency>
     <dependency><groupId>io.quarkus</groupId><artifactId>quarkus-junit5</artifactId><scope>test</scope></dependency>
     <dependency><groupId>org.assertj</groupId><artifactId>assertj-core</artifactId><version>3.27.4</version><scope>test</scope></dependency>
@@ -186,7 +194,7 @@ class QuarkusPack(SpringBootPack):
 
     async def run_equivalence(
         self, sandbox: Sandbox, files: dict[str, str], design: Design, use_case: UseCase, master: GoldenMaster,
-        defaults: dict[str, Scalar] | None = None,
+        defaults: dict[str, Scalar] | None = None, engine: Any | None = None,
     ) -> EquivalenceRun:  # fmt: skip
         return await run_equivalence(sandbox, files, design, use_case, master, defaults, harness_source("quarkus"))
 

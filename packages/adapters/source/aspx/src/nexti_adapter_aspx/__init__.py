@@ -38,6 +38,9 @@ _INFRASTRUCTURE = re.compile(r"\b(SqlConnection|SqlCommand|SqlDataReader|Configu
                              r"\.AddWithValue|\.Open\(\)|\.Close\(\)|ExecuteNonQuery|ExecuteReader|ExecuteScalar|"
                              r"Response\.Redirect|using\s*\()")  # fmt: skip
 _UNIT_OF_WORK = re.compile(r"\b(BeginTransaction|TransactionScope|\.Commit\(\)|\.Rollback\(\)|\.Complete\(\))")
+_BEGINS = re.compile(r"\b(BeginTransaction|new\s+TransactionScope)\b")
+_COMMITS = re.compile(r"\.(Commit|Complete)\(\)")
+_UNDOES = re.compile(r"\.Rollback\(\)")
 _CONTROL_FLOW = re.compile(r"^\s*(if|else|return|for|foreach|while|switch|case|break|continue|try|catch|finally)\b")
 
 
@@ -275,6 +278,27 @@ class AspxAdapter:
                     elif text.endswith(";"):
                         counts["business"] += 1
         return counts
+
+    def unit_of_work(self, files: list[SourceFile], program: str) -> list[tuple[int, str]]:
+        """Where a page (its code-behind class) begins, confirms and undoes its unit of work (ADR-0055):
+        BeginTransaction or a TransactionScope begins it, Commit or Complete confirms it, Rollback undoes it."""
+        workspace = self._workspace(files)
+        short = program.rsplit(".", 1)[-1].lower()
+        classes = [c for c in workspace.classes if c.name.lower() == short or c.name.lower() == f"{short}_aspx"]
+        if not classes:
+            classes = [c for c in workspace.classes if c.path.rsplit("/", 1)[-1].lower().startswith(short + ".")]
+        work: list[tuple[int, str]] = []
+        for cls in classes:
+            lines = workspace.files[cls.path].text.split("\n")
+            for method in cls.methods:
+                for number, line in enumerate(lines[method.line_start : method.line_end - 1], method.line_start + 1):
+                    if _BEGINS.search(line):
+                        work.append((number, "begin_tran"))
+                    elif _COMMITS.search(line):
+                        work.append((number, "commit"))
+                    elif _UNDOES.search(line):
+                        work.append((number, "rollback"))
+        return sorted(work)
 
     def slices(self, files: list[SourceFile]) -> list[SliceView]:
         """One slice per event handler of a page (and its Page_Load) and per App_Code method."""

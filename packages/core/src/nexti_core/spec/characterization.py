@@ -263,6 +263,11 @@ class GoldenMaster(CharacterizationModel):
     unreachable: dict[str, str] = Field(
         default_factory=dict, description="Rules the test engineer declared no input can reach, with the reason"
     )
+    called_tables: list[str] = Field(
+        default_factory=list,
+        description="Tables of the programs the legacy calls whose final state the observations include, discovered "
+        "on the customer's system (ADR-0055)",
+    )
 
     model_config = ConfigDict(extra="forbid", frozen=True, populate_by_name=True)
 

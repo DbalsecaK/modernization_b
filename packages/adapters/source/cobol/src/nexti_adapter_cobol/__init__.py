@@ -307,6 +307,25 @@ class CobolAdapter:
         """No engine quirk catalogued for this technology yet (M28)."""
         return []
 
+    def unit_of_work(self, files: list[SourceFile], program: str) -> list[tuple[int, str]]:
+        """Where a CICS program confirms or undoes its unit of work (ADR-0055): the task's unit of work begins with
+        its first statement, EXEC CICS SYNCPOINT confirms it and SYNCPOINT ROLLBACK undoes it. Empty when the
+        program never names a syncpoint (the task commits at its end, implicitly)."""
+        programs, _ = self._programs(files)
+        found = next((p for p in programs if p.name.upper() == program.rsplit(".", 1)[-1].upper()), None)
+        if found is None:
+            return []
+        statements = found.statements()
+        work: list[tuple[int, str]] = []
+        for statement in statements:
+            if statement.cics is None or not statement.cics.command.startswith("SYNCPOINT"):
+                continue
+            undoes = "ROLLBACK" in statement.cics.command or "ROLLBACK" in statement.cics.options
+            work.append((statement.line_start, "rollback" if undoes else "commit"))
+        if work:
+            work.insert(0, (statements[0].line_start, "begin_tran"))
+        return work
+
     def coverage_branches(self, files: list[SourceFile], program: str) -> list[CoveredBranch]:
         """The paragraphs of a program, the unit a CICS trace tool reports as executed (step 11 of the plan,
         ADR-0047): a trace result lists the paragraphs it ran under `executed`."""

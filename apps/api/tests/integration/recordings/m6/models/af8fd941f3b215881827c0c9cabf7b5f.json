@@ -1,0 +1,28 @@
+{
+  "request_digest": "af8fd941f3b215881827c0c9cabf7b5f",
+  "model": "anthropic/claude-sonnet-5.5",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are the Rules Verifier of a legacy modernization platform, an independent reviewer. You receive one business rule\nwritten by another agent and the exact source lines it cites. You did not write the rule: check it against the code\nonly.\n\nDecide:\n- `supported`: true only if the cited lines implement the rule as written, including its concrete values\n  (codes, amounts, states, limits) and its condition.\n- `problems`: every discrepancy you find: a value that differs from the code, a condition the code does not have, a\n  missing branch the rule should mention, a citation that does not contain the behaviour.\n- `corrected_statement`: if the rule is close but a detail is wrong, the statement rewritten to match the code;\n  otherwise null.\n\nAnswer with one JSON object and nothing else:\n{\"supported\": true, \"problems\": [], \"corrected_statement\": null}\n"
+    },
+    {
+      "role": "user",
+      "content": "Rule:\n{\"name\":\"Successful debit reduces balance\",\"category\":\"calculation\",\"priority\":\"P0\",\"statement\":\"When the account exists, the type matches, the account is active and the balance covers the amount, the amount is subtracted from the balance, the account record is rewritten and the response is '00'.\",\"condition\":\"None of the rejection conditions ('30','40','10','20') apply\",\"action\":\"CTA-SALDO = CTA-SALDO - DEB-MONTO; REWRITE the CUENTAS record; DEB-RESP = '00'.\"}\n\nCited lines:\ncbl/PAGODEB.cbl:30-31:\n   30                WHEN OTHER\n   31                   PERFORM 1000-DEBITAR\n\ncbl/PAGODEB.cbl:35-39:\n   35         1000-DEBITAR.\n   36             SUBTRACT DEB-MONTO FROM CTA-SALDO.\n   37             EXEC CICS REWRITE FILE('CUENTAS') FROM(CTA-REGISTRO)\n   38             END-EXEC.\n   39             MOVE '00' TO DEB-RESP."
+    }
+  ],
+  "response": {
+    "request_id": "gen-1792267432-CgzHo1aTFA9qs65Ir34p",
+    "model": "anthropic/claude-sonnet-5.5",
+    "provider_name": "Anthropic",
+    "content": "{\"supported\": false, \"problems\": [\"The cited lines show only the WHEN OTHER branch and the 1000-DEBITAR paragraph. They do not show the rejection conditions or the response codes '30', '40', '10' and '20', so those codes and the checks for account existence, type match, active status and sufficient balance cannot be verified from this citation.\", \"The cited WHEN OTHER only shows that 1000-DEBITAR runs when no earlier WHEN branch matched. The lines that define those branches would have to be cited to support the stated condition.\", \"The action matches the code: SUBTRACT DEB-MONTO FROM CTA-SALDO, then CICS REWRITE of file CUENTAS from CTA-REGISTRO, then MOVE '00' TO DEB-RESP.\"], \"corrected_statement\": \"When none of the preceding WHEN branches of the evaluation apply (WHEN OTHER), the debit amount DEB-MONTO is subtracted from CTA-SALDO, the CUENTAS record is rewritten from CTA-REGISTRO, and DEB-RESP is set to '00'.\"}",
+    "usage": {
+      "input_tokens": 655,
+      "output_tokens": 739,
+      "reasoning_tokens": 366,
+      "cache_read_tokens": 0,
+      "cache_write_tokens": 0,
+      "provider_cost_usd": "0.0087"
+    }
+  }
+}

@@ -73,6 +73,11 @@ def test_the_verdict_follows_fixed_rules() -> None:
     assert "rollback points without a case: lines 119" in boundary.detail
     assert compute("PayOrder", [*passing[:6], boundary], []).verdict == "PARTLY PROVEN"
     assert checks.behaviour_boundary([], [], [], state_compared=False).status == "not_checked"
+    # ADR-0055 (flow 4): a table the target reaches that the mapping does not observe leaves the state uncompared.
+    blind = checks.behaviour_boundary([], [], [], state_compared=True, unobserved_tables=["audit_log"])
+    assert blind.status == "not_checked"
+    assert "does not observe" in blind.detail
+    assert "audit_log" in blind.detail
     assert compute("PayOrder", passing[:2], []).verdict == "PARTLY PROVEN"  # checks that did not run
     unnoticed = checks.canary([{"line": 3, "after": "x", "caught_by": ""}])
     assert unnoticed.status == "failed"

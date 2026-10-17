@@ -319,10 +319,114 @@ def mask_problems(
     return problems
 
 
+def unit_of_work_problems(design: Design, files: Sequence[SourceFile]) -> list[str]:
+    """A use case whose legacy program works inside a transaction declares its unit of work, and every rollback
+    point of the legacy (by its line, two lines of slack) has an entry with its outcome (ADR-0055)."""
+    if not files:
+        return []
+    from nexti_orchestration.scope import unit_of_work as legacy_unit_of_work
+
+    problems = []
+    for use_case in design.use_cases:
+        if not use_case.legacy_program:
+            continue
+        work = legacy_unit_of_work(files, use_case.legacy_program)
+        if not any(kind == "begin_tran" for _, kind in work):
+            continue
+        described = ", ".join(f"{kind.replace('_', ' ')} at line {line}" for line, kind in work)
+        if use_case.unit_of_work is None:
+            problems.append(f"{use_case.name}: {use_case.legacy_program} works inside a transaction ({described}): "
+                            "declare its unit_of_work (begins_at, commits_at, savepoints and rollbacks, each rollback "
+                            "with its outcome: the error code the program rejects with, or savepoint:<name> when it "
+                            "goes on)")  # fmt: skip
+            continue
+        declared = [point.legacy_line for point in use_case.unit_of_work.rollbacks]
+        uncovered = [line for line, kind in work if kind == "rollback"
+                     and not any(abs(line - at) <= 2 for at in declared)]  # fmt: skip
+        if uncovered:
+            problems.append(f"{use_case.name}: the rollback points at lines {', '.join(map(str, uncovered))} have no "
+                            "entry in unit_of_work.rollbacks (each needs its outcome: the error code the program "
+                            "rejects with, or savepoint:<name> when it goes on)")  # fmt: skip
+    return problems
+
+
+def legacy_units_text(files: Sequence[SourceFile]) -> str:
+    """What the legacy does with its transactions, program by program, for the architect (ADR-0055)."""
+    if not files:
+        return ""
+    from nexti_orchestration.modernization import pick_adapter
+
+    try:
+        adapter = pick_adapter(list(files))
+        method = getattr(adapter, "unit_of_work", None)
+        if method is None:
+            return ""
+        nodes = adapter.inventory(list(files)).nodes
+    except Exception:
+        return ""
+    kinds = ("program", "procedure", "storedprocedure")
+    programs = sorted({str(getattr(n, "name", "") or getattr(n, "key", "")) for n in nodes
+                       if str(getattr(n, "label", "")).lower() in kinds})  # fmt: skip
+    lines = []
+    for program in programs:
+        work = method(list(files), program)
+        if work:
+            steps = ", ".join(f"{kind.replace('_', ' ')} at line {line}" for line, kind in work)
+            lines.append(f"- {program}: {steps}")
+    return "\n".join(lines)
+
+
+STUB_CONVENTIONS = (
+    (re.compile(r"\bTODO\b|\bFIXME\b"), "a TODO/FIXME"),
+    (re.compile(r"\bplaceholder\b", re.I), "a placeholder"),
+    (re.compile(r"\bstub(s|bed)?\b", re.I), "a stub"),
+    (
+        re.compile(r"\bnot implemented\b|UnsupportedOperationException|NotImplementedException", re.I),
+        "code that declares itself unimplemented",
+    ),
+    (re.compile(r"\bhard-?coded\b|\bfake\b|\bdummy\b|\bmock(ed|s)?\b", re.I), "a hard-coded, fake or mock answer"),
+    (re.compile(r"\banswered\s+-?\d+\b"), "the harness's own stub convention (answered N)"),
+)
+
+
+def stub_conventions(code: str) -> list[str]:
+    """Lines of a production file that keep stub conventions (ADR-0055): the generated code must do the real thing,
+    never answer what a case expects. Each finding names the line and what it looks like."""
+    found = []
+    for number, line in enumerate(code.splitlines(), start=1):
+        for pattern, what in STUB_CONVENTIONS:
+            if pattern.search(line):
+                found.append(f"line {number}: {what}: {line.strip()[:120]}")
+                break
+    return found[:12]
+
+
+# The target databases on which a legacy's data can stay where it is (ADR-0055): the engine of each origin.
+SAME_ENGINE_DATABASES: dict[str, frozenset[str]] = {
+    "sybase-ase": frozenset({"sybase", "ase", "sybase-ase"}),
+    "aspx-webforms": frozenset({"sqlserver", "mssql", "sql-server"}),
+}
+
+
+def data_strategy_target_problems(design: Design, database: str | None, legacy: str | None) -> list[str]:
+    """`same_database` keeps the data on the legacy's engine, so a target that names another database contradicts
+    it: the data moves there (`migration`). Without a named target database, or on the legacy's own engine, the
+    architect's choice stands."""
+    chosen = (database or "").lower()
+    if design.data_strategy != "same_database" or not chosen:
+        return []
+    if chosen in SAME_ENGINE_DATABASES.get(legacy or "", frozenset()):
+        return []
+    return [
+        f"the project's target keeps its data in {chosen}: data_strategy must be 'migration' (same_database "
+        "needs the target on the legacy's own engine, and the tables and called programs stay there)"
+    ]
+
+
 def design_problems(
     design: Design, rules: Sequence[Rule], names: set[str] | None = None, *, hints: bool = False,
     files: Sequence[SourceFile] = (), written: set[str] | None = None, package_root: str | None = None,
-    read: set[str] | None = None,
+    read: set[str] | None = None, database: str | None = None, legacy: str | None = None,
 ) -> list[str]:  # fmt: skip
     """What is wrong with a design, for the model to correct. With `hints` (guided extraction, ADR-0033) an invented
     legacy name comes with the closest real names, and the masks are checked against the rules (ADR-0035)."""
@@ -350,6 +454,22 @@ def design_problems(
     if external:
         problems.append(f"methods of ports that replace a legacy program need the argument of each input: "
                         f"{', '.join(sorted(set(external)))}")  # fmt: skip
+    problems += unit_of_work_problems(design, files)
+    if (
+        files
+        and design.data_strategy is None
+        and (any(e.legacy_table for e in design.entities) or any(p.legacy_program for p in design.ports))
+    ):
+        problems.append("data_strategy is required: 'same_database' (the data and the programs it calls stay where "
+                        "they are; the target uses the legacy's driver, its qualified table names and calls its "
+                        "procedures) or 'migration' (the data moves to the target database)")  # fmt: skip
+    problems += data_strategy_target_problems(design, database, legacy)
+    if design.data_strategy == "same_database":
+        renamed = [f"{e.name} ({e.table} vs {e.legacy_table})" for e in design.entities
+                   if e.legacy_table and e.table and e.table != e.legacy_table]  # fmt: skip
+        if renamed:
+            problems.append("with same_database every entity keeps the legacy table as its table (qualified as the "
+                            f"legacy names it) and each field its legacy column: {', '.join(renamed)}")  # fmt: skip
     invented = _invented(design, names) if names is not None else []
     if invented:
         problems.append(f"these legacy names are not in the legacy code (check the exact spelling): "
@@ -512,6 +632,7 @@ async def propose_design(
     hints: bool = False, files: Sequence[SourceFile] = (), written: set[str] | None = None, guidance: str = "",
     package_root: str | None = None, read: set[str] | None = None,
     save: Callable[[dict[str, str]], Awaitable[None]] | None = None,
+    database: str | None = None, legacy: str | None = None,
 ) -> tuple[Design, list[Usage]]:  # fmt: skip
     """The design from the rules. Flow 1 gives the inventory of the legacy; Flow 2 gives the approved screens and
     stories (`label`) and its own prompt (`system`), with no legacy to map. With `save` (guided runs) every attempt's
@@ -522,6 +643,11 @@ async def propose_design(
             "role": "user",
             "content": f"{label}:\n{inventory}\n\nApproved rules:\n{_rules_text(rules)}"
             + (f"\n\nLegacy source (the columns and parameters to map):\n{source}" if source else "")
+            + (
+                f"\n\nUnit of work of the legacy (declare it in unit_of_work, with these lines):\n{units}"
+                if (units := legacy_units_text(files))
+                else ""
+            )
             + (f"\n\n{GUIDED_DESIGN}" if hints else "")
             + (f"\n\n{guidance}" if hints and guidance else ""),
         },
@@ -541,7 +667,8 @@ async def propose_design(
             if hints:
                 design = without_numeric_messages(design)
             problems = design_problems(design, rules, names, hints=hints, files=files, written=written,
-                                       package_root=package_root, read=read)  # fmt: skip
+                                       package_root=package_root, read=read, database=database,
+                                       legacy=legacy)  # fmt: skip
             if problems:
                 raise ReplyError("\n".join(problems))
             return design, usage
@@ -581,6 +708,12 @@ class GenerationPhases:
                 else:
                     files = await self.port.source_files()
                     guided = guided_enabled(ctx.run.options)
+                    from nexti_orchestration.modernization import pick_adapter
+
+                    try:
+                        legacy_name: str | None = pick_adapter(files).name
+                    except PhaseFailedError:
+                        legacy_name = None
                     design, usage = await propose_design(
                         self.port.models, rules, await self.port.inventory_digest(),
                         max_iterations=ctx.run.max_iterations,
@@ -590,6 +723,7 @@ class GenerationPhases:
                         read=read_tables(files), guidance=stack_guidance(ctx.run.target),
                         package_root=ctx.run.target.get("package_root"),
                         save=self._save_docs if guided_enabled(ctx.run.options) else None,
+                        database=str(ctx.run.target.get("database") or "") or None, legacy=legacy_name,
                     )  # fmt: skip
             except ReplyError as exc:
                 raise PhaseFailedError(str(exc)[:1500]) from exc
@@ -645,8 +779,11 @@ class GenerationPhases:
         await ctx.store.event("info", "succeeded", "Layers contracts and domain model compile", phase=ctx.phase.key)
         tests_run = 0
         criteria = await self._criteria(design) if ctx.run.flow == "newFeature" else {}
-        # Behaviour-preserving generation (ADR-0042): with the guided option and a legacy, the program is in view.
-        faithful = guided_enabled(ctx.run.options) and ctx.run.flow == "modernization"
+        # Behaviour-preserving generation (ADR-0042) is the only policy of a modernization (ADR-0055): the program,
+        # its engine register and the golden master are the oracle of the tests and the code, in every run and not
+        # only with the guided option (which adds the stack guidance). A real run escalated to a person because a
+        # model-written test contradicted the program and nothing but the person could say so.
+        faithful = ctx.run.flow == "modernization"
         # The golden master is the oracle of the behaviour when the run is faithful and one was frozen (P35).
         oracle = bool(faithful and hasattr(self.port, "load_golden_master") and await self.port.load_golden_master())
         source = await self.port.source_files() if faithful else []
@@ -683,6 +820,8 @@ class GenerationPhases:
                 developer_prompt, oracle,
             )  # fmt: skip
         for port_spec in design.ports:
+            if pack.adapter_path(design, port_spec) in files:  # the pack generated it (ADR-0055): no model writes it
+                continue
             piece = ctx.for_shard(f"adapter:{port_spec.name}")
             files[pack.adapter_path(design, port_spec)] = await self._adapter(piece, pack, design, port_spec.name,
                                                                               files, sandbox)  # fmt: skip
@@ -833,6 +972,9 @@ class GenerationPhases:
         async def verify(artifact: dict[str, Any]) -> Verification:
             candidate = dict(files)
             candidate[target] = await self.port.load_file(artifact["file"])
+            if smells := stub_conventions(candidate[target]):  # ADR-0055: production code does the real thing
+                return Verification(False, "the service keeps stub conventions; implement the real behaviour "
+                                    "instead:" + chr(10) + chr(10).join(smells))  # fmt: skip
             candidate.update(pack.probe(design, target))
             build: BuildResult = await pack.compile_and_test(sandbox, candidate)
             if build.ok and build.passed:
@@ -885,6 +1027,9 @@ class GenerationPhases:
         async def verify(artifact: dict[str, Any]) -> Verification:
             candidate = dict(files)
             candidate[target] = await self.port.load_file(artifact["file"])
+            if smells := stub_conventions(candidate[target]):  # ADR-0055: an adapter talks to the real database
+                return Verification(False, "the adapter keeps stub conventions; implement the real access "
+                                    "instead:" + chr(10) + chr(10).join(smells))  # fmt: skip
             candidate.update(pack.probe(design, target))
             build = await pack.compile_and_test(sandbox, candidate, run_tests=False)
             if not build.compiled:

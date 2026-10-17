@@ -5,25 +5,25 @@
   "checks": {
     "tests_ran": "passed",
     "rules_traced": "failed",
-    "same_behaviour": "failed",
-    "fresh_inputs": "failed",
-    "canary": "not_checked",
+    "same_behaviour": "passed",
+    "fresh_inputs": "passed",
+    "canary": "passed",
     "source_intact": "passed",
     "behaviour_boundary": "not_checked",
     "legacy_covered": "not_checked"
   },
   "details": {
-    "tests_ran": "41 test(s) passed in a clean build (JUnit XML)",
-    "rules_traced": "rules without a matching golden case: RULE-009, RULE-010, RULE-011, RULE-014",
-    "same_behaviour": "2 of 17 case(s) differ; comision_separada_falla_deshace_pago: System.InvalidOperationException: DebitGateway answered 1",
-    "fresh_inputs": "2 fresh input(s) differ: fresh_11_comision_separada_falla_deshace_pago, fresh_12_debito_falla",
-    "canary": "the unchanged code does not reproduce the golden master, so a deliberate change cannot be told apart",
+    "tests_ran": "57 test(s) passed in a clean build (JUnit XML)",
+    "rules_traced": "rules without a matching golden case: RULE-012",
+    "same_behaviour": "17 golden case(s) reproduced",
+    "fresh_inputs": "12 fresh input(s) matched on both sides",
+    "canary": "line 26 changed (if (tipoCuenta != null && !(Eq(tipoCuenta, \"CTEX\") || Eq(tipoCuenta, \"AHO\") || E) turned test AccountTypeAllowedIsAccepted_Rule001(tipo: \"CTE\") red",
     "source_intact": "the legacy is the code that was characterized (SHA-256)",
-    "behaviour_boundary": "the equivalence compares the calls the legacy made and its own tables, not the final state of the database after the called programs ran; the called programs were stubs, their own logic and effects were not verified: cobis..sp_cerror, db_cuentas..sp_debito; the legacy has a unit of work (begin/save/commit/rollback at lines 108, 119, 136, 155, 161): whether the target keeps or undoes the same work was not verified",
-    "legacy_covered": "1 gap(s) of the legacy no case covers, accepted as not proven by f3af42f1-597e-4ab7-b33d-35ed9f1116af"
+    "behaviour_boundary": "the equivalence compares the calls the legacy made and its own tables, not the final state of the database after the called programs ran; the called programs were stubs, their own logic and effects were not verified: cobis..sp_cerror, db_cuentas..sp_debito",
+    "legacy_covered": "1 gap(s) of the legacy no case covers, accepted as not proven by 01397362-f80e-4f47-863e-74f831af6073"
   },
-  "model_calls": 62,
-  "cost_usd": "1.49075200",
+  "model_calls": 59,
+  "cost_usd": "1.63927000",
   "decisions": [
     "questions",
     "C1",

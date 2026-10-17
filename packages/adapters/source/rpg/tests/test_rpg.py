@@ -167,3 +167,10 @@ def test_coverage_branches_and_digest() -> None:
     assert "Program VALCTA (rpg4-free service program module (no main)" in digest
     assert "exported procedures: VALIDARCUENTA" in digest
     assert "Table CUENTASL1 (LF, keys CTNUME): CTNUME A(10), CTSALD P(11:2)" in digest
+
+
+def test_a_program_without_commitment_control_has_no_unit_of_work() -> None:
+    # ADR-0055: ACTSALDO writes immediately (no COMMIT/ROLBK): nothing to declare, and the quirk `immediate-writes`
+    # already tells the architect not to wrap it in a transaction that rolls back.
+    assert ADAPTER.unit_of_work(workspace(), "ACTSALDO") == []
+    assert ADAPTER.unit_of_work(workspace(), "NOPE") == []

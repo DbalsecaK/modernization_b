@@ -217,7 +217,7 @@ def test_a_correction_runs_only_the_changed_cases_and_none_needs_no_engine() -> 
             self.starts = 0
             self.batches: list[int] = []
 
-        async def _start(self) -> str:
+        async def _start(self, network: str = "none") -> str:
             self.starts += 1
             return "engine"
 
@@ -250,7 +250,7 @@ def test_an_engine_that_stops_answering_cuts_the_recording_as_transient() -> Non
     from nexti_adapter_sybase.ase import AseRunner, LegacyEngineTimeoutError
 
     class SilentAse(AseRunner):
-        async def _start(self) -> str:
+        async def _start(self, network: str = "none") -> str:
             return "engine"
 
         async def _stop(self, name: str) -> None:
@@ -295,7 +295,7 @@ def test_the_coverage_pass_marks_a_case_unreliable_when_the_copy_behaves_differe
             super().__init__(batch_size=50)
             self.copy = False
 
-        async def _start(self) -> str:
+        async def _start(self, network: str = "none") -> str:
             return "engine"
 
         async def _stop(self, name: str) -> None:
@@ -328,3 +328,62 @@ def test_the_coverage_pass_marks_a_case_unreliable_when_the_copy_behaves_differe
     recorded = asyncio.run(RecordedRunner(FIXTURES / "golden", "replay").run(FILES, SUITE))
     assert recorded.coverage is not None
     assert recorded.coverage.unreliable == []
+
+
+def test_the_engine_a_target_runs_against_has_the_tables_the_substitutes_and_the_log_but_not_the_program() -> None:
+    # ADR-0055 (point 10): the target is what runs, so the legacy program is not installed; each case is prepared
+    # with the same rows and substitutes the golden master used, as batches a JDBC client runs one by one.
+    plan = golden.plan(FILES, SUITE)
+    script = golden.setup_script(plan, with_sources=False)
+    assert "create table nx_call" in script
+    assert "create table db_pagos..pg_orden" in script
+    assert "create procedure dbo.sp_debito" in script  # the placeholder of the substitute
+    assert "sp_pago_orden" not in script
+    assert "sp_pago_orden" in golden.setup_script(plan)
+    case = next(c for c in SUITE.cases if c.name == "failed_commission_undoes_the_payment")
+    batches = golden.case_setup_batches(plan, case)
+    assert batches[0] == "use nexti_gm"
+    assert batches[1] == "truncate table nx_call"
+    assert any(b.startswith("insert db_pagos..pg_orden (") for b in batches)
+    assert "use db_cuentas" in batches
+    assert any(b.startswith("create procedure dbo.sp_debito") and "return " in b for b in batches)
+    assert batches[-1] == "use nexti_gm"
+    assert not any(b.strip() == "go" or "exec @nx_rc" in b for b in batches)
+    assert golden.CALLS_QUERY == "select program, args from nexti_gm..nx_call order by seq"
+
+
+def test_the_same_engine_starts_on_a_private_network_and_hands_the_target_what_it_needs() -> None:
+    from nexti_adapter_sybase.ase import SameEngine
+
+    commands: list[list[str]] = []
+
+    class Fake(AseRunner):
+        def _cli(self, args: list[str], stdin: str | None = None, timeout: int = 60) -> tuple[int, str]:
+            commands.append(args)
+            if args[0] == "logs":
+                return 0, "SYBASE INITIALIZED"
+            if args[0] == "exec":
+                return 0, "NXREADY\n"
+            return 0, "ok\n"
+
+    async def run() -> None:
+        engine = SameEngine(FILES, SUITE, Fake(start_seconds=5))
+        async with engine as target:
+            assert target.network.startswith("nexti-eq-")
+            assert target.name is not None
+            assert target.name.startswith("nexti-ase-")
+            assert target.jdbc_url == f"jdbc:jtds:sybase://{target.name}:5000/nexti_gm"
+            assert target.programs["db_cuentas..sp_debito"] == ["@i_cuenta", "@i_tipo", "@i_valor", "@i_referencia"]
+            assert target.setup_for(SUITE.cases[0])[0] == "use nexti_gm"
+            made = target.calls(
+                [{"program": "db_cuentas..sp_debito", "args": "10:1000000001|3:CTE|8:100.6300|10:PAGO ORDEN"}]
+            )
+            assert made[0].arguments == {"@i_cuenta": "1000000001", "@i_tipo": "CTE", "@i_valor": "100.6300",
+                                         "@i_referencia": "PAGO ORDEN"}  # fmt: skip
+        started = next(a for a in commands if a[0] == "run")
+        assert started[started.index("--network") + 1] == target.network
+        assert ["network", "create", "--internal", target.network] in commands
+        assert ["network", "rm", target.network] in commands
+        assert any(a[0] == "kill" for a in commands)
+
+    asyncio.run(run())
