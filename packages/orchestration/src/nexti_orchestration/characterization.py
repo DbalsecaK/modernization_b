@@ -28,7 +28,7 @@ from nexti_orchestration.context import Attempt, PhaseContext, Verification
 from nexti_orchestration.extraction import JSON_ERRORS, ModelCaller, ReplyError, parse_json, raise_if_cut
 from nexti_orchestration.guided import enabled as guided_enabled
 from nexti_orchestration.model import PhaseFailedError, PhaseResult, PhaseUnavailableError
-from nexti_orchestration.scope import scope_files, split_rules
+from nexti_orchestration.scope import scope_files, split_rules, unit_of_work
 from nexti_orchestration.store import Usage
 from nexti_orchestration.usage import total
 
@@ -167,14 +167,21 @@ def groups_of(rules: Sequence[Rule], size: int = GROUP) -> list[list[Rule]]:
 BRANCHES_AT_MOST = 25  # branches named in one request: the rest come in the report
 
 
+def undoing(missed: Sequence[CoveredBranch], rollbacks: Sequence[int]) -> list[CoveredBranch]:
+    """The branches without a case that hold a rollback point of the program (ADR-0055): mandatory ones."""
+    return [b for b in missed if any(b.line_start <= line <= b.line_end for line in rollbacks)]
+
+
 def branch_request(
     missed: Sequence[CoveredBranch], files: Sequence[SourceFile], rules: Sequence[Rule],
-    quirks: Sequence[EngineQuirk] = (),
+    quirks: Sequence[EngineQuirk] = (), rollbacks: Sequence[int] = (),
 ) -> str:  # fmt: skip
     """The branches no case entered, each with its lines of code and the rules citing them (so the pieces of the
     guided suite that own them are asked again), the engine quirks no case reaches (M28), and what to do: keep
-    every case, add cases that enter them."""
+    every case, add cases that enter them. A branch with a rollback point is named as mandatory (ADR-0055): the
+    golden master must show what the program undoes."""
     texts = {f.path: f.text.splitlines() for f in files}
+    mandatory = {b.id for b in undoing(missed, rollbacks)}
     blocks = []
     for branch in missed[:BRANCHES_AT_MOST]:
         lines = texts.get(branch.file) or next(iter(texts.values()), [])
@@ -184,7 +191,9 @@ def branch_request(
         citing = sorted({r.id for r in rules for ref in r.sources
                          if ref.line_start <= branch.line_end and ref.line_end >= branch.line_start})  # fmt: skip
         blocks.append(f"- {branch.kind} at lines {branch.line_start}-{branch.line_end}"
-                      + (f" (rules {', '.join(citing)})" if citing else "") + f":\n{code}")  # fmt: skip
+                      + (f" (rules {', '.join(citing)})" if citing else "")
+                      + (" - a rollback point of the program: a case must enter it" if branch.id in mandatory else "")
+                      + f":\n{code}")  # fmt: skip
     more = len(missed) - BRANCHES_AT_MOST
     text = (
         f"No case of the suite enters {len(missed)} branch(es) of the program, so the golden master cannot prove "
@@ -192,6 +201,9 @@ def branch_request(
         "the program enter each branch below (a branch that no input can reach: say so instead of inventing one):\n"
         + "\n".join(blocks)
         + (f"\n... and {more} more branch(es)" if more > 0 else "")
+        + ("\nThe branches marked as rollback points are mandatory: the golden master has to show what the program "
+           "undoes, so give each one a case whose rows or stub answers make the program fail there."
+           if mandatory else "")
     ) if missed else "Keep every case you already wrote."  # fmt: skip
     if quirks:
         text += (
@@ -351,9 +363,13 @@ class CharacterizationPhases:
             # their code and the rules that cite them; what stays uncovered after that round is reported, not looped.
             measured = recorded.coverage
             unreached = unresolved_quirks(recorded)  # M28: the engine quirks no case reaches go in the same round
-            if guided and measured is not None and (measured.not_exercised or unreached) and not branch_round:
+            # ADR-0055 (point 9): a branch with a rollback point is mandatory and gets one more round than the rest.
+            rollbacks = [line for line, kind in unit_of_work(files, suite.program) if kind == "rollback"]
+            missed = measured.not_exercised if measured is not None else []
+            rounds = 2 if undoing(missed, rollbacks) else 1
+            if guided and measured is not None and (missed or unreached) and len(branch_round) < rounds:
                 branch_round.append(True)
-                return Verification(False, branch_request(measured.not_exercised, files, rules, unreached))
+                return Verification(False, branch_request(missed, files, rules, unreached, rollbacks))
             return Verification(True)
 
         # Guided (ADR-0036): the schema first, then the cases a few rules at a time, so a long program never needs

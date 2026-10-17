@@ -400,3 +400,21 @@ def test_a_rule_no_input_can_reach_is_declared_instead_of_invented() -> None:
         column["key"] = column["name"] in marked["schema"]["tables"][0]["key"]
     marked["schema"]["tables"][0]["key"] = []
     assert parse_suite(json.dumps(marked)).schema_.tables[0].key == parse_suite(SUITE).schema_.tables[0].key
+
+
+def test_a_branch_with_a_rollback_point_is_mandatory_in_the_branch_request() -> None:
+    # ADR-0055 (point 9): the golden master has to show what the program undoes, so the test engineer is told
+    # which of the branches without a case hold a rollback point, and that those are not optional.
+    from nexti_core.spec.characterization import CoveredBranch
+    from nexti_orchestration.characterization import branch_request, undoing
+
+    source = "sp/sp_pago_orden.sp"
+    branches = [CoveredBranch(id="b1", kind="if-true", line_start=117, line_end=121, file=source),
+                CoveredBranch(id="b2", kind="if-false", line_start=34, line_end=39, file=source)]  # fmt: skip
+    assert [b.id for b in undoing(branches, [119])] == ["b1"]
+    text = branch_request(branches, FILES, RULES, (), [119])
+    assert "lines 117-121" in text
+    assert "- a rollback point of the program: a case must enter it:" in text
+    assert "lines 34-39" in text
+    assert "marked as rollback points are mandatory" in text
+    assert "rollback point" not in branch_request(branches, FILES, RULES)
