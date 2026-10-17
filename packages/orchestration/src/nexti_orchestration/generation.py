@@ -747,8 +747,11 @@ class GenerationPhases:
         await ctx.store.event("info", "succeeded", "Layers contracts and domain model compile", phase=ctx.phase.key)
         tests_run = 0
         criteria = await self._criteria(design) if ctx.run.flow == "newFeature" else {}
-        # Behaviour-preserving generation (ADR-0042): with the guided option and a legacy, the program is in view.
-        faithful = guided_enabled(ctx.run.options) and ctx.run.flow == "modernization"
+        # Behaviour-preserving generation (ADR-0042) is the only policy of a modernization (ADR-0055): the program,
+        # its engine register and the golden master are the oracle of the tests and the code, in every run and not
+        # only with the guided option (which adds the stack guidance). A real run escalated to a person because a
+        # model-written test contradicted the program and nothing but the person could say so.
+        faithful = ctx.run.flow == "modernization"
         # The golden master is the oracle of the behaviour when the run is faithful and one was frozen (P35).
         oracle = bool(faithful and hasattr(self.port, "load_golden_master") and await self.port.load_golden_master())
         source = await self.port.source_files() if faithful else []
