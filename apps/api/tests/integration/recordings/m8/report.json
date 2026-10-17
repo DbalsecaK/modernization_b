@@ -22,9 +22,25 @@
     "behaviour_boundary": "the equivalence compares the calls the legacy made and its own tables, not the final state of the database after the called programs ran"
   },
   "not_proven": [
-    "Declared mask calls:Transferencia.Page_Load (always): infrastructure of the legacy: the target framework replaces it (6.2)",
+    "Declared mask calls:Transferencia.Page_Load (always): declared infrastructure by the design: the target framework replaces it (6.2)",
+    "Declared mask outputs:lblComision (rejected): a rejection of the target is an exception with the code and the message: the legacy's output parameters on that path are not part of it",
+    "Declared mask outputs:numero (rejected): a rejection of the target is an exception with the code and the message: the legacy's output parameters on that path are not part of it",
     "RULE-004 is outside TRANSFERENCIA and its golden master: it is verified with the module that runs its code",
+    "RULE-004: declared unreachable by the test engineer, no case enters it (Comprobante.aspx (receipt) has no recorded trace: the legacy is observed only through the TRANSFERENCIA traces (Transferencia.aspx / btnTransferir_Click). The receipt cannot be exercised with the recorded evidence, so no case is proposed and the rule is not proven.)",
     "The legacy did not run on the platform: its behaviour comes from recorded traces, so only the traced cases are compared and fresh inputs are not (PARTLY PROVEN at most)",
+    "Target coverage: 111 of 184 executable lines of the target run by the golden master cases (dotnet-coverage)",
+    "Target code no golden case runs (logic the legacy may not have, or a case the suite misses): src/App/Adapters/In/Rest/ConsultarComprobanteController.cs lines 9-12",
+    "Target code no golden case runs (logic the legacy may not have, or a case the suite misses): src/App/Adapters/In/Rest/ConsultarComprobanteRequest.cs lines 4-5",
+    "Target code no golden case runs (logic the legacy may not have, or a case the suite misses): src/App/Adapters/In/Rest/ConsultarComprobanteResponse.cs lines 4-6",
+    "Target code no golden case runs (logic the legacy may not have, or a case the suite misses): src/App/Adapters/In/Rest/Filters.cs lines 9-38",
+    "Target code no golden case runs (logic the legacy may not have, or a case the suite misses): src/App/Adapters/In/Rest/RealizarTransferenciaController.cs lines 9-12",
+    "Target code no golden case runs (logic the legacy may not have, or a case the suite misses): src/App/Adapters/Out/Sql/SqlTransferenciaRepository.cs lines 13-29",
+    "Target code no golden case runs (logic the legacy may not have, or a case the suite misses): src/App/Application/ConsultarComprobanteService.cs lines 7-19",
+    "Target code no golden case runs (logic the legacy may not have, or a case the suite misses): src/App/Domain/Model/Transferencia.cs lines 4-10",
+    "Target code no golden case runs (logic the legacy may not have, or a case the suite misses): src/App/Infrastructure/Db.cs lines 15-17",
+    "Target code no golden case runs (logic the legacy may not have, or a case the suite misses): src/App/Infrastructure/Db.cs lines 45-47",
+    "Target code no golden case runs (logic the legacy may not have, or a case the suite misses): src/App/Program.cs lines 4-13",
+    "Target code no golden case runs (logic the legacy may not have, or a case the suite misses): src/App/Wiring.cs lines 13-18",
     "Fresh inputs: the golden master comes from recorded traces and the legacy does not run here, so fresh inputs cannot be observed on it (ADR-0015)",
     "Behaviour boundary: the equivalence compares the calls the legacy made and its own tables, not the final state of the database after the called programs ran"
   ],
@@ -42,7 +58,7 @@
     "SCR-TRANSFERENCIA"
   ],
   "model_calls": 37,
-  "cost_usd": "1.10278000",
+  "cost_usd": "1.09250200",
   "decisions": [
     "questions",
     "C1",
