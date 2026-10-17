@@ -12,7 +12,7 @@ from decimal import Decimal, InvalidOperation
 from importlib.resources import files as package_files
 from typing import Any
 
-from nexti_core.spec.characterization import Call, Case, GoldenMaster, Observation
+from nexti_core.spec.characterization import Call, Case, GoldenMaster, Observation, StubAnswer
 from nexti_ivv.mapping import Mapping, ProgramMap
 from nexti_ivv.target import TargetInventory
 from nexti_sandbox import Limits, Sandbox
@@ -74,7 +74,32 @@ def _sql(value: Any) -> str:
     return "'" + str(value).replace("'", "''") + "'"
 
 
-def _plan_case(case: Case, program: ProgramMap) -> dict[str, Any]:
+def _effects(stub: StubAnswer, program: ProgramMap, keys: dict[str, list[str]]) -> list[dict[str, str | None]]:
+    """The rows a stubbed service leaves in the target's tables (ADR-0055): for each one the UPDATE by the legacy
+    table's key, in the target's names, and the INSERT the harness runs when the update changed nothing. The target
+    calls the service over HTTP, so the effect happens outside its transaction, as a remote service's would: a
+    rejection that undoes it in the legacy is a difference the verdict shows."""
+    out: list[dict[str, str | None]] = []
+    for legacy_table, rows in stub.effects.items():
+        table = program.tables.get(legacy_table)
+        if table is None:
+            continue
+        key = [c for c in keys.get(legacy_table.lower(), []) if c in table.columns]
+        for row in rows:
+            columns = [(c, _ident(table.columns[c]), v) for c, v in row.items() if c in table.columns]
+            if not columns:
+                continue
+            where = [f"{t} = {_sql(v)}" for c, t, v in columns if c in key]
+            sets = [f"{t} = {_sql(v)}" for c, t, v in columns if c not in key] or [f"{columns[0][1]} = {columns[0][1]}"]
+            names, values = ", ".join(t for _, t, _ in columns), ", ".join(_sql(v) for _, _, v in columns)
+            insert = f"INSERT INTO {_ident(table.table)} ({names}) VALUES ({values})"  # noqa: S608 - checked identifiers
+            update = (f"UPDATE {_ident(table.table)} SET {', '.join(sets)} WHERE {' AND '.join(where)}"  # noqa: S608
+                      if key and len(where) == len(key) else None)  # fmt: skip
+            out.append({"update": update, "insert": insert})
+    return out
+
+
+def _plan_case(case: Case, program: ProgramMap, keys: dict[str, list[str]] | None = None) -> dict[str, Any]:
     setup = []
     for legacy_table, rows in case.setup.items():
         table = program.tables.get(legacy_table)
@@ -96,6 +121,9 @@ def _plan_case(case: Case, program: ProgramMap) -> dict[str, Any]:
             for output, name in call.answer.outputs.items():
                 if output in stub.outputs:
                     reply[name] = stub.outputs[output]
+            effects = _effects(stub, program, keys or {})
+            if effects:
+                reply["effects"] = effects
             replies.append(reply)
         answers[f"/{_slug(legacy_program)}"] = replies
     return {"name": case.name, "setup": setup, "body": body, "answers": answers}
@@ -112,7 +140,7 @@ def plan(master: GoldenMaster, program: ProgramMap, cases: list[Case]) -> dict[s
         "startSeconds": 240,
         "reset": [f"DELETE FROM {_ident(t.table)}" for t in reversed(tables)],  # noqa: S608 - checked identifier
         "dump": {t.table: f"SELECT * FROM {_ident(t.table)}" for t in tables},  # noqa: S608 - checked identifier
-        "cases": [_plan_case(c, program) for c in cases],
+        "cases": [_plan_case(c, program, {t.name.lower(): list(t.key) for t in master.schema_.tables}) for c in cases],
     }
 
 

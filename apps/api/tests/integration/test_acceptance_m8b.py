@@ -56,6 +56,7 @@ CHECKS = [
     "canary",
     "source_intact",
     "behaviour_boundary",
+    "legacy_covered",
 ]
 
 
