@@ -660,3 +660,24 @@ def test_the_design_declares_the_unit_of_work_the_legacy_has_and_every_rollback_
     data["data_strategy"] = "same_database"
     (renamed,) = [p for p in design_problems(Design.model_validate(data), RULES) if p.startswith("with same_database")]
     assert "PaymentOrder (payment_order vs db_pagos..pg_orden)" in renamed
+
+
+def test_production_code_with_stub_conventions_goes_back_to_the_developer() -> None:
+    # ADR-0055: the double check found "answered N" stubs and hard-coded answers in src/main of a PROVEN run; the
+    # generation now refuses such a file before compiling it, naming the lines.
+    from nexti_orchestration.generation import stub_conventions
+
+    code = "\n".join([
+        "public class JdbcDebitGateway implements DebitGateway {",
+        "    public long debit(String account) {",
+        "        // TODO call the real procedure",
+        "        if (account == null) { throw new IllegalStateException(\"sp_debito answered 1\"); }",
+        "        return 900001L; // hard-coded for the golden master",
+        "    }",
+        "}",
+    ])  # fmt: skip
+    found = stub_conventions(code)
+    assert found[0].startswith("line 3: a TODO/FIXME")
+    assert found[1].startswith("line 4: the harness's own stub convention")
+    assert found[2].startswith("line 5: a hard-coded, fake or mock answer")
+    assert stub_conventions("public class X { int debit() { return jdbc.queryForObject(SQL, Integer.class); } }") == []

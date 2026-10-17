@@ -376,6 +376,31 @@ def legacy_units_text(files: Sequence[SourceFile]) -> str:
     return "\n".join(lines)
 
 
+STUB_CONVENTIONS = (
+    (re.compile(r"\bTODO\b|\bFIXME\b"), "a TODO/FIXME"),
+    (re.compile(r"\bplaceholder\b", re.I), "a placeholder"),
+    (re.compile(r"\bstub(s|bed)?\b", re.I), "a stub"),
+    (
+        re.compile(r"\bnot implemented\b|UnsupportedOperationException|NotImplementedException", re.I),
+        "code that declares itself unimplemented",
+    ),
+    (re.compile(r"\bhard-?coded\b|\bfake\b|\bdummy\b|\bmock(ed|s)?\b", re.I), "a hard-coded, fake or mock answer"),
+    (re.compile(r"\banswered\s+-?\d+\b"), "the harness's own stub convention (answered N)"),
+)
+
+
+def stub_conventions(code: str) -> list[str]:
+    """Lines of a production file that keep stub conventions (ADR-0055): the generated code must do the real thing,
+    never answer what a case expects. Each finding names the line and what it looks like."""
+    found = []
+    for number, line in enumerate(code.splitlines(), start=1):
+        for pattern, what in STUB_CONVENTIONS:
+            if pattern.search(line):
+                found.append(f"line {number}: {what}: {line.strip()[:120]}")
+                break
+    return found[:12]
+
+
 def design_problems(
     design: Design, rules: Sequence[Rule], names: set[str] | None = None, *, hints: bool = False,
     files: Sequence[SourceFile] = (), written: set[str] | None = None, package_root: str | None = None,
@@ -912,6 +937,9 @@ class GenerationPhases:
         async def verify(artifact: dict[str, Any]) -> Verification:
             candidate = dict(files)
             candidate[target] = await self.port.load_file(artifact["file"])
+            if smells := stub_conventions(candidate[target]):  # ADR-0055: production code does the real thing
+                return Verification(False, "the service keeps stub conventions; implement the real behaviour "
+                                    "instead:" + chr(10) + chr(10).join(smells))  # fmt: skip
             candidate.update(pack.probe(design, target))
             build: BuildResult = await pack.compile_and_test(sandbox, candidate)
             if build.ok and build.passed:
@@ -964,6 +992,9 @@ class GenerationPhases:
         async def verify(artifact: dict[str, Any]) -> Verification:
             candidate = dict(files)
             candidate[target] = await self.port.load_file(artifact["file"])
+            if smells := stub_conventions(candidate[target]):  # ADR-0055: an adapter talks to the real database
+                return Verification(False, "the adapter keeps stub conventions; implement the real access "
+                                    "instead:" + chr(10) + chr(10).join(smells))  # fmt: skip
             candidate.update(pack.probe(design, target))
             build = await pack.compile_and_test(sandbox, candidate, run_tests=False)
             if not build.compiled:
