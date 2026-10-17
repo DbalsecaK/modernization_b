@@ -1,7 +1,7 @@
 {
   "mode": "record",
   "rules": 8,
-  "p0": 6,
+  "p0": 7,
   "extraction_shards": [
     "consolidate",
     "dbo.sp_pago_orden#whole"
@@ -22,20 +22,21 @@
     "precision": 1.0
   },
   "plain_extraction": {
-    "found_rules": 15,
-    "omissions": [],
+    "found_rules": 13,
+    "omissions": [
+      "RULE-009"
+    ],
     "omissions_p0": [],
     "hallucinations": [
       "RULE-003",
-      "RULE-004",
+      "RULE-008",
       "RULE-009",
-      "RULE-010",
-      "RULE-012",
-      "RULE-015"
+      "RULE-011",
+      "RULE-013"
     ]
   },
-  "extraction_cost_usd": "0.15818200",
-  "model_calls": 17,
-  "cost_usd": "0.20445400",
+  "extraction_cost_usd": "0.15621600",
+  "model_calls": 18,
+  "cost_usd": "0.19941800",
   "decisions": []
 }
