@@ -116,9 +116,14 @@ def java_sandbox() -> DockerSandbox:
 async def test_the_reference_target_is_proven_by_code(java_sandbox: DockerSandbox) -> None:
     port = MemoryPort(java_sandbox, RECORDINGS)
     result = await VerificationPhases(port).verification(_context())
-    assert result.summary == "PayOrder: PROVEN (6 of 6 checks passed)"
+    # ADR-0055: the six checks pass, but the golden master replaced sp_debito by a stub and never compared the final
+    # state of the database, so the seventh check cannot pass and the verdict says so instead of claiming PROVEN.
+    assert result.summary == "PayOrder: PARTLY PROVEN (6 of 7 checks passed)"
     ((verdict, pack),) = port.saved
     statuses = {c.key: (c.status, c.detail) for c in verdict.checks}
+    assert statuses["behaviour_boundary"][0] == "not_checked"
+    assert "db_cuentas..sp_debito" in statuses["behaviour_boundary"][1]
+    assert "unit of work" in statuses["behaviour_boundary"][1]
     assert statuses["tests_ran"] == ("passed", "7 test(s) passed in a clean build (JUnit XML)")
     assert statuses["same_behaviour"] == ("passed", "12 golden case(s) reproduced")
     assert statuses["fresh_inputs"] == ("passed", "12 fresh input(s) matched on both sides")
@@ -134,7 +139,7 @@ async def test_the_reference_target_is_proven_by_code(java_sandbox: DockerSandbo
 async def test_without_an_engine_for_fresh_inputs_it_is_partly_proven(java_sandbox: DockerSandbox) -> None:
     port = MemoryPort(java_sandbox, None)
     result = await VerificationPhases(port).verification(_context())
-    assert result.summary == "PayOrder: PARTLY PROVEN (5 of 6 checks passed)"
+    assert result.summary == "PayOrder: PARTLY PROVEN (5 of 7 checks passed)"
     ((verdict, _),) = port.saved
     assert "Fresh inputs: there is no engine to run the legacy with fresh inputs" in verdict.not_proven
 

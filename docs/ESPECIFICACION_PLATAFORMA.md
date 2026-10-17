@@ -739,6 +739,7 @@ Calculado **por código** con reglas fijas. Chequeos:
 | 4 | Inputs frescos | ≥ 10 inputs nuevos corridos en ambos lados sin diferencias (si el legacy corre) |
 | 5 | Canario | Un cambio deliberado de una línea pone tests en rojo (evidencia en archivo) |
 | 6 | Fuente intacta | Ningún archivo del legacy modificado desde el preflight |
+| 7 | Frontera del comportamiento | La equivalencia se midió sobre el **estado final de la base** con los programas llamados **reales** y un caso por cada punto de rollback; con stubs, sin estado de base o con un rollback sin caso no puede comprobarse, y el detalle nombra exactamente qué quedó fuera ([ADR-0055](adr/0055-equivalencia-por-estado-y-unidad-de-trabajo.md)) |
 
 - **PROVEN:** todos pasan. **NOT PROVEN:** alguno falla. **PARTLY PROVEN:** nada falló pero algo no pudo comprobarse.
 - Cada veredicto lista **lo que no prueba** (muestras, máscaras, tolerancias, reglas no extraídas…).

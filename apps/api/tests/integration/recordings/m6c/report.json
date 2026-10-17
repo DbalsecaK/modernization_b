@@ -1,14 +1,15 @@
 {
   "model": "anthropic/claude-sonnet-5.5",
   "mode": "record",
-  "verdict": "PROVEN",
+  "verdict": "PARTLY PROVEN",
   "checks": {
     "tests_ran": "passed",
     "rules_traced": "passed",
     "same_behaviour": "passed",
     "fresh_inputs": "passed",
     "canary": "passed",
-    "source_intact": "passed"
+    "source_intact": "passed",
+    "behaviour_boundary": "not_checked"
   },
   "details": {
     "tests_ran": "34 test(s) passed in a clean build (JUnit XML)",
@@ -16,7 +17,8 @@
     "same_behaviour": "28 golden case(s) reproduced",
     "fresh_inputs": "12 fresh input(s) matched on both sides",
     "canary": "line 19 changed (if (request.TipoCuenta is not (\"CTE\" or \"AHO\" or \"VIRX\"))) turned test VirAccountWithExactBalanceIsAccepted red",
-    "source_intact": "the legacy is the code that was characterized (SHA-256)"
+    "source_intact": "the legacy is the code that was characterized (SHA-256)",
+    "behaviour_boundary": "the equivalence compares the calls the legacy made and its own tables, not the final state of the database after the called programs ran; the called programs were stubs, their own logic and effects were not verified: db_cuentas..sp_debito; the legacy has a unit of work (begin/save/commit/rollback at lines 108, 119, 136, 155, 161): whether the target keeps or undoes the same work was not verified; rollback points without a case: lines 119, 136, 155"
   },
   "model_calls": 51,
   "cost_usd": "1.52631400",

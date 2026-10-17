@@ -32,9 +32,12 @@ VALIDATORS = ("RequiredFieldValidator", "RangeValidator", "RegularExpressionVali
 EVENTS = ("OnClick", "OnSelectedIndexChanged", "OnTextChanged", "OnCheckedChanged", "OnCommand")
 RANGE_TYPES = {"currency": "decimal(19,4,signed)", "double": "decimal(19,4,signed)", "integer": "integer(32,signed)",
                "date": "date(yyyy-MM-dd)"}  # fmt: skip
-_INFRASTRUCTURE = re.compile(r"\b(SqlConnection|SqlCommand|SqlTransaction|SqlDataReader|ConfigurationManager|Parameters"
+# BeginTransaction / Commit() / Rollback() / TransactionScope are NOT infrastructure: they are the unit of work,
+# business P0 (ADR-0055).
+_INFRASTRUCTURE = re.compile(r"\b(SqlConnection|SqlCommand|SqlDataReader|ConfigurationManager|Parameters"
                              r"\.AddWithValue|\.Open\(\)|\.Close\(\)|ExecuteNonQuery|ExecuteReader|ExecuteScalar|"
-                             r"Response\.Redirect|BeginTransaction|Commit\(\)|Rollback\(\)|using\s*\()")  # fmt: skip
+                             r"Response\.Redirect|using\s*\()")  # fmt: skip
+_UNIT_OF_WORK = re.compile(r"\b(BeginTransaction|TransactionScope|\.Commit\(\)|\.Rollback\(\)|\.Complete\(\))")
 _CONTROL_FLOW = re.compile(r"^\s*(if|else|return|for|foreach|while|switch|case|break|continue|try|catch|finally)\b")
 
 
@@ -265,6 +268,8 @@ class AspxAdapter:
                         continue
                     if _CONTROL_FLOW.match(text):
                         counts["control_flow"] += 1
+                    elif _UNIT_OF_WORK.search(text):
+                        counts["business"] += 1
                     elif _INFRASTRUCTURE.search(text) or text.startswith(('"', '+ "')):
                         counts["infrastructure"] += 1
                     elif text.endswith(";"):

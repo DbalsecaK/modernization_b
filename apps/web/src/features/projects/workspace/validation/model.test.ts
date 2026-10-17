@@ -46,7 +46,7 @@ function rule(key: string, verified: boolean | null, extra: Partial<TraceRule> =
 }
 
 describe('checks', () => {
-  it('orders the six checks and adds the ones not reported as not checked', () => {
+  it('orders the seven checks and adds the ones not reported as not checked', () => {
     const checks = allChecks([
       { key: 'same_behaviour', title: 'Same behaviour', status: 'passed', detail: '1 golden case(s) reproduced' },
       { key: 'tests_ran', title: 'Tests ran', status: 'passed', detail: '7 test(s) passed' },
@@ -59,11 +59,13 @@ describe('checks', () => {
       'fresh_inputs',
       'canary',
       'source_intact',
+      'behaviour_boundary',
       'extra_check',
     ])
     expect(checks[0]).toMatchObject({ status: 'passed', missing: false, detail: '7 test(s) passed' })
     expect(checks[1]).toMatchObject({ status: 'not_checked', missing: true })
-    expect(checks.filter((c) => c.missing)).toHaveLength(4)
+    expect(checks.filter((c) => c.missing)).toHaveLength(5)
+    expect(checkTitleKey('behaviour_boundary')).toBe('validation.checkTitles.behaviourBoundary')
   })
 
   it('shows the six checks of a Flow 2 verdict in their order', () => {
@@ -86,7 +88,7 @@ describe('checks', () => {
     expect(checkTitleKey('traced_to_inputs')).toBe('validation.checkTitles.tracedToInputs')
   })
 
-  it('shows the six checks of an independent validation verdict in their order', () => {
+  it('shows the seven checks of an independent validation verdict in their order', () => {
     const checks = allChecks(
       [{ key: 'contract_mapped', title: 'Contract mapped', status: 'failed', detail: '2 problem(s)' }],
       'ivv-sp_loans',
@@ -98,8 +100,9 @@ describe('checks', () => {
       'fresh_inputs',
       'rules_covered',
       'source_intact',
+      'behaviour_boundary',
     ])
-    expect(checks.filter((c) => c.missing)).toHaveLength(5)
+    expect(checks.filter((c) => c.missing)).toHaveLength(6)
     expect(checkTitleKey('contract_mapped')).toBe('validation.checkTitles.contractMapped')
   })
 

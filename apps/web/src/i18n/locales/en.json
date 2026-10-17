@@ -1015,6 +1015,7 @@
       "canary": "Canary",
       "sourceIntact": "Source intact",
       "legacyCovered": "Legacy covered",
+      "behaviourBoundary": "Behaviour boundary",
       "compiles": "Compiles",
       "screensMount": "Screens mount",
       "fieldsCovered": "Fields covered",

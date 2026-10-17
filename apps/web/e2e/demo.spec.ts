@@ -26,11 +26,12 @@ test('the demo projects of the guide have every tab with data and the roles it d
   test.skip(!ids, 'no demo data here: run pnpm demo:seed')
   if (!ids) return
 
-  // Sybase → Spring Boot: the whole modernization, PROVEN.
+  // Sybase → Spring Boot: the whole modernization. PARTLY PROVEN since ADR-0055: the called sp_debito is a stub and
+  // the final state of the database is not compared, and the verdict says so.
   const sybase = `/projects/${ids.sybase}`
   await page.goto(`${sybase}?tab=validation`)
   await expect(
-    page.getByRole('region', { name: 'Verdict of PayOrder' }).getByText('PROVEN', { exact: true }),
+    page.getByRole('region', { name: 'Verdict of PayOrder' }).getByText('PARTLY PROVEN', { exact: true }),
   ).toBeVisible()
   await page.goto(`${sybase}?tab=code`)
   await expect(page.getByRole('list', { name: 'Generated files' }).getByRole('button').first()).toBeVisible()

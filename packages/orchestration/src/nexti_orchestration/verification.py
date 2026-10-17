@@ -40,6 +40,40 @@ from nexti_verification import verdict as checks
 from nexti_verification.proof_pack import verification_document
 from nexti_verification.verdict import CaseOutcome
 
+
+def stubbed_programs(master: GoldenMaster) -> list[str]:
+    """The external programs the cases replaced by stubs: their logic and effects were not in the golden master."""
+    return sorted({program for recorded in master.results for program in recorded.case.stubs})
+
+
+def unit_of_work(files: Sequence[SourceFile], program: str) -> list[tuple[int, str]]:
+    """The lines where the legacy program starts, saves, confirms or undoes its work (ADR-0055), from its source
+    adapter when it knows them; empty otherwise."""
+    from nexti_orchestration.modernization import pick_adapter
+
+    try:
+        found = getattr(pick_adapter(list(files)), "unit_of_work", None)
+    except Exception:
+        return []
+    return list(found(list(files), program)) if callable(found) else []
+
+
+def rollbacks_without_case(work: Sequence[tuple[int, str]], master: GoldenMaster) -> list[int]:
+    """Rollback points of the legacy no golden case entered (ADR-0055). Needs the coverage of ADR-0047: when it was
+    not measured, every rollback counts as without a case, which is the truth the verdict must tell."""
+    rollbacks = [line for line, kind in work if kind == "rollback"]
+    if not rollbacks:
+        return []
+    if master.coverage is None:
+        return rollbacks
+    entered: set[tuple[int, int]] = set()
+    reliable = set(master.coverage.executed) - set(master.coverage.unreliable)
+    for branch in master.coverage.branches:
+        if any(branch.id in master.coverage.executed[case] for case in reliable):
+            entered.add((branch.line_start, branch.line_end))
+    return [line for line in rollbacks if not any(start <= line <= end for start, end in entered)]
+
+
 VALIDATOR = "equivalence-validator"
 
 
@@ -222,6 +256,13 @@ class VerificationPhases:
             found.append(checks.Check("canary", "not_checked", "the unchanged code does not reproduce the golden "
                                       "master, so a deliberate change cannot be told apart"))  # fmt: skip
         found.append(checks.source_intact(master.source_sha256, source_digest(source)))
+        # ADR-0055: where the equivalence was measured. Until the comparison runs on the final state of the database
+        # with the called programs real, the verdict says so and stays PARTLY PROVEN.
+        work = unit_of_work(source, master.program)
+        found.append(checks.behaviour_boundary(
+            stubbed_programs(master), [line for line, _ in work],
+            rollbacks_without_case(work, master), state_compared=False,
+        ))  # fmt: skip
         if master.coverage is not None:  # ADR-0050: the legacy covered, or each gap with a signed decision
             found.append(checks.legacy_covered(gaps, decision.option if decision else None,
                                                decision.by if decision else None,
@@ -231,8 +272,9 @@ class VerificationPhases:
         not_proven += [f"Correction round {r.number} ({', '.join(r.changed) or 'no file'}): {r.note}" for r in rounds]
         not_proven += [f"{r.id} is outside {master.program} and its golden master: it is verified with the module "
                        "that runs its code" for r in outside]  # fmt: skip
-        not_proven.append("External programs are replaced by stubs that answer as the case says; their own logic "
-                          "is not verified here")  # fmt: skip
+        if stubbed_programs(master):
+            not_proven.append("External programs are replaced by stubs that answer as the case says; their own logic "
+                              "and their effects on the database are not verified here (ADR-0055)")  # fmt: skip
         if master.coverage is not None:  # ADR-0047: the branches of the legacy no case exercised are not proven
             missed = master.coverage.not_exercised
             not_proven.append(f"Legacy coverage: {master.coverage.note()}")

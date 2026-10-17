@@ -125,7 +125,9 @@ REJECTED_REASON = (
 
 def masks(design: Design, use_case: UseCase, master: GoldenMaster) -> list[Mask]:
     found = [Mask(m.path, m.reason, m.when) for m in design.masks]
-    found += [Mask(f"calls:{p}", "infrastructure of the legacy: the target framework replaces it (6.2)")
+    # A program the design declared as infrastructure (logging, auditing): a decision of the architect, checked by the
+    # guided design against the rules (ADR-0055 keeps the error contract and the unit of work out of this list).
+    found += [Mask(f"calls:{p}", "declared infrastructure by the design: the target framework replaces it (6.2)")
               for p in design.infrastructure]  # fmt: skip
     entities = entities_by_legacy(design)
     for table in master.schema_.tables:

@@ -48,7 +48,15 @@ MODEL = "anthropic/claude-sonnet-5.5"  # the model of test_acceptance_m4.model_f
 BUDGET_USD = Decimal("2.00")  # approved for the recording of M8b
 TARGET_ORACLE = {**TARGET, "backend": "spring-boot", "frontend": "none", "database": "oracle", "cloud": "aws"}
 RECORD = os.environ.get("NEXTI_RECORD_M8B") == "1"
-CHECKS = ["tests_ran", "rules_traced", "same_behaviour", "fresh_inputs", "canary", "source_intact"]
+CHECKS = [
+    "tests_ran",
+    "rules_traced",
+    "same_behaviour",
+    "fresh_inputs",
+    "canary",
+    "source_intact",
+    "behaviour_boundary",
+]
 
 
 @pytest.fixture(scope="module")

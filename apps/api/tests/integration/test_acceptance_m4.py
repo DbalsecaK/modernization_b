@@ -375,6 +375,7 @@ async def test_the_fictitious_application_reaches_a_verdict_computed_by_code(
         "fresh_inputs",
         "canary",
         "source_intact",
+        "behaviour_boundary",
     ]
     assert verdict["proof_pack_key"]
 

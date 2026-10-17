@@ -55,7 +55,15 @@ TEAM = {
     "equivalence-validator": "1.4.0",
 }
 RECORD = os.environ.get("NEXTI_RECORD_M10") == "1"
-CHECKS = ["target_runs", "contract_mapped", "same_behaviour", "fresh_inputs", "rules_covered", "source_intact"]
+CHECKS = [
+    "target_runs",
+    "contract_mapped",
+    "same_behaviour",
+    "fresh_inputs",
+    "rules_covered",
+    "source_intact",
+    "behaviour_boundary",
+]
 
 
 @pytest.fixture(scope="module")
@@ -187,8 +195,11 @@ async def test_a_third_party_target_is_validated_against_the_legacy(
     assert verdict["module"] == "ivv-sp_pago_orden"
     assert [c["key"] for c in verdict["checks"]] == CHECKS
     statuses = {c["key"]: c["status"] for c in verdict["checks"]}
-    # BillPay is a faithful migration: every golden case and every fresh input is reproduced (ADR-0025).
-    assert (verdict["verdict"], statuses) == ("PROVEN", dict.fromkeys(CHECKS, "passed")), verdict["checks"]
+    # BillPay is a faithful migration: every golden case and every fresh input is reproduced (ADR-0025). Since
+    # ADR-0055 the verdict also says where it measured: the golden master stubbed sp_debito and never compared the
+    # final state of the database, so it is PARTLY PROVEN and names what it did not verify.
+    expected = {**dict.fromkeys(CHECKS, "passed"), "behaviour_boundary": "not_checked"}
+    assert (verdict["verdict"], statuses) == ("PARTLY PROVEN", expected), verdict["checks"]
     assert verdict["proof_pack_key"]
     ivv = api.get(f"{base}/ivv", headers=headers).json()
     assert f"**{verdict['verdict']}**" in ivv["report"]

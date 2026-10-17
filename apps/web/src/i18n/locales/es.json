@@ -1015,6 +1015,7 @@
       "canary": "Canario",
       "sourceIntact": "Fuente intacta",
       "legacyCovered": "Legado cubierto",
+      "behaviourBoundary": "Frontera del comportamiento",
       "compiles": "Compila",
       "screensMount": "Las pantallas cargan",
       "fieldsCovered": "Campos cubiertos",
