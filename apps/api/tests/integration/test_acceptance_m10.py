@@ -195,11 +195,19 @@ async def test_a_third_party_target_is_validated_against_the_legacy(
     assert verdict["module"] == "ivv-sp_pago_orden"
     assert [c["key"] for c in verdict["checks"]] == CHECKS
     statuses = {c["key"]: c["status"] for c in verdict["checks"]}
-    # BillPay is a faithful migration: every golden case and every fresh input is reproduced (ADR-0025). Since
-    # ADR-0055 the verdict also says where it measured: the golden master stubbed sp_debito and never compared the
-    # final state of the database, so it is PARTLY PROVEN and names what it did not verify.
-    expected = {**dict.fromkeys(CHECKS, "passed"), "behaviour_boundary": "not_checked"}
-    assert (verdict["verdict"], statuses) == ("PARTLY PROVEN", expected), verdict["checks"]
+    # BillPay reproduces the decision logic of the legacy (ADR-0025), but since ADR-0055 the golden master carries
+    # what the called program leaves in the tables (the substitute of sp_debito debits the account) and the final
+    # state is compared: BillPay calls the debit over HTTP, so when the commission fails the legacy undoes the debit
+    # and BillPay cannot. One golden case and its fresh input differ, the verdict is NOT PROVEN and names them: the
+    # finding a bank needs before it trusts a third-party rewrite.
+    expected = {**dict.fromkeys(CHECKS, "passed"), "same_behaviour": "failed", "fresh_inputs": "failed",
+                "rules_covered": "failed", "behaviour_boundary": "not_checked"}  # fmt: skip
+    assert (verdict["verdict"], statuses) == ("NOT PROVEN", expected), verdict["checks"]
+    details = {c["key"]: c["detail"] for c in verdict["checks"]}
+    assert (
+        "comision_separada_falla_deshace_pago: tables:db_cuentas..ct_cuenta[0].cta_saldo: 500.0000 != 400.0000"
+        in (details["same_behaviour"])
+    )
     assert verdict["proof_pack_key"]
     ivv = api.get(f"{base}/ivv", headers=headers).json()
     assert f"**{verdict['verdict']}**" in ivv["report"]
