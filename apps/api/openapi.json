@@ -5200,7 +5200,10 @@
           "kind": {
             "anyOf": [
               {
-                "const": "ibmi",
+                "enum": [
+                  "ibmi",
+                  "sybase"
+                ],
                 "type": "string"
               },
               {
@@ -5265,7 +5268,10 @@
           "kind": {
             "anyOf": [
               {
-                "const": "ibmi",
+                "enum": [
+                  "ibmi",
+                  "sybase"
+                ],
                 "type": "string"
               },
               {
