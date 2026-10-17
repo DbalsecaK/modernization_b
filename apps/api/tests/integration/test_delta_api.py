@@ -52,7 +52,8 @@ async def test_before_the_inventory_there_is_no_delta(
     project_id = await make_project(owner_engine, world.tenant_a)
     await reconcile(app_engine, fga)
     found = api.get(f"/api/v1/projects/{project_id}/delta", headers=sign_in(api, world.a_user)).json()
-    assert found == {"inventory": None, "baseline": None, "design": None, "added": [], "changed": [], "report": None}
+    assert found == {"inventory": None, "baseline": None, "design": None, "added": [], "changed": [], "impact": None,
+                     "report": None}  # fmt: skip
 
 
 async def test_the_delta_of_another_tenant_is_unreachable(
