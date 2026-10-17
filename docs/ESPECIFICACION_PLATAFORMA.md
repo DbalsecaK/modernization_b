@@ -483,6 +483,8 @@ migrador por par origen→destino.
 
 ### 8.2 Contrato del adaptador de origen
 
+> Desde ADR-0055 (punto 13) el contrato completo está escrito en código: `nexti_core.conformance` enumera cada capacidad (obligatoria u opcional), la ejercita sobre el fixture de cada adaptador y produce `docs/COBERTURA_POR_LENGUAJE.md` (punto 21); un adaptador que no pasa las obligatorias no es conforme, y un hueco opcional queda nombrado en el documento. Las capacidades nuevas del contrato son `unit_of_work` (inicio, savepoints, rollbacks y commit del programa) y `call_effects` (las tablas que toca cada llamada externa).
+
 Todo adaptador implementa:
 
 1. `detect(insumos) → confianza` — reconoce si el insumo es de su tecnología.
