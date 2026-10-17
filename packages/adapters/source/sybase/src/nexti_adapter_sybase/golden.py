@@ -275,6 +275,19 @@ def plan(files: list[SourceFile], suite: Suite) -> Plan:
                 bad = sorted(o for o in answer.outputs if (param := stub.parameter(o)) is None or not param.output)
                 if bad:
                     raise GoldenError(f"{case.name}: {name} has no output parameter {', '.join(bad)}")
+                for table_name, rows in answer.effects.items():
+                    spec = suite.schema_.table(table_name)
+                    if spec is None:
+                        raise GoldenError(f"{case.name}: {name} writes {table_name}, which is not in the schema")
+                    for row in rows:
+                        bad = sorted(c for c in row if spec.column(c) is None)
+                        if bad:
+                            raise GoldenError(f"{case.name}: {table_name} has no column {', '.join(bad)}")
+                        given = {c.lower() for c in row}
+                        lacking = [k for k in spec.key if k.lower() not in given]
+                        if lacking:
+                            raise GoldenError(f"{case.name}: the effect of {name} on {table_name} lacks its key "
+                                              f"column(s) {', '.join(lacking)}")  # fmt: skip
     names = [t.name for t in suite.schema_.tables] + list(external)
     databases = sorted({d for n in names if (d := _database(n))} | {WORK_DB})
     return Plan(program, suite.schema_, external, databases, files)
@@ -335,7 +348,31 @@ def install_script(procedure: str, text: str, work: str = WORK_DB) -> str:
     return _use(work) + _go(f"drop procedure {procedure}") + text.rstrip() + "\ngo\n"
 
 
-def _stub_body(stub: Stub, answers: list[StubAnswer], work: str = WORK_DB) -> str:
+def _effects(schema: Schema | None, answer: StubAnswer) -> list[str]:
+    """The rows a substitute leaves (ADR-0055), as statements that run inside the caller's transaction: a row with
+    the same key is updated, a new one inserted; a table without key is always inserted."""
+    out = []
+    for table_name, rows in answer.effects.items():
+        table = schema.table(table_name) if schema is not None else None
+        if table is None:  # plan() already rejected it
+            continue
+        keys = {k.lower() for k in table.key}
+        for row in rows:
+            typed = {c: literal(v, (table.column(c) or table.columns[0]).type) for c, v in row.items()}
+            where = " and ".join(f"{c} = {v}" for c, v in typed.items() if c.lower() in keys)
+            sets = ", ".join(f"{c} = {v}" for c, v in typed.items() if c.lower() not in keys)
+            insert = f"insert {table.name} ({', '.join(typed)}) values ({', '.join(typed.values())})"
+            if not where:
+                out.append(insert)
+            elif sets:
+                out.append(f"if exists (select 1 from {table.name} where {where}) update {table.name} set {sets} "
+                           f"where {where} else {insert}")  # fmt: skip
+            else:
+                out.append(f"if not exists (select 1 from {table.name} where {where}) {insert}")
+    return out
+
+
+def _stub_body(stub: Stub, answers: list[StubAnswer], work: str = WORK_DB, schema: Schema | None = None) -> str:
     params = ", ".join(f"{s.name} {s.type} = null{' output' if s.output else ''}" for s in stub.parameters)
     args = _joined([_prefixed(s.name, s.type) for s in stub.parameters if not s.output])
     lines = [
@@ -352,9 +389,10 @@ def _stub_body(stub: Stub, answers: list[StubAnswer], work: str = WORK_DB) -> st
     for n, answer in enumerate(answers or [StubAnswer()], start=1):
         sets = [f"{name.lower()} = {literal(v, (stub.parameter(name) or StubParameter(name, 'varchar', True)).type)}"
                 for name, v in answer.outputs.items()]  # fmt: skip
-        body = (f"select {', '.join(sets)} " if sets else "") + f"return {answer.returns}"
+        effects = "".join(f"{statement}\n    " for statement in _effects(schema, answer))
+        body = effects + (f"select {', '.join(sets)} " if sets else "") + f"return {answer.returns}"
         last = n == len(answers or [StubAnswer()])
-        lines.append(f"  {body}" if last else f"  if @nx_n = {n} begin {body} end")
+        lines.append(f"  {body}" if last else f"  if @nx_n = {n} begin\n    {body}\n  end")
     lines.append("end")
     return "\n".join(lines)
 
@@ -377,7 +415,7 @@ def case_script(p: Plan, case: Case) -> str:
         database = _database(program) or p.work
         out.append(_use(database))
         out.append(_go(f"if object_id('{_local(program)}') is not null drop procedure {_local(program)}"))
-        out.append(_go(_stub_body(stub, answers, p.work)))
+        out.append(_go(_stub_body(stub, answers, p.work, p.schema)))
     params = p.program.parameters
     declares = ", ".join(["@nx_rc int"] + [f"{q.name} {q.type}" for q in params if q.output])
     inputs = {k.lower(): v for k, v in case.inputs.items()}

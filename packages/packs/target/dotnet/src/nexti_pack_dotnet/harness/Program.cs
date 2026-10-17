@@ -92,6 +92,17 @@ public static class Harness
         command.ExecuteNonQuery();
     }
 
+    /// The rows a transactional substitute leaves (ADR-0055), written through the generated Db so they join the use
+    /// case's transaction and a rejection undoes them. Returns the rows the statement changed.
+    public static int Apply(object db, string sql)
+    {
+        var connection = (DbConnection)Property(db, "Connection")!;
+        using var command = connection.CreateCommand();
+        command.CommandText = sql;
+        command.Transaction = Property(db, "Transaction") as DbTransaction;
+        return command.ExecuteNonQuery();
+    }
+
     static JsonArray Rows(DbConnection connection, string sql)
     {
         var rows = new JsonArray();
@@ -129,6 +140,7 @@ public static class Harness
             var fake = (FakePort)DispatchProxy.Create(type, typeof(FakePort));
             fake.Name = type.Name;
             fake.Calls = calls;
+            fake.Apply = sql => Apply(db, sql);
             fake.Answers = testCase.GetProperty("stubs").TryGetProperty(type.Name, out var answers) ? answers : default;
             ports.Add(fake);
         }
@@ -211,6 +223,7 @@ public class FakePort : DispatchProxy
     public string Name { get; set; } = "";
     public List<JsonObject> Calls { get; set; } = [];
     public JsonElement Answers { get; set; }
+    public Func<string, int>? Apply { get; set; }
     int index;
 
     protected override object? Invoke(MethodInfo? method, object?[]? args)
@@ -225,6 +238,16 @@ public class FakePort : DispatchProxy
         var has = Answers.ValueKind == JsonValueKind.Array && Answers.GetArrayLength() > 0;
         var answer = has ? Answers[Math.Min(index, Answers.GetArrayLength() - 1)] : default;
         index++;
+        // A transactional substitute (ADR-0055): the rows the program leaves, inside the use case's transaction.
+        if (has && answer.TryGetProperty("effects", out var effects) && effects.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var effect in effects.EnumerateArray())
+            {
+                var changed = effect.TryGetProperty("update", out var update) && update.ValueKind == JsonValueKind.String
+                    ? Apply!(update.GetString()!) : 0;
+                if (changed == 0) Apply!(effect.GetProperty("insert").GetString()!);
+            }
+        }
         if (has && answer.TryGetProperty("returns", out var returns) && returns.ValueKind == JsonValueKind.Number
             && returns.GetInt32() != 0)
         {

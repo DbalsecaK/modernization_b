@@ -140,7 +140,7 @@ public final class EquivalenceHarness {
                 ports.add(Class.forName(port.get("adapter").asText()).getConstructor(JdbcTemplate.class).newInstance(jdbc));
             } else {
                 String name = type.getSimpleName();
-                ports.add(fake(type, name, testCase.path("stubs").path(name), calls));
+                ports.add(fake(type, name, testCase.path("stubs").path(name), calls, jdbc));
             }
         }
         Class<?> serviceType = Class.forName(plan.get("service").asText());
@@ -152,7 +152,8 @@ public final class EquivalenceHarness {
         throw new IllegalStateException(serviceType.getName() + " has no constructor with " + ports.size() + " ports");
     }
 
-    private static Object fake(Class<?> type, String name, JsonNode answers, List<ObjectNode> calls) {
+    private static Object fake(Class<?> type, String name, JsonNode answers, List<ObjectNode> calls,
+            JdbcTemplate jdbc) {
         Map<String, Integer> counter = new HashMap<>();
         return Proxy.newProxyInstance(type.getClassLoader(), new Class<?>[] {type}, (proxy, method, arguments) -> {
             if (method.getDeclaringClass() == Object.class) {
@@ -170,6 +171,14 @@ public final class EquivalenceHarness {
             int index = counter.merge(name, 1, Integer::sum) - 1;
             JsonNode answer = answers.isArray() && answers.size() > 0 ? answers.get(Math.min(index, answers.size() - 1))
                     : JSON.createObjectNode();
+            // A transactional substitute (ADR-0055): the rows the program leaves, written on the same connection,
+            // inside the use case's transaction, so a rejection undoes them as the legacy's rollback does.
+            for (JsonNode effect : answer.path("effects")) {
+                int changed = effect.hasNonNull("update") ? jdbc.update(effect.get("update").asText()) : 0;
+                if (changed == 0) {
+                    jdbc.update(effect.get("insert").asText());
+                }
+            }
             if (answer.path("returns").asInt(0) != 0) {
                 throw new RuntimeException(name + " answered " + answer.path("returns").asInt());
             }

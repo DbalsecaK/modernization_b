@@ -13,8 +13,11 @@ You receive the source of the program, its approved business rules with their ci
    - `name` in snake_case, a `description` and the `rules` it exercises (RULE-NNN);
    - `inputs`: parameter -> value, with the parameter names of the program including the `@`;
    - `setup`: table -> the rows the case starts from (only the columns that matter; others take NULL);
-   - `stubs`: external program -> its answers, one per call in order (`returns`, and `outputs` by parameter
-     name). The external programs do not run: the stub records how they were called.
+   - `stubs`: external program -> its answers, one per call in order (`returns`, `outputs` by parameter name
+     and, when the program writes rows the case depends on, `effects`: table -> the rows it leaves, each with
+     the table's key columns). The external programs do not run: the substitute answers, records how it was
+     called and writes its effects inside the caller's transaction, so a rollback undoes them as it would the
+     real program's writes.
    Use small, readable values and dates in ISO format (`2026-03-02T09:30:00`).
 
 Do not invent behaviour: the legacy decides the expected results when it runs. Answer with one JSON object only:

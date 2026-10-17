@@ -234,6 +234,9 @@ public final class EquivalenceHarness {
             int index = counter.merge(name, 1, Integer::sum) - 1;
             JsonNode answer = answers.isArray() && answers.size() > 0 ? answers.get(Math.min(index, answers.size() - 1))
                     : JSON.createObjectNode();
+            if (answer.path("effects").size() > 0) { // ADR-0055: the effects of a substitute are rows of SQL tables
+                throw new IllegalStateException(name + ": the effects of a substitute are not supported on MongoDB");
+            }
             if (answer.path("returns").asInt(0) != 0) {
                 throw new RuntimeException(name + " answered " + answer.path("returns").asInt());
             }

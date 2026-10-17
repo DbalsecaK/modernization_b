@@ -75,6 +75,33 @@ def test_the_observation_separates_business_messages_from_engine_errors() -> Non
     assert seen.messages == ["50001: Server 'MYSYBASE', Procedure 'sp_x', Line 3: raised by the program"]
 
 
+def test_a_substitute_writes_the_rows_the_case_declares_inside_the_callers_transaction() -> None:
+    # ADR-0055 (transactional substitutes): the stub of sp_debito leaves the account's balance the case says, as
+    # an update by the table's key (or an insert when the row is new), before it answers; being a statement of
+    # the stub, it runs inside the program's transaction and a rollback undoes it.
+    effects = {"db_cuentas..ct_cuenta": [{"cta_numero": "1000000001", "cta_tipo": "CTE", "cta_saldo": "399.3700"}]}
+    suite = _suite({"stubs": {"db_cuentas..sp_debito": [{"returns": 0, "effects": effects}]}})
+    plan = golden.plan(FILES, suite)
+    script = golden.case_script(plan, suite.cases[0])
+    expected = ("if exists (select 1 from db_cuentas..ct_cuenta where cta_numero = '1000000001' and cta_tipo = 'CTE') "
+                "update db_cuentas..ct_cuenta set cta_saldo = 399.3700 where cta_numero = '1000000001' and "
+                "cta_tipo = 'CTE' else insert db_cuentas..ct_cuenta (cta_numero, cta_tipo, cta_saldo) values "
+                "('1000000001', 'CTE', 399.3700)")  # fmt: skip
+    assert expected in script
+    assert script.index("create procedure dbo.sp_debito") < script.index(expected) < script.index("return 0")
+    # The table, its columns and its key are checked against the schema before anything runs.
+    with pytest.raises(golden.GoldenError, match=r"writes db_x\.\.y, which is not in the schema"):
+        golden.plan(FILES, _suite({"stubs": {"db_cuentas..sp_debito": [{"effects": {"db_x..y": [{"a": 1}]}}]}}))
+    with pytest.raises(golden.GoldenError, match="lacks its key column"):
+        golden.plan(FILES, _suite({"stubs": {"db_cuentas..sp_debito": [
+            {"effects": {"db_cuentas..ct_cuenta": [{"cta_saldo": "1.0000"}]}}]}}))  # fmt: skip
+    row = {"cta_numero": "1", "cta_tipo": "CTE", "cta_x": 1}
+    with pytest.raises(golden.GoldenError, match="has no column cta_x"):
+        golden.plan(
+            FILES, _suite({"stubs": {"db_cuentas..sp_debito": [{"effects": {"db_cuentas..ct_cuenta": [row]}}]}})
+        )
+
+
 def test_a_call_the_rollback_undid_is_reported_apart_from_the_ones_in_the_final_state() -> None:
     # ADR-0055: the attempts are printed as they happen (NXC), the rows that survived the unit of work at the end
     # (NXK). A debit inside the rolled-back transaction is `undone`; the error log after the rollback survived.

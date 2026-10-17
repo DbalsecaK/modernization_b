@@ -100,10 +100,43 @@ def target_case(
                 "returns": a.returns,
                 "output": a.outputs.get(output_name) if output_name else None,
                 **({"outputs": {field: a.outputs.get(legacy) for field, legacy in mapped.items()}} if mapped else {}),
+                **({"effects": effects} if (effects := target_effects(design, a.effects, sql_type)) else {}),
             }
             for a in answers
         ]
     return {"name": case.name, "request": request, "setup": setup, "stubs": stubs}
+
+
+def target_effects(
+    design: Design, effects: dict[str, list[dict[str, Scalar]]], sql_type: Callable[[str], str]
+) -> list[dict[str, str | None]]:
+    """The rows a substitute leaves (ADR-0055), in target terms: for each row an UPDATE by the entity's key and the
+    INSERT the harness runs when the update changed nothing, inside the use case's transaction. A row of a table no
+    entity keeps is not an effect on the target; a row without its key is only inserted."""
+    entities = entities_by_legacy(design)
+    out: list[dict[str, str | None]] = []
+    for table, rows in effects.items():
+        entity = entities.get(table.lower())
+        if entity is None:
+            continue
+        by_legacy = {(f.legacy or "").lower(): f for f in entity.fields if f.legacy}
+        key_columns = [column_of(f.name, f.column) for f in entity.fields if f.name in entity.key]
+        for row in rows:
+            fields = [(by_legacy[c.lower()], v) for c, v in row.items() if c.lower() in by_legacy]
+            if not fields:
+                continue
+            values = {column_of(f.name, f.column): sql_literal(canonical(f.type, v), sql_type(f.type))
+                      for f, v in fields}  # fmt: skip
+            where = [f"{c} = {values[c]}" for c in key_columns if c in values]
+            # A row of key columns only still has to say whether it exists: an update that changes nothing.
+            sets = [f"{c} = {v}" for c, v in values.items() if c not in key_columns] or [
+                f"{c} = {c}" for c in list(values)[:1]
+            ]
+            insert = f"INSERT INTO {entity.table} ({', '.join(values)}) VALUES ({', '.join(values.values())})"
+            update = (f"UPDATE {entity.table} SET {', '.join(sets)} WHERE {' AND '.join(where)}"
+                      if where and len(where) == len(key_columns) else None)  # fmt: skip
+            out.append({"update": update, "insert": insert})
+    return out
 
 
 def message_field(use_case: UseCase) -> str | None:
