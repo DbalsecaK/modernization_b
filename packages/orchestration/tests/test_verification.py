@@ -10,7 +10,9 @@ import json
 import subprocess
 import uuid
 import zipfile
+from contextlib import AbstractAsyncContextManager
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -207,6 +209,6 @@ def test_the_target_runs_against_the_legacys_engine_only_when_the_data_stays_the
     assert asyncio.run(_enter(same_engine(same, [SourceFile("x.cbl", "IDENTIFICATION DIVISION.")], master))) is None
 
 
-async def _enter(context: object) -> object:
+async def _enter(context: AbstractAsyncContextManager[Any]) -> object:
     async with context as engine:
         return engine
