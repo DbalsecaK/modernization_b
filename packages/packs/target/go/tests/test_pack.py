@@ -123,6 +123,8 @@ def test_the_answer_must_carry_go() -> None:
     assert PACK.code_block("Here:\n```go\npackage app\n\ntype A struct{}\n```").startswith("package app")
     with pytest.raises(ValueError, match="no Go file"):
         PACK.code_block("```java\nclass A {}\n```")
+    with pytest.raises(ValueError, match="cut"):  # an open fence the output limit cut: not a file
+        PACK.code_block("```go\npackage app\n\ntype A struct{\n")
 
 
 def test_the_canary_changes_one_go_line_deterministically() -> None:

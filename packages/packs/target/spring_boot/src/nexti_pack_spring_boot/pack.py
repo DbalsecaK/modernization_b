@@ -85,6 +85,9 @@ class SpringBootPack:
 
     def code_block(self, content: str) -> str:
         match = re.search(r"```(?:java)?\s*\n(.*?)```", content, re.DOTALL)
+        if match is None and len(re.findall(r"^```", content, re.MULTILINE)) % 2 == 1:
+            # An opened code block that never closes is a reply the output limit cut: nothing to compile.
+            raise ReplyFormatError("the code block is not closed: the answer was cut before its end")
         code = (match.group(1) if match else content).strip()
         if "class " not in code and "interface " not in code:
             raise ReplyFormatError("the answer has no Java class in a ```java block")

@@ -46,6 +46,9 @@ class DotnetPack:
 
     def code_block(self, content: str) -> str:
         match = re.search(r"```(?:csharp|cs|c#)?\s*\n(.*?)```", content, re.DOTALL | re.IGNORECASE)
+        if match is None and len(re.findall(r"^```", content, re.MULTILINE)) % 2 == 1:
+            # An opened code block that never closes is a reply the output limit cut: nothing to compile.
+            raise ValueError("the code block is not closed: the answer was cut before its end")
         code = (match.group(1) if match else content).strip()
         if not re.search(r"\b(class|record|interface)\s+\w+", code):
             raise ValueError("the answer has no C# class in a ```csharp block")

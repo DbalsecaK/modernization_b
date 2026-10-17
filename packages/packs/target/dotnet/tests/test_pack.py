@@ -83,6 +83,8 @@ def test_the_answer_must_carry_csharp() -> None:
     assert PACK.code_block("Here:\n```csharp\npublic sealed class A {}\n```").startswith("public sealed class A")
     with pytest.raises(ValueError, match="no C# class"):
         PACK.code_block("```java\nint x = 1;\n```")
+    with pytest.raises(ValueError, match="cut"):  # an open fence the output limit cut: not a file
+        PACK.code_block("```csharp\npublic sealed class A {\n")
 
 
 def test_the_canary_changes_one_line_deterministically() -> None:

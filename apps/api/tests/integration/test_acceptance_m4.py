@@ -181,7 +181,7 @@ async def model_for(
                     name=f"M4 acceptance {connection.hex[:6]}",
                     connection_id=connection,
                     offering_id=offering,
-                    max_output_tokens=16000,
+                    max_output_tokens=32000,
                     timeout_seconds=300,
                     max_retries=2,
                 )
