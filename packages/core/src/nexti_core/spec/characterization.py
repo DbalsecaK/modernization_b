@@ -73,10 +73,25 @@ class Schema(CharacterizationModel):
 
 
 class StubAnswer(CharacterizationModel):
-    """How an external program answers one call: its return code and its output parameters."""
+    """How an external program answers one call: its return code, its output parameters and, when the case needs
+    them, the rows it leaves in the tables it writes (ADR-0055: a transactional substitute, whose effects happen
+    inside the caller's unit of work and are undone by its rollback, as the real program's would be)."""
 
     returns: int = 0
     outputs: dict[str, Scalar] = Field(default_factory=dict)
+    effects: dict[str, list[dict[str, Scalar]]] = Field(
+        default_factory=dict,
+        description="Table -> rows the program leaves: updated when a row with the same key exists, inserted otherwise",
+    )
+
+    @model_serializer(mode="wrap")
+    def _without_empty_effects(self, handler: SerializerFunctionWrapHandler) -> Any:
+        # An answer without effects serialises as before the field existed: the keys of the recordings (the case's
+        # JSON) and the recordings themselves stay valid.
+        data = handler(self)
+        if isinstance(data, dict) and not data.get("effects"):
+            data.pop("effects", None)
+        return data
 
 
 class Case(CharacterizationModel):
@@ -96,8 +111,22 @@ class Suite(CharacterizationModel):
     program: str = Field(min_length=1, max_length=200, description="The legacy entry point, e.g. dbo.sp_x")
     schema_: Schema = Field(alias="schema", default_factory=Schema)
     cases: list[Case] = Field(min_length=1)
+    unreachable: dict[str, str] = Field(
+        default_factory=dict,
+        description="Rule -> why no input can make the program reach it (a defensive branch, dead code): declared "
+        "instead of a case the legacy could never enter, and listed by the verdict as not proven (ADR-0050)",
+    )
 
     model_config = ConfigDict(extra="forbid", frozen=True, populate_by_name=True)
+
+    @model_serializer(mode="wrap")
+    def _without_empty_unreachable(self, handler: SerializerFunctionWrapHandler) -> Any:
+        # A suite without declarations serialises as before the field existed: the names of the recordings (the
+        # suite's JSON) stay valid.
+        data = handler(self)
+        if isinstance(data, dict) and not data.get("unreachable"):
+            data.pop("unreachable", None)
+        return data
 
     @model_validator(mode="after")
     def unique_names(self) -> "Suite":
@@ -119,7 +148,11 @@ class Observation(CharacterizationModel):
     returns: int | None = None
     outputs: dict[str, str | None] = Field(default_factory=dict)
     tables: dict[str, list[dict[str, str | None]]] = Field(default_factory=dict)
-    calls: list[Call] = Field(default_factory=list)
+    calls: list[Call] = Field(default_factory=list, description="Calls to external programs still in the final state")
+    undone: list[Call] = Field(
+        default_factory=list,
+        description="Calls made inside a unit of work the program then rolled back: not in the final state (ADR-0055)",
+    )
     messages: list[str] = Field(default_factory=list, description="Messages the program raised (e.g. raiserror)")
     error: str | None = Field(default=None, description="The engine failed the case (not a business rejection)")
 
@@ -226,6 +259,9 @@ class GoldenMaster(CharacterizationModel):
     )
     environment: list[EnvironmentItem] = Field(
         default_factory=list, description="The settings the legacy ran under (M28)"
+    )
+    unreachable: dict[str, str] = Field(
+        default_factory=dict, description="Rules the test engineer declared no input can reach, with the reason"
     )
 
     model_config = ConfigDict(extra="forbid", frozen=True, populate_by_name=True)

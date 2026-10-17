@@ -8,7 +8,8 @@
     "same_behaviour": "passed",
     "fresh_inputs": "not_checked",
     "canary": "passed",
-    "source_intact": "passed"
+    "source_intact": "passed",
+    "behaviour_boundary": "not_checked"
   },
   "details": {
     "tests_ran": "48 test(s) passed in a clean build (JUnit XML)",
@@ -16,13 +17,39 @@
     "same_behaviour": "14 golden case(s) reproduced",
     "fresh_inputs": "the golden master comes from recorded traces and the legacy does not run here, so fresh inputs cannot be observed on it (ADR-0015)",
     "canary": "line 20 changed (private static final BigDecimal COMMISSION_WEB = new BigDecimal(\"1.01\");) turned test insufficient_balance() red",
-    "source_intact": "the legacy is the code that was characterized (SHA-256)"
+    "source_intact": "the legacy is the code that was characterized (SHA-256)",
+    "behaviour_boundary": "the equivalence compares the calls the legacy made and its own tables, not the final state of the database after the called programs ran; the called programs were stubs, their own logic and effects were not verified: PAGOMOV"
   },
   "not_proven": [
+    "Declared mask outputs:RORDEN (rejected): a rejection of the target is an exception with the code and the message: the legacy's output parameters on that path are not part of it",
+    "Declared mask outputs:RCOMIS (rejected): a rejection of the target is an exception with the code and the message: the legacy's output parameters on that path are not part of it",
+    "Declared mask outputs:RMOVIM (rejected): a rejection of the target is an exception with the code and the message: the legacy's output parameters on that path are not part of it",
+    "Declared mask outputs:RMENS (rejected): a rejection of the target is an exception with the code and the message: the legacy's output parameters on that path are not part of it",
     "RULE-006 is outside PAGOORD and its golden master: it is verified with the module that runs its code",
-    "External programs are replaced by stubs that answer as the case says; their own logic is not verified here",
+    "External programs are replaced by stubs that answer as the case says; their own logic and their effects on the database are not verified here (ADR-0055)",
     "The legacy did not run on the platform: its behaviour comes from recorded traces, so only the traced cases are compared and fresh inputs are not (PARTLY PROVEN at most)",
-    "Fresh inputs: the golden master comes from recorded traces and the legacy does not run here, so fresh inputs cannot be observed on it (ADR-0015)"
+    "Target coverage: 104 of 172 executable lines of the target run by the golden master cases (jacoco)",
+    "Target code no golden case runs (logic the legacy may not have, or a case the suite misses): src/main/java/com/bank/payments/PaymentsApplication.java lines 7-11",
+    "Target code no golden case runs (logic the legacy may not have, or a case the suite misses): src/main/java/com/bank/payments/adapters/in/rest/DebitAccountController.java lines 12-18",
+    "Target code no golden case runs (logic the legacy may not have, or a case the suite misses): src/main/java/com/bank/payments/adapters/in/rest/DebitAccountRequest.java lines 4-4",
+    "Target code no golden case runs (logic the legacy may not have, or a case the suite misses): src/main/java/com/bank/payments/adapters/in/rest/DebitAccountResponse.java lines 4-4",
+    "Target code no golden case runs (logic the legacy may not have, or a case the suite misses): src/main/java/com/bank/payments/adapters/in/rest/PayOrderController.java lines 12-18",
+    "Target code no golden case runs (logic the legacy may not have, or a case the suite misses): src/main/java/com/bank/payments/adapters/in/rest/SelectMenuOptionController.java lines 12-18",
+    "Target code no golden case runs (logic the legacy may not have, or a case the suite misses): src/main/java/com/bank/payments/adapters/in/rest/SelectMenuOptionRequest.java lines 4-4",
+    "Target code no golden case runs (logic the legacy may not have, or a case the suite misses): src/main/java/com/bank/payments/adapters/in/rest/SelectMenuOptionResponse.java lines 4-4",
+    "Target code no golden case runs (logic the legacy may not have, or a case the suite misses): src/main/java/com/bank/payments/adapters/out/jdbc/JdbcAccountRepository.java lines 17-37",
+    "Target code no golden case runs (logic the legacy may not have, or a case the suite misses): src/main/java/com/bank/payments/adapters/out/jdbc/JdbcMovementGateway.java lines 19-28",
+    "Target code no golden case runs (logic the legacy may not have, or a case the suite misses): src/main/java/com/bank/payments/application/DebitAccountService.java lines 16-39",
+    "Target code no golden case runs (logic the legacy may not have, or a case the suite misses): src/main/java/com/bank/payments/application/PayOrderService.java lines 61-61",
+    "Target code no golden case runs (logic the legacy may not have, or a case the suite misses): src/main/java/com/bank/payments/application/PayOrderService.java lines 94-94",
+    "Target code no golden case runs (logic the legacy may not have, or a case the suite misses): src/main/java/com/bank/payments/application/PayOrderService.java lines 117-117",
+    "Target code no golden case runs (logic the legacy may not have, or a case the suite misses): src/main/java/com/bank/payments/application/PayOrderService.java lines 122-122",
+    "Target code no golden case runs (logic the legacy may not have, or a case the suite misses): src/main/java/com/bank/payments/application/PayOrderService.java lines 130-131",
+    "Target code no golden case runs (logic the legacy may not have, or a case the suite misses): src/main/java/com/bank/payments/application/SelectMenuOptionService.java lines 13-25",
+    "Target code no golden case runs (logic the legacy may not have, or a case the suite misses): src/main/java/com/bank/payments/config/Wiring.java lines 8-22",
+    "Target code no golden case runs (logic the legacy may not have, or a case the suite misses): src/main/java/com/bank/payments/domain/model/Account.java lines 4-4",
+    "Fresh inputs: the golden master comes from recorded traces and the legacy does not run here, so fresh inputs cannot be observed on it (ADR-0015)",
+    "Behaviour boundary: the equivalence compares the calls the legacy made and its own tables, not the final state of the database after the called programs ran; the called programs were stubs, their own logic and effects were not verified: PAGOMOV"
   ],
   "evaluation": {
     "reference": "pagos-cics (Banco Ficticio, fictitious)",
@@ -90,7 +117,7 @@
     "precision": 0.529
   },
   "model_calls": 51,
-  "cost_usd": "1.87611200",
+  "cost_usd": "1.87579200",
   "decisions": [
     "questions",
     "C1",

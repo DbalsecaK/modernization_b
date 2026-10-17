@@ -29,9 +29,17 @@ type plan struct {
 	} `json:"dump"`
 }
 
+// effect is a row a transactional substitute leaves (ADR-0055): the update by the entity's key, and the insert
+// that runs when the update changed nothing.
+type effect struct {
+	Update *string `json:"update"`
+	Insert string  `json:"insert"`
+}
+
 type answer struct {
-	Returns *int `json:"returns"`
-	Output  any  `json:"output"`
+	Returns *int     `json:"returns"`
+	Output  any      `json:"output"`
+	Effects []effect `json:"effects"`
 }
 
 type testCase struct {
@@ -55,9 +63,11 @@ type recorder struct {
 	stubs map[string][]answer
 	seen  map[string]int
 	calls []map[string]any
+	// exec runs a statement of a substitute's effect inside the transaction ctx carries; nil without a database.
+	exec func(ctx context.Context, query string) (int64, error)
 }
 
-func (r *recorder) call(port, method string, arguments ...*string) (*string, error) {
+func (r *recorder) call(ctx context.Context, port, method string, arguments ...*string) (*string, error) {
 	r.calls = append(r.calls, map[string]any{"port": port, "method": method, "arguments": arguments})
 	answers := r.stubs[port]
 	index := r.seen[port]
@@ -66,6 +76,25 @@ func (r *recorder) call(port, method string, arguments ...*string) (*string, err
 		return nil, nil
 	}
 	found := answers[min(index, len(answers)-1)]
+	// A transactional substitute (ADR-0055): the rows the program leaves, inside the use case's transaction.
+	for _, e := range found.Effects {
+		if r.exec == nil {
+			return nil, fmt.Errorf("%s: the effects of a substitute need a database", port)
+		}
+		changed := int64(0)
+		if e.Update != nil {
+			n, err := r.exec(ctx, *e.Update)
+			if err != nil {
+				return nil, err
+			}
+			changed = n
+		}
+		if changed == 0 {
+			if _, err := r.exec(ctx, e.Insert); err != nil {
+				return nil, err
+			}
+		}
+	}
 	if found.Returns != nil && *found.Returns != 0 {
 		return nil, fmt.Errorf("%s answered %d", port, *found.Returns)
 	}
@@ -128,14 +157,18 @@ func run(ctx context.Context, db store, p plan, c testCase) (out map[string]any)
 		response, err = service(ctx, c.Request)
 		return err
 	})
+	calls := rec.calls
+	var undone []map[string]any
 	if err != nil {
 		found, ok := rejection(err)
 		if !ok {
 			out["failure"] = fmt.Sprintf("%T: %v", err, err)
 			return out
 		}
-		// The calls stay: what the service did before it rejected, as the legacy calls before its return (ADR-0044).
+		// The rollback undoes the tables and the effects of the calls made inside the transaction: they are
+		// reported apart, as "undone", like the legacy calls its rollback erased (ADR-0055).
 		out["error"] = found
+		undone, calls = calls, nil
 	} else {
 		out["response"] = response
 	}
@@ -149,11 +182,14 @@ func run(ctx context.Context, db store, p plan, c testCase) (out map[string]any)
 		tables[d.Table] = rows
 	}
 	out["tables"] = tables
-	calls := rec.calls
 	if calls == nil {
 		calls = []map[string]any{}
 	}
+	if undone == nil {
+		undone = []map[string]any{}
+	}
 	out["calls"] = calls
+	out["undone"] = undone
 	return out
 }
 

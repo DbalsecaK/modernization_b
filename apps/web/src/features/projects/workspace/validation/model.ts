@@ -5,7 +5,7 @@ import { camelKey, type Tone } from '../spec/model'
 // View models of the validation and traceability tabs. Pure functions (unit tested): they only arrange what the
 // server computed; no verdict, check or comparison is decided here.
 
-/** The six checks of a verdict, in the order of spec 11.3. */
+/** The seven checks of a verdict, in the order of spec 11.3 (the seventh, ADR-0055: where the equivalence was measured). */
 export const CHECK_KEYS = [
   'tests_ran',
   'rules_traced',
@@ -13,6 +13,7 @@ export const CHECK_KEYS = [
   'fresh_inputs',
   'canary',
   'source_intact',
+  'behaviour_boundary',
 ] as const
 
 /** The checks of a generated frontend's verdict (ADR-0016); its module is `frontend-<pack>`. */
@@ -53,6 +54,7 @@ export const IVV_CHECK_KEYS = [
   'fresh_inputs',
   'rules_covered',
   'source_intact',
+  'behaviour_boundary',
 ] as const
 
 /** The checks of a delta's verdict (Flow 3, ADR-0026); its module is `delta-<name>`. */

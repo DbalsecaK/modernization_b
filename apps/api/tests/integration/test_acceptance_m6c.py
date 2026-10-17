@@ -47,7 +47,16 @@ MODEL = "anthropic/claude-sonnet-5.5"  # the model of test_acceptance_m4.model_f
 BUDGET_USD = Decimal("2.50")  # of what is left of the 10 USD for M6, M6b and M6c
 TARGET_DOTNET = {**TARGET, "backend": "dotnet-10", "frontend": "none", "database": "sqlserver", "cloud": "azure"}
 RECORD = os.environ.get("NEXTI_RECORD_M6C") == "1"
-CHECKS = ["tests_ran", "rules_traced", "same_behaviour", "fresh_inputs", "canary", "source_intact"]
+CHECKS = [
+    "tests_ran",
+    "rules_traced",
+    "same_behaviour",
+    "fresh_inputs",
+    "canary",
+    "source_intact",
+    "behaviour_boundary",
+    "legacy_covered",
+]
 
 
 @pytest.fixture(scope="module")

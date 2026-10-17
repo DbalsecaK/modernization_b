@@ -159,7 +159,7 @@ def test_the_glue_uses_the_adapters_and_fakes_the_external_program() -> None:
         "app.NewPayOrderService(pg.NewOrderRepository(db), pg.NewTariffRepository(db), pg.NewAccountRepository(db), "
         "&fakeDebitGateway{rec: rec})"
     ) in source
-    assert 'f.rec.call("DebitGateway", "debit", text(account), text(typ), text(amount), text(reference))' in source
+    assert 'f.rec.call(ctx, "DebitGateway", "debit", text(account), text(typ), text(amount), text(reference))' in source
     assert 'OrderNumber:    asInt32(in["orderNumber"]),' in source
     assert '"message":  text(response.Message),' in source
 

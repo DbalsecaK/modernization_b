@@ -62,6 +62,7 @@ def test_the_observation_separates_business_messages_from_engine_errors() -> Non
         " NXT|db_pagos..pg_orden|4:7001|2:10|1:P|~|~",
         " NXC|cobis..sp_cerror|13:sp_pago_orden|5:50001|12:NO PERMITIDO",
         "Msg 50001, Level 16, State 1:", "Server 'MYSYBASE', Procedure 'sp_x', Line 3:", "raised by the program",
+        " NXKN|1", " NXK|cobis..sp_cerror|13:sp_pago_orden|5:50001|12:NO PERMITIDO",
     ])  # fmt: skip
     seen = golden.observe(plan, output)
     assert seen.returns == 50001
@@ -70,7 +71,56 @@ def test_the_observation_separates_business_messages_from_engine_errors() -> Non
     assert seen.tables["db_pagos..pg_orden"] == [{"ord_numero": "7001", "ord_empresa": "10", "ord_estado": "P",
                                                   "ord_fecha_pago": None, "ord_comision": None}]  # fmt: skip
     assert seen.calls[0].arguments == {"@t_from": "sp_pago_orden", "@i_num": "50001", "@i_msg": "NO PERMITIDO"}
+    assert seen.undone == []
     assert seen.messages == ["50001: Server 'MYSYBASE', Procedure 'sp_x', Line 3: raised by the program"]
+
+
+def test_a_substitute_writes_the_rows_the_case_declares_inside_the_callers_transaction() -> None:
+    # ADR-0055 (transactional substitutes): the stub of sp_debito leaves the account's balance the case says, as
+    # an update by the table's key (or an insert when the row is new), before it answers; being a statement of
+    # the stub, it runs inside the program's transaction and a rollback undoes it.
+    effects = {"db_cuentas..ct_cuenta": [{"cta_numero": "1000000001", "cta_tipo": "CTE", "cta_saldo": "399.3700"}]}
+    suite = _suite({"stubs": {"db_cuentas..sp_debito": [{"returns": 0, "effects": effects}]}})
+    plan = golden.plan(FILES, suite)
+    script = golden.case_script(plan, suite.cases[0])
+    expected = ("if exists (select 1 from db_cuentas..ct_cuenta where cta_numero = '1000000001' and cta_tipo = 'CTE') "
+                "update db_cuentas..ct_cuenta set cta_saldo = 399.3700 where cta_numero = '1000000001' and "
+                "cta_tipo = 'CTE' else insert db_cuentas..ct_cuenta (cta_numero, cta_tipo, cta_saldo) values "
+                "('1000000001', 'CTE', 399.3700)")  # fmt: skip
+    assert expected in script
+    assert script.index("create procedure dbo.sp_debito") < script.index(expected) < script.index("return 0")
+    # The table, its columns and its key are checked against the schema before anything runs.
+    with pytest.raises(golden.GoldenError, match=r"writes db_x\.\.y, which is not in the schema"):
+        golden.plan(FILES, _suite({"stubs": {"db_cuentas..sp_debito": [{"effects": {"db_x..y": [{"a": 1}]}}]}}))
+    with pytest.raises(golden.GoldenError, match="lacks its key column"):
+        golden.plan(FILES, _suite({"stubs": {"db_cuentas..sp_debito": [
+            {"effects": {"db_cuentas..ct_cuenta": [{"cta_saldo": "1.0000"}]}}]}}))  # fmt: skip
+    row = {"cta_numero": "1", "cta_tipo": "CTE", "cta_x": 1}
+    with pytest.raises(golden.GoldenError, match="has no column cta_x"):
+        golden.plan(
+            FILES, _suite({"stubs": {"db_cuentas..sp_debito": [{"effects": {"db_cuentas..ct_cuenta": [row]}}]}})
+        )
+
+
+def test_a_call_the_rollback_undid_is_reported_apart_from_the_ones_in_the_final_state() -> None:
+    # ADR-0055: the attempts are printed as they happen (NXC), the rows that survived the unit of work at the end
+    # (NXK). A debit inside the rolled-back transaction is `undone`; the error log after the rollback survived.
+    plan = golden.plan(FILES, SUITE)
+    debit = "db_cuentas..sp_debito|10:1000000001|3:CTE|8:100.0000|10:PAGO ORDEN"
+    log = "cobis..sp_cerror|13:sp_pago_orden|5:50006|17:ERROR EN COMISION"
+    output = "\n".join([" NXR|5:50006", f" NXC|{debit}", f" NXC|{log}", " NXKN|1", f" NXK|{log}"])
+    seen = golden.observe(plan, output)
+    assert [c.program for c in seen.calls] == ["cobis..sp_cerror"]
+    assert [c.program for c in seen.undone] == ["db_cuentas..sp_debito"]
+    assert seen.undone[0].arguments["@i_valor"] == "100.0000"
+    # Without the dump (a case cut before it) every attempt counts as a call, as the recordings before it meant.
+    cut = golden.observe(plan, "\n".join([" NXR|5:50006", f" NXC|{debit}", f" NXC|{log}"]))
+    assert [c.program for c in cut.calls] == ["db_cuentas..sp_debito", "cobis..sp_cerror"]
+    assert cut.undone == []
+    # The script prints the count and then the rows, after the program's outputs and before the tables.
+    script = golden.case_script(plan, SUITE.cases[0])
+    assert script.index("select 'NXO|") < script.index("select 'NXKN|'") < script.index("select 'NXK|'")
+    assert script.index("select 'NXK|'") < script.index("select 'NXT|")
     broken = golden.observe(plan, "Msg 208, Level 16, State 1:\nServer 'MYSYBASE', Line 5:\nx..y not found.")
     assert broken.error is not None
     assert "Msg 208" in broken.error
@@ -95,9 +145,13 @@ def test_the_recorded_golden_master_is_the_behaviour_of_the_legacy() -> None:
     undone = seen["failed_commission_undoes_the_payment"]
     assert undone.returns == 50006
     assert undone.tables["db_pagos..pg_orden"][0]["ord_estado"] == "P"
-    # Both debits were called before the program rolled back (ADR-0044): the calls happened, the tables show the
-    # rollback (the order stays pending), and the error log came after it.
-    assert [c.program for c in undone.calls] == ["db_cuentas..sp_debito", "db_cuentas..sp_debito", "cobis..sp_cerror"]
+    # Both debits were called inside the transaction the program rolled back (ADR-0055): their effects are not in
+    # the final state (the order stays pending), so they are `undone`; the error log, after the rollback, survived.
+    assert [c.program for c in undone.calls] == ["cobis..sp_cerror"]
+    assert [c.program for c in undone.undone] == ["db_cuentas..sp_debito", "db_cuentas..sp_debito"]
+    assert [c.arguments["@i_valor"] for c in undone.undone] == ["100.0000", "1.5000"]
+    assert [c.program for c in seen["failed_debit_undoes_the_payment"].undone] == ["db_cuentas..sp_debito"]
+    assert all(o.undone == [] for name, o in seen.items() if not name.startswith("failed_"))
 
 
 def test_replay_without_a_recording_says_so() -> None:
@@ -270,4 +324,7 @@ def test_the_coverage_pass_marks_a_case_unreliable_when_the_copy_behaves_differe
     assert master.coverage.note().startswith("1 of ")
     assert "1 case(s) without reliable coverage" in master.coverage.note()
     assert all(r.observation.returns == 0 for r in master.results)  # the oracle comes from the original
-    assert "coverage" not in asyncio.run(RecordedRunner(FIXTURES / "golden", "replay").run(FILES, SUITE)).model_dump()
+    # The recording carries the coverage the real engine measured, with every case reliable.
+    recorded = asyncio.run(RecordedRunner(FIXTURES / "golden", "replay").run(FILES, SUITE))
+    assert recorded.coverage is not None
+    assert recorded.coverage.unreliable == []

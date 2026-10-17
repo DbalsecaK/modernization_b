@@ -14,6 +14,7 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
+import java.sql.SQLException;
 import java.sql.Statement;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -34,6 +35,7 @@ public class IvvHarness {
     static final Map<String, List<JsonNode>> answers = new HashMap<>();
     static final Map<String, Integer> served = new HashMap<>();
     static final List<ObjectNode> calls = new ArrayList<>();
+    static Connection db;
 
     public static void main(String[] args) throws Exception {
         JsonNode plan = JSON.readTree(new File(args[0]));
@@ -50,6 +52,23 @@ public class IvvHarness {
             List<JsonNode> queue = answers.getOrDefault(path, List.of());
             int index = served.merge(path, 1, Integer::sum) - 1;
             JsonNode answer = queue.isEmpty() ? JSON.createObjectNode() : queue.get(Math.min(index, queue.size() - 1));
+            if (answer.has("effects")) { // ADR-0055: what the service leaves in the data, as the legacy's substitute did
+                synchronized (IvvHarness.class) {
+                    try (Statement st = db.createStatement()) {
+                        for (JsonNode effect : answer.get("effects")) {
+                            int changed = effect.hasNonNull("update") ? st.executeUpdate(effect.get("update").asText()) : 0;
+                            if (changed == 0) {
+                                st.executeUpdate(effect.get("insert").asText());
+                            }
+                        }
+                    } catch (SQLException e) {
+                        throw new IllegalStateException("effect of " + path + ": " + e.getMessage(), e);
+                    }
+                }
+                ObjectNode reply = answer.deepCopy();
+                reply.remove("effects");
+                answer = reply;
+            }
             byte[] out = JSON.writeValueAsBytes(answer);
             exchange.getResponseHeaders().add("Content-Type", "application/json");
             exchange.sendResponseHeaders(200, out.length);
@@ -67,7 +86,8 @@ public class IvvHarness {
             return;
         }
         System.out.println("NXI-READY");
-        try (Connection db = DriverManager.getConnection(plan.get("jdbc").asText(), plan.get("user").asText(), "")) {
+        try (Connection connection = DriverManager.getConnection(plan.get("jdbc").asText(), plan.get("user").asText(), "")) {
+            db = connection;
             db.setAutoCommit(true);
             for (JsonNode c : plan.get("cases")) {
                 try (Statement st = db.createStatement()) {

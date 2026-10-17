@@ -5,6 +5,7 @@ import json
 import re
 from typing import Any
 
+from nexti_adapter_sybase import analysis
 from nexti_adapter_sybase.analysis import backward_slice, classify, slice_targets
 from nexti_adapter_sybase.blocks import blocks
 from nexti_adapter_sybase.lexer import LexError, tokenize
@@ -248,6 +249,14 @@ class SybaseAdapter:
         from nexti_adapter_sybase import quirks
 
         return [q for source, proc in _procedures(files) for q in quirks.detect(source, proc)]
+
+    def unit_of_work(self, files: list[SourceFile], program: str) -> list[tuple[int, str]]:
+        """Where the procedure starts, saves, confirms or undoes its work (ADR-0055): (line, kind), in order."""
+        short = program.rsplit(".", 1)[-1].lower()
+        for _, proc in _procedures(files):
+            if proc.name.rsplit(".", 1)[-1].lower() == short:
+                return analysis.unit_of_work(proc)
+        return []
 
     def unassigned_outputs(self, files: list[SourceFile], program: str) -> list[str]:
         """The OUTPUT parameters of a procedure no statement assigns (ADR-0044): the legacy echoes the caller's

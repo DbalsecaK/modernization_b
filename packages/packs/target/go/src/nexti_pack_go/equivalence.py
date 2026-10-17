@@ -92,7 +92,7 @@ def _fake(design: Design, port: Port) -> str:
     for method in port.methods:
         params = "".join(f", {ident(p.name)} {go_type(p.type)}" for p in method.inputs)
         arguments = "".join(f", {_text(p, ident(p.name))}" for p in method.inputs)
-        call = f'f.rec.call("{port.name}", "{method.name}"{arguments})'
+        call = f'f.rec.call(ctx, "{port.name}", "{method.name}"{arguments})'
         if method.returns is None:
             body = f"\t_, err := {call}\n\treturn err\n"
             result = "error"
@@ -105,7 +105,7 @@ def _fake(design: Design, port: Port) -> str:
             body = f"\tout, err := {call}\n\tif err != nil {{\n\t\treturn {kind[2]}, err\n\t}}\n\treturn {kind[1]}(out), nil\n"
             result = f"({kind[0]}, error)"
         methods.append(
-            f"func (f *fake{port.name}) {pascal(method.name)}(_ context.Context{params}) {result} {{\n{body}}}\n"
+            f"func (f *fake{port.name}) {pascal(method.name)}(ctx context.Context{params}) {result} {{\n{body}}}\n"
         )
     return (
         f"// fake{port.name} is the external program {port.legacy_program}, answering what each case says it answered.\n"
@@ -149,6 +149,14 @@ def glue(design: Design, use_case: UseCase) -> str:
         f"func build(s store, rec *recorder) execute {{\n"
         + ("\tdb := s.(*pg.DB)\n" if uses_db else "\t_ = s\n")
         + ("" if fakes else "\t_ = rec\n")
+        # ADR-0055: the effects of a substitute run on the transaction the context carries (db.Q), as the adapters do.
+        + (
+            "\trec.exec = func(ctx context.Context, query string) (int64, error) {\n"
+            "\t\tresult, err := db.Q(ctx).ExecContext(ctx, query)\n"
+            "\t\tif err != nil {\n\t\t\treturn 0, err\n\t\t}\n\t\treturn result.RowsAffected()\n\t}\n"
+            if uses_db and fakes
+            else ""
+        )
         + f"\tservice := app.New{use_case.name}Service({arguments})\n"
         "\treturn func(ctx context.Context, in map[string]*string) (map[string]*string, error) {\n"
         f"\t\t{'response' if use_case.outputs else '_'}, err := service.Execute(ctx, app.{use_case.name}Request{{\n{request}\t\t}})\n"

@@ -12,7 +12,7 @@ import pytest
 
 from nexti_adapter_sybase.ase import RecordedRunner
 from nexti_core.adapters import SourceFile
-from nexti_core.spec.characterization import GoldenMaster, Suite
+from nexti_core.spec.characterization import Case, GoldenMaster, Suite
 from nexti_pack_spring_boot import IMAGE, Design, adapter_path, junit_path, service_path, skeleton
 from nexti_pack_spring_boot.equivalence import expected_view, masks, plan, run_equivalence, target_case
 from nexti_sandbox import DockerSandbox
@@ -56,6 +56,31 @@ def test_a_legacy_case_is_translated_through_the_mappings() -> None:
     harness = plan(DESIGN, PAY)
     assert harness["ports"][3] == {"interface": "com.bancoficticio.payments.domain.port.DebitGateway", "adapter": None}
     assert harness["dump"]["payment_order"].endswith("ORDER BY order_number, company")
+
+
+def test_the_effects_of_a_substitute_reach_the_target_as_an_update_or_an_insert_by_the_entity_key() -> None:
+    # ADR-0055 (transactional substitutes): the rows the stub of sp_debito leaves become, through the design's
+    # mappings, an UPDATE by the entity's key and the INSERT the harness runs when the update changed nothing.
+    case = next(r.case for r in MASTER.results if r.case.name == "separate_commission_is_a_second_debit")
+    data = json.loads(case.model_dump_json(by_alias=True))
+    data["stubs"]["db_cuentas..sp_debito"][0]["effects"] = {
+        "db_cuentas..ct_cuenta": [{"cta_numero": "1000000001", "cta_tipo": "CTE", "cta_saldo": "399.37"}],
+        "db_other..unknown": [{"x": 1}],  # no entity keeps it: not an effect on the target
+    }
+    target = target_case(DESIGN, PAY, Case.model_validate(data))
+    first, second = target["stubs"]["DebitGateway"]
+    assert first["effects"] == [{
+        "update": "UPDATE account SET balance = CAST('399.3700' AS NUMERIC(19,4)) WHERE number = CAST('1000000001' "
+                  "AS CHAR(10)) AND type = CAST('CTE' AS CHAR(3))",
+        "insert": "INSERT INTO account (number, type, balance) VALUES (CAST('1000000001' AS CHAR(10)), "
+                  "CAST('CTE' AS CHAR(3)), CAST('399.3700' AS NUMERIC(19,4)))",
+    }]  # fmt: skip
+    assert "effects" not in second  # an answer without effects is what it always was
+    # A row without its key is only inserted.
+    data["stubs"]["db_cuentas..sp_debito"][0]["effects"] = {"db_cuentas..ct_cuenta": [{"cta_saldo": "1"}]}
+    (only,) = target_case(DESIGN, PAY, Case.model_validate(data))["stubs"]["DebitGateway"][0]["effects"]
+    assert only["update"] is None
+    assert only["insert"].startswith("INSERT INTO account (balance)")
 
 
 def test_what_cannot_be_compared_is_declared_with_its_reason() -> None:

@@ -29,6 +29,7 @@ from nexti_orchestration.context import Attempt, PhaseContext
 from nexti_orchestration.extraction import EXTRACTOR, ModelCaller, ReplyError, consolidate, extract
 from nexti_orchestration.model import PhaseFailedError, PhaseResult
 from nexti_orchestration.usage import total
+from nexti_orchestration.verification import rollbacks_without_case, stubbed_programs, unit_of_work
 from nexti_sandbox import Sandbox
 from nexti_verification import Verdict, fresh_suite
 from nexti_verification import verdict as checks
@@ -275,6 +276,7 @@ class IvvPhases:
         outcomes = [CaseOutcome(c.name, c.rules, c.differences, c.error) for c in golden.cases]
         masks = [f"{m.path} ({m.when}): {m.reason}" for p in mapping.programs for m in p.masks]
         source = await self.port.source_files()
+        work = unit_of_work(source, master.program)
         found_checks = [
             checks.target_runs(golden.ready, golden.diagnostic),
             checks.contract_mapped(problems, approved=True),
@@ -284,6 +286,9 @@ class IvvPhases:
                                 if fresh else None, unavailable),
             checks.rules_covered(checks.trace_rules(rules, outcomes, {})),
             checks.source_intact(master.source_sha256, source_digest(source)),
+            # ADR-0055: a third party's migration is certified on the same boundary; the verdict must say which.
+            checks.behaviour_boundary(stubbed_programs(master), [line for line, _ in work],
+                                      rollbacks_without_case(work, master)),
         ]  # fmt: skip
         not_proven = [
             "The target is exercised through its HTTP endpoint and its tables: paths no case reaches are not observed",

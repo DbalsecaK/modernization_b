@@ -331,6 +331,15 @@ async def test_the_live_legacy_keeps_its_credentials_in_the_secrets_store_and_th
     ssh = {"host": "ibmi.bank.example", "port": 22, "library": "NXTEST"}
     bad = api.put(url, json={"mode": "live", "kind": "ibmi", "config": ssh}, headers=admin)
     assert (bad.status_code, bad.json()["code"]) == (422, "invalid_legacy_config")
+    # ADR-0055: a Sybase ASE test server of the customer is the second kind; its configuration names the database.
+    ase = {"host": "ASE-TEST.bank.example", "database": "cob pagos"}
+    bad = api.put(url, json={"mode": "live", "kind": "sybase", "config": ase}, headers=admin)
+    assert (bad.status_code, bad.json()["code"]) == (422, "invalid_legacy_config")
+    ase["database"] = "cob_pagos"
+    sybase = api.put(url, json={"mode": "live", "kind": "sybase", "config": ase}, headers=admin)
+    assert sybase.status_code == 200, sybase.text
+    assert sybase.json()["kind"] == "sybase"
+    assert sybase.json()["config"] == {"host": "ase-test.bank.example", "port": 5000, "database": "cob_pagos"}
     password = f"pw-{uuid.uuid4().hex}"
     body = {"mode": "live", "kind": "ibmi", "config": {"host": "IBMI.bank.example", "library": "nxtest"},
             "user": "NXUSER", "password": password}  # fmt: skip

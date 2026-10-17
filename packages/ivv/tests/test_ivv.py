@@ -147,3 +147,29 @@ def test_codes_with_leading_zeros_are_compared_as_text() -> None:
     assert _like("0012345678", "0012345678") == "0012345678"
     assert _like("7001", 7001.0) == "7001"
     assert _like("2.0000", "2") == "2.0000"
+
+
+def test_the_effects_of_a_stubbed_service_reach_the_targets_tables() -> None:
+    # ADR-0055: a case may say what the called program leaves in a table; the stubbed service applies it on the
+    # target's database (by the legacy table's key, in the target's names) when the target calls it, so the final
+    # state can be compared. The target calls the service over HTTP: the effect is outside its transaction.
+    from nexti_core.spec.characterization import Case, StubAnswer
+    from nexti_ivv.runner import plan
+
+    files, master = archive(), golden()
+    vendor = ivv_mapping.load(files["ivv-mapping.yaml"].decode("utf-8"))
+    program = vendor.programs[0]
+    effects = {"db_cuentas..ct_cuenta": [{"cta_numero": "1000000001", "cta_tipo": "CTE", "cta_saldo": "399.3700"}]}
+    answer = StubAnswer(returns=0, outputs={"@o_secuencial": 7001}, effects=effects)
+    case = Case(name="debit_leaves_the_balance", rules=["RULE-001"], stubs={"db_cuentas..sp_debito": [answer]})
+    answers = plan(master, program, [case])["cases"][0]["answers"]
+    (made,) = next(iter(answers.values()))
+    assert made["sequence"] == 7001
+    assert made["effects"] == [{
+        "update": "UPDATE accounts SET balance = '399.3700' WHERE account_no = '1000000001' AND account_type = 'CTE'",
+        "insert": "INSERT INTO accounts (account_no, account_type, balance) VALUES ('1000000001', 'CTE', '399.3700')",
+    }]  # fmt: skip
+    plain = plan(master, program, [Case(name="plain", rules=["RULE-001"],
+                                        stubs={"db_cuentas..sp_debito": [StubAnswer(returns=0)]})])  # fmt: skip
+    (unchanged,) = next(iter(plain["cases"][0]["answers"].values()))
+    assert "effects" not in unchanged

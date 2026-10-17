@@ -9,6 +9,9 @@
 | 5 | Canary | a deliberate one-line change turned tests or cases red |
 | 6 | Source intact | the legacy is byte for byte the code that was characterized |
 
+| 7 | Behaviour boundary | the equivalence was measured on the final state of the database with the called programs
+|   |                    | real; with stubs or without a case per rollback it cannot be checked (ADR-0055) |
+
 PROVEN: all pass. NOT PROVEN: one fails. PARTLY PROVEN: none failed but one could not be checked. Every verdict
 lists what it does not prove. PROVEN is evidence, not approval: a person signs off at C4."""
 
@@ -29,6 +32,7 @@ CHECKS: tuple[tuple[str, str], ...] = (
     ("fresh_inputs", "Fresh inputs"),
     ("canary", "Canary"),
     ("source_intact", "Source intact"),
+    ("behaviour_boundary", "Behaviour boundary"),
 )
 # The checks of a generated frontend (ADR-0016): it compiles and every screen meets its contract in the harness.
 FRONTEND_CHECKS: tuple[tuple[str, str], ...] = (
@@ -66,6 +70,7 @@ IVV_CHECKS: tuple[tuple[str, str], ...] = (
     ("fresh_inputs", "Fresh inputs"),
     ("rules_covered", "Rules covered"),
     ("source_intact", "Source intact"),
+    ("behaviour_boundary", "Behaviour boundary"),
 )
 # The checks of a delta added to an existing application (Flow 3, ADR-0026): what worked keeps working, the new
 # criteria pass, the existing contract is kept and the delta respects the application's architecture.
@@ -239,6 +244,37 @@ def source_intact(characterized: str | None, current: str) -> Check:
     if characterized != current:
         return Check("source_intact", "failed", "the legacy changed after it was characterized", evidence)
     return Check("source_intact", "passed", "the legacy is the code that was characterized (SHA-256)", evidence)
+
+
+def behaviour_boundary(
+    stubbed: Sequence[str],
+    unit_of_work: Sequence[int],
+    rollbacks_without_case: Sequence[int],
+    state_compared: bool = False,
+) -> Check:
+    """Where the equivalence was measured (ADR-0055). The first migration the platform proved (PROVEN 6/6) lost the
+    whole transaction: the golden master compared the calls to stubs, not what the database held at the end. Until
+    the comparison runs on the final state with the called programs real, and every rollback of the legacy has a
+    case, this check cannot pass, and its detail says exactly what the verdict does not cover."""
+    evidence = {"stubbed_programs": list(stubbed), "unit_of_work_lines": list(unit_of_work),
+                "rollbacks_without_case": list(rollbacks_without_case), "state_compared": state_compared}  # fmt: skip
+    gaps: list[str] = []
+    if not state_compared:
+        gaps.append("the equivalence compares the calls the legacy made and its own tables, not the final state of "
+                    "the database after the called programs ran")  # fmt: skip
+    if stubbed:
+        gaps.append(f"the called programs were stubs, their own logic and effects were not verified: "
+                    f"{', '.join(stubbed[:8])}")  # fmt: skip
+    if unit_of_work and not state_compared:
+        gaps.append(f"the legacy has a unit of work (begin/save/commit/rollback at lines "
+                    f"{', '.join(map(str, unit_of_work[:10]))}): whether the target keeps or undoes the same work "
+                    "was not verified")  # fmt: skip
+    if rollbacks_without_case:
+        gaps.append(f"rollback points without a case: lines {', '.join(map(str, rollbacks_without_case[:10]))}")
+    if gaps:
+        return Check("behaviour_boundary", "not_checked", "; ".join(gaps), evidence)
+    return Check("behaviour_boundary", "passed", "the final state of the database matched with the called programs "
+                 "real and every rollback point exercised", evidence)  # fmt: skip
 
 
 def legacy_covered(gaps: Sequence[str], decision: str | None, by: str | None, comment: str = "") -> Check:
