@@ -401,10 +401,32 @@ def stub_conventions(code: str) -> list[str]:
     return found[:12]
 
 
+# The target databases on which a legacy's data can stay where it is (ADR-0055): the engine of each origin.
+SAME_ENGINE_DATABASES: dict[str, frozenset[str]] = {
+    "sybase-ase": frozenset({"sybase", "ase", "sybase-ase"}),
+    "aspx-webforms": frozenset({"sqlserver", "mssql", "sql-server"}),
+}
+
+
+def data_strategy_target_problems(design: Design, database: str | None, legacy: str | None) -> list[str]:
+    """`same_database` keeps the data on the legacy's engine, so a target that names another database contradicts
+    it: the data moves there (`migration`). Without a named target database, or on the legacy's own engine, the
+    architect's choice stands."""
+    chosen = (database or "").lower()
+    if design.data_strategy != "same_database" or not chosen:
+        return []
+    if chosen in SAME_ENGINE_DATABASES.get(legacy or "", frozenset()):
+        return []
+    return [
+        f"the project's target keeps its data in {chosen}: data_strategy must be 'migration' (same_database "
+        "needs the target on the legacy's own engine, and the tables and called programs stay there)"
+    ]
+
+
 def design_problems(
     design: Design, rules: Sequence[Rule], names: set[str] | None = None, *, hints: bool = False,
     files: Sequence[SourceFile] = (), written: set[str] | None = None, package_root: str | None = None,
-    read: set[str] | None = None,
+    read: set[str] | None = None, database: str | None = None, legacy: str | None = None,
 ) -> list[str]:  # fmt: skip
     """What is wrong with a design, for the model to correct. With `hints` (guided extraction, ADR-0033) an invented
     legacy name comes with the closest real names, and the masks are checked against the rules (ADR-0035)."""
@@ -441,6 +463,7 @@ def design_problems(
         problems.append("data_strategy is required: 'same_database' (the data and the programs it calls stay where "
                         "they are; the target uses the legacy's driver, its qualified table names and calls its "
                         "procedures) or 'migration' (the data moves to the target database)")  # fmt: skip
+    problems += data_strategy_target_problems(design, database, legacy)
     if design.data_strategy == "same_database":
         renamed = [f"{e.name} ({e.table} vs {e.legacy_table})" for e in design.entities
                    if e.legacy_table and e.table and e.table != e.legacy_table]  # fmt: skip
@@ -609,6 +632,7 @@ async def propose_design(
     hints: bool = False, files: Sequence[SourceFile] = (), written: set[str] | None = None, guidance: str = "",
     package_root: str | None = None, read: set[str] | None = None,
     save: Callable[[dict[str, str]], Awaitable[None]] | None = None,
+    database: str | None = None, legacy: str | None = None,
 ) -> tuple[Design, list[Usage]]:  # fmt: skip
     """The design from the rules. Flow 1 gives the inventory of the legacy; Flow 2 gives the approved screens and
     stories (`label`) and its own prompt (`system`), with no legacy to map. With `save` (guided runs) every attempt's
@@ -643,7 +667,8 @@ async def propose_design(
             if hints:
                 design = without_numeric_messages(design)
             problems = design_problems(design, rules, names, hints=hints, files=files, written=written,
-                                       package_root=package_root, read=read)  # fmt: skip
+                                       package_root=package_root, read=read, database=database,
+                                       legacy=legacy)  # fmt: skip
             if problems:
                 raise ReplyError("\n".join(problems))
             return design, usage
@@ -683,6 +708,12 @@ class GenerationPhases:
                 else:
                     files = await self.port.source_files()
                     guided = guided_enabled(ctx.run.options)
+                    from nexti_orchestration.modernization import pick_adapter
+
+                    try:
+                        legacy_name: str | None = pick_adapter(files).name
+                    except PhaseFailedError:
+                        legacy_name = None
                     design, usage = await propose_design(
                         self.port.models, rules, await self.port.inventory_digest(),
                         max_iterations=ctx.run.max_iterations,
@@ -692,6 +723,7 @@ class GenerationPhases:
                         read=read_tables(files), guidance=stack_guidance(ctx.run.target),
                         package_root=ctx.run.target.get("package_root"),
                         save=self._save_docs if guided_enabled(ctx.run.options) else None,
+                        database=str(ctx.run.target.get("database") or "") or None, legacy=legacy_name,
                     )  # fmt: skip
             except ReplyError as exc:
                 raise PhaseFailedError(str(exc)[:1500]) from exc

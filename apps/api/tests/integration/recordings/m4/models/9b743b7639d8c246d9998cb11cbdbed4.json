@@ -1,0 +1,28 @@
+{
+  "request_digest": "9b743b7639d8c246d9998cb11cbdbed4",
+  "model": "anthropic/claude-sonnet-5.5",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are the Rules Verifier of a legacy modernization platform, an independent reviewer. You receive one business rule\nwritten by another agent and the exact source lines it cites. You did not write the rule: check it against the code\nonly.\n\nDecide:\n- `supported`: true only if the cited lines implement the rule as written, including its concrete values\n  (codes, amounts, states, limits) and its condition.\n- `problems`: every discrepancy you find: a value that differs from the code, a condition the code does not have, a\n  missing branch the rule should mention, a citation that does not contain the behaviour.\n- `corrected_statement`: if the rule is close but a detail is wrong, the statement rewritten to match the code;\n  otherwise null.\n\nAnswer with one JSON object and nothing else:\n{\"supported\": true, \"problems\": [], \"corrected_statement\": null}\n"
+    },
+    {
+      "role": "user",
+      "content": "Rule:\n{\"name\":\"Commission tariff lookup: company-specific tariff overrides service default\",\"category\":\"calculation\",\"priority\":\"P0\",\"statement\":\"The base tariff for a payment is the one agreed for the company and service. If the company has no specific tariff for that service, the service's default tariff is used and the commission is not charged separately ('N'). If no tariff can be determined, it is zero.\",\"condition\":\"A row exists in ad_tarifa_empresa for tar_empresa = @i_empresa and tar_servicio = @i_servicio; otherwise use ad_servicio.srv_codigo = @i_servicio; if the resulting tariff is NULL.\",\"action\":\"With a company row: tariff = tar_valor and separate-charge flag = tar_separada. Without one (@@rowcount = 0): tariff = srv_tarifa and flag = 'N'. If the tariff is NULL it becomes 0.\"}\n\nCited lines:\nsp/sp_pago_orden.sp:62-66:\n   62  select @w_tarifa = tar_valor,\n   63         @w_separada = tar_separada\n   64    from db_admin..ad_tarifa_empresa\n   65   where tar_empresa = @i_empresa\n   66     and tar_servicio = @i_servicio\n\nsp/sp_pago_orden.sp:68:\n   68  if @@rowcount = 0\n\nsp/sp_pago_orden.sp:70-72:\n   70      select @w_tarifa = srv_tarifa,\n   71             @w_separada = 'N'\n   72        from db_admin..ad_servicio\n\nsp/sp_pago_orden.sp:76-77:\n   76  if @w_tarifa is null\n   77      select @w_tarifa = 0"
+    }
+  ],
+  "response": {
+    "request_id": "gen-1792266035-j9PIY33SMlRMiOq0icvM",
+    "model": "anthropic/claude-sonnet-5.5",
+    "provider_name": "Anthropic",
+    "content": "{\"supported\": false, \"problems\": [\"The rule's condition says the default is read from ad_servicio where srv_codigo = @i_servicio. The cited lines 70-72 end at 'from db_admin..ad_servicio' and show no WHERE clause. The srv_codigo = @i_servicio filter is not in the citation, so that part cannot be verified. The citation range should be extended to include the WHERE line (probably 73).\", \"The NULL-to-zero check at lines 76-77 also applies when a company row exists but its tar_valor is NULL. In that case the tariff becomes 0 and there is no fallback to srv_tarifa. The rule's condition 'if the resulting tariff is NULL' roughly covers this, but the statement does not say so.\"], \"corrected_statement\": null}",
+    "usage": {
+      "input_tokens": 848,
+      "output_tokens": 832,
+      "reasoning_tokens": 574,
+      "cache_read_tokens": 0,
+      "cache_write_tokens": 0,
+      "provider_cost_usd": "0.010016"
+    }
+  }
+}

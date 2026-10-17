@@ -3,27 +3,27 @@
   "mode": "record",
   "verdict": "NOT PROVEN",
   "checks": {
-    "tests_ran": "passed",
+    "tests_ran": "failed",
     "rules_traced": "failed",
     "same_behaviour": "failed",
-    "fresh_inputs": "failed",
+    "fresh_inputs": "not_checked",
     "canary": "not_checked",
     "source_intact": "passed",
     "behaviour_boundary": "not_checked",
     "legacy_covered": "not_checked"
   },
   "details": {
-    "tests_ran": "41 test(s) passed in a clean build (JUnit XML)",
-    "rules_traced": "rules without a matching golden case: RULE-009, RULE-010, RULE-011, RULE-014",
-    "same_behaviour": "2 of 17 case(s) differ; comision_separada_falla_deshace_pago: System.InvalidOperationException: DebitGateway answered 1",
-    "fresh_inputs": "2 fresh input(s) differ: fresh_11_comision_separada_falla_deshace_pago, fresh_12_debito_falla",
+    "tests_ran": "no JUnit report: the tests did not run",
+    "rules_traced": "rules without a matching golden case: RULE-001, RULE-002, RULE-003, RULE-004, RULE-005, RULE-006, RULE-007, RULE-008, RULE-009, RULE-010, RULE-011, RULE-012, RULE-013",
+    "same_behaviour": "the harness did not run: the project does not compile: the build did not finish (exit 6): 0.00] xUnit.net VSTest Adapter v3.1.5+1b188a7b0a (64-bit .NET 10.0.12)\n[xUnit.net 00:00:00.21]   Discovering: App.Tests\n[xUnit.net 00:00:00.50]   Discovered:  App.Tests\n[xUnit.net 00:00:00.77]   Starting:    App.Tests\n[xUnit.net 00:00:01.73]   Finished:    App.Test",
+    "fresh_inputs": "the fresh inputs could not run on the target: the project does not compile: the build did not finish (exit 6): untRowForVirDoesNotReject\" time=\"0.0002598\" />\n    <testcase classname=\"Bank.Payments.Tests.PayOrderServiceTests\" name=\"MissingAccountRowDoesNotRejectAndDebitIsAttempted\" time=\"0.0001620\" />\n    <testcase classname=\"Bank.Payments.Tests.PayOrderServiceTests\" name=\"S",
     "canary": "the unchanged code does not reproduce the golden master, so a deliberate change cannot be told apart",
     "source_intact": "the legacy is the code that was characterized (SHA-256)",
-    "behaviour_boundary": "the equivalence compares the calls the legacy made and its own tables, not the final state of the database after the called programs ran; the called programs were stubs, their own logic and effects were not verified: cobis..sp_cerror, db_cuentas..sp_debito; the legacy has a unit of work (begin/save/commit/rollback at lines 108, 119, 136, 155, 161): whether the target keeps or undoes the same work was not verified",
-    "legacy_covered": "1 gap(s) of the legacy no case covers, accepted as not proven by f3af42f1-597e-4ab7-b33d-35ed9f1116af"
+    "behaviour_boundary": "the called programs were stubs, their own logic and effects were not verified: cobis..sp_cerror, db_cuentas..sp_debito",
+    "legacy_covered": "1 gap(s) of the legacy no case covers, accepted as not proven by f980c68a-3a5e-4c92-80cc-c964d54b9012"
   },
-  "model_calls": 62,
-  "cost_usd": "1.49075200",
+  "model_calls": 59,
+  "cost_usd": "1.71196200",
   "decisions": [
     "questions",
     "C1",

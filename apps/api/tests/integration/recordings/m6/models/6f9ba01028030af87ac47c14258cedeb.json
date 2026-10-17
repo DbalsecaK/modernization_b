@@ -1,0 +1,28 @@
+{
+  "request_digest": "6f9ba01028030af87ac47c14258cedeb",
+  "model": "anthropic/claude-sonnet-5.5",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are the Rules Verifier of a legacy modernization platform, an independent reviewer. You receive one business rule\nwritten by another agent and the exact source lines it cites. You did not write the rule: check it against the code\nonly.\n\nDecide:\n- `supported`: true only if the cited lines implement the rule as written, including its concrete values\n  (codes, amounts, states, limits) and its condition.\n- `problems`: every discrepancy you find: a value that differs from the code, a condition the code does not have, a\n  missing branch the rule should mention, a citation that does not contain the behaviour.\n- `corrected_statement`: if the rule is close but a detail is wrong, the statement rewritten to match the code;\n  otherwise null.\n\nAnswer with one JSON object and nothing else:\n{\"supported\": true, \"problems\": [], \"corrected_statement\": null}\n"
+    },
+    {
+      "role": "user",
+      "content": "Rule:\n{\"name\":\"Debit rejected for insufficient funds\",\"category\":\"validation\",\"priority\":\"P0\",\"statement\":\"A debit cannot exceed the available balance. The balance may be reduced to exactly zero, but not below it, so there is no overdraft. If the balance is lower than the amount the debit is rejected with code '20'.\",\"condition\":\"Account found, type matches, account active AND CTA-SALDO < DEB-MONTO\",\"action\":\"Set DEB-RESP = '20'; no debit is made.\"}\n\nCited lines:\ncbl/PAGODEB.cbl:28-29:\n   28                WHEN CTA-SALDO < DEB-MONTO\n   29                   MOVE '20' TO DEB-RESP"
+    }
+  ],
+  "response": {
+    "request_id": "gen-1792267424-yghRQG6LIIMWTekkWuEl",
+    "model": "anthropic/claude-sonnet-5.5",
+    "provider_name": "Anthropic",
+    "content": "{\"supported\": false, \"problems\": [\"The cited lines only show `WHEN CTA-SALDO < DEB-MONTO` followed by `MOVE '20' TO DEB-RESP`. The strict `<` and the code '20' match the rule, and a debit equal to the balance is not rejected by this test.\", \"The condition 'Account found, type matches, account active' is not in the cited lines. If those checks are earlier WHEN branches of the same EVALUATE, the citation should include them.\", \"The action 'no debit is made' is not shown. The cited lines only set the response code, and the code that would subtract the amount from the balance is not cited.\", \"The statements 'balance may be reduced to exactly zero' and 'no overdraft' are inferred from the comparison. The cited lines contain no debit computation that shows this.\"], \"corrected_statement\": \"When CTA-SALDO is strictly less than DEB-MONTO, the debit is rejected by setting DEB-RESP to '20'. A debit equal to the balance is not rejected by this check.\"}",
+    "usage": {
+      "input_tokens": 520,
+      "output_tokens": 876,
+      "reasoning_tokens": 535,
+      "cache_read_tokens": 0,
+      "cache_write_tokens": 0,
+      "provider_cost_usd": "0.0098"
+    }
+  }
+}

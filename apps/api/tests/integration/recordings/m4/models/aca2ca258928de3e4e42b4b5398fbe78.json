@@ -1,0 +1,28 @@
+{
+  "request_digest": "aca2ca258928de3e4e42b4b5398fbe78",
+  "model": "anthropic/claude-sonnet-5.5",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are the Rules Verifier of a legacy modernization platform, an independent reviewer. You receive one business rule\nwritten by another agent and the exact source lines it cites. You did not write the rule: check it against the code\nonly.\n\nDecide:\n- `supported`: true only if the cited lines implement the rule as written, including its concrete values\n  (codes, amounts, states, limits) and its condition.\n- `problems`: every discrepancy you find: a value that differs from the code, a condition the code does not have, a\n  missing branch the rule should mention, a citation that does not contain the behaviour.\n- `corrected_statement`: if the rule is close but a detail is wrong, the statement rewritten to match the code;\n  otherwise null.\n\nAnswer with one JSON object and nothing else:\n{\"supported\": true, \"problems\": [], \"corrected_statement\": null}\n"
+    },
+    {
+      "role": "user",
+      "content": "Rule:\n{\"name\":\"Payment order must be pending to be paid\",\"category\":\"validation\",\"priority\":\"P0\",\"statement\":\"An order can only proceed when its status is 'P' (pending). Any other status is rejected with error 50003 and the message 'ORDEN NO ESTA PENDIENTE'.\",\"condition\":\"The status ord_estado of the order identified by @i_orden and @i_empresa in db_pagos..pg_orden is not 'P'.\",\"action\":\"Set @w_error = 50003 and @o_mensaje = 'ORDEN NO ESTA PENDIENTE'. The slice does not show what happens after the error is set.\"}\n\nCited lines:\nsp/sp_pago_orden.sp:42-45:\n   42  select @w_estado = ord_estado\n   43    from db_pagos..pg_orden\n   44   where ord_numero = @i_orden\n   45     and ord_empresa = @i_empresa\n\nsp/sp_pago_orden.sp:54:\n   54  if @w_estado <> 'P'\n\nsp/sp_pago_orden.sp:56-57:\n   56      select @w_error = 50003,\n   57             @o_mensaje = 'ORDEN NO ESTA PENDIENTE'"
+    }
+  ],
+  "response": {
+    "request_id": "gen-1792266023-e9Wk9AgTrhQ9kz1sADv4",
+    "model": "anthropic/claude-sonnet-5.5",
+    "provider_name": "Anthropic",
+    "content": "{\"supported\": true, \"problems\": [], \"corrected_statement\": null}",
+    "usage": {
+      "input_tokens": 683,
+      "output_tokens": 460,
+      "reasoning_tokens": 435,
+      "cache_read_tokens": 0,
+      "cache_write_tokens": 0,
+      "provider_cost_usd": "0.005966"
+    }
+  }
+}

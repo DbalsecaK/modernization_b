@@ -1,0 +1,28 @@
+{
+  "request_digest": "eda591af09daead7edeeee17ce83bcec",
+  "model": "anthropic/claude-sonnet-5.5",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are the Rules Verifier of a legacy modernization platform, an independent reviewer. You receive one business rule\nwritten by another agent and the exact source lines it cites. You did not write the rule: check it against the code\nonly.\n\nDecide:\n- `supported`: true only if the cited lines implement the rule as written, including its concrete values\n  (codes, amounts, states, limits) and its condition.\n- `problems`: every discrepancy you find: a value that differs from the code, a condition the code does not have, a\n  missing branch the rule should mention, a citation that does not contain the behaviour.\n- `corrected_statement`: if the rule is close but a detail is wrong, the statement rewritten to match the code;\n  otherwise null.\n\nAnswer with one JSON object and nothing else:\n{\"supported\": true, \"problems\": [], \"corrected_statement\": null}\n"
+    },
+    {
+      "role": "user",
+      "content": "Rule:\n{\"name\":\"Total a debitar según comisión separada\",\"category\":\"calculation\",\"priority\":\"P0\",\"statement\":\"If the commission is flagged as separate ('S'), only the order amount is debited. Otherwise the commission is added to the order amount and debited together with it.\",\"condition\":\"@w_separada = 'S' means the commission is not added. Any other value means it is added.\",\"action\":\"@w_total = @i_valor if @w_separada = 'S', otherwise @w_total = @i_valor + @w_comision.\"}\n\nCited lines:\nsp/sp_pago_orden.sp:89-90:\n   89  if @w_separada = 'S'\n   90      select @w_total = @i_valor\n\nsp/sp_pago_orden.sp:92:\n   92      select @w_total = @i_valor + @w_comision"
+    }
+  ],
+  "response": {
+    "request_id": "gen-1792266046-OKZ96THAqyLtupWA3LOp",
+    "model": "anthropic/claude-sonnet-5.5",
+    "provider_name": "Anthropic",
+    "content": "{\"supported\": true, \"problems\": [], \"corrected_statement\": null}",
+    "usage": {
+      "input_tokens": 543,
+      "output_tokens": 226,
+      "reasoning_tokens": 201,
+      "cache_read_tokens": 0,
+      "cache_write_tokens": 0,
+      "provider_cost_usd": "0.003346"
+    }
+  }
+}

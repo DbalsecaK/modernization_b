@@ -659,6 +659,20 @@ def test_the_design_declares_the_unit_of_work_the_legacy_has_and_every_rollback_
     found = design_problems(Design.model_validate(data), RULES, files=files)
     assert any(p.startswith("data_strategy is required") for p in found)
     assert not any(p.startswith("data_strategy") for p in design_problems(Design.model_validate(data), RULES))
+    # ADR-0055: the strategy agrees with the project's target. A Sybase legacy may keep its data when the target
+    # names no database or Sybase itself; a target on Oracle migrates it (M8b: the Oracle flavour cannot run the
+    # golden master against ASE, and the data was asked to move).
+    same = Design.model_validate({**data, "data_strategy": "same_database"})
+
+    def target(database: str | None, legacy: str = "sybase-ase", design: Design = same) -> list[str]:
+        return [p for p in design_problems(design, RULES, database=database, legacy=legacy)
+                if p.startswith("the project's target")]  # fmt: skip
+
+    assert target(None) == []
+    assert target("sybase") == []
+    (problem,) = target("oracle")
+    assert problem.startswith("the project's target keeps its data in oracle: data_strategy must be 'migration'")
+    assert target("oracle", design=Design.model_validate({**data, "data_strategy": "migration"})) == []
     data["data_strategy"] = "same_database"
     (renamed,) = [p for p in design_problems(Design.model_validate(data), RULES) if p.startswith("with same_database")]
     assert "PaymentOrder (payment_order vs db_pagos..pg_orden)" in renamed
