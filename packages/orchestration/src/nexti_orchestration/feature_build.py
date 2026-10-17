@@ -12,11 +12,12 @@ import io
 import json
 import re
 import zipfile
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from typing import Any, Protocol
 
+from nexti_core.impact import SOURCE_SUFFIXES, TRANSACTION_BOUNDARY
 from nexti_core.spec.coverage import StoryLinks, compute
-from nexti_core.spec.design import Design
+from nexti_core.spec.design import Design, writes
 from nexti_core.spec.model import Rule
 from nexti_core.spec.screens import ScreenSpec
 from nexti_orchestration.context import Attempt, PhaseContext
@@ -106,6 +107,19 @@ def rule_traces(rules: Sequence[Rule], stories: Sequence[FeatureStory], passed: 
     return traces
 
 
+def without_boundary(files: Mapping[str, str], use_cases: Sequence[str]) -> list[str]:
+    """The use cases among `use_cases` whose generated code (the files named after them) holds no transaction
+    boundary: no TransactionTemplate, @Transactional, TransactionScope or equivalent."""
+    found: list[str] = []
+    for name in use_cases:
+        own = [
+            text for path, text in files.items() if path.endswith(SOURCE_SUFFIXES) and name in path.rsplit("/", 1)[-1]
+        ]
+        if not any(TRANSACTION_BOUNDARY.search(text) for text in own):
+            found.append(name)
+    return found
+
+
 def proof_pack(verdict: Verdict, junit: str | None, extra: dict[str, Any]) -> bytes:
     buffer = io.BytesIO()
     with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as archive:
@@ -178,6 +192,19 @@ class FeatureBuildPhases:
         found.append(checks.questions_closed(await self.port.open_questions()))
         lost = untraced(rules, screens, stories, await self.port.load_inputs())
         found.append(checks.traced_to_inputs(len(rules) + len(screens) + len(stories), lost))
+        # ADR-0055 (point 17): a use case that writes runs in one transaction, and the schema is real.
+        writing = [u.name for u in design.use_cases if writes(design, u)]
+        found.append(checks.unit_of_work_generated(writing, without_boundary(files, writing)))
+        apply_schema = getattr(pack, "apply_schema", None)
+        if apply_schema is None:
+            found.append(
+                checks.schema_applies(
+                    None, f"the {ctx.run.target.get('backend')} pack does not apply its schema on an engine"
+                )
+            )
+        else:
+            await ctx.store.event("started", "running", "The schema on a real database engine", phase=ctx.phase.key)
+            found.append(checks.schema_applies(await apply_schema(sandbox, files)))
         not_proven = [
             "Acceptance criteria are checked through the service's tests; the running application (HTTP, database "
             "engine) is checked by the build, not end to end",

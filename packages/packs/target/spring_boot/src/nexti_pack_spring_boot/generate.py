@@ -13,6 +13,7 @@ Neutral types map to Java and PostgreSQL types here (4.3): `decimal(p,s)` -> Big
 """
 
 from nexti_core.spec import neutral_types as nt
+from nexti_core.spec.design import writes
 from nexti_pack_spring_boot.design import Design, Entity, FieldSpec, Port, UseCase
 
 SPRING_BOOT_VERSION = "3.5.6"
@@ -163,9 +164,14 @@ def controller_file(design: Design, use_case: UseCase) -> tuple[str, str]:
                "DELETE": "DeleteMapping"}[use_case.http_method]  # fmt: skip
     body = "@RequestBody " if use_case.http_method in ("POST", "PUT", "PATCH") else ""
     work = use_case.unit_of_work
+    # ADR-0055 (point 17): without a legacy to copy the unit of work from, a use case that writes makes the
+    # request its transaction (a rejection undoes every write).
+    own = work is None and use_case.legacy_program is None and writes(design, use_case)
     lines = ", ".join(f"rollback at {r.legacy_line}" for r in work.rollbacks) if work else ""
     doc = (f" The unit of work of the legacy (begin at {work.begins_at}, {lines}, commit at {work.commits_at}) is "
-           "this transaction." if work else "")  # fmt: skip
+           "this transaction." if work else " The use case writes: the request is its transaction." if own
+           else "")  # fmt: skip
+    work = work or own  # type: ignore[assignment]
     imports = "import org.springframework.web.bind.annotation.*;\n" + (
         "import org.springframework.transaction.support.TransactionTemplate;\n" if work else ""
     )

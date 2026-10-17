@@ -102,3 +102,17 @@ def test_the_t_sql_types_of_the_outputs_keep_the_legacy_precision() -> None:
     assert sybase_type("text(var,40,iso8859-1)") == "varchar(40)"
     assert sybase_type("timestamp(local)") == "datetime"
     assert sybase_type("boolean") == "bit"
+
+
+def test_a_use_case_that_writes_without_a_legacy_makes_the_request_its_transaction() -> None:
+    # ADR-0055 (point 17, flow 2): no legacy to copy the unit of work from; PayOrder writes through its ports, so
+    # the controller wraps it in one transaction. A use case that only reads is left alone.
+    data = json.loads(PAY.model_dump_json(by_alias=True))
+    data.update({"unit_of_work": None, "legacy_program": None})
+    plain = _with(use_cases=[data])
+    _, controller = controller_file(plain, plain.use_cases[0])
+    assert "return transaction.execute(status -> service.execute(request));" in controller
+    assert "The use case writes: the request is its transaction." in controller
+    reader = _with(use_cases=[{**data, "name": "ReadOrder", "ports": [], "http_method": "GET"}])
+    _, bare = controller_file(reader, reader.use_cases[0])
+    assert "TransactionTemplate" not in bare

@@ -68,7 +68,7 @@ describe('checks', () => {
     expect(checkTitleKey('behaviour_boundary')).toBe('validation.checkTitles.behaviourBoundary')
   })
 
-  it('shows the six checks of a Flow 2 verdict in their order', () => {
+  it('shows the eight checks of a Flow 2 verdict in their order', () => {
     const checks = allChecks(
       [
         { key: 'traced_to_inputs', title: 'Traced to inputs', status: 'passed', detail: '9 element(s)' },
@@ -83,9 +83,12 @@ describe('checks', () => {
       'canary',
       'questions_closed',
       'traced_to_inputs',
+      'unit_of_work',
+      'schema_applies',
     ])
-    expect(checks.filter((c) => c.missing)).toHaveLength(4)
+    expect(checks.filter((c) => c.missing)).toHaveLength(6)
     expect(checkTitleKey('traced_to_inputs')).toBe('validation.checkTitles.tracedToInputs')
+    expect(checkTitleKey('schema_applies')).toBe('validation.checkTitles.schemaApplies')
   })
 
   it('shows the seven checks of an independent validation verdict in their order', () => {
@@ -106,7 +109,7 @@ describe('checks', () => {
     expect(checkTitleKey('contract_mapped')).toBe('validation.checkTitles.contractMapped')
   })
 
-  it('shows the six checks of a delta verdict in their order', () => {
+  it('shows the seven checks of a delta verdict in their order', () => {
     // A delta verdict reports criteria_covered and traced_to_inputs too: the module decides, not the Flow 2 keys.
     const checks = allChecks(
       [
@@ -120,11 +123,13 @@ describe('checks', () => {
       'criteria_covered',
       'contract_kept',
       'fitness',
+      'impact_bounded',
       'canary',
       'traced_to_inputs',
     ])
-    expect(checks.filter((c) => c.missing)).toHaveLength(4)
+    expect(checks.filter((c) => c.missing)).toHaveLength(5)
     expect(checkTitleKey('contract_kept')).toBe('validation.checkTitles.contractKept')
+    expect(checkTitleKey('impact_bounded')).toBe('validation.checkTitles.impactBounded')
   })
 
   it('maps keys and statuses to i18n keys and tones', () => {

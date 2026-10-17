@@ -10,7 +10,7 @@ from typing import Any
 from nexti_core.spec.characterization import GoldenMaster, Scalar
 from nexti_core.spec.equivalence import EquivalenceRun
 from nexti_pack_spring_boot import mongodb, mysql, oracle, sqlprobe
-from nexti_pack_spring_boot.build import IMAGE, compile_and_test
+from nexti_pack_spring_boot.build import IMAGE, apply_schema, compile_and_test
 from nexti_pack_spring_boot.canary import Mutation, mutations
 from nexti_pack_spring_boot.design import Design, Port, UseCase
 from nexti_pack_spring_boot.equivalence import run_equivalence
@@ -138,6 +138,13 @@ class SpringBootPack:
     async def probe_sql(self, sandbox: Sandbox, files: Mapping[str, str], path: str) -> str:
         """The errors PostgreSQL reports when the adapter's SQL is prepared against the schema (P32), or ""."""
         return await sqlprobe.probe_sql(sandbox, files, path)
+
+    async def apply_schema(self, sandbox: Sandbox, files: Mapping[str, str]) -> str | None:
+        """The design's schema created on a real PostgreSQL (ADR-0055, point 17): "" when it applied, the engine's
+        error otherwise, None when the project has no schema file."""
+        if SCHEMA not in files:
+            return None
+        return await apply_schema(sandbox, files[SCHEMA])
 
     def schema_path(self) -> str | None:
         """The file with the target schema (the only tables and columns that exist), shown to a developer who

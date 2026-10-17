@@ -11,6 +11,7 @@ from pathlib import Path
 
 import pytest
 
+from nexti_core.impact import declared_name, target_impact
 from nexti_orchestration import PhaseSpec, RunContext
 from nexti_orchestration.context import PhaseContext
 from nexti_orchestration.extension import (
@@ -23,9 +24,11 @@ from nexti_orchestration.extension import (
     contract_broken,
     delta_problems,
     fitness_violations,
+    impact_record,
     parse_files,
     placement_problems,
     read_inventory,
+    unobserved,
 )
 from nexti_orchestration.extraction import ModelReply, ReplyError
 from nexti_orchestration.feature import FeatureStory
@@ -288,3 +291,22 @@ def test_the_delta_is_generated_and_validated_with_every_test() -> None:
     assert "`src/main/java/com/contoso/billpay/domain/PaymentStatusService.java`" in port.artifacts[REPORT]
     delivery = asyncio.run(phases.delivery(_context("delivery")))
     assert delivery.summary.startswith("The delta (3 file(s))")
+
+
+def test_the_files_the_delta_reaches_must_be_observed_by_a_test_that_passed_before_and_after() -> None:
+    # ADR-0055 (flow 3): the delta changes the controller; the impact reaches whoever names it, and a file nobody
+    # tests among them is reported, so the verdict cannot claim zero differences outside the delta.
+    existing = application()
+    delta = {CONTROLLER: controller_with_status(existing[CONTROLLER])}
+    merged = existing | delta
+    impact = target_impact(merged, sorted(delta))
+    assert CONTROLLER in impact.affected
+    outside = [p for p in impact.affected if p not in delta]
+    tests = [p for p in existing if p.startswith("src/test/")]
+    passing = [f"{p.removeprefix('src/test/java/').removesuffix('.java').replace('/', '.')}.aTest" for p in tests]
+    assert unobserved(merged, impact, sorted(delta), passing) == [
+        p for p in outside if not any(declared_name(p) in existing[t] for t in tests)
+    ]
+    assert unobserved(merged, impact, sorted(delta), []) == outside  # with no passing test nothing is observed
+    record = impact_record(impact, outside, [])
+    assert set(record) == {"changed", "affected", "tables", "transactions", "by_file", "outside", "unobserved"}

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { DeltaOut } from '@/api/delta'
-import { baselineOf, designOf, endpointOf, isDeltaEmpty } from './model'
+import { baselineOf, designOf, endpointOf, impactOf, isDeltaEmpty } from './model'
 
 describe('baseline', () => {
   it('reads the passing tests and the ones already failing before the delta', () => {
@@ -89,3 +89,27 @@ describe('empty delta', () => {
     expect(isDeltaEmpty({ ...empty, report: '# DELTA' })).toBe(false)
   })
 })
+
+describe('impact', () => {
+  it('reads what the delta reaches and what nobody observed; null before the validation', () => {
+    expect(
+      impactOf({
+        changed: ['a/PaymentController.java'],
+        affected: ['a/PaymentController.java', 'a/PaymentService.java'],
+        outside: ['a/PaymentService.java'],
+        unobserved: ['a/PaymentService.java'],
+        tables: ['orders'],
+        transactions: ['a/PaymentController.java'],
+      }),
+    ).toEqual({
+      affected: ['a/PaymentController.java', 'a/PaymentService.java'],
+      outside: ['a/PaymentService.java'],
+      unobserved: ['a/PaymentService.java'],
+      tables: ['orders'],
+      transactions: ['a/PaymentController.java'],
+    })
+    expect(impactOf(null)).toBeNull()
+    expect(impactOf({ tables: 'x' })).toEqual({ affected: [], outside: [], unobserved: [], tables: [], transactions: [] })
+  })
+})
+

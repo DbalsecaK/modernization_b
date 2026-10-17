@@ -2786,6 +2786,18 @@
             ],
             "title": "Design"
           },
+          "impact": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Impact"
+          },
           "inventory": {
             "anyOf": [
               {

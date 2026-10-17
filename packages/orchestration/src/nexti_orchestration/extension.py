@@ -16,7 +16,7 @@ Only the delta is stored; an existing file is never deleted and an existing test
 
 import json
 import re
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import asdict, dataclass
 from typing import Any, Protocol
 
@@ -24,6 +24,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from nexti_agents import prompt
 from nexti_core.adapters import SourceFile
+from nexti_core.impact import SOURCE_SUFFIXES, Impact, declared_name, target_impact
 from nexti_ivv.target import TargetInventory, inventory
 from nexti_orchestration.context import Attempt, PhaseContext, Verification
 from nexti_orchestration.extraction import JSON_ERRORS, ModelCaller, ReplyError, parse_json, raise_if_cut
@@ -39,6 +40,7 @@ from nexti_verification import verdict as checks
 ARCHITECT, DEVELOPER, TESTER, VALIDATOR = "solution-architect", "backend-dev", "test-engineer", "acceptance-judge"
 AS_IS = "delta/as-is-inventory.json"
 BASELINE = "delta/baseline.json"
+IMPACT = "delta/impact.json"  # what the delta reaches in the application (ADR-0055, point 11)
 DESIGN = "delta/design.json"
 DELTA = "delta/files.json"
 INDEX = "delta/index.json"  # the new and the changed files, for the web
@@ -122,6 +124,31 @@ def read_inventory(files: dict[str, str]) -> TargetInventory:
 
 def test_id(test: Any) -> str:
     return f"{test.classname}.{test.name}"
+
+
+def unobserved(merged: Mapping[str, str], impact: Impact, delta: Sequence[str], passing: Sequence[str]) -> list[str]:
+    """The files the delta reaches outside itself that no passing test observes (ADR-0055, flow 3): a test
+    observes a file when its class names the type the file declares; `passing` are the ids of the tests that passed
+    before and after the delta (`classname.method`)."""
+    classes = {test.rsplit(".", 1)[0].rsplit(".", 1)[-1] for test in passing}
+    tests = [
+        text
+        for path, text in merged.items()
+        if path.startswith("src/test/") and path.endswith(SOURCE_SUFFIXES) and declared_name(path) in classes
+    ]
+    outside = [path for path in impact.affected if path not in delta]
+    found: list[str] = []
+    for path in outside:
+        pattern = re.compile(r"\b" + re.escape(declared_name(path)) + r"\b")
+        if not any(pattern.search(text) for text in tests):
+            found.append(path)
+    return found
+
+
+def impact_record(impact: Impact, outside: Sequence[str], missing: Sequence[str]) -> dict[str, Any]:
+    return {"changed": list(impact.changed), "affected": list(impact.affected), "tables": list(impact.tables),
+            "transactions": list(impact.transactions), "by_file": {k: list(v) for k, v in impact.by_file.items()},
+            "outside": list(outside), "unobserved": list(missing)}  # fmt: skip
 
 
 def delta_problems(design: DeltaDesign, stories: Sequence[FeatureStory], found: TargetInventory,
@@ -335,8 +362,11 @@ class ExtensionPhases:
         build = await pack.compile_and_test(self.port.sandbox(pack.image), files)
         if not build.compiled:
             raise PhaseFailedError(f"The application does not compile as it is: {build.compile_errors[:1500]}")
+        # ADR-0055: the baseline also names the application's data graph (tables, transaction boundaries).
+        whole = target_impact(files, sorted(files))
         baseline = {"passed": sorted(test_id(t) for t in build.tests if t.status == "passed"),
-                    "failed": sorted(test_id(t) for t in build.tests if t.status == "failed")}  # fmt: skip
+                    "failed": sorted(test_id(t) for t in build.tests if t.status == "failed"),
+                    "tables": list(whole.tables), "transactions": list(whole.transactions)}  # fmt: skip
         await self.port.save_artifacts(
             {AS_IS: json.dumps(asdict(found), indent=2, default=list), BASELINE: json.dumps(baseline, indent=2)},
             {AS_IS: "docs", BASELINE: "docs"}, {},
@@ -524,11 +554,16 @@ class ExtensionPhases:
         passed = [test_id(t) for t in build.tests if t.status == "passed"]
         criteria = criteria_of(stories)
         broken = contract_broken(before, read_inventory(merged))
+        # ADR-0055 (point 16): what the delta reaches outside itself must be observed before and after it.
+        impact = target_impact(merged, sorted(delta))
+        outside = [p for p in impact.affected if p not in delta]
+        missing = unobserved(merged, impact, sorted(delta), sorted(set(baseline["passed"]) & set(passed)))
         found = [
             checks.regression(baseline["passed"], passed, bool(build.junit_xml)),
             checks.criteria_covered(criteria, [t.name for t in build.tests if t.status == "passed"]),
             checks.contract_kept([f"{e.method} {e.path}" for e in before.endpoints], broken),
             checks.fitness(fitness_violations(existing, delta)),
+            checks.impact_bounded(outside, missing, impact.tables, impact.transactions),
         ]
         if build.ok and build.passed:
             found.append(checks.canary(await self._canary(ctx, pack, sandbox, existing, delta)))
@@ -541,6 +576,8 @@ class ExtensionPhases:
         not_proven = [
             "The delta is checked through the application's tests; the running application (HTTP, database engine) is "
             "checked by the build, not end to end",
+            f"Outside the delta, {impact.names()}: the files it reaches are observed through the tests that passed "
+            "before and after, not through a before/after golden master of the running application",
             "The regression covers what the application's own tests cover: behaviour no test exercises is not observed",
         ]
         if baseline["failed"]:
@@ -552,8 +589,13 @@ class ExtensionPhases:
             "BASELINE.json": baseline, "CONTRACT.json": {"broken": broken},
             "DELTA.json": {"added": sorted(p for p in delta if p not in existing),
                            "changed": sorted(p for p in delta if p in existing)},
+            "IMPACT.json": impact_record(impact, outside, missing),
         }))  # fmt: skip
-        await self.port.save_artifacts({REPORT: report(verdict, delta, existing, design)}, {REPORT: "docs"}, {})
+        await self.port.save_artifacts(
+            {REPORT: report(verdict, delta, existing, design),
+             IMPACT: json.dumps(impact_record(impact, outside, missing), indent=2)},
+            {REPORT: "docs", IMPACT: "docs"}, {},
+        )  # fmt: skip
         ok = sum(1 for c in verdict.checks if c.status == "passed")
         return {"summary": f"{module}: {verdict.verdict} ({ok} of {len(verdict.checks)} checks passed)",
                 "verdict": verdict.verdict, "proof_pack": key}  # fmt: skip

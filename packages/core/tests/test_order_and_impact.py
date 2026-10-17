@@ -66,3 +66,19 @@ def test_a_change_in_the_target_reaches_the_files_tables_and_transactions_that_d
     assert impact.names() == "4 file(s) affected, 1 table(s), 1 transaction boundary(ies)"
     nothing = target_impact(files, ["src/main/resources/db/schema.sql"])
     assert nothing.affected == ()
+
+
+def test_a_use_case_writes_when_a_port_of_its_acknowledges_or_says_so() -> None:
+    from nexti_core.spec.design import Design, writes
+
+    design = Design.model_validate({
+        "context": "orders", "base_package": "com.x.orders",
+        "entities": [{"name": "Order", "table": "orders", "key": ["id"],
+                      "fields": [{"name": "id", "type": "integer(32,signed)", "column": "id"}]}],
+        "ports": [{"name": "OrderRepository", "entity": "Order", "methods": [
+            {"name": "find", "returns": "Order"}, {"name": "save", "returns": None}]},
+                  {"name": "RateReader", "methods": [{"name": "rateOf", "returns": "int"}]}],
+        "use_cases": [{"name": "PlaceOrder", "rules": ["RULE-001"], "ports": ["OrderRepository"]},
+                      {"name": "QuoteOrder", "rules": ["RULE-002"], "ports": ["RateReader"]}],
+    })  # fmt: skip
+    assert [writes(design, u) for u in design.use_cases] == [True, False]

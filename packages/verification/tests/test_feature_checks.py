@@ -23,11 +23,37 @@ def test_the_feature_verdict_has_its_six_checks() -> None:
         v.canary([{"line": 3, "after": "x", "caught_by": "test t"}]),
         v.questions_closed([]),
         v.traced_to_inputs(9, []),
+        v.unit_of_work_generated(["Simulate"], []),
+        v.schema_applies(""),
     ]
     verdict = v.compute("loans", found, [], required=v.FEATURE_CHECKS)
     assert verdict.verdict == "PROVEN"
     assert [c.title for c in verdict.checks][1:3] == ["Criteria covered", "Contracts"]
-    open_question = v.compute("loans", [*found[:4], v.questions_closed(["¿Monto?"]), found[5]], [],
+    assert [c.title for c in verdict.checks][-2:] == ["Unit of work", "Schema applies"]
+    open_question = v.compute("loans", [*found[:4], v.questions_closed(["¿Monto?"]), *found[5:]], [],
                               required=v.FEATURE_CHECKS)  # fmt: skip
     assert open_question.verdict == "NOT PROVEN"
     assert v.compute("loans", found[:5], [], required=v.FEATURE_CHECKS).verdict == "PARTLY PROVEN"
+
+
+def test_a_delta_must_be_observed_wherever_it_reaches() -> None:
+    # ADR-0055 (flow 3): the files the delta reaches outside itself need a test that passed before and after.
+    assert v.impact_bounded([], [], ["orders"], []).status == "passed"
+    seen = v.impact_bounded(["a/PaymentService.java"], [], ["orders"], ["a/PaymentController.java"])
+    assert seen.status == "passed"
+    blind = v.impact_bounded(["a/PaymentService.java", "a/PaymentController.java"], ["a/PaymentController.java"],
+                             [], ["a/PaymentController.java"])  # fmt: skip
+    assert blind.status == "failed"
+    assert "among them a transaction boundary: a/PaymentController.java" in blind.detail
+    assert "before/after golden master" in blind.detail
+
+
+def test_flow_2_demands_a_unit_of_work_where_it_writes_and_a_schema_the_engine_accepts() -> None:
+    # ADR-0055 (point 17): no legacy to copy the transaction from, so the pack makes the request the transaction.
+    assert v.unit_of_work_generated([], []).status == "passed"
+    assert v.unit_of_work_generated(["PayOrder"], []).status == "passed"
+    missing = v.unit_of_work_generated(["PayOrder", "Refund"], ["Refund"])
+    assert (missing.status, "Refund" in missing.detail) == ("failed", True)
+    assert v.schema_applies("").status == "passed"
+    assert v.schema_applies('ERROR: syntax error at or near "VARCHAR2"').status == "failed"
+    assert v.schema_applies(None, "the go pack does not apply its schema on an engine").status == "not_checked"

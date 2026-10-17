@@ -189,6 +189,25 @@ class UseCase(DesignModel):
     )
 
 
+WRITE_PREFIXES = ("save", "update", "delete", "insert", "record", "register", "create", "store", "write", "remove",
+                  "add", "apply", "post", "debit", "credit", "transfer", "cancel", "approve", "reject")  # fmt: skip
+
+
+def writes(design: "Design", use_case: UseCase) -> bool:
+    """Whether a use case changes data: one of its ports has a method that returns nothing or a boolean (a write
+    acknowledges, it does not read) or whose name says it writes. A use case that writes needs one unit of work
+    (ADR-0055): without a legacy to copy it from, the pack makes the request its transaction."""
+    ports = {p.name: p for p in design.ports}
+    for name in use_case.ports:
+        port = ports.get(name)
+        if port is None:
+            continue
+        for method in port.methods:
+            if method.returns in (None, "boolean") or method.name.lower().startswith(WRITE_PREFIXES):
+                return True
+    return False
+
+
 class EquivalenceMask(DesignModel):
     """A declared difference with the legacy (spec 11.3 check 3): approved with the design at C3, listed by the
     verdict among what it does not prove."""

@@ -375,4 +375,6 @@ class DeltaOut(ApiModel):
     design: dict[str, Any] | None
     added: list[str]
     changed: list[str]
+    impact: dict[str, Any] | None = None  # what the delta reaches in the application (ADR-0055): files, tables,
+    # transaction boundaries, and the files outside the delta that no test observes
     report: str | None

@@ -22,6 +22,7 @@ AS_IS = "delta/as-is-inventory.json"
 BASELINE = "delta/baseline.json"
 DESIGN = "delta/design.json"
 INDEX = "delta/index.json"
+IMPACT = "delta/impact.json"
 REPORT = "delta/DELTA.md"
 
 
@@ -30,7 +31,7 @@ async def _rows(conn: AsyncConnection, project_id: uuid.UUID) -> dict[str, dict[
         await conn.execute(
             text("SELECT DISTINCT ON (path) path, object_key, created_at FROM generated_artifact "
                  "WHERE project_id = :p AND path = ANY(:paths) ORDER BY path, created_at DESC"),
-            {"p": project_id, "paths": [AS_IS, BASELINE, DESIGN, INDEX, REPORT]},
+            {"p": project_id, "paths": [AS_IS, BASELINE, DESIGN, INDEX, IMPACT, REPORT]},
         )
     ).mappings().all()  # fmt: skip
     return {row["path"]: dict(row) for row in rows}
@@ -50,10 +51,12 @@ async def get_delta(request: Request, project_id: uuid.UUID, auth: ViewCode) -> 
     inventory, baseline = await _text(request, rows.get(AS_IS)), await _text(request, rows.get(BASELINE))
     design, index = await _text(request, rows.get(DESIGN)), await _text(request, rows.get(INDEX))
     changes = json.loads(index) if index else {"added": [], "changed": []}
+    impact = await _text(request, rows.get(IMPACT))
     return DeltaOut(
         inventory=json.loads(inventory) if inventory else None,
         baseline=json.loads(baseline) if baseline else None,
         design=json.loads(design) if design else None,
         added=list(changes["added"]), changed=list(changes["changed"]),
+        impact=json.loads(impact) if impact else None,
         report=await _text(request, rows.get(REPORT)),
     )  # fmt: skip

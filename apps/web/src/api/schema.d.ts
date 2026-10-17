@@ -3785,6 +3785,10 @@ export interface components {
             design: {
                 [key: string]: unknown;
             } | null;
+            /** Impact */
+            impact?: {
+                [key: string]: unknown;
+            } | null;
             /** Inventory */
             inventory: {
                 [key: string]: unknown;

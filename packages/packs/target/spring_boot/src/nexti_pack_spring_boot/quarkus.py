@@ -15,6 +15,7 @@ from collections.abc import Mapping
 from typing import Any
 
 from nexti_core.spec.characterization import GoldenMaster, Scalar
+from nexti_core.spec.design import writes
 from nexti_core.spec.equivalence import EquivalenceRun
 from nexti_pack_spring_boot.design import Design, UseCase
 from nexti_pack_spring_boot.equivalence import harness_source, run_equivalence
@@ -52,8 +53,10 @@ def resource_file(design: Design, use_case: UseCase) -> tuple[str, str]:
     if method not in _BODY_METHODS and use_case.inputs:
         imports.append("jakarta.ws.rs.QueryParam")
     # ADR-0055: the unit of work of the legacy is the transaction of the request (a rejection undoes everything).
-    transactional = "    @Transactional\n" if use_case.unit_of_work else ""
-    if use_case.unit_of_work:
+    # ADR-0055 (point 17): a use case that writes without a legacy makes the request its transaction too.
+    bounded = use_case.unit_of_work is not None or (use_case.legacy_program is None and writes(design, use_case))
+    transactional = "    @Transactional\n" if bounded else ""
+    if bounded:
         imports.append("jakarta.transaction.Transactional")
     lines = "".join(f"import {i};\n" for i in sorted(imports))
     return _path(package, f"{use_case.name}Resource"), (

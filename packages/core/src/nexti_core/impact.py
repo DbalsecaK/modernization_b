@@ -10,9 +10,10 @@ from dataclasses import dataclass, field
 
 SOURCE_SUFFIXES = (".java", ".cs", ".go")
 _TABLE = re.compile(r"\b(?:from|into|update|join)\s+([A-Za-z_][A-Za-z0-9_.]*)", re.I)
-_TRANSACTION = re.compile(
-    r"TransactionTemplate|@Transactional|\bInTx\(|TransactionFilter|BeginTransaction\(|\.Begin\(\)"
+TRANSACTION_BOUNDARY = re.compile(
+    r"TransactionTemplate|@Transactional|\bInTx\(|TransactionFilter|BeginTransaction\(|\.Begin\(\)|TransactionScope"
 )
+_TRANSACTION = TRANSACTION_BOUNDARY
 _SQL_WORDS = {"select", "where", "set", "values", "and", "or", "on", "as", "order", "group", "by", "dual"}
 
 
