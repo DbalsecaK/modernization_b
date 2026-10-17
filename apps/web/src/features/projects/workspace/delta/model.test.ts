@@ -109,7 +109,12 @@ describe('impact', () => {
       transactions: ['a/PaymentController.java'],
     })
     expect(impactOf(null)).toBeNull()
-    expect(impactOf({ tables: 'x' })).toEqual({ affected: [], outside: [], unobserved: [], tables: [], transactions: [] })
+    expect(impactOf({ tables: 'x' })).toEqual({
+      affected: [],
+      outside: [],
+      unobserved: [],
+      tables: [],
+      transactions: [],
+    })
   })
 })
-
