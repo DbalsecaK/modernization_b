@@ -40,12 +40,12 @@ def test_every_shipped_adapter_meets_the_required_contract_and_its_gaps_are_the_
     for name, findings in reports.items():
         assert problems(findings) == [], (name, [f for f in findings if f.status != "passed"])
     gaps = {name: sorted(f.key for f in findings if f.status != "passed") for name, findings in reports.items()}
-    # ADR-0055: the unit of work exists in Sybase; the other adapters close it in phase I. Nobody reports the
-    # effects of the calls yet (phase C reads them on the customer's server, not from the adapter).
+    # ADR-0055: every adapter reports the unit of work (phase I). Nobody reports the effects of the calls yet
+    # (phase C reads them on the customer's server, not from the adapter).
     assert gaps["Sybase ASE (T-SQL)"] == ["call_effects", "coverage_branches", "program_quirks", "screens"]
-    assert gaps["COBOL/CICS"] == ["call_effects", "program_quirks", "unit_of_work"]
-    assert gaps["ASP.NET WebForms"] == ["call_effects", "program_quirks", "unit_of_work"]
-    assert gaps["RPG/IBM i"] == ["call_effects", "unit_of_work"]
+    assert gaps["COBOL/CICS"] == ["call_effects", "program_quirks"]
+    assert gaps["ASP.NET WebForms"] == ["call_effects", "program_quirks"]
+    assert gaps["RPG/IBM i"] == ["call_effects"]
     assert set(REQUIRED) <= {c.key for c in CONTRACT}
 
 

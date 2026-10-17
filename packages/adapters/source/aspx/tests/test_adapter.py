@@ -166,3 +166,12 @@ def test_the_methods_each_trace_ran_are_the_coverage_of_the_page() -> None:
     assert master.coverage is not None
     assert master.coverage.exercised == {click}
     assert all(b.kind == "method" for b in master.coverage.branches)
+
+
+def test_the_unit_of_work_of_a_page_is_its_transaction() -> None:
+    # ADR-0055: BeginTransaction opens it (line 34 of Transferencia.aspx.cs), every Rollback undoes it and Commit
+    # confirms it; the characterization asks a case per rollback and the design declares each one.
+    work = AspxAdapter().unit_of_work(FILES, "Transferencia")
+    assert work == [(34, "begin_tran"), (43, "rollback"), (52, "rollback"), (62, "rollback"), (70, "rollback"),
+                    (102, "commit")]  # fmt: skip
+    assert AspxAdapter().unit_of_work(FILES, "nope") == []

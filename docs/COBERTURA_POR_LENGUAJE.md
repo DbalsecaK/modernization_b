@@ -12,7 +12,7 @@ Generado por `packages/orchestration/tests/test_language_coverage.py` desde las 
 | `data_of` (obligatoria): tables read and written inside a slice | ✓ | ✓ | ✓ | ✓ |
 | `digest` (obligatoria): the inventory in a few lines for the agents | ✓ | ✓ | ✓ | ✓ |
 | `engine_quirks` (obligatoria): engine behaviours the code relies on (an empty list when none is catalogued) | ✓ | ✓ | ✓ | ✓ |
-| `unit_of_work` (opcional): where a program begins, saves, confirms and undoes its work (ADR-0055) | ✓ | — | — | — |
+| `unit_of_work` (opcional): where a program begins, saves, confirms and undoes its work (ADR-0055) | ✓ | ✓ | ✓ | ✓ |
 | `call_effects` (opcional): the tables each external call touches (ADR-0055) | — | — | — | — |
 | `screens` (opcional): the screens the programs show | — | ✓ | ✓ | ✓ |
 | `coverage_branches` (opcional): the branches an instrumented run can report (ADR-0047) | — | ✓ | ✓ | ✓ |

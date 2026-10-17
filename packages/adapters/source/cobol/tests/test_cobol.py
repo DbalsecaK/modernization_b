@@ -158,3 +158,14 @@ def test_parser_details_beyond_the_reference() -> None:
     with_copy = continued.replace("       PROCEDURE DIVISION.", data + "       PROCEDURE DIVISION.")
     missing = CobolAdapter().inventory([SourceFile("cbl/CONT.cbl", with_copy)])
     assert any("copybook NOPE is not in the inputs" in p for p in missing.problems), missing.problems
+
+
+def test_the_unit_of_work_of_a_cics_program_is_its_syncpoints() -> None:
+    # ADR-0055: the task's unit of work begins with the first statement and SYNCPOINT confirms it (line 172 of
+    # PAGOORD); a program without syncpoints commits implicitly at its end and reports nothing.
+    adapter = CobolAdapter()
+    work = adapter.unit_of_work(workspace(), "PAGOORD")
+    assert [kind for _, kind in work] == ["begin_tran", "commit"]
+    assert (172, "commit") in work
+    assert adapter.unit_of_work(workspace(), "PAGOMNU") == []
+    assert adapter.unit_of_work(workspace(), "NOPE") == []

@@ -47,7 +47,8 @@ Las fases A a E no usan modelos; la F sí.
 | G | 13 | Hecho (2026-10-17) | Contrato completo del adaptador como código (`nexti_core.conformance`: 8 capacidades obligatorias, 5 opcionales con `unit_of_work` y `call_effects` nuevas) y prueba de conformidad sobre los cuatro adaptadores con sus fixtures; los huecos conocidos quedan afirmados en la prueba |
 | J | 21 | Hecho (2026-10-17) | `docs/COBERTURA_POR_LENGUAJE.md` generado por la propia prueba de conformidad (falla si el documento no es el que producen los chequeos) |
 | G | 11, 12 | Hecho (2026-10-17) | `nexti_core.impact.target_impact`: qué archivos, tablas y fronteras de transacción del destino alcanza un cambio, en cascada por los nombres que declaran (Java, C#, Go), para el alcance del golden master del flujo 3 y lo que el tercero debió probar en el flujo 4; `nexti_core.order.migration_order`: niveles del grafo de llamadas desde las hojas (externos aparte, ciclos juntos) y su texto para los agentes. Pendiente: exponerlos en la API/web y usarlos en los flujos 3 y 4 (fase H) |
-| F, H, I, J (20) | resto | Pendiente | — |
+| I | 19 (parte) | Hecho (2026-10-17) | `unit_of_work` en COBOL/CICS (`SYNCPOINT` / `SYNCPOINT ROLLBACK`), ASP.NET (`BeginTransaction`/`TransactionScope`, `Commit`/`Complete`, `Rollback`) y RPG (`COMMIT`/`ROLBK` bajo control de compromiso); con ello la caracterización exige un caso por rollback y el diseño declara la unidad de trabajo en todo origen; cobertura por lenguaje regenerada. Pendiente: `call_effects` en los adaptadores y el manual semántico ejecutable (18) |
+| F, H, I (18), J (20) | resto | Pendiente | — |
 
 ## Cómo se valida cada fase
 
