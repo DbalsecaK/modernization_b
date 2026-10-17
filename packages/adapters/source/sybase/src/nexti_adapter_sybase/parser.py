@@ -378,7 +378,9 @@ def _analyse(stmt: Statement, tokens: list[Token], kind: str) -> None:
                 k = j + 1
                 if k < len(tokens) and tokens[k].is_word("AS"):
                     k += 1
-                while k < len(tokens) and not tokens[k].is_symbol(","):
+                depth = 0  # `decimal(10,2)`: the comma inside the parentheses belongs to the type
+                while k < len(tokens) and not (depth == 0 and tokens[k].is_symbol(",")):
+                    depth += 1 if tokens[k].is_symbol("(") else -1 if tokens[k].is_symbol(")") else 0
                     type_tokens.append(tokens[k])
                     k += 1
                 stmt.declared[tokens[j].text.lower()] = _type_text(type_tokens)

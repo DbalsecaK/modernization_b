@@ -23,6 +23,12 @@ LINES_AT_MOST = 50
 _CHAR = re.compile(r"^(n|uni)?(var)?char\b|^(uni)?text\b|^sysname\b", re.IGNORECASE)
 _FIXED_CHAR = re.compile(r"^(n|uni)?char\b", re.IGNORECASE)
 _INT = re.compile(r"^(int|integer|smallint|tinyint|bigint|unsigned\s+\w*int)\b", re.IGNORECASE)
+_MONEY = re.compile(r"^(small)?money\b", re.IGNORECASE)
+_SIZED_CHAR = re.compile(r"^(n|uni)?(var)?char\s*\(\s*(\d+)\s*\)", re.IGNORECASE)
+_DECIMAL = re.compile(r"^(decimal|numeric)\s*\(\s*\d+\s*,\s*(\d+)\s*\)", re.IGNORECASE)
+_ENDS_EXPRESSION = {"SELECT", "SET", "FROM", "WHERE", "IF", "ELSE", "WHILE", "BEGIN", "END", "RETURN", "EXEC",
+                    "EXECUTE", "DECLARE", "INSERT", "UPDATE", "DELETE", "PRINT", "GOTO", "BREAK",
+                    "CONTINUE"}  # fmt: skip
 _COMPARING = {"IF", "WHILE", "WHERE", "AND", "OR", "WHEN", "HAVING", "ON", "NOT"}
 _TRIGGER = re.compile(r"create\s+trigger\s+([\w.\[\]]+)\s+on\s+([\w.\[\]]+)", re.IGNORECASE)
 
@@ -95,6 +101,52 @@ CATALOG: dict[str, Spec] = {
              "CONVERT with a style number formats dates in the engine's fixed formats (style 103 is dd/mm/yyyy).",
              "Format with the exact pattern of each style used, independent of the locale.",
              "select 'NXQ|date-style|' + convert(varchar(10), convert(datetime, '20240305'), 103)", "05/03/2024"),
+        # ADR-0055 (I.18): the behaviours the double check of sp_debcred_empresa named, measured on the engine.
+        Spec("varchar-assign-truncates", "medium",
+             "Assigning a longer value to a CHAR/VARCHAR(n) variable or column keeps its first n characters "
+             "silently (no error, no warning).",
+             "Truncate to the declared length wherever the program assigns to a sized string, as the golden master "
+             "shows; never let a longer value through or fail on it.",
+             "declare @v varchar(5)\nselect @v = 'ABCDEFGH'\nselect 'NXQ|varchar-assign-truncates|' + @v", "ABCDE"),
+        Spec("money-to-int-rounds", "high",
+             "Converting MONEY to an integer rounds to the nearest unit (2.7 -> 3, -2.7 -> -3), and dividing two "
+             "MONEY values keeps four decimals (7 / 2 = 3.50), so an integer variable receives 4, not 3.",
+             "Round half away from zero when a money amount lands in an integer; keep money division exact "
+             "(scale 4) and round only at the assignment.",
+             "declare @i int, @j int, @m money, @a money, @b money\nselect @m = 2.7, @a = 7, @b = 2\n"
+             "select @i = @m\nselect @j = @a / @b\nselect 'NXQ|money-to-int-rounds|' + convert(varchar(10), @i) "
+             "+ '|' + convert(varchar(10), convert(int, convert(money, -2.7))) + '|' + convert(varchar(10), @j)",
+             "3|-3|4"),
+        Spec("substring-no-match-errors", "high",
+             "SUBSTRING with a length below 1 (PATINDEX/CHARINDEX found nothing, minus one) raises error 536; the "
+             "assignment is skipped, the variable keeps its previous value and the procedure goes on.",
+             "When the searched separator is absent, do what the legacy does after the error: keep the previous "
+             "value of the variable and continue (or whatever the program does with @@error); never slice "
+             "with a negative length nor throw out of the program.",
+             "declare @v varchar(10), @e int\nselect @v = 'KEEP'\n"
+             "select @v = substring('ABC', 1, patindex('%-%', 'ABC') - 1)\nselect @e = @@error\n"
+             "select 'NXQ|substring-no-match-errors|' + @v + '|' + convert(varchar(10), @e)",
+             "KEEP|536"),
+        Spec("decimal-scale-assign-errors", "high",
+             "Assigning a literal with more decimals than the scale to a DECIMAL(p,s) variable raises error 241 "
+             "(scale error) and aborts the batch; the value is not rounded.",
+             "Give decimal variables exactly the scale of the legacy and fail where the legacy fails; do not "
+             "round a value the legacy rejects.",
+             "declare @e int\nexec('declare @d decimal(10,2) select @d = 2.345')\nselect @e = @@error\n"
+             "select 'NXQ|decimal-scale-assign-errors|' + convert(varchar(10), @e)",
+             "241"),
+        Spec("decimal-convert-truncates", "medium",
+             "CONVERT to DECIMAL(p,s) cuts the extra decimals, it does not round (2.345 -> 2.34, 2.355 -> 2.35).",
+             "Truncate (round toward zero) when the program converts to a decimal of fewer decimals; use the "
+             "rounding the golden master shows, never the platform's default half-up rounding.",
+             "select 'NXQ|decimal-convert-truncates|' + convert(varchar(20), convert(decimal(10,2), 2.345)) + '|' "
+             "+ convert(varchar(20), convert(decimal(10,2), 2.355))",
+             "2.34|2.35"),
+        Spec("isnull-keeps-replacement", "low",
+             "ISNULL returns the replacement whole, even when it is longer than the type of the first argument "
+             "(isnull(convert(varchar(2), null), 'LONGER') = 'LONGER').",
+             "Return the replacement as it is; do not truncate it to the length of the value it replaces.",
+             "select 'NXQ|isnull-keeps-replacement|' + isnull(convert(varchar(2), null), 'LONGER')", "LONGER"),
     )
 }  # fmt: skip
 
@@ -129,6 +181,57 @@ def _matches(tokens: Sequence[Token], types: dict[str, str]) -> dict[str, set[in
             return False
         return (tok.kind == "number" and tok.text.isdigit()) or typed(tok, _INT)
 
+    def size_of(tok: Token | None, pattern: re.Pattern[str], group: int) -> int | None:
+        """The declared length (or scale) of a variable, when its type carries one."""
+        if tok is None or tok.kind != "variable":
+            return None
+        match = pattern.match(types.get(tok.text.lower(), ""))
+        return int(match.group(group)) if match else None
+
+    def expression(start: int) -> list[Token]:
+        """The tokens of the expression that starts at `start`: up to the next statement word, a comma outside
+        parentheses or a change of line outside parentheses."""
+        out: list[Token] = []
+        depth = 0
+        for later in tokens[start:]:
+            if depth == 0 and (later.is_symbol(",") or (later.kind == "word" and later.upper in _ENDS_EXPRESSION)):
+                break
+            if depth == 0 and out and later.line != out[-1].line:
+                break
+            if later.is_symbol("("):
+                depth += 1
+            elif later.is_symbol(")"):
+                if depth == 0:
+                    break
+                depth -= 1
+            out.append(later)
+        return out
+
+    def decimals(tok: Token) -> int:
+        return len(tok.text.rsplit(".", 1)[1]) if tok.kind == "number" and "." in tok.text else 0
+
+    def overflows(value: list[Token], size: int) -> bool:
+        """Whether a value may be longer than `size`: a literal or a sized variable that is, or a concatenation
+        whose known lengths add up to more (or include something of unknown length: a function, an unsized
+        variable)."""
+        lengths = [len(t.text) - 2 if t.kind == "string" else size_of(t, _SIZED_CHAR, 3)
+                   for t in value if t.kind in ("string", "variable")]  # fmt: skip
+        if any(length is not None and length > size for length in lengths):
+            return True
+        if not any(t.is_symbol("+") for t in value):
+            return False
+        unknown = any(t.kind == "word" for t in value) or None in lengths
+        return unknown or sum(length or 0 for length in lengths) > size
+
+    def expression_after(start: int, commas: int) -> list[Token]:
+        """The tokens of the argument `commas` commas after the one that starts at `start`."""
+        at = start
+        for _ in range(commas):
+            at += len(expression(at)) + 1
+            if at >= len(tokens) or not tokens[at - 1].is_symbol(","):
+                return []
+        return expression(at)
+
     def comparing(index: int) -> bool:
         """An `=` inside a condition (IF, WHERE, AND, WHEN...), not an assignment (SELECT @v =, SET col =, a
         parameter default): the nearest owner word back decides, and a comma means a list of assignments."""
@@ -162,6 +265,32 @@ def _matches(tokens: Sequence[Token], types: dict[str, str]) -> dict[str, set[in
             add("char-padding", tok.line)
         if tok.is_word("SET") and nxt is not None and nxt.is_word("ROWCOUNT"):
             add("rowcount-option", tok.line)
+        if tok.is_symbol("=") and prev is not None and prev.kind == "variable" and not comparing(i):
+            value = expression(i + 1)
+            size = size_of(prev, _SIZED_CHAR, 3)
+            if size is not None and overflows(value, size):
+                add("varchar-assign-truncates", tok.line)
+            if typed(prev, _INT) and any(typed(t, _MONEY) for t in value):
+                add("money-to-int-rounds", tok.line)
+            scale = size_of(prev, _DECIMAL, 2)
+            if scale is not None and any(decimals(t) > scale for t in value):
+                add("decimal-scale-assign-errors", tok.line)
+        if tok.is_word("CONVERT") and nxt is not None and nxt.is_symbol("("):
+            inside = expression(i + 2)
+            argument = expression(i + 2 + len(inside) + 1)
+            if inside and _INT.match(inside[0].text) and any(typed(t, _MONEY) for t in argument):
+                add("money-to-int-rounds", tok.line)
+            if inside and _DECIMAL.match(" ".join(t.text for t in inside)):
+                add("decimal-convert-truncates", tok.line)
+        if tok.is_word("SUBSTRING") and nxt is not None and nxt.is_symbol("("):
+            arguments = expression(i + 2) + expression_after(i + 2, 2)
+            if any(t.is_word("PATINDEX", "CHARINDEX") for t in arguments):
+                add("substring-no-match-errors", tok.line)
+        if tok.is_word("ISNULL") and nxt is not None and nxt.is_symbol("("):
+            first = expression(i + 2)
+            second = expression_after(i + 2, 1)
+            if any(t.kind == "string" for t in second) and not any(t.kind == "string" for t in first):
+                add("isnull-keeps-replacement", tok.line)
         if tok.is_word("CONVERT") and nxt is not None and nxt.is_symbol("("):
             depth, commas = 0, 0
             for later in tokens[i + 1 :]:

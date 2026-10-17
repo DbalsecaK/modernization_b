@@ -41,6 +41,27 @@ go
 """
 
 
+SEMANTICS = """create procedure sp_demo_semantica
+    @i_cuenta   char(20),
+    @i_monto    money,
+    @o_texto    varchar(5) = null output
+as
+declare @w_ent int, @w_dec decimal(10,2), @w_tipo varchar(4), @w_cod varchar(10), @w_nom varchar(60)
+select @o_texto = @i_cuenta
+select @o_texto = 'AB' + @w_tipo
+select @w_nom = 'corto'
+select @w_ent = @i_monto
+select @w_ent = convert(int, @i_monto / 2)
+select @w_dec = 2.345
+select @w_dec = convert(decimal(10,2), @i_monto)
+select @w_cod = substring(@i_cuenta, 1, patindex('%-%', @i_cuenta) - 1)
+select @w_tipo = isnull(@w_tipo, 'LONGER')
+select @w_nom = isnull(@w_nom, @w_cod)
+return 0
+go
+"""
+
+
 def _detected(text: str) -> dict[str, list[int]]:
     source = SourceFile("sp/demo.sp", text)
     (_, procedure) = golden.procedures([source])[0]
@@ -56,6 +77,22 @@ def test_the_quirks_are_found_in_the_code_with_their_lines() -> None:
     assert found["date-style"] == [15]
     assert found["rowcount-option"] == [7, 17]
     assert "char-padding" not in found  # no fixed CHAR in this program
+
+
+def test_the_semantic_quirks_of_the_double_check_are_found_with_their_lines() -> None:
+    # ADR-0055 (I.18): each behaviour the double check named is found by the tokens of the statement that relies
+    # on it, with the declared types of the variables deciding (a varchar(5) receiving a char(20) or a
+    # concatenation, an int receiving money, a decimal(10,2) receiving 2.345...).
+    found = _detected(SEMANTICS)
+    # char(20) into varchar(5); 'AB' + varchar(4) may exceed 5; a slice of char(20) into varchar(10); 'LONGER'
+    # into varchar(4). Not line 9: 'corto' fits in varchar(60).
+    assert found["varchar-assign-truncates"] == [7, 8, 14, 15]
+    assert found["money-to-int-rounds"] == [10, 11]
+    assert found["decimal-scale-assign-errors"] == [12]
+    assert found["decimal-convert-truncates"] == [13]
+    assert found["substring-no-match-errors"] == [14]
+    assert found["isnull-keeps-replacement"] == [15]  # not line 16: the replacement is a variable
+    assert "null-compare" not in found
 
 
 def test_the_fixture_relies_on_the_quirks_of_its_statements() -> None:
@@ -136,3 +173,11 @@ def test_every_probe_of_the_catalog_holds_on_a_live_engine() -> None:
     answers, environment = asyncio.run(probe())
     assert {q.id: answers.get(q.id) for q in register} == {q.id: q.expected for q in register}
     assert len(quirks.engine_environment(environment)) == len(quirks.ENVIRONMENT_PROBES)
+
+
+def test_a_declared_type_with_a_scale_keeps_its_comma() -> None:
+    # ADR-0055 (I.18): `decimal(10,2)` is one type; the comma inside its parentheses does not end the declaration,
+    # so the scale rules see it.
+    text = "create procedure sp_x as\ndeclare @a decimal(10,2), @b int, @c numeric(12, 4)\nreturn 0\n"
+    (_, procedure) = golden.procedures([SourceFile("sp/x.sp", text)])[0]
+    assert quirks._types(procedure) == {"@a": "decimal(10,2)", "@b": "int", "@c": "numeric(12,4)"}
