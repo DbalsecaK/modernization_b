@@ -10,8 +10,10 @@ For an application service (`<base_package>.application.<UseCase>Service`):
 - Implement every rule of the use case with the exact legacy behaviour: the same conditions, values, rounding
   (`BigDecimal` with explicit `RoundingMode`), order of checks and error codes. Reject with
   `new BusinessError(code, legacyCode, message)` using the codes of the design.
-- No infrastructure of the legacy: no error-code variables, no logging of error numbers, no transaction statements
-  (the transaction boundary is the adapter's).
+- No infrastructure of the legacy: no error-code variables, no logging of error numbers, no transaction statements:
+  the platform generates the transaction boundary of the use case around `execute` from the design's
+  `unit_of_work`. When the design declares savepoints, the use case has a `UnitOfWork` port: call
+  `savepoint(name)` and `rollbackTo(name)` exactly where the legacy saves and undoes part of its work.
 
 For a JDBC adapter (`<base_package>.adapters.out.jdbc.Jdbc<Port>`):
 - A class annotated `@jakarta.enterprise.context.ApplicationScoped` implementing the port, with one public

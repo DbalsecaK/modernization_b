@@ -319,6 +319,63 @@ def mask_problems(
     return problems
 
 
+def unit_of_work_problems(design: Design, files: Sequence[SourceFile]) -> list[str]:
+    """A use case whose legacy program works inside a transaction declares its unit of work, and every rollback
+    point of the legacy (by its line, two lines of slack) has an entry with its outcome (ADR-0055)."""
+    if not files:
+        return []
+    from nexti_orchestration.scope import unit_of_work as legacy_unit_of_work
+
+    problems = []
+    for use_case in design.use_cases:
+        if not use_case.legacy_program:
+            continue
+        work = legacy_unit_of_work(files, use_case.legacy_program)
+        if not any(kind == "begin_tran" for _, kind in work):
+            continue
+        described = ", ".join(f"{kind.replace('_', ' ')} at line {line}" for line, kind in work)
+        if use_case.unit_of_work is None:
+            problems.append(f"{use_case.name}: {use_case.legacy_program} works inside a transaction ({described}): "
+                            "declare its unit_of_work (begins_at, commits_at, savepoints and rollbacks, each rollback "
+                            "with its outcome: the error code the program rejects with, or savepoint:<name> when it "
+                            "goes on)")  # fmt: skip
+            continue
+        declared = [point.legacy_line for point in use_case.unit_of_work.rollbacks]
+        uncovered = [line for line, kind in work if kind == "rollback"
+                     and not any(abs(line - at) <= 2 for at in declared)]  # fmt: skip
+        if uncovered:
+            problems.append(f"{use_case.name}: the rollback points at lines {', '.join(map(str, uncovered))} have no "
+                            "entry in unit_of_work.rollbacks (each needs its outcome: the error code the program "
+                            "rejects with, or savepoint:<name> when it goes on)")  # fmt: skip
+    return problems
+
+
+def legacy_units_text(files: Sequence[SourceFile]) -> str:
+    """What the legacy does with its transactions, program by program, for the architect (ADR-0055)."""
+    if not files:
+        return ""
+    from nexti_orchestration.modernization import pick_adapter
+
+    try:
+        adapter = pick_adapter(list(files))
+        method = getattr(adapter, "unit_of_work", None)
+        if method is None:
+            return ""
+        nodes = adapter.inventory(list(files)).nodes
+    except Exception:
+        return ""
+    kinds = ("program", "procedure", "storedprocedure")
+    programs = sorted({str(getattr(n, "name", "") or getattr(n, "key", "")) for n in nodes
+                       if str(getattr(n, "label", "")).lower() in kinds})  # fmt: skip
+    lines = []
+    for program in programs:
+        work = method(list(files), program)
+        if work:
+            steps = ", ".join(f"{kind.replace('_', ' ')} at line {line}" for line, kind in work)
+            lines.append(f"- {program}: {steps}")
+    return "\n".join(lines)
+
+
 def design_problems(
     design: Design, rules: Sequence[Rule], names: set[str] | None = None, *, hints: bool = False,
     files: Sequence[SourceFile] = (), written: set[str] | None = None, package_root: str | None = None,
@@ -350,6 +407,21 @@ def design_problems(
     if external:
         problems.append(f"methods of ports that replace a legacy program need the argument of each input: "
                         f"{', '.join(sorted(set(external)))}")  # fmt: skip
+    problems += unit_of_work_problems(design, files)
+    if (
+        files
+        and design.data_strategy is None
+        and (any(e.legacy_table for e in design.entities) or any(p.legacy_program for p in design.ports))
+    ):
+        problems.append("data_strategy is required: 'same_database' (the data and the programs it calls stay where "
+                        "they are; the target uses the legacy's driver, its qualified table names and calls its "
+                        "procedures) or 'migration' (the data moves to the target database)")  # fmt: skip
+    if design.data_strategy == "same_database":
+        renamed = [f"{e.name} ({e.table} vs {e.legacy_table})" for e in design.entities
+                   if e.legacy_table and e.table and e.table != e.legacy_table]  # fmt: skip
+        if renamed:
+            problems.append("with same_database every entity keeps the legacy table as its table (qualified as the "
+                            f"legacy names it) and each field its legacy column: {', '.join(renamed)}")  # fmt: skip
     invented = _invented(design, names) if names is not None else []
     if invented:
         problems.append(f"these legacy names are not in the legacy code (check the exact spelling): "
@@ -522,6 +594,11 @@ async def propose_design(
             "role": "user",
             "content": f"{label}:\n{inventory}\n\nApproved rules:\n{_rules_text(rules)}"
             + (f"\n\nLegacy source (the columns and parameters to map):\n{source}" if source else "")
+            + (
+                f"\n\nUnit of work of the legacy (declare it in unit_of_work, with these lines):\n{units}"
+                if (units := legacy_units_text(files))
+                else ""
+            )
             + (f"\n\n{GUIDED_DESIGN}" if hints else "")
             + (f"\n\n{guidance}" if hints and guidance else ""),
         },
@@ -683,6 +760,8 @@ class GenerationPhases:
                 developer_prompt, oracle,
             )  # fmt: skip
         for port_spec in design.ports:
+            if pack.adapter_path(design, port_spec) in files:  # the pack generated it (ADR-0055): no model writes it
+                continue
             piece = ctx.for_shard(f"adapter:{port_spec.name}")
             files[pack.adapter_path(design, port_spec)] = await self._adapter(piece, pack, design, port_spec.name,
                                                                               files, sandbox)  # fmt: skip

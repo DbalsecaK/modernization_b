@@ -15,6 +15,16 @@ Rules of the design:
 - `use_cases`: each implements a group of rules (`rules` lists their ids; every rule must be in a use case),
   with `inputs`, `outputs`, the business `errors` (a stable `code` like ORDER_NOT_FOUND, the `legacy_code` the old
   system returned and its message), the `ports` it uses, `http_method` and `path`.
+- `unit_of_work` of a use case whose legacy program works inside a transaction: `begins_at` (line of the
+  `begin tran`), `commits_at`, `savepoints` (`name`, `legacy_line`) and `rollbacks`: one entry per rollback point
+  of the legacy with its `legacy_line` and its `outcome`: the error `code` the program rejects with after undoing
+  everything, or `savepoint:<name>` when it undoes part of the work and goes on. The platform generates the
+  transaction boundary from it; never leave a rollback point out. When there are savepoints, declare a port named
+  `UnitOfWork` with the methods `savepoint(name)` and `rollbackTo(name)` (text inputs, void): the platform
+  implements it and the service calls it where the legacy does.
+- `data_strategy`: `same_database` when the data and the programs the legacy calls stay where they are (the target
+  uses the legacy's driver, its qualified table names as `table`, its columns as `column`, and calls its procedures
+  through generated adapters) or `migration` when the data moves to the target database. Required.
 - `decisions`: the architecture decisions a reviewer must know (transactions, what stays in the database, what
   changes behaviour on purpose).
 - Names are Java identifiers (letters and digits, no reserved words). Infrastructure of the legacy (error-code
@@ -37,6 +47,8 @@ Answer with one JSON object and nothing else, with this shape:
   "legacy_output": null}]}],
  "use_cases": [{"name": "...", "description": "...", "rules": ["RULE-001"], "inputs": [], "outputs": [],
   "errors": [{"code": "...", "legacy_code": "...", "message": "..."}], "ports": ["..."], "http_method": "POST",
-  "path": "/...", "legacy_program": "...", "legacy_message": "..."}],
+  "path": "/...", "legacy_program": "...", "legacy_message": "...",
+  "unit_of_work": {"begins_at": 108, "commits_at": 161, "savepoints": [],
+   "rollbacks": [{"legacy_line": 119, "outcome": "DEBIT_FAILED"}]}}],
  "decisions": [{"title": "...", "context": "...", "decision": "...", "consequences": "..."}],
- "infrastructure": ["..."], "masks": []}
+ "infrastructure": ["..."], "masks": [], "data_strategy": "same_database"}

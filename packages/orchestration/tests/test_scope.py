@@ -57,7 +57,7 @@ def test_only_the_rules_in_scope_need_a_case() -> None:
     assert [r.id for r in outside] == ["RULE-003"]
     suite = Suite(program="PAGOORD", cases=[Case(name="pago_web_exitoso", rules=["RULE-001", "RULE-002"])])
     assert coverage_problems(suite, rules, inside) == []
-    assert coverage_problems(suite, rules) == ["rules without a case: RULE-003"]
+    assert coverage_problems(suite, rules)[0].startswith("rules without a case: RULE-003 (")
     assert split_rules(rules, set()) == (rules, [])
     reference = json.loads((CICS / "reference_spec.json").read_text(encoding="utf-8"))["rules"]
     inside, outside = split_rules([Rule.model_validate(r) for r in reference], scope_files(cics(), "PAGOORD"))
