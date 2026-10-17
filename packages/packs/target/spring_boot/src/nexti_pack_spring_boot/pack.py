@@ -143,9 +143,9 @@ class SpringBootPack:
 
     async def run_equivalence(
         self, sandbox: Sandbox, files: dict[str, str], design: Design, use_case: UseCase, master: GoldenMaster,
-        defaults: dict[str, Scalar] | None = None,
+        defaults: dict[str, Scalar] | None = None, engine: Any | None = None,
     ) -> EquivalenceRun:  # fmt: skip
-        return await run_equivalence(sandbox, files, design, use_case, master, defaults)
+        return await run_equivalence(sandbox, files, design, use_case, master, defaults, engine=engine)
 
     def mutations(self, source: str) -> Sequence[Mutation]:
         return mutations(source)
@@ -189,8 +189,10 @@ class SpringBootOraclePack(SpringBootPack):
 
     async def run_equivalence(
         self, sandbox: Sandbox, files: dict[str, str], design: Design, use_case: UseCase, master: GoldenMaster,
-        defaults: dict[str, Scalar] | None = None,
+        defaults: dict[str, Scalar] | None = None, engine: Any | None = None,
     ) -> EquivalenceRun:  # fmt: skip
+        if engine is not None:
+            raise NotImplementedError("the golden master against the legacy's engine runs on the Spring Boot pack")
         return await oracle.run_equivalence(sandbox, files, design, use_case, master, defaults)
 
     def describe(self) -> dict[str, Any]:
@@ -232,7 +234,7 @@ class SpringBootMySqlPack(SpringBootPack):
 
     async def run_equivalence(
         self, sandbox: Sandbox, files: dict[str, str], design: Design, use_case: UseCase, master: GoldenMaster,
-        defaults: dict[str, Scalar] | None = None,
+        defaults: dict[str, Scalar] | None = None, engine: Any | None = None,
     ) -> EquivalenceRun:  # fmt: skip
         return await mysql.run_equivalence(sandbox, files, design, use_case, master, defaults)
 
@@ -306,7 +308,7 @@ class SpringBootMongoDbPack(SpringBootPack):
 
     async def run_equivalence(
         self, sandbox: Sandbox, files: dict[str, str], design: Design, use_case: UseCase, master: GoldenMaster,
-        defaults: dict[str, Scalar] | None = None,
+        defaults: dict[str, Scalar] | None = None, engine: Any | None = None,
     ) -> EquivalenceRun:  # fmt: skip
         return await mongodb.run_equivalence(sandbox, files, design, use_case, master, defaults)
 

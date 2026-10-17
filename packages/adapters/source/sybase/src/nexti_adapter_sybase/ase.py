@@ -33,6 +33,7 @@ from nexti_core.spec.characterization import (
     source_digest,
     suite_key,
 )
+from nexti_core.spec.equivalence import EngineTarget
 
 IMAGE = "datagrip/sybase:16.0"
 # The public default of the test image (not a secret): the engine has no network and lives for one suite.
@@ -98,9 +99,9 @@ class AseRunner:
             return ""  # no answer in time: the caller decides (a cut case, or an engine that stopped answering)
         return output
 
-    async def _start(self) -> str:
+    async def _start(self, network: str = "none") -> str:
         name = f"nexti-ase-{uuid.uuid4().hex[:12]}"
-        args = ["run", "-d", "--rm", "--name", name, "--network", "none", "--memory", f"{self.memory_mb}m",
+        args = ["run", "-d", "--rm", "--name", name, "--network", network, "--memory", f"{self.memory_mb}m",
                 "--memory-swap", f"{self.memory_mb}m", "--pids-limit", "512", "--security-opt", "no-new-privileges",
                 self.image]  # fmt: skip
         try:
@@ -227,6 +228,51 @@ class AseRunner:
                             unreachable=dict(suite.unreachable))  # fmt: skip
 
 
+class SameEngine:
+    """The engine a target runs its golden master against (ADR-0055, point 10): the platform's Sybase ASE with the
+    suite's tables, the transactional substitutes of the called programs and the call log, on a private network of
+    its own (`--internal`: no route out) that the sandbox of the target joins. The legacy program itself is not
+    installed: the target is what runs. Used as `async with SameEngine(files, suite) as engine`."""
+
+    PORT = 5000
+
+    def __init__(self, files: list[SourceFile], suite: Suite, runner: AseRunner | None = None) -> None:
+        self.files = files
+        self.suite = suite
+        self.runner = runner or AseRunner()
+        self.network = f"nexti-eq-{uuid.uuid4().hex[:12]}"
+        self.name: str | None = None
+
+    async def __aenter__(self) -> EngineTarget:
+        plan = golden.plan(self.files, self.suite)
+        code, output = await asyncio.to_thread(self.runner._cli, ["network", "create", "--internal", self.network],
+                                               None, 60)  # fmt: skip
+        if code != 0:
+            raise LegacyEngineError(f"the network of the engine could not be created: {output[:300]}")
+        try:
+            self.name = await self.runner._start(self.network)
+            setup = await self.runner._isql(self.name, golden.setup_script(plan, with_sources=False), 600)
+            failures = golden.engine_errors(setup)
+            if failures:
+                raise golden.GoldenError("the schema or the substitutes do not load in Sybase:" + chr(10)
+                                         + chr(10).join(failures)[:3000])  # fmt: skip
+        except BaseException:
+            await self.__aexit__(None, None, None)
+            raise
+        programs = {program: [s.name for s in stub.parameters if not s.output] for program, stub in plan.stubs.items()}
+        return EngineTarget(
+            name=self.name, network=self.network, jdbc_url=f"jdbc:jtds:sybase://{self.name}:{self.PORT}/{plan.work}",
+            user=_SA[0], password=_SA[1], setup_for=lambda case: golden.case_setup_batches(plan, case),
+            calls_query=golden.CALLS_QUERY, programs=programs, parse_args=golden.read_values,
+        )  # fmt: skip
+
+    async def __aexit__(self, *_: object) -> None:
+        if self.name is not None:
+            await self.runner._stop(self.name)
+            self.name = None
+        await asyncio.to_thread(self.runner._cli, ["network", "rm", self.network], None, 60)
+
+
 class LiveAseRunner(AseRunner):
     """The legacy on a Sybase ASE test server of the customer (`kind = sybase` of ADR-0052, ADR-0055): the same
     scripts, sent by a throw-away client container (the isql of the platform's image, no engine) to the customer's
@@ -243,7 +289,7 @@ class LiveAseRunner(AseRunner):
         self.config = config if isinstance(config, SybaseConfig) else SybaseConfig.model_validate(config)
         self.credentials = credentials
 
-    async def _start(self) -> str:
+    async def _start(self, network: str = "none") -> str:
         name = f"nexti-ase-client-{uuid.uuid4().hex[:12]}"
         limits = ["--memory", "512m", "--memory-swap", "512m", "--pids-limit", "128", "--security-opt",
                   "no-new-privileges"]  # fmt: skip

@@ -14,7 +14,14 @@ from nexti_adapter_sybase.ase import RecordedRunner
 from nexti_core.adapters import SourceFile
 from nexti_core.spec.characterization import Case, GoldenMaster, Suite
 from nexti_pack_spring_boot import IMAGE, Design, adapter_path, junit_path, service_path, skeleton
-from nexti_pack_spring_boot.equivalence import expected_view, masks, plan, run_equivalence, target_case
+from nexti_pack_spring_boot.equivalence import (
+    expected_view,
+    harness_source,
+    masks,
+    plan,
+    run_equivalence,
+    target_case,
+)
 from nexti_sandbox import DockerSandbox
 from nexti_sandbox.coverage import target_coverage
 
@@ -216,3 +223,44 @@ def test_a_branch_removed_from_the_target_makes_the_golden_master_differ(java_sa
     run = asyncio.run(run_equivalence(java_sandbox, {**files, service: mutated}, DESIGN, PAY, MASTER))
     different = [c.name for c in run.cases if c.failure or c.expected != c.actual]
     assert "separate_commission_is_a_second_debit" in different
+
+
+def test_against_the_legacys_engine_every_port_is_real_and_the_calls_come_from_the_log() -> None:
+    # ADR-0055 (point 10): the plan points the harness at the engine on the run's network, no port is faked (the
+    # called programs are the engine's substitutes), each case is prepared with the engine's own batches, and the
+    # calls the comparison judges are the ones the engine logged, in legacy terms.
+    from nexti_core.spec.equivalence import EngineTarget, actual_view
+    from nexti_pack_spring_boot.equivalence import engine_script
+
+    engine = EngineTarget(
+        name="nexti-ase-1",
+        network="nexti-eq-1",
+        jdbc_url="jdbc:jtds:sybase://nexti-ase-1:5000/nexti_gm",
+        user="sa",
+        password="x",  # noqa: S106 - the throw-away engine's own
+        setup_for=lambda case: ["use nexti_gm", f"-- {case.name}"],
+        calls_query="select program, args from nexti_gm..nx_call order by seq",
+        programs={"db_cuentas..sp_debito": ["@i_cuenta", "@i_tipo", "@i_valor", "@i_referencia"]},
+        parse_args=lambda text: [part.split(":", 1)[1] for part in text.split("|")],
+    )
+    harness = plan(DESIGN, PAY, engine)
+    assert harness["jdbc_url"] == engine.jdbc_url
+    assert harness["reset"] == []
+    assert harness["calls"] == engine.calls_query
+    assert all(p["adapter"] for p in harness["ports"])  # DebitGateway too: the substitute answers for real
+    assert harness["ports"][3]["adapter"] == "com.bancoficticio.payments.adapters.out.jdbc.JdbcDebitGateway"
+    case = next(r.case for r in MASTER.results if r.case.name == "separate_commission_is_a_second_debit")
+    target = target_case(DESIGN, PAY, case, engine=engine)
+    assert target["setup"] == ["use nexti_gm", "-- separate_commission_is_a_second_debit"]
+    assert target["stubs"] == {}
+    script = engine_script(engine)
+    assert "/dev/tcp/nexti-ase-1/5000" in script
+    assert "initdb" not in script
+    assert 'jdbc.queryForList(plan.get("calls").asText())' in harness_source()
+    logged = engine.calls(
+        [{"program": "db_cuentas..sp_debito", "args": "10:1000000001|3:CTE|8:100.0000|10:PAGO ORDEN"}]
+    )
+    raw = {"response": {"movement": "900001", "message": "PAGO REALIZADO"}, "tables": {}, "calls": []}
+    view = actual_view(DESIGN, PAY, raw, [], legacy_calls=logged)
+    assert [c.program for c in view.calls] == ["db_cuentas..sp_debito"]
+    assert view.calls[0].arguments["@i_valor"] == "100.0000"

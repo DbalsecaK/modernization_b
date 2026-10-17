@@ -148,7 +148,13 @@ class FakePack:
     async def compile_and_test(self, sandbox: Any, files: dict[str, str], run_tests: bool = True) -> FakeBuild:
         return self.builds.pop(0)
 
-    async def run_equivalence(self, sandbox: Any, files: dict[str, str], *args: Any) -> EquivalenceRun:
+    async def run_equivalence(
+        self,
+        sandbox: Any,
+        files: dict[str, str],
+        *args: Any,
+        engine: Any | None = None,
+    ) -> EquivalenceRun:
         self.verified.append(dict(files))
         return self.runs.pop(0)
 

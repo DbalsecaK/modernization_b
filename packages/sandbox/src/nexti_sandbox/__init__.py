@@ -49,6 +49,8 @@ class Limits:
     internal_network: bool = False
     writable_root: bool = False
     user: str | None = None
+    # A network the caller created and will remove (ADR-0055): the engine the run talks to is already on it.
+    network: str | None = None
 
 
 @dataclass(frozen=True)
@@ -126,9 +128,9 @@ class DockerSandbox:
         name = f"nexti-sb-{uuid.uuid4().hex[:12]}"
         input_dir = Path(tempfile.mkdtemp(prefix="nexti-sandbox-"))
         started = time.monotonic()
-        network = f"{name}-net" if limits.internal_network else "none"
+        network = limits.network or (f"{name}-net" if limits.internal_network else "none")
         try:
-            if limits.internal_network:
+            if limits.internal_network and not limits.network:
                 await self._network("create", "--internal", network)
             await asyncio.to_thread(_write_inputs, input_dir, files or {})
             timed_out = False
@@ -160,7 +162,7 @@ class DockerSandbox:
             )
         finally:
             shutil.rmtree(input_dir, ignore_errors=True)
-            if limits.internal_network:
+            if limits.internal_network and not limits.network:
                 await self._network("rm", network)
 
     async def _network(self, action: str, *args: str) -> None:

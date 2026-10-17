@@ -432,6 +432,7 @@ async def correct(
     first: Sequence[CaseOutcome],
     source: Sequence[SourceFile],
     rules: Sequence[Rule],
+    engine: Any | None = None,
 ) -> tuple[dict[str, str], EquivalenceRun, list[CaseOutcome], list[Round]]:
     """Up to `ROUNDS` correction rounds; returns the files to verify (the corrected ones when a round reduced the
     differences), the equivalence run and outcomes that go with them, and what each round did."""
@@ -496,7 +497,8 @@ async def correct(
             await ctx.store.event("info", "running", f"Correction round {number}: {note}"[:2000], phase=phase)
             feedback = build.diagnostic(1500)
             continue
-        candidate_run = await pack.run_equivalence(sandbox, candidate, design, use_case, master, defaults)
+        candidate_run = await pack.run_equivalence(sandbox, candidate, design, use_case, master, defaults,
+                                                   engine=engine)  # fmt: skip
         candidate_outcomes = outcomes_of(candidate_run)
         after = differing(candidate_outcomes) if not candidate_run.problem else before
         if candidate_run.problem or after >= before:
