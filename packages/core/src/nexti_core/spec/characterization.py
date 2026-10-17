@@ -119,7 +119,11 @@ class Observation(CharacterizationModel):
     returns: int | None = None
     outputs: dict[str, str | None] = Field(default_factory=dict)
     tables: dict[str, list[dict[str, str | None]]] = Field(default_factory=dict)
-    calls: list[Call] = Field(default_factory=list)
+    calls: list[Call] = Field(default_factory=list, description="Calls to external programs still in the final state")
+    undone: list[Call] = Field(
+        default_factory=list,
+        description="Calls made inside a unit of work the program then rolled back: not in the final state (ADR-0055)",
+    )
     messages: list[str] = Field(default_factory=list, description="Messages the program raised (e.g. raiserror)")
     error: str | None = Field(default=None, description="The engine failed the case (not a business rejection)")
 

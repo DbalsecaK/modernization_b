@@ -35,6 +35,7 @@ public static class Harness
     {
         var output = new JsonObject { ["name"] = testCase.GetProperty("name").GetString() };
         var calls = new List<JsonObject>();
+        var undone = new List<JsonObject>();
         try
         {
             foreach (var sql in plan.GetProperty("reset").EnumerateArray()) Execute(connection, sql.GetString()!);
@@ -54,9 +55,12 @@ public static class Harness
             catch (TargetInvocationException e) when (e.InnerException is not null)
             {
                 Invoke(db, "Rollback");
-                // The calls stay: what the service did before it rejected, as the legacy calls before its return (ADR-0044).
+                // The rollback undoes the tables and the effects of the calls made inside the transaction: they are
+                // reported apart, as "undone", like the legacy calls its rollback erased (ADR-0055).
                 var cause = e.InnerException;
                 if (cause.GetType().Name != "BusinessError") throw cause;
+                undone.AddRange(calls);
+                calls.Clear();
                 output["error"] = new JsonObject
                 {
                     ["code"] = Text(Property(cause, "Code")),
@@ -71,6 +75,7 @@ public static class Harness
             }
             output["tables"] = tables;
             output["calls"] = new JsonArray(calls.Select(c => (JsonNode)c).ToArray());
+            output["undone"] = new JsonArray(undone.Select(c => (JsonNode)c).ToArray());
         }
         catch (Exception e)
         {

@@ -4,8 +4,8 @@ test) and the worker (the runner it picks).
 - `auto`: by the inputs, as before: recorded traces when the archive has them, otherwise the engine of the platform
   (Sybase ASE).
 - `traces`: only recorded traces; without them the phase waits. The verdict cannot pass PARTLY PROVEN.
-- `live`: the legacy runs on a system of the customer (`kind`: an IBM i first). Cases with fresh inputs can be
-  observed, so the verdict can reach PROVEN.
+- `live`: the legacy runs on a system of the customer (`kind`: an IBM i, or a Sybase ASE test server, ADR-0055).
+  The programs it calls run for real and cases with fresh inputs can be observed, so the verdict can reach PROVEN.
 
 The system's address and options live in `config`; its credentials only in the secrets store (ADR-0007)."""
 
@@ -15,9 +15,9 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 Mode = Literal["auto", "traces", "live"]
-Kind = Literal["ibmi"]
+Kind = Literal["ibmi", "sybase"]
 MODES: tuple[Mode, ...] = ("auto", "traces", "live")
-KINDS: tuple[Kind, ...] = ("ibmi",)
+KINDS: tuple[Kind, ...] = ("ibmi", "sybase")
 
 # The IBM i host servers (as-signon 8476, as-rmtcmd 8475, as-database 8471...) and their TLS ports; 446 is DRDA.
 IBMI_PORTS = (446, 449, 8470, 8471, 8472, 8473, 8474, 8475, 8476, 9470, 9471, 9472, 9473, 9474, 9475, 9476)
@@ -64,6 +64,35 @@ class IbmiConfig(BaseModel):
         return upper
 
 
+_SYBASE_NAME = re.compile(r"^[A-Za-z_][A-Za-z0-9_@#$]{0,29}$")
+
+
+class SybaseConfig(BaseModel):
+    """Where a Sybase ASE test server of the customer is and the database of the program (ADR-0055): the program,
+    its tables and the programs it calls are the customer's and run for real; the cases empty and reload the tables
+    they set up, and the platform keeps its call log in that database. Never a production server."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    host: str = Field(min_length=1, max_length=253)
+    port: int = Field(default=5000, ge=1, le=65535)
+    database: str = Field(min_length=1, max_length=30, description="The database the program lives in")
+
+    @field_validator("host")
+    @classmethod
+    def _host(cls, value: str) -> str:
+        if not _HOST.match(value):
+            raise ValueError("a host name or IPv4 address, without scheme, port or path")
+        return value.lower()
+
+    @field_validator("database")
+    @classmethod
+    def _database(cls, value: str) -> str:
+        if not _SYBASE_NAME.match(value):
+            raise ValueError("a Sybase database name: up to 30 characters, a letter or _ first")
+        return value
+
+
 class Credentials(BaseModel):
     """What the secrets store keeps for a live system, as JSON."""
 
@@ -73,7 +102,7 @@ class Credentials(BaseModel):
     password: str = Field(min_length=1, max_length=256)
 
 
-CONFIGS: dict[str, type[IbmiConfig]] = {"ibmi": IbmiConfig}
+CONFIGS: dict[str, type[IbmiConfig] | type[SybaseConfig]] = {"ibmi": IbmiConfig, "sybase": SybaseConfig}
 
 
 def checked_config(kind: str, config: dict[str, object]) -> dict[str, object]:
@@ -84,4 +113,5 @@ def checked_config(kind: str, config: dict[str, object]) -> dict[str, object]:
     return model.model_validate(config).model_dump()
 
 
-__all__ = ["CONFIGS", "IBMI_PORTS", "KINDS", "MODES", "Credentials", "IbmiConfig", "Kind", "Mode", "checked_config"]
+__all__ = ["CONFIGS", "IBMI_PORTS", "KINDS", "MODES", "Credentials", "IbmiConfig", "Kind", "Mode", "SybaseConfig",
+           "checked_config"]  # fmt: skip

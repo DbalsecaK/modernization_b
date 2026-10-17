@@ -34,6 +34,15 @@
 Cada fase va en su rama y PR, con ADR o precisión cuando cambie la especificación, y se fusiona con el CI en verde.
 Las fases A a E no usan modelos; la F sí.
 
+## Avance
+
+| Fase | Puntos | Estado | Dónde |
+|---|---|---|---|
+| A | 1, 2 | Hecho (2026-10-17) | PR #98: unidad de trabajo como negocio en Sybase, CICS y ASPX; séptimo chequeo «Frontera del comportamiento»; las seis grabaciones de aceptación recalculadas a PARTLY PROVEN |
+| B | 5, 6 | Hecho (2026-10-17) | `kind = sybase` (Sybase ASE de prueba del cliente: `SybaseConfig`, `LiveAseRunner`, migración 0027, tarjeta web); rollback visible: el golden master Sybase lee al final del caso las llamadas que sobrevivieron (`NXK|`) y separa en `undone` las que el rollback deshizo; los cinco arneses del destino hacen lo mismo; el comparador juzga las que sobrevivieron; grabaciones de `pago_orden` regrabadas en el ASE real |
+| B | 7 | Pendiente | Sustitutos transaccionales con efectos declarados por caso, aplicados dentro de la transacción en el legado y traducidos al destino por el diseño |
+| C–J | resto | Pendiente | — |
+
 ## Cómo se valida cada fase
 
 Lo dice ADR-0055, sección «Cómo se valida». La prueba de aceptación de todo el plan es la fase F: la misma plataforma,
