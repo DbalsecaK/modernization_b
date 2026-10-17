@@ -1,6 +1,7 @@
 """The legacy on a Sybase ASE test server of the customer (`kind = sybase`, ADR-0055): the platform installs nothing
 there but its call log, checks that the customer's objects exist, refuses cases that stub a call (the programs run
-for real) and never puts the password on a command line."""
+for real), never puts the password on a command line, and records the final state of the tables the called programs
+touch, found on the server itself."""
 
 import asyncio
 import json
@@ -20,6 +21,24 @@ FILES = [SourceFile("sp/sp_pago_orden.sp", (FIXTURES / "sp_pago_orden.sp").read_
 SUITE = Suite.model_validate_json((FIXTURES / "characterization.json").read_text(encoding="utf-8"))
 CONFIG = {"host": "ase-test.banco.local", "port": 5000, "database": "cob_pagos"}
 SECRET = "s3cret"  # noqa: S105 - the fake password the test follows through the docker commands
+
+# The text of the called programs as syscomments keeps it: chunks between markers, the newlines isql adds between
+# rows outside them (one chunk even cuts a table name in two).
+DEBIT_SOURCE = (
+    " NXSRC|db_cuentas..sp_debito\n <<NX>>create procedure sp_debito @i_cuenta char(10) as\nbegin\n"
+    "  update db_cuentas..ct_mov<<XN>>\n <<NX>>imiento set mov_valor = 1 where mov_cuenta = @i_cuenta\n"
+    "  exec sp_audit @i_cuenta\n  return 0\nend<<XN>>\n"
+    " NXSRC|cobis..sp_cerror\n <<NX>>create procedure sp_cerror @t_from varchar(30) as return 0<<XN>>\n"
+)
+AUDIT_SOURCE = (
+    " NXSRC|db_cuentas..sp_audit\n <<NX>>create procedure sp_audit @i_cuenta char(10) as "
+    "insert ct_auditoria (aud_cuenta) values (@i_cuenta)<<XN>>\n"
+)
+COLUMNS = (
+    " NXCOL|db_cuentas..ct_movimiento|mov_cuenta|char|10|0|0|0\n"
+    " NXCOL|db_cuentas..ct_movimiento|mov_valor|numeric|9|19|4|8\n"
+    " NXCOL|db_cuentas..ct_auditoria|aud_cuenta|char|10|0|0|0\n"
+)
 
 
 def _without_stubs() -> Suite:
@@ -46,6 +65,10 @@ class Client(LiveAseRunner):
             return 0, " NXREADY|Adaptive Server Enterprise/16.0 SP03\n"
         if "NXMISSING" in script:
             return 0, self.missing or " (1 row affected)\n"
+        if "NXSRC|" in script:  # the text of the called programs, one level of calls at a time
+            return 0, DEBIT_SOURCE if "sp_debito" in script else AUDIT_SOURCE
+        if "NXCOL|" in script:
+            return 0, COLUMNS
         count = script.count("select 'NXCASE|")
         return 0, "\n".join(f"NXCASE|{i}\nNXR|1:0\nNXKN|0" for i in range(count))
 
@@ -116,3 +139,25 @@ def test_the_connection_check_signs_on_and_uses_the_database() -> None:
     assert not ok
     assert detail.startswith("ase-test.banco.local:5000 did not sign on: ")
     assert "Login failed" in detail
+
+
+def test_the_tables_of_the_called_programs_are_discovered_on_the_customers_server() -> None:
+    # ADR-0055 (point 8): the text of each called program comes from syscomments in chunks between markers, the
+    # tables it touches and the programs it calls are read as the inputs are, the calls are followed level by
+    # level, and the columns come from the catalog; the cases dump those tables as they dump the program's own.
+    found = golden.read_sources(DEBIT_SOURCE)
+    assert "update db_cuentas..ct_movimiento set mov_valor" in found["db_cuentas..sp_debito"]
+    tables, calls = golden.dependencies("db_cuentas..sp_debito", found["db_cuentas..sp_debito"], "cob_pagos")
+    assert tables == {"db_cuentas..ct_movimiento"}
+    assert calls == {"db_cuentas..sp_audit"}
+    columns = golden.read_columns(COLUMNS)
+    assert [(c.name, c.type, c.nullable) for c in columns["db_cuentas..ct_movimiento"]] == [
+        ("mov_cuenta", "char(10)", False), ("mov_valor", "numeric(19,4)", True)]  # fmt: skip
+    client = Client()
+    master = asyncio.run(client.run(FILES, _without_stubs()))
+    assert master.called_tables == ["db_cuentas..ct_movimiento", "db_cuentas..ct_auditoria"]
+    assert {t.name for t in master.schema_.tables} >= set(master.called_tables)
+    cases = [stdin for args, stdin in client.commands if args[0] == "exec" and stdin and "NXCASE|" in stdin]
+    assert cases
+    assert all("select 'NXT|db_cuentas..ct_movimiento|'" in script for script in cases)
+    assert all(r.observation.tables["db_cuentas..ct_auditoria"] == [] for r in master.results)

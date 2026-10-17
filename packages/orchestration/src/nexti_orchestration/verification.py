@@ -30,6 +30,7 @@ from nexti_orchestration.guided import enabled as guided_enabled
 from nexti_orchestration.model import Answer, Option, PhaseFailedError, PhaseResult, QuestionSpec
 from nexti_orchestration.packs import BackendPack, backend_pack
 from nexti_orchestration.scope import scope_files, split_rules
+from nexti_orchestration.scope import unit_of_work as scope_unit_of_work
 from nexti_pack_frontend import IMAGE as FRONTEND_IMAGE
 from nexti_pack_frontend import contract_of
 from nexti_pack_frontend.build import FrontendRun, build_and_test
@@ -47,15 +48,9 @@ def stubbed_programs(master: GoldenMaster) -> list[str]:
 
 
 def unit_of_work(files: Sequence[SourceFile], program: str) -> list[tuple[int, str]]:
-    """The lines where the legacy program starts, saves, confirms or undoes its work (ADR-0055), from its source
-    adapter when it knows them; empty otherwise."""
-    from nexti_orchestration.modernization import pick_adapter
-
-    try:
-        found = getattr(pick_adapter(list(files)), "unit_of_work", None)
-    except Exception:
-        return []
-    return list(found(list(files), program)) if callable(found) else []
+    """The lines where the legacy program starts, saves, confirms or undoes its work (ADR-0055); the
+    characterization uses the same (`nexti_orchestration.scope`)."""
+    return scope_unit_of_work(files, program)
 
 
 def rollbacks_without_case(work: Sequence[tuple[int, str]], master: GoldenMaster) -> list[int]:
