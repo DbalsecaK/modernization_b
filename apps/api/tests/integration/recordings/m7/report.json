@@ -8,15 +8,19 @@
     "contracts": "passed",
     "canary": "passed",
     "questions_closed": "passed",
-    "traced_to_inputs": "passed"
+    "traced_to_inputs": "passed",
+    "unit_of_work": "passed",
+    "schema_applies": "passed"
   },
   "details": {
-    "tests_ran": "20 test(s) passed in a clean build (JUnit XML)",
+    "tests_ran": "24 test(s) passed in a clean build (JUnit XML)",
     "criteria_covered": "6 acceptance criteria covered by passing tests",
     "contracts": "1 operation(s) of the contract have their endpoint",
-    "canary": "line 15 changed (private static final BigDecimal MIN_AMOUNT = new BigDecimal(\"1000.01\");) turned test accepts_the_lower_amount_limit() red",
+    "canary": "line 15 changed (private static final BigDecimal MIN_AMOUNT = new BigDecimal(\"1000.01\");) turned test monto_at_minimum_1000_is_valid() red",
     "questions_closed": "no question is open",
-    "traced_to_inputs": "10 element(s) traced to the lines of their inputs"
+    "traced_to_inputs": "10 element(s) traced to the lines of their inputs",
+    "unit_of_work": "the 1 use case(s) that write run inside one transaction each (a rejection undoes every write)",
+    "schema_applies": "the schema of the design was created on a real database engine"
   },
   "frontend": "PROVEN",
   "frontend_checks": {
@@ -35,7 +39,7 @@
     "The button 'Botón Descargar PDF' of the Figma frame 'Resultado' navigates nowhere."
   ],
   "model_calls": 12,
-  "cost_usd": "0.46138400",
+  "cost_usd": "0.47028200",
   "decisions": [
     "questions",
     "C1",
