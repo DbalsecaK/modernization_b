@@ -1,8 +1,9 @@
 """Classification hints and program slicing for Sybase procedures (spec 6.1 phases 4-5, 8.2 `classify_hints` and
 `slice`). Deterministic: they narrow what an agent reads, they do not decide what a rule is.
 
-- **Classification:** each statement is infrastructure (error codes, transaction control, printing, logging calls),
-  control flow (IF/WHILE/GOTO/blocks) or business logic (computations, DML on business tables, business calls).
+- **Classification:** each statement is infrastructure (error codes, printing, logging calls), control flow
+  (IF/WHILE/GOTO/blocks) or business logic (computations, DML on business tables, business calls, and the unit of
+  work: BEGIN/SAVE/COMMIT/ROLLBACK TRAN decide what the business keeps or undoes, ADR-0055).
 - **Slicing:** the backward slice of a statement: the statements that can change the values it uses (data
   dependencies through variables and tables) and the conditions that decide whether it runs (control dependencies),
   with the procedure parameters it depends on. A slice is a small set of line ranges an agent reads instead of the
@@ -17,9 +18,13 @@ from nexti_adapter_sybase.parser import Procedure, Statement
 
 Label = Literal["infrastructure", "control_flow", "business"]
 
-# Calls that only report or log errors in COBIS-style code; a project can extend the list.
-INFRASTRUCTURE_CALLS = {"sp_cerror", "cobis..sp_cerror", "sp_print", "sp_log", "sp_errorlog"}
-INFRASTRUCTURE_KINDS = {"begin_tran", "commit", "rollback", "save_tran", "raiserror", "print", "label", "declare"}
+# Calls that only print or log in COBIS-style code; a project can extend the list. `sp_cerror` is NOT here: it is
+# the error contract the caller receives (ADR-0055).
+INFRASTRUCTURE_CALLS = {"sp_print", "sp_log", "sp_errorlog"}
+INFRASTRUCTURE_KINDS = {"raiserror", "print", "label", "declare"}
+# The unit of work (ADR-0055): where the program starts, confirms or undoes what it did. Business of priority P0: a
+# rollback decides whether a debit happened, and the first migration the platform proved lost every one of them.
+UNIT_OF_WORK_KINDS = {"begin_tran", "save_tran", "commit", "rollback"}
 CONTROL_KINDS = {"if", "while", "block", "goto", "break", "continue", "return"}
 
 
@@ -39,7 +44,9 @@ def classify(procedure: Procedure, infrastructure_calls: Iterable[str] = ()) -> 
     calls = INFRASTRUCTURE_CALLS | extra
     hints: list[Hint] = []
     for stmt in procedure.statements():
-        if stmt.kind in INFRASTRUCTURE_KINDS:
+        if stmt.kind in UNIT_OF_WORK_KINDS:
+            hints.append(Hint(stmt.id, "business", f"unit of work: {stmt.kind.replace('_', ' ')}"))
+        elif stmt.kind in INFRASTRUCTURE_KINDS:
             hints.append(Hint(stmt.id, "infrastructure", f"{stmt.kind.replace('_', ' ')} statement"))
         elif stmt.kind == "exec" and stmt.calls and (stmt.calls[0] in calls or _short(stmt.calls[0]) in calls):
             hints.append(Hint(stmt.id, "infrastructure", f"error or log call {stmt.calls[0]}"))
@@ -56,7 +63,14 @@ def classify(procedure: Procedure, infrastructure_calls: Iterable[str] = ()) -> 
     return hints
 
 
+def unit_of_work(procedure: Procedure) -> list[tuple[int, str]]:
+    """The lines where the procedure starts, saves, confirms or undoes its work (ADR-0055): (line, kind)."""
+    return [(s.line_start, s.kind) for s in procedure.statements() if s.kind in UNIT_OF_WORK_KINDS]
+
+
 def _business_reason(stmt: Statement) -> str:
+    if stmt.kind == "exec" and stmt.calls and _short(stmt.calls[0]) == "sp_cerror":
+        return "error contract: " + stmt.calls[0]
     if stmt.writes:
         return "writes " + ", ".join(sorted(stmt.writes))
     if stmt.calls:

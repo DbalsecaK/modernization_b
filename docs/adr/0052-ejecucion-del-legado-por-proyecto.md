@@ -51,8 +51,20 @@ hasta que las conexiones de cada cliente estén disponibles, y la decisión es d
 - Un proyecto en `live` espera en la caracterización hasta R2b.
 - La conexión de un cliente nunca queda en la base ni en los registros: solo la ruta del secreto.
 
+## Actualización 2026-10-17 (ADR-0055)
+
+El modo `live` admite un segundo tipo de sistema: **`sybase`**, un Sybase ASE de prueba del cliente (host, puerto,
+base de datos del programa). El worker le envía los mismos scripts del golden master desde un contenedor cliente
+desechable (el `isql` de la imagen de la plataforma, sin motor); allí no instala nada salvo su registro de llamadas
+en la base del programa. El programa, sus tablas y los programas que llama son los del cliente y corren de verdad:
+ningún caso puede responder por un programa llamado (stubs) y no se instala la copia instrumentada (la cobertura no
+se mide). La contraseña viaja solo por la entrada estándar del cliente, nunca en una línea de comandos. Un servidor
+de prueba, nunca producción: los casos vacían y recargan las tablas que preparan.
+
 ## Cómo se valida
 
 `apps/worker/tests/test_source_runner.py` (los tres modos y las esperas), `test_inputs.py` (credenciales solo en el
-almacén, prueba de conexión sin SSRF, borrado), los casos de permisos de las cuatro rutas y la prueba de trazas de
-IBM i en `packages/adapters/source/rpg/tests`.
+almacén, prueba de conexión sin SSRF, borrado), los casos de permisos de las cuatro rutas, la prueba de trazas de
+IBM i en `packages/adapters/source/rpg/tests` y, para el Sybase del cliente, `packages/adapters/source/sybase/tests/
+test_live.py` (instala solo el registro, comprueba los objetos del cliente, rechaza stubs, contraseña fuera de la
+línea de comandos).

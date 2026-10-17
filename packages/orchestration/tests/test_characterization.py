@@ -90,14 +90,18 @@ def _context() -> tuple[PhaseContext, MemoryStore]:
 
 def test_every_rule_needs_a_case() -> None:
     suite = parse_suite(_without("account_type_not_allowed"))
-    assert coverage_problems(suite, RULES) == ["rules without a case: RULE-001"]
+    assert coverage_problems(suite, RULES)[0].startswith("rules without a case: RULE-001 (")
 
 
 async def test_the_golden_master_is_what_the_legacy_did_with_the_corrected_suite() -> None:
     port = MemoryPort(RecordedRunner(FIXTURES / "golden", "replay"), [_without("account_type_not_allowed"), SUITE])
     ctx, store = _context()
     result = await CharacterizationPhases(port).characterization(ctx)
-    assert result.summary == "Golden master: 12 case(s) frozen, 7 of them rejected by the legacy (sybase-ase-16.0)"
+    # The recording carries what the real engine measured: coverage, quirks and environment (ADR-0047, M28).
+    assert result.summary == (
+        "Golden master: 12 case(s) frozen, 7 of them rejected by the legacy; legacy coverage: 24 of 26 measurable "
+        "branches exercised; engine quirks: 4 (3 confirmed on the engine); environment: 8 setting(s) (sybase-ase-16.0)"
+    )
     assert port.master is not None
     assert len(port.master.results) == 12
     assert "rules without a case: RULE-001" in port.tester.requests[1][-1]["content"]
@@ -151,9 +155,7 @@ def test_the_guided_suite_takes_case_names_as_the_model_writes_them() -> None:
         parse_suite(json.dumps({**data, "cases": [case]}))
 
 
-def test_a_key_marked_on_the_columns_becomes_the_table_key_only_when_guided() -> None:
-    from nexti_orchestration.extraction import ReplyError
-
+def test_a_key_marked_on_the_columns_becomes_the_table_key_in_every_mode() -> None:
     data = json.loads(SUITE)
     table = data["schema"]["tables"][0]
     marked = {c["name"] for c in table["columns"][:2]}
@@ -161,8 +163,7 @@ def test_a_key_marked_on_the_columns_becomes_the_table_key_only_when_guided() ->
     for column in table["columns"]:
         column["key"] = column["name"] in marked
     content = json.dumps(data)
-    with pytest.raises(ReplyError, match="does not follow the format"):  # the strict parse of the recordings
-        parse_suite(content)
+    assert parse_suite(content).schema_.tables[0].key == [c["name"] for c in table["columns"][:2]]
     suite = parse_suite(content, guided=True)
     assert suite.schema_.tables[0].key == [c["name"] for c in table["columns"][:2]]
     assert all(set(c.model_dump()) == {"name", "type", "nullable"} for c in suite.schema_.tables[0].columns)
@@ -376,3 +377,26 @@ async def test_the_engine_quirks_no_case_reaches_go_in_the_branch_round_and_the_
     assert "engine quirks: 1 (1 confirmed on the engine, 1 no case reaches); environment: 1 setting(s)" in (
         result.summary
     )
+
+
+def test_a_rule_no_input_can_reach_is_declared_instead_of_invented() -> None:
+    # ADR-0050/0055: a defensive branch (an UPDATE that cannot miss after the lookup) has no honest case; the
+    # test engineer declares it with the reason, the suite passes, and the verdict lists it as not proven.
+    data = json.loads(SUITE)
+    data["cases"] = [c for c in data["cases"] if c["name"] != "account_type_not_allowed"]
+    data["unreachable"] = {"RULE-001": "the lookup two lines above already proved the row exists"}
+    suite = parse_suite(json.dumps(data))
+    assert coverage_problems(suite, RULES) == []
+    assert "unreachable" in json.loads(suite.model_dump_json(by_alias=True))
+    assert "unreachable" not in json.loads(parse_suite(SUITE).model_dump_json(by_alias=True))  # as recorded
+    data["unreachable"] = {"RULE-001": " ", "RULE-999": "nothing"}
+    problems = coverage_problems(parse_suite(json.dumps(data)), RULES)
+    assert problems[0].startswith("rules without a case: RULE-001 (a rule no input can reach")
+    assert "cases cite rules that do not exist: RULE-999" in problems
+    assert "unreachable rules without a reason: RULE-001" in problems
+    # The key marked on each column, as database tools show it, is read as the table's key in every mode.
+    marked = json.loads(SUITE)
+    for column in marked["schema"]["tables"][0]["columns"]:
+        column["key"] = column["name"] in marked["schema"]["tables"][0]["key"]
+    marked["schema"]["tables"][0]["key"] = []
+    assert parse_suite(json.dumps(marked)).schema_.tables[0].key == parse_suite(SUITE).schema_.tables[0].key

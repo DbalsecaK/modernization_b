@@ -55,7 +55,15 @@ TEAM = {
     "equivalence-validator": "1.4.0",
 }
 RECORD = os.environ.get("NEXTI_RECORD_M10") == "1"
-CHECKS = ["target_runs", "contract_mapped", "same_behaviour", "fresh_inputs", "rules_covered", "source_intact"]
+CHECKS = [
+    "target_runs",
+    "contract_mapped",
+    "same_behaviour",
+    "fresh_inputs",
+    "rules_covered",
+    "source_intact",
+    "behaviour_boundary",
+]
 
 
 @pytest.fixture(scope="module")
@@ -187,8 +195,19 @@ async def test_a_third_party_target_is_validated_against_the_legacy(
     assert verdict["module"] == "ivv-sp_pago_orden"
     assert [c["key"] for c in verdict["checks"]] == CHECKS
     statuses = {c["key"]: c["status"] for c in verdict["checks"]}
-    # BillPay is a faithful migration: every golden case and every fresh input is reproduced (ADR-0025).
-    assert (verdict["verdict"], statuses) == ("PROVEN", dict.fromkeys(CHECKS, "passed")), verdict["checks"]
+    # BillPay reproduces the decision logic of the legacy (ADR-0025), but since ADR-0055 the golden master carries
+    # what the called program leaves in the tables (the substitute of sp_debito debits the account) and the final
+    # state is compared: BillPay calls the debit over HTTP, so when the commission fails the legacy undoes the debit
+    # and BillPay cannot. One golden case and its fresh input differ, the verdict is NOT PROVEN and names them: the
+    # finding a bank needs before it trusts a third-party rewrite.
+    expected = {**dict.fromkeys(CHECKS, "passed"), "same_behaviour": "failed", "fresh_inputs": "failed",
+                "rules_covered": "failed", "behaviour_boundary": "not_checked"}  # fmt: skip
+    assert (verdict["verdict"], statuses) == ("NOT PROVEN", expected), verdict["checks"]
+    details = {c["key"]: c["detail"] for c in verdict["checks"]}
+    assert (
+        "comision_separada_falla_deshace_pago: tables:db_cuentas..ct_cuenta[0].cta_saldo: 500.0000 != 400.0000"
+        in (details["same_behaviour"])
+    )
     assert verdict["proof_pack_key"]
     ivv = api.get(f"{base}/ivv", headers=headers).json()
     assert f"**{verdict['verdict']}**" in ivv["report"]

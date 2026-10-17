@@ -1,6 +1,7 @@
 """Field by field differences between two observations already put in one view (legacy names, canonical target
 types, masks applied by the pack): the return code, every output, every row of every table and every call to an
-external program, in order."""
+external program still in the final state, in order. The calls a rollback undid (`undone`) are diagnostic: their
+effects are not in the state either side ends in (ADR-0055)."""
 
 import json
 from dataclasses import dataclass

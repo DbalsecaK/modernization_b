@@ -124,9 +124,11 @@ def test_the_validation_gives_the_ivv_verdict_and_the_report() -> None:
     result = asyncio.run(phases.validation(_context("validation")))
     verdict, pack = port.saved[0]
     statuses = {c.key: c.status for c in verdict.checks}
+    # ADR-0055: the third party's target is certified on the same boundary; sp_debito is a stub, so the seventh
+    # check cannot pass and the verdict says so.
     assert statuses == {"target_runs": "passed", "contract_mapped": "passed", "same_behaviour": "passed",
                         "fresh_inputs": "not_checked", "rules_covered": statuses["rules_covered"],
-                        "source_intact": "passed"}, verdict.checks  # fmt: skip
+                        "source_intact": "passed", "behaviour_boundary": "not_checked"}, verdict.checks  # fmt: skip
     assert verdict.module == "ivv-sp_pago_orden"
     assert result.summary.startswith("ivv-sp_pago_orden: PARTLY PROVEN") or result.summary.startswith(
         "ivv-sp_pago_orden: NOT PROVEN")  # fmt: skip

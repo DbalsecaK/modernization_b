@@ -9,7 +9,8 @@
     "same_behaviour": "passed",
     "fresh_inputs": "not_checked",
     "canary": "passed",
-    "source_intact": "passed"
+    "source_intact": "passed",
+    "behaviour_boundary": "not_checked"
   },
   "details": {
     "tests_ran": "28 test(s) passed in a clean build (JUnit XML)",
@@ -17,14 +18,15 @@
     "same_behaviour": "12 golden case(s) reproduced",
     "fresh_inputs": "the golden master comes from recorded traces and the legacy does not run here, so fresh inputs cannot be observed on it (ADR-0015)",
     "canary": "line 43 changed (if (saldo <= monto + comision)) turned test ExactBalance red",
-    "source_intact": "the legacy is the code that was characterized (SHA-256)"
+    "source_intact": "the legacy is the code that was characterized (SHA-256)",
+    "behaviour_boundary": "the equivalence compares the calls the legacy made and its own tables, not the final state of the database after the called programs ran"
   },
   "not_proven": [
     "Declared mask calls:Transferencia.Page_Load (always): infrastructure of the legacy: the target framework replaces it (6.2)",
     "RULE-004 is outside TRANSFERENCIA and its golden master: it is verified with the module that runs its code",
-    "External programs are replaced by stubs that answer as the case says; their own logic is not verified here",
     "The legacy did not run on the platform: its behaviour comes from recorded traces, so only the traced cases are compared and fresh inputs are not (PARTLY PROVEN at most)",
-    "Fresh inputs: the golden master comes from recorded traces and the legacy does not run here, so fresh inputs cannot be observed on it (ADR-0015)"
+    "Fresh inputs: the golden master comes from recorded traces and the legacy does not run here, so fresh inputs cannot be observed on it (ADR-0015)",
+    "Behaviour boundary: the equivalence compares the calls the legacy made and its own tables, not the final state of the database after the called programs ran"
   ],
   "frontend": "PROVEN",
   "frontend_checks": {

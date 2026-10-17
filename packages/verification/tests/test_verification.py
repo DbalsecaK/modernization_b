@@ -56,13 +56,23 @@ def test_the_verdict_follows_fixed_rules() -> None:
     passing = [checks.tests_ran(7, 0, True), traced, checks.same_behaviour(matched, []),
                checks.fresh_inputs([CaseOutcome(f"f{i}", ["RULE-001"]) for i in range(10)]),
                checks.canary([{"line": 3, "after": "x", "caught_by": "test a"}]),
-               checks.source_intact("abc", "abc")]  # fmt: skip
+               checks.source_intact("abc", "abc"),
+               checks.behaviour_boundary([], [], [], state_compared=True)]  # fmt: skip
     assert compute("PayOrder", passing, optional).verdict == "PROVEN"
     partly = compute("PayOrder", [*passing[:3], checks.fresh_inputs(None, "no engine"), *passing[4:]], [])
     assert partly.verdict == "PARTLY PROVEN"
     assert partly.not_proven == ["Fresh inputs: no engine"]
-    changed = compute("PayOrder", [*passing[:5], checks.source_intact("abc", "abd")], [])
+    changed = compute("PayOrder", [*passing[:5], checks.source_intact("abc", "abd"), passing[6]], [])
     assert changed.verdict == "NOT PROVEN"
+    # ADR-0055: stubs, an unverified unit of work or a rollback without a case keep the verdict PARTLY PROVEN, and
+    # the detail names each of them; nothing can be PROVEN until the final state of the database is compared.
+    boundary = checks.behaviour_boundary(["db_cuentas..sp_debito"], [108, 119, 161], [119])
+    assert boundary.status == "not_checked"
+    assert "sp_debito" in boundary.detail
+    assert "lines 108, 119, 161" in boundary.detail
+    assert "rollback points without a case: lines 119" in boundary.detail
+    assert compute("PayOrder", [*passing[:6], boundary], []).verdict == "PARTLY PROVEN"
+    assert checks.behaviour_boundary([], [], [], state_compared=False).status == "not_checked"
     assert compute("PayOrder", passing[:2], []).verdict == "PARTLY PROVEN"  # checks that did not run
     unnoticed = checks.canary([{"line": 3, "after": "x", "caught_by": ""}])
     assert unnoticed.status == "failed"

@@ -81,8 +81,12 @@ def test_neutral_types() -> None:
 
 def test_classification_separates_infrastructure_control_and_business(proc: Procedure) -> None:
     hints = {h.statement: h.label for h in classify(proc)}
-    assert hints[at(proc, 108)] == "infrastructure"  # begin tran
-    assert hints[at(proc, 167)] == "infrastructure"  # error log call
+    # ADR-0055: the unit of work decides what the business keeps or undoes, and sp_cerror is the error contract the
+    # caller receives: business, never infrastructure (the first proven migration lost every rollback).
+    assert hints[at(proc, 108)] == "business"  # begin tran
+    assert hints[at(proc, 119)] == "business"  # rollback tran
+    assert hints[at(proc, 161)] == "business"  # commit tran
+    assert hints[at(proc, 167)] == "business"  # sp_cerror: the error contract
     assert hints[at(proc, 47)] == "infrastructure"  # if @@rowcount = 0
     assert hints[at(proc, 80)] == "control_flow"
     assert hints[at(proc, 81)] == "business"  # half tariff for WEB
@@ -101,7 +105,22 @@ def test_the_slice_of_the_order_update_follows_the_commission_back_to_the_tariff
 def test_slice_targets_are_the_business_outcomes(proc: Procedure) -> None:
     targets = {s.line_start for s in proc.statements() if s.id in slice_targets(proc)}
     assert {110, 128, 144} <= targets
-    assert 167 not in targets  # the error log is infrastructure
+    assert 167 in targets  # sp_cerror is the error contract the caller receives (ADR-0055)
+    assert 108 not in targets  # begin tran is business but not an outcome a rule is extracted from
+
+
+def test_the_unit_of_work_lists_where_the_procedure_keeps_or_undoes_its_work(proc: Procedure) -> None:
+    from nexti_adapter_sybase import SybaseAdapter
+    from nexti_adapter_sybase.analysis import unit_of_work
+
+    work = unit_of_work(proc)
+    assert work[0] == (108, "begin_tran")
+    assert (119, "rollback") in work
+    assert (161, "commit") in work
+    assert [k for _, k in work].count("rollback") == 3
+    files = [SourceFile("sp/x.sp", FIXTURE.read_text(encoding="utf-8"))]
+    assert SybaseAdapter().unit_of_work(files, "dbo.sp_pago_orden") == work
+    assert SybaseAdapter().unit_of_work(files, "sp_otro") == []
 
 
 def test_the_adapter_contract() -> None:

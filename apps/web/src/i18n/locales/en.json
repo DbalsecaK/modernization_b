@@ -478,17 +478,27 @@
     "modes": {
       "auto": "Automatic (by the inputs)",
       "traces": "Recorded traces",
-      "live": "Customer's live system (IBM i)"
+      "live": "Customer's live system"
     },
     "modeHint": {
       "auto": "Traces when the inputs bring them; otherwise the platform engine.",
       "traces": "Only the traces recorded on the customer's system: the verdict cannot pass PARTLY PROVEN.",
-      "live": "The program runs on the customer's IBM i with a test library: the verdict can reach PROVEN."
+      "live": "The program runs on the customer's test system, with the programs it calls: the verdict can reach PROVEN."
+    },
+    "kind": "Kind of system",
+    "kinds": {
+      "ibmi": "IBM i (RPG, CL)",
+      "sybase": "Sybase ASE test server (stored procedures)"
     },
     "host": "IBM i host",
     "hostHint": "Name or IPv4, without scheme or port.",
     "port": "Port",
     "portHint": "Sign-on server (8476) or another host server port.",
+    "sybaseHost": "Sybase ASE host",
+    "sybasePort": "Port",
+    "sybasePortHint": "The listener of the test server (5000 by default).",
+    "database": "Database of the program",
+    "databaseHint": "Where the program and its tables live. The cases empty and reload the tables they set up, and the platform keeps a call log there. Never production.",
     "library": "Test library",
     "libraryHint": "Where each case's rows are loaded. Never a production library.",
     "programs": "Program library",
@@ -1015,6 +1025,7 @@
       "canary": "Canary",
       "sourceIntact": "Source intact",
       "legacyCovered": "Legacy covered",
+      "behaviourBoundary": "Behaviour boundary",
       "compiles": "Compiles",
       "screensMount": "Screens mount",
       "fieldsCovered": "Fields covered",

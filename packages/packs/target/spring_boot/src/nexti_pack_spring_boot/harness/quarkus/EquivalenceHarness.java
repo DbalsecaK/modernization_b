@@ -137,6 +137,7 @@ public final class EquivalenceHarness {
         ObjectNode out = JSON.createObjectNode();
         out.put("name", testCase.get("name").asText());
         List<ObjectNode> calls = new ArrayList<>();
+        List<ObjectNode> undone = new ArrayList<>();
         try {
             for (JsonNode sql : plan.get("reset")) {
                 execute(jdbc, sql.asText());
@@ -150,11 +151,14 @@ public final class EquivalenceHarness {
             try {
                 out.set("response", fields(inTransaction(jdbc, execute, service, request)));
             } catch (RuntimeException e) {
-                // The calls stay: they are what the service did before it rejected, as the legacy's calls before
-                // its `return code` are (ADR-0044); the rollback undoes the tables, which are dumped after it.
+                // The rollback undoes the tables (dumped after it) and the effects of the calls made inside the
+                // transaction: they are reported apart, as `undone`, like the legacy's calls its rollback erased
+                // (ADR-0055).
                 if (!e.getClass().getSimpleName().equals("BusinessError")) {
                     throw e;
                 }
+                undone.addAll(calls);
+                calls.clear();
                 ObjectNode error = out.putObject("error");
                 error.put("code", String.valueOf(call(e, "code")));
                 error.put("legacy_code", String.valueOf(call(e, "legacyCode")));
@@ -170,6 +174,8 @@ public final class EquivalenceHarness {
             }
             ArrayNode recorded = out.putArray("calls");
             calls.forEach(recorded::add);
+            ArrayNode erased = out.putArray("undone");
+            undone.forEach(erased::add);
         } catch (Exception e) {
             Throwable cause = e instanceof InvocationTargetException ite ? ite.getCause() : e;
             out.put("failure", cause.getClass().getName() + ": " + cause.getMessage() + where(cause, plan));
@@ -208,7 +214,7 @@ public final class EquivalenceHarness {
                         .newInstance(dataSource));
             } else {
                 String name = type.getSimpleName();
-                ports.add(fake(type, name, testCase.path("stubs").path(name), calls));
+                ports.add(fake(type, name, testCase.path("stubs").path(name), calls, dataSource));
             }
         }
         Class<?> serviceType = Class.forName(plan.get("service").asText());
@@ -220,7 +226,8 @@ public final class EquivalenceHarness {
         throw new IllegalStateException(serviceType.getName() + " has no constructor with " + ports.size() + " ports");
     }
 
-    private static Object fake(Class<?> type, String name, JsonNode answers, List<ObjectNode> calls) {
+    private static Object fake(Class<?> type, String name, JsonNode answers, List<ObjectNode> calls,
+            DataSource dataSource) {
         Map<String, Integer> counter = new HashMap<>();
         return Proxy.newProxyInstance(type.getClassLoader(), new Class<?>[] {type}, (proxy, method, arguments) -> {
             if (method.getDeclaringClass() == Object.class) {
@@ -238,6 +245,19 @@ public final class EquivalenceHarness {
             int index = counter.merge(name, 1, Integer::sum) - 1;
             JsonNode answer = answers.isArray() && answers.size() > 0 ? answers.get(Math.min(index, answers.size() - 1))
                     : JSON.createObjectNode();
+            // A transactional substitute (ADR-0055): the rows the program leaves, written on the one connection the
+            // data source hands out, inside the use case's transaction, so a rejection undoes them.
+            for (JsonNode effect : answer.path("effects")) {
+                try (Statement statement = dataSource.getConnection().createStatement()) {
+                    int changed = effect.hasNonNull("update") ? statement.executeUpdate(effect.get("update").asText())
+                            : 0;
+                    if (changed == 0) {
+                        statement.executeUpdate(effect.get("insert").asText());
+                    }
+                } catch (SQLException e) {
+                    throw new IllegalStateException(name + ": effect of the substitute failed: " + e.getMessage(), e);
+                }
+            }
             if (answer.path("returns").asInt(0) != 0) {
                 throw new RuntimeException(name + " answered " + answer.path("returns").asInt());
             }

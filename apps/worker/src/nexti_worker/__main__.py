@@ -12,7 +12,7 @@ import structlog
 from sqlalchemy.ext.asyncio import create_async_engine
 
 from nexti_adapter_rpg.ibmi import DockerBridge, IbmiRunner
-from nexti_adapter_sybase.ase import AseRunner, RecordedRunner
+from nexti_adapter_sybase.ase import AseRunner, LiveAseRunner, RecordedRunner
 from nexti_core.adapters import LegacyRunner
 from nexti_core.instances import beat_forever
 from nexti_core.jobs import RUNS_QUEUE
@@ -57,9 +57,13 @@ def legacy_runner(settings: WorkerSettings) -> LegacyRunner:
 
 
 def live_runners(settings: WorkerSettings) -> dict[str, LiveRunnerFactory]:
-    """The runners on a customer's live system, by kind (ADR-0052): the IBM i through its bridge (ADR-0053)."""
+    """The runners on a customer's live system, by kind (ADR-0052): the IBM i through its bridge (ADR-0053), a
+    Sybase ASE test server through a throw-away isql client (ADR-0055)."""
     bridge = DockerBridge(image=settings.ibmi_bridge_image, docker=settings.sandbox_docker)
-    return {"ibmi": lambda config, credentials: IbmiRunner(config, credentials, bridge)}
+    return {
+        "ibmi": lambda config, credentials: IbmiRunner(config, credentials, bridge),
+        "sybase": lambda config, credentials: LiveAseRunner(config, credentials, docker=settings.sandbox_docker),
+    }
 
 
 async def run_worker(settings: WorkerSettings, *, name: str | None = None, wait: bool = True) -> None:

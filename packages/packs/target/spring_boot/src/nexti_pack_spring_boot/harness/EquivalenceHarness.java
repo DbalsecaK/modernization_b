@@ -28,7 +28,8 @@ import org.springframework.transaction.support.TransactionTemplate;
  * Runs the golden master cases on the generated service (NexTI verification, spec 11.3 check 3). Written by the
  * platform, never by a model: the real JDBC adapters against PostgreSQL, the external programs replaced by fakes that
  * record their calls and answer what the case says, and the use case inside one transaction (a rejection undoes its
- * writes and its external calls, as in the legacy). One JSON line per case, prefixed with "NXE ".
+ * writes and its external calls, as in the legacy: those calls are reported as "undone", ADR-0055). One JSON line per
+ * case, prefixed with "NXE ".
  */
 public final class EquivalenceHarness {
 
@@ -61,6 +62,7 @@ public final class EquivalenceHarness {
         ObjectNode out = JSON.createObjectNode();
         out.put("name", testCase.get("name").asText());
         List<ObjectNode> calls = new ArrayList<>();
+        List<ObjectNode> undone = new ArrayList<>();
         try {
             for (JsonNode sql : plan.get("reset")) {
                 jdbc.execute(sql.asText());
@@ -76,11 +78,14 @@ public final class EquivalenceHarness {
                 transaction.executeWithoutResult(status -> response[0] = invoke(execute, service, request));
                 out.set("response", fields(response[0]));
             } catch (RuntimeException e) {
-                // The calls stay: they are what the service did before it rejected, as the legacy's calls before
-                // its `return code` are (ADR-0044); the rollback undoes the tables, which are dumped after it.
+                // The rollback undoes the tables (dumped after it) and the effects of the calls made inside the
+                // transaction: they are reported apart, as `undone`, like the legacy's calls its rollback erased
+                // (ADR-0055).
                 if (!e.getClass().getSimpleName().equals("BusinessError")) {
                     throw e;
                 }
+                undone.addAll(calls);
+                calls.clear();
                 ObjectNode error = out.putObject("error");
                 error.put("code", String.valueOf(call(e, "code")));
                 error.put("legacy_code", String.valueOf(call(e, "legacyCode")));
@@ -96,6 +101,8 @@ public final class EquivalenceHarness {
             });
             ArrayNode recorded = out.putArray("calls");
             calls.forEach(recorded::add);
+            ArrayNode erased = out.putArray("undone");
+            undone.forEach(erased::add);
         } catch (Exception e) {
             Throwable cause = e instanceof InvocationTargetException ite ? ite.getCause() : e;
             out.put("failure", cause.getClass().getName() + ": " + cause.getMessage() + where(cause, plan));
@@ -133,7 +140,7 @@ public final class EquivalenceHarness {
                 ports.add(Class.forName(port.get("adapter").asText()).getConstructor(JdbcTemplate.class).newInstance(jdbc));
             } else {
                 String name = type.getSimpleName();
-                ports.add(fake(type, name, testCase.path("stubs").path(name), calls));
+                ports.add(fake(type, name, testCase.path("stubs").path(name), calls, jdbc));
             }
         }
         Class<?> serviceType = Class.forName(plan.get("service").asText());
@@ -145,7 +152,8 @@ public final class EquivalenceHarness {
         throw new IllegalStateException(serviceType.getName() + " has no constructor with " + ports.size() + " ports");
     }
 
-    private static Object fake(Class<?> type, String name, JsonNode answers, List<ObjectNode> calls) {
+    private static Object fake(Class<?> type, String name, JsonNode answers, List<ObjectNode> calls,
+            JdbcTemplate jdbc) {
         Map<String, Integer> counter = new HashMap<>();
         return Proxy.newProxyInstance(type.getClassLoader(), new Class<?>[] {type}, (proxy, method, arguments) -> {
             if (method.getDeclaringClass() == Object.class) {
@@ -163,6 +171,14 @@ public final class EquivalenceHarness {
             int index = counter.merge(name, 1, Integer::sum) - 1;
             JsonNode answer = answers.isArray() && answers.size() > 0 ? answers.get(Math.min(index, answers.size() - 1))
                     : JSON.createObjectNode();
+            // A transactional substitute (ADR-0055): the rows the program leaves, written on the same connection,
+            // inside the use case's transaction, so a rejection undoes them as the legacy's rollback does.
+            for (JsonNode effect : answer.path("effects")) {
+                int changed = effect.hasNonNull("update") ? jdbc.update(effect.get("update").asText()) : 0;
+                if (changed == 0) {
+                    jdbc.update(effect.get("insert").asText());
+                }
+            }
             if (answer.path("returns").asInt(0) != 0) {
                 throw new RuntimeException(name + " answered " + answer.path("returns").asInt());
             }

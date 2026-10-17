@@ -1,29 +1,31 @@
 {
   "mode": "record",
-  "verdict": "PROVEN",
+  "verdict": "NOT PROVEN",
   "checks": {
     "target_runs": "passed",
     "contract_mapped": "passed",
-    "same_behaviour": "passed",
-    "fresh_inputs": "passed",
-    "rules_covered": "passed",
-    "source_intact": "passed"
+    "same_behaviour": "failed",
+    "fresh_inputs": "failed",
+    "rules_covered": "failed",
+    "source_intact": "passed",
+    "behaviour_boundary": "not_checked"
   },
   "details": {
-    "target_runs": "the target started in the sandbox and answered; 28 of 28 case(s) reproduced",
+    "target_runs": "the target started in the sandbox and answered; 16 of 17 case(s) reproduced",
     "contract_mapped": "the approved mapping covers every input, output, table and call",
-    "same_behaviour": "28 golden case(s) reproduced",
-    "fresh_inputs": "12 fresh input(s) matched on both sides",
-    "rules_covered": "11 of 11 rule(s) reproduced by the target",
-    "source_intact": "the legacy is the code that was characterized (SHA-256)"
+    "same_behaviour": "1 of 17 case(s) differ; comision_separada_falla_deshace_pago: tables:db_cuentas..ct_cuenta[0].cta_saldo: 500.0000 != 400.0000",
+    "fresh_inputs": "1 fresh input(s) differ: fresh_11_comision_separada_falla_deshace_pago",
+    "rules_covered": "rules the target does not reproduce: RULE-010, RULE-011, RULE-014",
+    "source_intact": "the legacy is the code that was characterized (SHA-256)",
+    "behaviour_boundary": "the equivalence compares the calls the legacy made and its own tables, not the final state of the database after the called programs ran; the called programs were stubs, their own logic and effects were not verified: cobis..sp_cerror, db_cuentas..sp_debito; the legacy has a unit of work (begin/save/commit/rollback at lines 108, 119, 136, 155, 161): whether the target keeps or undoes the same work was not verified"
   },
   "rules_compared": {
-    "present": 8,
-    "missing": 3,
-    "extra": 2
+    "present": 11,
+    "missing": 4,
+    "extra": 1
   },
-  "model_calls": 46,
-  "cost_usd": "1.13140800",
+  "model_calls": 57,
+  "cost_usd": "1.07250400",
   "decisions": [
     "questions",
     "C1",

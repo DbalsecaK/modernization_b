@@ -135,6 +135,8 @@ class SourceRunner:
         runner = self._runner(files, setting or LegacyExecution("auto"))
         self.engine = runner.engine
         master = await runner.run(files, suite)
+        if suite.unreachable and not master.unreachable:  # what the test engineer declared travels with the oracle
+            master = master.model_copy(update={"unreachable": dict(suite.unreachable)})
         if master.quirks or not master.from_traces:
             return master
         relied, program_set = _program_quirks(files, suite.program)

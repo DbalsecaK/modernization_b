@@ -112,7 +112,7 @@ test('the architecture tab shows the approved design, its contract and checks; t
   await expect(page.getByText('openapi.json · OpenAPI 3.1')).toBeVisible()
   await expect(page.getByText('"openapi": "3.1.0"')).toBeVisible()
   const checks = page.getByRole('list', { name: 'Checks of PayOrder' }).getByRole('listitem')
-  await expect(checks).toHaveCount(6)
+  await expect(checks).toHaveCount(7)
   await expect(checks.nth(0)).toContainText('Tests ran')
   await expectAccessible(page, 'main')
   await capture(page, 'architecture')
