@@ -1,6 +1,6 @@
 # Plan — Equivalencia por estado de la base y unidad de trabajo
 
-- **Estado:** propuesto (2026-10-17), pendiente de aprobación.
+- **Estado:** aprobado por el usuario (2026-10-17); en ejecución desde la fase A.
 - **Fuente:** ADR-0055, D-88; doble check externo de `sp_debcred_empresa` (2026-10-14, 30 hallazgos + H1-H9).
 - **Regla:** el Java generado de la ejecución 44027f4f **no se corrige a mano**; la plataforma debe generar el código
   correcto y demostrarlo.

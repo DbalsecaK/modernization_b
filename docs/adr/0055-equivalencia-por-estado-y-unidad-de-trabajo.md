@@ -1,6 +1,6 @@
 # ADR-0055 — Equivalencia por estado de la base y unidad de trabajo
 
-- **Estado:** Propuesta · 2026-10-17 (pendiente de aprobación)
+- **Estado:** Aceptada · 2026-10-17
 - **Secciones:** 6.1 fases 9 a 12 (caracterización, generación, verificación), 8.2 (contrato del adaptador), 11.2 y
   11.3 (veredicto y golden master), 7.1 (configuración del proyecto), 3.1 a 3.4 (los cuatro flujos)
 - **Relacionadas:** ADR-0042 (generación fiel), ADR-0044 (base reevaluada), ADR-0046 (fase no disponible), ADR-0047
