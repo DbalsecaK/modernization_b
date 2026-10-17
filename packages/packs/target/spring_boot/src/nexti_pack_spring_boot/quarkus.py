@@ -51,6 +51,10 @@ def resource_file(design: Design, use_case: UseCase) -> tuple[str, str]:
                "jakarta.ws.rs.Produces", "jakarta.ws.rs.core.MediaType"]  # fmt: skip
     if method not in _BODY_METHODS and use_case.inputs:
         imports.append("jakarta.ws.rs.QueryParam")
+    # ADR-0055: the unit of work of the legacy is the transaction of the request (a rejection undoes everything).
+    transactional = "    @Transactional\n" if use_case.unit_of_work else ""
+    if use_case.unit_of_work:
+        imports.append("jakarta.transaction.Transactional")
     lines = "".join(f"import {i};\n" for i in sorted(imports))
     return _path(package, f"{use_case.name}Resource"), (
         f"package {package};\n\n{lines}\n"
@@ -61,7 +65,7 @@ def resource_file(design: Design, use_case: UseCase) -> tuple[str, str]:
         f"    private final {service} service;\n\n"
         f"    @Inject\n"
         f"    public {use_case.name}Resource({service} service) {{\n        this.service = service;\n    }}\n\n"
-        f'    @{method}\n    @Path("{path}")\n'
+        f'    @{method}\n    @Path("{path}")\n{transactional}'
         f"    public {use_case.name}Response handle({params}) {{\n"
         f"        return service.execute({argument});\n    }}\n}}\n"
     )
@@ -116,6 +120,7 @@ def pom_file(design: Design) -> tuple[str, str]:
     <dependency><groupId>io.quarkus</groupId><artifactId>quarkus-rest-jackson</artifactId></dependency>
     <dependency><groupId>io.quarkus</groupId><artifactId>quarkus-agroal</artifactId></dependency>
     <dependency><groupId>io.quarkus</groupId><artifactId>quarkus-jdbc-postgresql</artifactId></dependency>
+    <dependency><groupId>io.quarkus</groupId><artifactId>quarkus-narayana-jta</artifactId></dependency>
     <dependency><groupId>io.quarkus</groupId><artifactId>quarkus-arc</artifactId></dependency>
     <dependency><groupId>io.quarkus</groupId><artifactId>quarkus-junit5</artifactId><scope>test</scope></dependency>
     <dependency><groupId>org.assertj</groupId><artifactId>assertj-core</artifactId><version>3.27.4</version><scope>test</scope></dependency>

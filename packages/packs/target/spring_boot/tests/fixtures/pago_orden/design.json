@@ -363,7 +363,26 @@
       "http_method": "POST",
       "path": "/orders/pay",
       "legacy_program": "dbo.sp_pago_orden",
-      "legacy_message": "@o_mensaje"
+      "legacy_message": "@o_mensaje",
+      "unit_of_work": {
+        "begins_at": 108,
+        "commits_at": 161,
+        "savepoints": [],
+        "rollbacks": [
+          {
+            "legacy_line": 119,
+            "outcome": "DEBIT_FAILED"
+          },
+          {
+            "legacy_line": 136,
+            "outcome": "COMMISSION_FAILED"
+          },
+          {
+            "legacy_line": 155,
+            "outcome": "ORDER_NOT_UPDATED"
+          }
+        ]
+      }
     }
   ],
   "decisions": [
@@ -381,5 +400,6 @@
       "when": "rejected",
       "reason": "On a rejection the legacy leaves in @o_movimiento the number of a debit it has just undone; the target returns no movement when it rejects (decided at C3)."
     }
-  ]
+  ],
+  "data_strategy": "migration"
 }
