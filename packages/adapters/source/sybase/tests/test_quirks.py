@@ -44,9 +44,10 @@ go
 SEMANTICS = """create procedure sp_demo_semantica
     @i_cuenta   char(20),
     @i_monto    money,
+    @i_canal    char(3) = 'WEB',
     @o_texto    varchar(5) = null output
 as
-declare @w_ent int, @w_dec decimal(10,2), @w_tipo varchar(4), @w_cod varchar(10), @w_nom varchar(60)
+declare @w_ent int, @w_dec decimal(10,2), @w_tipo varchar(4), @w_cod varchar(10), @w_nom varchar(60), @w_rc int
 select @o_texto = @i_cuenta
 select @o_texto = 'AB' + @w_tipo
 select @w_nom = 'corto'
@@ -57,6 +58,11 @@ select @w_dec = convert(decimal(10,2), @i_monto)
 select @w_cod = substring(@i_cuenta, 1, patindex('%-%', @i_cuenta) - 1)
 select @w_tipo = isnull(@w_tipo, 'LONGER')
 select @w_nom = isnull(@w_nom, @w_cod)
+exec @w_rc = sp_otro @i_cuenta
+select @w_nom = convert(varchar(20), @i_monto)
+select @w_ent = 1
+if @@rowcount = 0
+    select @w_dec = @i_monto / 3
 return 0
 go
 """
@@ -85,13 +91,17 @@ def test_the_semantic_quirks_of_the_double_check_are_found_with_their_lines() ->
     # concatenation, an int receiving money, a decimal(10,2) receiving 2.345...).
     found = _detected(SEMANTICS)
     # char(20) into varchar(5); 'AB' + varchar(4) may exceed 5; a slice of char(20) into varchar(10); 'LONGER'
-    # into varchar(4). Not line 9: 'corto' fits in varchar(60).
-    assert found["varchar-assign-truncates"] == [7, 8, 14, 15]
-    assert found["money-to-int-rounds"] == [10, 11]
-    assert found["decimal-scale-assign-errors"] == [12]
-    assert found["decimal-convert-truncates"] == [13]
-    assert found["substring-no-match-errors"] == [14]
-    assert found["isnull-keeps-replacement"] == [15]  # not line 16: the replacement is a variable
+    # into varchar(4). Not line 10: 'corto' fits in varchar(60); not line 19: a convert alone is not a concatenation.
+    assert found["varchar-assign-truncates"] == [8, 9, 15, 16]
+    assert found["money-to-int-rounds"] == [11, 12]
+    assert found["decimal-scale-assign-errors"] == [13, 22]  # a literal with three decimals; a division
+    assert found["decimal-convert-truncates"] == [14]
+    assert found["substring-no-match-errors"] == [15]
+    assert found["isnull-keeps-replacement"] == [16]  # not line 17: the replacement is a variable
+    assert found["param-default-vs-null"] == [4, 5]
+    assert found["callee-raiserror-continues"] == [18]
+    assert found["money-to-char"] == [19]
+    assert found["rowcount-per-statement"] == [21]  # read right after `select @w_ent = 1`, which counts as a row
     assert "null-compare" not in found
 
 

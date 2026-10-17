@@ -128,8 +128,9 @@ CATALOG: dict[str, Spec] = {
              "select 'NXQ|substring-no-match-errors|' + @v + '|' + convert(varchar(10), @e)",
              "KEEP|536"),
         Spec("decimal-scale-assign-errors", "high",
-             "Assigning a literal with more decimals than the scale to a DECIMAL(p,s) variable raises error 241 "
-             "(scale error) and aborts the batch; the value is not rounded.",
+             "Assigning a value with more decimals than the scale to a DECIMAL(p,s) variable (a literal, a variable "
+             "of a larger scale, the result of a division) raises error 241 (scale error) and aborts the batch; "
+             "the value is not rounded.",
              "Give decimal variables exactly the scale of the legacy and fail where the legacy fails; do not "
              "round a value the legacy rejects.",
              "declare @e int\nexec('declare @d decimal(10,2) select @d = 2.345')\nselect @e = @@error\n"
@@ -147,6 +148,45 @@ CATALOG: dict[str, Spec] = {
              "(isnull(convert(varchar(2), null), 'LONGER') = 'LONGER').",
              "Return the replacement as it is; do not truncate it to the length of the value it replaces.",
              "select 'NXQ|isnull-keeps-replacement|' + isnull(convert(varchar(2), null), 'LONGER')", "LONGER"),
+        Spec("param-default-vs-null", "high",
+             "A parameter with a default takes it only when the caller omits the argument; an explicit NULL stays "
+             "NULL and the default does not apply.",
+             "Distinguish an omitted argument (the default applies) from a null one (it stays null): a request "
+             "field that is absent is not the same as one that is null.",
+             "exec('create proc nxq_p @a int = 7, @o int output as select @o = @a')\n"
+             "declare @r1 int, @r2 int\nexec nxq_p @o = @r1 output\nexec nxq_p null, @r2 output\n"
+             "select 'NXQ|param-default-vs-null|' + isnull(convert(varchar(10), @r1), '<null>') + '|' "
+             "+ isnull(convert(varchar(10), @r2), '<null>')\ndrop proc nxq_p",
+             "7|<null>"),
+        Spec("callee-raiserror-continues", "high",
+             "An error raised inside a called procedure (raiserror) does not abort the caller: execution goes on, "
+             "@@error is 0 after the exec, and only the return status (exec @rc = proc) carries the failure.",
+             "Read the status the called program returns and act on it as the legacy does; do not expect an "
+             "exception from the call, and do not let one abort what the legacy continues.",
+             "exec('create proc nxq_f as raiserror 20001 ''fallo'' return 5')\n"
+             "declare @rc int, @e int\nselect @rc = 99\nexec @rc = nxq_f\nselect @e = @@error\n"
+             "select 'NXQ|callee-raiserror-continues|' + isnull(convert(varchar(10), @rc), '<null>') + '|' "
+             "+ convert(varchar(10), @e)\ndrop proc nxq_f",
+             "5|0"),
+        Spec("rowcount-per-statement", "medium",
+             "@@rowcount holds the row count of the LAST statement and an assignment to a variable counts as one "
+             "row: `select @e = @@error` leaves @@rowcount at 1. An IF or WHILE condition reads it without "
+             "resetting it.",
+             "Capture the row count right after the statement it belongs to (or in the same step as @@error); a "
+             "later read sees the count of whatever ran in between.",
+             "declare @e int, @n int, @m int\nselect name from sysobjects where 1 = 2\n"
+             "if @@rowcount = 0 select @m = @@rowcount\nselect name from sysobjects where 1 = 2\n"
+             "select @e = @@error\nselect @n = @@rowcount\n"
+             "select 'NXQ|rowcount-per-statement|' + convert(varchar(10), @n) + '|' + convert(varchar(10), @m)",
+             "1|0"),
+        Spec("money-to-char", "medium",
+             "Converting MONEY to a string gives exactly two decimals and no separators (1234.50); style 1 adds "
+             "thousands separators (1,234.50); an amount that rounds to zero keeps its sign (-0.00).",
+             "Format money with two decimals as the legacy does (separators only where it uses style 1); keep the "
+             "sign of a negative amount that rounds to zero when the golden master shows it.",
+             "select 'NXQ|money-to-char|' + convert(varchar(20), convert(money, 1234.5)) + '|' "
+             "+ convert(varchar(20), convert(money, 1234.5), 1) + '|' + convert(varchar(20), convert(money, -0.004))",
+             "1234.50|1,234.50|-0.00"),
     )
 }  # fmt: skip
 
@@ -273,7 +313,11 @@ def _matches(tokens: Sequence[Token], types: dict[str, str]) -> dict[str, set[in
             if typed(prev, _INT) and any(typed(t, _MONEY) for t in value):
                 add("money-to-int-rounds", tok.line)
             scale = size_of(prev, _DECIMAL, 2)
-            if scale is not None and any(decimals(t) > scale for t in value):
+            if scale is not None and (
+                any(decimals(t) > scale for t in value)
+                or any((size_of(t, _DECIMAL, 2) or 0) > scale for t in value)
+                or any(t.is_symbol("/") for t in value)
+            ):
                 add("decimal-scale-assign-errors", tok.line)
         if tok.is_word("CONVERT") and nxt is not None and nxt.is_symbol("("):
             inside = expression(i + 2)
@@ -282,6 +326,8 @@ def _matches(tokens: Sequence[Token], types: dict[str, str]) -> dict[str, set[in
                 add("money-to-int-rounds", tok.line)
             if inside and _DECIMAL.match(" ".join(t.text for t in inside)):
                 add("decimal-convert-truncates", tok.line)
+            if inside and _CHAR.match(inside[0].text) and any(typed(t, _MONEY) for t in argument):
+                add("money-to-char", tok.line)
         if tok.is_word("SUBSTRING") and nxt is not None and nxt.is_symbol("("):
             arguments = expression(i + 2) + expression_after(i + 2, 2)
             if any(t.is_word("PATINDEX", "CHARINDEX") for t in arguments):
@@ -307,17 +353,30 @@ def _matches(tokens: Sequence[Token], types: dict[str, str]) -> dict[str, set[in
     return found
 
 
-def _statement_quirks(statements: Sequence[Statement]) -> dict[str, set[int]]:
+def _statement_quirks(statements: Sequence[Statement], rowcount_lines: set[int] | None = None) -> dict[str, set[int]]:
+    """`rowcount_lines`: the lines that read @@rowcount; one read right after a plain assignment sees 1."""
     found: dict[str, set[int]] = {}
     rules: dict[str, Callable[[Statement], bool]] = {
         "select-assign-from-table": lambda s: s.kind == "select" and bool(s.vars_written) and bool(s.reads),
         "error-continues": lambda s: s.checks_error,
         "nested-tran": lambda s: s.kind in ("begin_tran", "rollback", "save_tran"),
+        "callee-raiserror-continues": lambda s: s.kind == "exec" and bool(s.calls),
     }
+    previous: Statement | None = None
     for stmt in statements:
         for quirk, applies in rules.items():
             if applies(stmt):
                 found.setdefault(quirk, set()).add(stmt.line_start)
+        if (
+            stmt.line_start in (rowcount_lines or set())
+            and previous is not None
+            and previous.kind in ("select", "set")
+            and previous.vars_written
+            and not previous.reads
+            and not previous.writes
+        ):
+            found.setdefault("rowcount-per-statement", set()).add(stmt.line_start)
+        previous = stmt
     return found
 
 
@@ -326,8 +385,12 @@ def detect(source: SourceFile, procedure: Procedure) -> list[EngineQuirk]:
     tokens, _ = tokenize(source.text)
     body = [t for t in tokens if procedure.line_start <= t.line <= procedure.line_end]
     found = _matches(body, _types(procedure))
-    for quirk, lines in _statement_quirks(procedure.statements()).items():
+    rowcount_lines = {t.line for t in body if t.kind == "global" and t.upper == "@@ROWCOUNT"}
+    for quirk, lines in _statement_quirks(procedure.statements(), rowcount_lines).items():
         found.setdefault(quirk, set()).update(lines)
+    for parameter in procedure.parameters:
+        if parameter.default is not None:
+            found.setdefault("param-default-vs-null", set()).add(parameter.line)
     order = list(CATALOG)
     return [
         EngineQuirk(id=spec.id, severity=spec.severity, behavior=spec.behavior, target=spec.target, file=source.path,
