@@ -326,6 +326,10 @@ def _tables(tokens: list[Token]) -> tuple[set[str], set[str]]:
             i = j
             continue
         i += 1
+    if first == "INSERT" and not writes:  # `insert t (...)`: Sybase does not need INTO, and COBIS rarely writes it
+        name, _ = _name(tokens, 1)
+        if name and not name.startswith("@"):
+            writes.add(name.lower())
     if first == "DELETE":
         k = 2 if len(tokens) > 1 and tokens[1].is_word("FROM") else 1
         name, _ = _name(tokens, k)

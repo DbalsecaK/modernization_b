@@ -53,6 +53,18 @@ def scope_files(files: list[SourceFile], program: str) -> set[str]:
     return program_files(adapter.inventory(files), program)
 
 
+def unit_of_work(files: Sequence[SourceFile], program: str) -> list[tuple[int, str]]:
+    """The lines where the legacy program starts, saves, confirms or undoes its work (ADR-0055), from its source
+    adapter when it knows them; empty otherwise."""
+    from nexti_orchestration.modernization import pick_adapter
+
+    try:
+        found = getattr(pick_adapter(list(files)), "unit_of_work", None)
+    except Exception:
+        return []
+    return list(found(list(files), program)) if found else []
+
+
 def split_rules(rules: Sequence[Rule], files: set[str]) -> tuple[list[Rule], list[Rule]]:
     """(inside, outside) the scope: a rule is inside when one of its citations is in the scope's files."""
     if not files:
