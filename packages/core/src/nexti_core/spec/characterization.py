@@ -73,10 +73,25 @@ class Schema(CharacterizationModel):
 
 
 class StubAnswer(CharacterizationModel):
-    """How an external program answers one call: its return code and its output parameters."""
+    """How an external program answers one call: its return code, its output parameters and, when the case needs
+    them, the rows it leaves in the tables it writes (ADR-0055: a transactional substitute, whose effects happen
+    inside the caller's unit of work and are undone by its rollback, as the real program's would be)."""
 
     returns: int = 0
     outputs: dict[str, Scalar] = Field(default_factory=dict)
+    effects: dict[str, list[dict[str, Scalar]]] = Field(
+        default_factory=dict,
+        description="Table -> rows the program leaves: updated when a row with the same key exists, inserted otherwise",
+    )
+
+    @model_serializer(mode="wrap")
+    def _without_empty_effects(self, handler: SerializerFunctionWrapHandler) -> Any:
+        # An answer without effects serialises as before the field existed: the keys of the recordings (the case's
+        # JSON) and the recordings themselves stay valid.
+        data = handler(self)
+        if isinstance(data, dict) and not data.get("effects"):
+            data.pop("effects", None)
+        return data
 
 
 class Case(CharacterizationModel):

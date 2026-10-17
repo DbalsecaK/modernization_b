@@ -40,7 +40,7 @@ Las fases A a E no usan modelos; la F sí.
 |---|---|---|---|
 | A | 1, 2 | Hecho (2026-10-17) | PR #98: unidad de trabajo como negocio en Sybase, CICS y ASPX; séptimo chequeo «Frontera del comportamiento»; las seis grabaciones de aceptación recalculadas a PARTLY PROVEN |
 | B | 5, 6 | Hecho (2026-10-17) | `kind = sybase` (Sybase ASE de prueba del cliente: `SybaseConfig`, `LiveAseRunner`, migración 0027, tarjeta web); rollback visible: el golden master Sybase lee al final del caso las llamadas que sobrevivieron (`NXK|`) y separa en `undone` las que el rollback deshizo; los cinco arneses del destino hacen lo mismo; el comparador juzga las que sobrevivieron; grabaciones de `pago_orden` regrabadas en el ASE real |
-| B | 7 | Pendiente | Sustitutos transaccionales con efectos declarados por caso, aplicados dentro de la transacción en el legado y traducidos al destino por el diseño |
+| B | 7 | Hecho (2026-10-17) | `StubAnswer.effects` (tabla → filas que deja el programa llamado, por la clave de la tabla); el stub Sybase las escribe dentro de la transacción del llamador (`update` si existe, `insert` si no), el diseño las traduce al destino (`UPDATE` por la clave de la entidad + `INSERT` si no cambió nada) y los arneses Spring, Quarkus, .NET y Go las aplican dentro de su transacción (MongoDB: no soportado, falla con su razón); el test engineer las declara cuando el caso depende de ellas |
 | C–J | resto | Pendiente | — |
 
 ## Cómo se valida cada fase
