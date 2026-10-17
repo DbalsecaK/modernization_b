@@ -113,7 +113,7 @@ class DotnetPack:
 
     async def run_equivalence(
         self, sandbox: Sandbox, files: dict[str, str], design: Design, use_case: UseCase, master: GoldenMaster,
-        defaults: dict[str, Scalar] | None = None,
+        defaults: dict[str, Scalar] | None = None, engine: Any | None = None,
     ) -> EquivalenceRun:  # fmt: skip
         return await run_equivalence(sandbox, files, design, use_case, master, defaults)
 
@@ -152,7 +152,7 @@ class DotnetOraclePack(DotnetPack):
 
     async def run_equivalence(
         self, sandbox: Sandbox, files: dict[str, str], design: Design, use_case: UseCase, master: GoldenMaster,
-        defaults: dict[str, Scalar] | None = None,
+        defaults: dict[str, Scalar] | None = None, engine: Any | None = None,
     ) -> EquivalenceRun:  # fmt: skip
         return await oracle.run_equivalence(sandbox, files, design, use_case, master, defaults)
 

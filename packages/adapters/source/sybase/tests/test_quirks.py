@@ -86,7 +86,7 @@ def test_the_runner_records_the_register_and_the_environment_once() -> None:
             super().__init__(coverage=False)
             self.probes = 0
 
-        async def _start(self) -> str:
+        async def _start(self, network: str = "none") -> str:
             return "engine"
 
         async def _stop(self, name: str) -> None:
