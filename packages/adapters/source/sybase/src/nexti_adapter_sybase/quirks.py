@@ -101,7 +101,7 @@ CATALOG: dict[str, Spec] = {
              "CONVERT with a style number formats dates in the engine's fixed formats (style 103 is dd/mm/yyyy).",
              "Format with the exact pattern of each style used, independent of the locale.",
              "select 'NXQ|date-style|' + convert(varchar(10), convert(datetime, '20240305'), 103)", "05/03/2024"),
-        # ADR-0055 (I.18): the behaviours the external double check of the reference procedure named, measured on the engine.
+        # ADR-0055 (I.18): what the external double check of the reference procedure named, measured on the engine.
         Spec("varchar-assign-truncates", "medium",
              "Assigning a longer value to a CHAR/VARCHAR(n) variable or column keeps its first n characters "
              "silently (no error, no warning).",
