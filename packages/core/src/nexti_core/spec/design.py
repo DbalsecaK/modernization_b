@@ -51,11 +51,25 @@ class FieldSpec(DesignModel):
         description="What it is in the legacy: the column (entity field), the parameter (use case input or output) "
         "or the argument of the external program (port method input). The golden master is compared through it.",
     )
+    # ADR-0056 (phase D): the contract of the target comes from the signature of the legacy. The platform fills
+    # these from the source, never the architect: a request without the field takes the default, as the legacy
+    # takes it when the argument is omitted; an explicit null stays null.
+    defaulted: bool = Field(default=False, description="The legacy declares a default for this parameter")
+    default: str | int | float | bool | None = Field(default=None, description="That default, when `defaulted`")
 
     @field_validator("type")
     @classmethod
     def neutral(cls, value: str) -> str:
         return str(neutral_types.parse(value))
+
+    @model_serializer(mode="wrap")
+    def _without_absent_default(self, handler: SerializerFunctionWrapHandler) -> Any:
+        # A field without a legacy default serialises as before the fields existed (designs and recordings).
+        data = handler(self)
+        if isinstance(data, dict) and not self.defaulted:
+            data.pop("defaulted", None)
+            data.pop("default", None)
+        return data
 
 
 class Entity(DesignModel):

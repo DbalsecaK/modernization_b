@@ -719,6 +719,21 @@ def test_an_output_must_be_a_parameter_of_the_called_program_not_its_return_stat
     assert call_output_problems(Design.model_validate(data), []) == []
 
 
+def test_the_platform_fills_the_legacy_defaults_of_the_use_case_inputs() -> None:
+    # ADR-0056 (phase D): the architect never writes defaults; the platform reads them from the signature of the
+    # program (`@i_canal char(3) = 'WEB'`) so the pack generates the contract from them.
+    from nexti_orchestration.generation import with_parameter_defaults
+
+    files = [SourceFile("sp/sp_pago_orden.sp", SOURCE)]
+    design = Design.model_validate(json.loads(DESIGN_JSON))
+    filled = with_parameter_defaults(design, files)
+    channel = next(f for f in filled.use_cases[0].inputs if f.legacy == "@i_canal")
+    assert (channel.defaulted, channel.default) == (True, "WEB")
+    others = [f for f in filled.use_cases[0].inputs if f.legacy != "@i_canal" and f.defaulted]
+    assert all(f.legacy in ("@i_canal", "@i_servicio") for f in others) or others == []
+    assert with_parameter_defaults(design, []) is design  # nothing to read: the design stays the same object
+
+
 def test_the_adapter_passes_exactly_the_arguments_the_legacys_calls_pass() -> None:
     # ADR-0056 (N7): a method input the calls never pass reaches the program as NULL where the legacy let its
     # default apply; an argument the calls pass but no input maps lets the default apply where the legacy sent a

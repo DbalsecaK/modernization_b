@@ -223,6 +223,34 @@ def test_when_the_unit_of_work_port_begins_and_ends_the_service_owns_the_transac
     assert "@Transactional" in resource_file(DESIGN, PAY)[1]
 
 
+def test_the_rest_contract_comes_from_the_legacy_signature() -> None:
+    # ADR-0056 (phase D): a use case that replaces a legacy program reads its request as the program reads its
+    # arguments: a field absent from the body takes the parameter's default, an explicit null stays null, text is
+    # cut to the parameter's length and a decimal is brought to its scale. The record itself does not change.
+    data = json.loads(DESIGN.model_dump_json(by_alias=True))
+    use_case = data["use_cases"][0]
+    channel = next(f for f in use_case["inputs"] if f["legacy"] == "@i_canal")
+    channel.update({"defaulted": True, "default": "WEB"})
+    design = Design.model_validate(data)
+    _, controller = controller_file(design, design.use_cases[0])
+    assert "public PayOrderResponse handle(@RequestBody(required = false) JsonNode body)" in controller
+    assert f'read(body, "{channel["name"]}", String.class, "WEB")' in controller
+    assert "fit(read(body," in controller  # text inputs cut to the legacy length
+    assert "scale(read(body," in controller  # decimal inputs at the legacy scale
+    assert "private final ObjectMapper mapper;" in controller
+    assert "return transaction.execute(status -> service.execute(request));" in controller
+    assert "if (body == null || !body.has(field)) {" in controller
+    # The record keeps its shape, and a field without a default serialises as before.
+    assert "defaulted" not in json.dumps(json.loads(DESIGN.model_dump_json(by_alias=True)))
+    assert (
+        json.loads(design.model_dump_json(by_alias=True))["use_cases"][0]["inputs"][use_case["inputs"].index(channel)]
+        == channel
+    )
+    # A use case without a legacy program binds the record as before.
+    plain = _with(use_cases=[{**use_case, "legacy_program": None, "unit_of_work": None}])
+    assert "handle(@RequestBody PayOrderRequest request)" in controller_file(plain, plain.use_cases[0])[1]
+
+
 def test_the_savepoint_marks_belong_to_the_requests_thread() -> None:
     # ADR-0056 (N2): a shared map of marks let one request roll back to a savepoint another request made; the
     # marks live with the transaction status, per thread, and go away with it.

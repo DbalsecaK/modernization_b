@@ -190,6 +190,34 @@ def controller_file(design: Design, use_case: UseCase, transactional: bool = Tru
         else f"    public {use_case.name}Controller({service} service) {{\n        this.service = service;\n    }}\n"
     )
     call = "transaction.execute(status -> service.execute(request))" if work else "service.execute(request)"
+    contract = _contract(use_case)
+    if contract is not None:
+        parameter, building, helpers = contract
+        fields += "    private final ObjectMapper mapper;\n"
+        imports += (
+            "import com.fasterxml.jackson.databind.JsonNode;\nimport com.fasterxml.jackson.databind.ObjectMapper;\n"
+        )
+        constructor = (
+            constructor.replace(
+                " service, TransactionTemplate transaction) {",
+                " service, TransactionTemplate transaction, ObjectMapper mapper) {",
+            )
+            if work
+            else constructor.replace(" service) {", " service, ObjectMapper mapper) {")
+        )
+        constructor = constructor.replace(
+            "        this.service = service;\n", "        this.service = service;\n        this.mapper = mapper;\n"
+        )
+        return _path(package, f"{use_case.name}Controller"), (
+            f"package {package};\n\n{imports}\n"
+            f"/** REST adapter of {use_case.name} (rules {', '.join(use_case.rules)}).{doc}{CONTRACT_DOC} */\n"
+            f'@RestController\n@RequestMapping("/api/{design.context}")\n'
+            f"public class {use_case.name}Controller {{\n\n{fields}\n{constructor}\n"
+            f'    @{mapping}("{path}")\n'
+            f"    public {use_case.name}Response handle({parameter}) {{\n"
+            f"{building}"
+            f"        return {call};\n    }}\n{helpers}}}\n"
+        )
     return _path(package, f"{use_case.name}Controller"), (
         f"package {package};\n\n{imports}\n"
         f"/** REST adapter of {use_case.name} (rules {', '.join(use_case.rules)}).{doc} */\n"
@@ -199,6 +227,74 @@ def controller_file(design: Design, use_case: UseCase, transactional: bool = Tru
         f"    public {use_case.name}Response handle({body}{use_case.name}Request request) {{\n"
         f"        return {call};\n    }}\n}}\n"
     )
+
+
+# ADR-0056 (phase D): the contract of a use case that replaces a legacy program comes from the program's signature.
+CONTRACT_DOC = (
+    " The request is read as the legacy reads its arguments (ADR-0056): a field absent from the body takes the "
+    "parameter's default, an explicit null stays null, text longer than the parameter is cut to its length and a "
+    "decimal is brought to the parameter's scale."
+)
+
+_CONTRACT_HELPERS = (
+    "\n    /** The field as the legacy takes the argument: absent takes the default, null stays null. */\n"
+    "    private <T> T read(JsonNode body, String field, Class<T> type, T whenAbsent) {\n"
+    "        if (body == null || !body.has(field)) {\n            return whenAbsent;\n        }\n"
+    "        JsonNode node = body.get(field);\n"
+    "        return node.isNull() ? null : mapper.convertValue(node, type);\n    }\n\n"
+    "    private static String fit(String value, int length) {\n"
+    "        return value != null && value.length() > length ? value.substring(0, length) : value;\n    }\n\n"
+    "    private static java.math.BigDecimal scale(java.math.BigDecimal value, int digits) {\n"
+    "        return value == null ? null : value.setScale(digits, java.math.RoundingMode.HALF_UP);\n    }\n"
+)
+
+
+def _java_literal(value: object, java: str) -> str:
+    """A default of the legacy as a Java expression of the field's type."""
+    if value is None:
+        return "null"
+    if java == "String":
+        text = str(value).replace("\\", "\\\\").replace('"', '\\"')
+        return f'"{text}"'
+    if java == "java.math.BigDecimal":
+        return f'new java.math.BigDecimal("{value}")'
+    if java in ("Long", "long"):
+        return f"Long.valueOf({int(float(str(value)))}L)"
+    if java in ("Integer", "int"):
+        return f"Integer.valueOf({int(float(str(value)))})"
+    if java in ("Boolean", "boolean"):
+        return "Boolean.TRUE" if value in (True, 1, "1", "true", "True") else "Boolean.FALSE"
+    if java == "java.time.LocalDate":
+        return f'java.time.LocalDate.parse("{str(value)[:10]}")'
+    if java == "java.time.LocalDateTime":
+        return f'java.time.LocalDateTime.parse("{str(value).replace(" ", "T")}")'
+    return "null"
+
+
+def _contract(use_case: UseCase) -> tuple[str, str, str] | None:
+    """(handler parameter, lines that build the request, helper methods) when the use case replaces a legacy program
+    and takes a body: the request is built field by field from the JSON, with the semantics of the legacy's
+    signature (ADR-0056). None for the other use cases (the record binds as before)."""
+    if not use_case.legacy_program or use_case.http_method not in ("POST", "PUT", "PATCH"):
+        return None
+    arguments = []
+    for field in use_case.inputs:
+        java = java_type(field.type)
+        value = nt.parse(field.type)
+        absent = _java_literal(field.default, java) if field.defaulted else "null"
+        read = f'read(body, "{field.name}", {java}.class, {absent})'
+        if isinstance(value, nt.Text) and value.length:
+            read = f"fit({read}, {value.length})"
+        elif isinstance(value, nt.Decimal):
+            read = f"scale({read}, {value.scale})"
+        arguments.append(f"                {read}")
+    built = ",\n".join(arguments)
+    building = (
+        f"        {use_case.name}Request request = new {use_case.name}Request(\n{built});\n"
+        if arguments
+        else f"        {use_case.name}Request request = new {use_case.name}Request();\n"
+    )
+    return "@RequestBody(required = false) JsonNode body", building, _CONTRACT_HELPERS
 
 
 def _service_owned_controller(design: Design, use_case: UseCase, unit: Port) -> str:
@@ -217,21 +313,34 @@ def _service_owned_controller(design: Design, use_case: UseCase, unit: Port) -> 
     lines = ", ".join(f"rollback at {r.legacy_line}" for r in work.rollbacks) if work else ""
     doc = (f" The service owns the unit of work of the legacy (begin at {work.begins_at}, {lines}, commit at "
            f"{work.commits_at}) through the UnitOfWork port." if work else "")  # fmt: skip
+    contract = _contract(use_case)
+    parameter = f"{body}{use_case.name}Request request"
+    building = helpers = imports = mapper_field = mapper_parameter = mapper_init = ""
+    if contract is not None:
+        parameter, building, helpers = contract
+        doc += CONTRACT_DOC
+        imports = (
+            "import com.fasterxml.jackson.databind.JsonNode;\nimport com.fasterxml.jackson.databind.ObjectMapper;\n"
+        )
+        mapper_field, mapper_parameter = "    private final ObjectMapper mapper;\n", ", ObjectMapper mapper"
+        mapper_init = "        this.mapper = mapper;\n"
     return (
-        f"package {package};\n\nimport org.springframework.web.bind.annotation.*;\n\n"
+        f"package {package};\n\n{imports}import org.springframework.web.bind.annotation.*;\n\n"
         f"/** REST adapter of {use_case.name} (rules {', '.join(use_case.rules)}).{doc} */\n"
         f'@RestController\n@RequestMapping("/api/{design.context}")\n'
         f"public class {use_case.name}Controller {{\n\n"
-        f"    private final {service} service;\n    private final {adapter} unitOfWork;\n\n"
-        f"    public {use_case.name}Controller({service} service, {adapter} unitOfWork) {{\n"
-        "        this.service = service;\n        this.unitOfWork = unitOfWork;\n    }\n\n"
+        f"    private final {service} service;\n    private final {adapter} unitOfWork;\n{mapper_field}\n"
+        f"    public {use_case.name}Controller({service} service, {adapter} unitOfWork{mapper_parameter}) {{\n"
+        f"        this.service = service;\n        this.unitOfWork = unitOfWork;\n{mapper_init}    }}\n\n"
         f'    @{mapping}("{path}")\n'
-        f"    public {use_case.name}Response handle({body}{use_case.name}Request request) {{\n"
+        f"    public {use_case.name}Response handle({parameter}) {{\n"
+        f"{building}"
         "        try {\n"
         f"            {use_case.name}Response response = service.execute(request);\n"
         "            unitOfWork.commitIfActive();\n            return response;\n"
         "        } catch (RuntimeException e) {\n"
-        "            unitOfWork.rollbackIfActive();\n            throw e;\n        }\n    }\n}\n"
+        "            unitOfWork.rollbackIfActive();\n            throw e;\n        }\n    }\n"
+        f"{helpers}}}\n"
     )
 
 
