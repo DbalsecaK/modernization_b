@@ -1186,6 +1186,11 @@ CASES = [
         "PUT", "/api/v1/projects/{project_id}/config", "admin", "member",
         fixed("/api/v1/projects/{project_a}/config", CONFIG),
     ),
+    # The team of an existing project (PR #125): project.configure changes it; an empty team keeps the owners.
+    Case(
+        "PUT", "/api/v1/projects/{project_id}/team", "admin", "member",
+        fixed("/api/v1/projects/{project_a}/team", {"team": []}),
+    ),
     Case(
         "GET", "/api/v1/projects/{project_id}/config/versions", "member", "outsider",
         fixed("/api/v1/projects/{project_a}/config/versions"),
