@@ -717,3 +717,16 @@ def test_an_output_must_be_a_parameter_of_the_called_program_not_its_return_stat
     assert "@o_nope is not a parameter of" in problem
     assert call_output_problems(Design.model_validate(json.loads(DESIGN_JSON)), files) == []
     assert call_output_problems(Design.model_validate(data), []) == []
+
+
+def test_a_savepoint_keeps_the_name_the_legacy_gives_it() -> None:
+    # Phase F (ADR-0055): the architect named the savepoint `sp_debito_empresa`, as the program does, and the design
+    # was rejected for not being a Java identifier; it is a label the UnitOfWork port receives, not an identifier.
+    import pytest
+    from pydantic import ValidationError
+
+    from nexti_core.spec.design import Savepoint
+
+    assert Savepoint(name="sp_debito_empresa", legacy_line=408).name == "sp_debito_empresa"
+    with pytest.raises(ValidationError):
+        Savepoint(name="9 spaces", legacy_line=1)

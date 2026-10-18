@@ -146,7 +146,11 @@ class ErrorSpec(DesignModel):
 
 
 class Savepoint(DesignModel):
-    name: JavaName
+    name: str = Field(
+        pattern=r"^[A-Za-z_][A-Za-z0-9_]*$",
+        max_length=120,
+        description="The savepoint as the legacy names it (a label the UnitOfWork port receives, not an identifier)",
+    )
     legacy_line: int = Field(ge=1, description="Line of the `save tran` (or its equivalent) in the legacy")
 
 
