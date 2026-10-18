@@ -223,6 +223,7 @@ def test_when_the_unit_of_work_port_begins_and_ends_the_service_owns_the_transac
     assert "@Transactional" in resource_file(DESIGN, PAY)[1]
 
 
+<<<<<<< HEAD
 def test_the_rest_contract_comes_from_the_legacy_signature() -> None:
     # ADR-0056 (phase D): a use case that replaces a legacy program reads its request as the program reads its
     # arguments: a field absent from the body takes the parameter's default, an explicit null stays null, text is
@@ -254,11 +255,17 @@ def test_the_rest_contract_comes_from_the_legacy_signature() -> None:
 def test_the_savepoint_marks_belong_to_the_requests_thread() -> None:
     # ADR-0056 (N2): a shared map of marks let one request roll back to a savepoint another request made; the
     # marks live with the transaction status, per thread, and go away with it.
+=======
+def test_a_unit_of_work_port_without_savepoints_gets_no_savepoint_methods() -> None:
+    # A port that declares begin/commit/rollback alone (no savepoint in the legacy) compiled an @Override of
+    # savepoint(name) the interface did not have: only the declared methods are implemented.
+>>>>>>> ccb6e89 (El adaptador UnitOfWork implementa solo los métodos que el puerto declara)
     data = json.loads(DESIGN.model_dump_json(by_alias=True))
     data["ports"].append({"name": "UnitOfWork", "methods": [
         {"name": "begin", "inputs": [], "returns": None},
         {"name": "commit", "inputs": [], "returns": None},
         {"name": "rollback", "inputs": [], "returns": None},
+<<<<<<< HEAD
         {"name": "savepoint", "inputs": [{"name": "name", "type": "text(var,30,iso8859-1)"}], "returns": None},
         {"name": "rollbackTo", "inputs": [{"name": "name", "type": "text(var,30,iso8859-1)"}], "returns": None},
     ]})  # fmt: skip
@@ -284,3 +291,14 @@ def test_the_program_adapter_keeps_the_messages_the_program_raises_and_reads_on_
     assert 'e.getSQLState().startsWith("08")' in adapter
     assert "results = statement.getMoreResults();" in adapter
     assert 'String.join("; ", raised.get())' in adapter
+=======
+    ]})  # fmt: skip
+    data["use_cases"][0]["ports"].append("UnitOfWork")
+    design = Design.model_validate(data)
+    port = next(p for p in design.ports if p.name == "UnitOfWork")
+    _, adapter = unit_of_work_adapter_file(design, port)
+    assert "public void begin()" in adapter
+    assert "void savepoint(" not in adapter
+    assert "void rollbackTo(" not in adapter
+    assert adapter.count("{") == adapter.count("}")
+>>>>>>> ccb6e89 (El adaptador UnitOfWork implementa solo los métodos que el puerto declara)
