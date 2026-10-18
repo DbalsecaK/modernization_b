@@ -900,21 +900,26 @@ class GenerationPhases:
             # The golden master inside the loop (ADR-0042): the project converges before the phase ends.
             master = await self.port.load_golden_master()
             if master is not None:
+                from nexti_orchestration.verification import same_engine
+
                 defaults = parameter_defaults(source, master.program)
-                for use_case in design.use_cases:
-                    if not _replaces(use_case, master):
-                        continue
-                    piece = ctx.for_shard(f"converge:{use_case.name}")
-                    case_rules = {r.case.name: r.case.rules for r in master.results}
-                    files, result = await converge(
-                        piece, cast(FidelityPort, self.port), pack, sandbox, design, use_case, master, defaults,
-                        files, source, list(rules.values()), lambda run, cr=case_rules: outcomes(run, cr),
-                        developer_prompt, programs.get(use_case.name, ""),
-                    )  # fmt: skip
-                    notes.append(result.note)
-                    layers = {p: pack.layer_of(p, design) for p in files}
-                    layers[FINDINGS_PATH] = "docs"
-                    files[FINDINGS_PATH] = json.dumps(result.findings, ensure_ascii=False, indent=1)
+                # ADR-0055 (phase F): the convergence runs the golden master where the verification will, on the
+                # legacy's engine when the data stays there (a Sybase design has no schema for PostgreSQL).
+                async with same_engine(design, source, master) as engine:
+                    for use_case in design.use_cases:
+                        if not _replaces(use_case, master):
+                            continue
+                        piece = ctx.for_shard(f"converge:{use_case.name}")
+                        case_rules = {r.case.name: r.case.rules for r in master.results}
+                        files, result = await converge(
+                            piece, cast(FidelityPort, self.port), pack, sandbox, design, use_case, master, defaults,
+                            files, source, list(rules.values()), lambda run, cr=case_rules: outcomes(run, cr),
+                            developer_prompt, programs.get(use_case.name, ""), engine=engine,
+                        )  # fmt: skip
+                        notes.append(result.note)
+                        layers = {p: pack.layer_of(p, design) for p in files}
+                        layers[FINDINGS_PATH] = "docs"
+                        files[FINDINGS_PATH] = json.dumps(result.findings, ensure_ascii=False, indent=1)
         await self.port.save_artifacts(files, layers, traced)
         summary = f"{len(files)} files in {len(set(layers.values()))} layers; {tests_run} tests pass in the sandbox"
         if notes:

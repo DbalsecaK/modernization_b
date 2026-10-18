@@ -17,7 +17,7 @@
     "fresh_inputs": "1 fresh input(s) differ: fresh_12_comision_separada_falla_deshace_pago",
     "rules_covered": "rules the target does not reproduce: RULE-009, RULE-010, RULE-012",
     "source_intact": "the legacy is the code that was characterized (SHA-256)",
-    "behaviour_boundary": "the equivalence compares the calls the legacy made and its own tables, not the final state of the database after the called programs ran; the called programs were stubs, their own logic and effects were not verified: cobis..sp_cerror, db_cuentas..sp_debito; the legacy has a unit of work (begin/save/commit/rollback at lines 108, 119, 136, 155, 161): whether the target keeps or undoes the same work was not verified"
+    "behaviour_boundary": "the called programs were stubs, their own logic and effects were not verified: cobis..sp_cerror, db_cuentas..sp_debito"
   },
   "rules_compared": {
     "present": 10,
