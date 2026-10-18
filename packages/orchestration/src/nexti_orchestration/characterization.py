@@ -388,6 +388,7 @@ class CharacterizationPhases:
         ]  # fmt: skip
         master: dict[str, GoldenMaster] = {}
         branch_round: list[bool] = []  # M27b: the branches without a case are asked once
+        last_gaps: list[int | None] = [None]  # ADR-0056: the mandatory items still open after the last round
         guided = guided_enabled(ctx.run.options)
 
         async def work_single(iteration: int, feedback: str | None) -> Attempt:
@@ -450,10 +451,14 @@ class CharacterizationPhases:
                 if guided and measured is not None and (missed or unreached):
                     branch_round.append(True)  # the branches go with the mandatory items: one request, not two
                     text = branch_request(missed, files, rules, unreached, rollbacks)
-                return Verification(False, (text + mandatory_request(gaps)).strip())
+                # The engine ran the whole suite: the round is progress (ADR-0043), it does not spend an attempt
+                # as a suite the engine refused would; the cap of the round still bounds it.
+                closer = last_gaps[0] is None or len(gaps) < last_gaps[0]
+                last_gaps[0] = len(gaps)
+                return Verification(False, (text + mandatory_request(gaps)).strip(), progress=closer)
             if guided and measured is not None and (missed or unreached) and not branch_round:
                 branch_round.append(True)
-                return Verification(False, branch_request(missed, files, rules, unreached, rollbacks))
+                return Verification(False, branch_request(missed, files, rules, unreached, rollbacks), progress=True)
             return Verification(True)
 
         # Guided (ADR-0036): the schema first, then the cases a few rules at a time, so a long program never needs

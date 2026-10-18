@@ -426,3 +426,26 @@ def test_the_same_engine_starts_on_a_private_network_and_hands_the_target_what_i
         assert any(a[0] == "kill" for a in commands)
 
     asyncio.run(run())
+
+
+def test_a_statement_error_the_program_lived_through_is_a_message_not_a_failure_of_the_engine() -> None:
+    # ADR-0056: the only way into a rollback branch guarded by @@error is a statement that fails (a NULL into a
+    # NOT NULL column, Msg 515, level 16); the program handles it and returns. That is the behaviour the golden
+    # master must keep, so the case is observed with the message, not refused as an engine failure.
+    plan = golden.plan(FILES, SUITE)
+    output = "\n".join([
+        "Msg 515, Level 16, State 2:", "Server 'MYSYBASE', Procedure 'sp_pago_orden', Line 144:",
+        "Attempt to insert NULL value into column 'ord_fecha_pago'; column does not allow nulls. "
+        "Update fails.",
+        " NXR|5:50007", " NXKN|0",
+    ])  # fmt: skip
+    seen = golden.observe(plan, output)
+    assert seen.error is None
+    assert seen.returns == 50007
+    assert seen.messages == ["Msg 515: Server 'MYSYBASE', Procedure 'sp_pago_orden', Line 144: Attempt to insert NULL "
+                             "value into column 'ord_fecha_pago'; column does not allow nulls. Update fails."]  # fmt: skip
+    # A fatal error (level 17 and up), or a program that never returned, still fails the case.
+    fatal = golden.observe(plan, "Msg 1105, Level 17, State 2:\nServer 'MYSYBASE':\nCan't allocate space.\n NXR|1:0")
+    assert fatal.error is not None
+    cut = golden.observe(plan, "Msg 515, Level 16, State 2:\nServer 'MYSYBASE', Line 3:\nnull not allowed.")
+    assert cut.error is not None
