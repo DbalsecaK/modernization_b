@@ -796,7 +796,7 @@ class WorkerProjectPort:
                 await conn.execute(
                     text("SELECT DISTINCT ON (path) path, object_key FROM generated_artifact WHERE project_id = :p "
                          "AND run_id = :r AND path LIKE 'frontend/%' ORDER BY path, created_at DESC"),
-                    {"p": self.run.project_id},
+                    {"p": self.run.project_id, "r": self.run.run_id},
                 )
             ).all()  # fmt: skip
         return {row.path.removeprefix("frontend/"): await self._get(row.object_key) for row in rows}
