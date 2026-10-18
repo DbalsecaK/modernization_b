@@ -27,7 +27,8 @@ Rules of the design:
   through generated adapters) or `migration` when the data moves to the target database. Required.
 - `decisions`: the architecture decisions a reviewer must know (transactions, what stays in the database, what
   changes behaviour on purpose).
-- Names are Java identifiers (letters and digits, no reserved words). Infrastructure of the legacy (error-code
+- Names are Java identifiers (letters and digits, no reserved words: not `record`, `default`, `class`,
+  `import`, `package`, `new`). Infrastructure of the legacy (error-code
   plumbing, logging calls, @@error checks) is not translated: exceptions and the framework replace it.
 - Traceability to the legacy, used to replay the golden master on the target: every field has `legacy` (the
   legacy column of an entity field, the legacy parameter of a use case input or output, the argument of the

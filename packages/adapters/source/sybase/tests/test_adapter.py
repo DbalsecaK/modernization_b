@@ -196,3 +196,17 @@ def test_the_signature_of_every_call_the_program_makes_is_read_from_the_code() -
     assert all(p.startswith("@") for p in parameters)
     assert "sp_cerror" in found
     assert SybaseAdapter().call_signatures(files, "nope") == {}
+
+
+def test_the_columns_a_program_loads_are_keyed_by_the_table_as_it_names_it() -> None:
+    # Phase F (ADR-0055): a bare name is a table of the procedure's own database and `db..name` another table;
+    # the columns loaded from each stay apart, so an entity keeping one is not asked for the other's columns.
+    from nexti_core.adapters import SourceFile
+
+    text = (
+        "create procedure sp_x as\ndeclare @a int, @b int\n"
+        "select @a = dt_nombre_beneficiario from bp_detalle where dt_orden = 1\n"
+        "select @b = dt_tipo_cta from db_biz_pagos..bp_detalle where dt_orden = 1\nreturn 0\n"
+    )
+    found = SybaseAdapter().columns_read([SourceFile("sp/x.sp", text)])
+    assert found == {"bp_detalle": {"dt_nombre_beneficiario"}, "db_biz_pagos..bp_detalle": {"dt_tipo_cta"}}
