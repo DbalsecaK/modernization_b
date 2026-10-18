@@ -48,13 +48,14 @@ RUN_SCRIPT = r"""
 set -u
 mkdir -p /work/bin /work/src /work/case /work/tmp
 export TMPDIR=/work/tmp
+[ -n "SQLPROGRAMS" ] && export COB_PRE_LOAD=libocesql
 cp -r /input/src/. /work/src/
 cd /work/src
 for P in SQLPROGRAMS; do
   if ! ocesql $P.cbl $P.pre.cbl > /work/ocesql.txt 2>&1; then echo "NXCOMPILE-FAILED"; cat /work/ocesql.txt; exit 3; fi
   mv $P.pre.cbl $P.cbl
 done
-if ! cobc -x -o /work/bin/NXMAIN -I /input/cpy -I /input/nx -I /opt/ocesql/copy LINKSQL NXMAIN.cbl PROGRAMS NXCICS.cbl > /work/cobc.txt 2>&1; then
+if ! cobc -x -o /work/bin/NXMAIN -I /input/cpy -I /input/nx -I /opt/ocesql/share/open-cobol-esql/copy LINKSQL NXMAIN.cbl PROGRAMS NXCICS.cbl > /work/cobc.txt 2>&1; then
   echo "NXCOMPILE-FAILED"; cat /work/cobc.txt; exit 3
 fi
 if [ -n "SQLPROGRAMS" ]; then
@@ -63,21 +64,21 @@ if [ -n "SQLPROGRAMS" ]; then
   psql -h localhost -U nexti -d postgres -q -c "CREATE DATABASE nexti" > /dev/null
   if ! psql -h localhost -U nexti -d nexti -q -v ON_ERROR_STOP=1 -f /input/sql/schema.sql > /work/schema.log 2>&1; then echo "NXCOMPILE-FAILED"; cat /work/schema.log; exit 6; fi
 fi
-for F in FILES; do
+for F in FILES; do [ -z "$F" ] && continue
   cobc -x -o /work/bin/NXLD_$F NXLD_$F.cbl >> /work/cobc.txt 2>&1 || { echo "NXCOMPILE-FAILED"; cat /work/cobc.txt; exit 3; }
   cobc -x -o /work/bin/NXDP_$F NXDP_$F.cbl >> /work/cobc.txt 2>&1 || { echo "NXCOMPILE-FAILED"; cat /work/cobc.txt; exit 3; }
 done
 for DIR in /input/cases/*/; do
   N=$(basename "$DIR")
   rm -rf /work/case; mkdir -p /work/case; cp "$DIR"/* /work/case/; : > /work/case/out.txt
-  for F in FILES; do /work/bin/NXLD_$F > /dev/null 2>> /work/case/out.txt || echo "NXERR|load $F failed" >> /work/case/out.txt; done
+  for F in FILES; do if [ -n "$F" ]; then /work/bin/NXLD_$F > /dev/null 2>> /work/case/out.txt || echo "NXERR|load $F failed" >> /work/case/out.txt; fi; done
   if [ -f /work/case/case.sql ]; then psql -h localhost -U nexti -d nexti -q -v ON_ERROR_STOP=1 -f /work/case/case.sql > /dev/null 2>> /work/case/out.txt || echo "NXERR|the rows of the case could not be loaded" >> /work/case/out.txt; fi
   /work/bin/NXMAIN > /work/case/stdout.txt 2>&1 || echo "NXERR|the program ended with status $?: $(tail -c 300 /work/case/stdout.txt)" >> /work/case/out.txt
-  for F in FILES; do /work/bin/NXDP_$F > /dev/null 2>> /work/case/out.txt || echo "NXERR|dump $F failed" >> /work/case/out.txt; done
+  for F in FILES; do if [ -n "$F" ]; then /work/bin/NXDP_$F > /dev/null 2>> /work/case/out.txt || echo "NXERR|dump $F failed" >> /work/case/out.txt; fi; done
   if [ -f /input/sql/dump.sql ]; then psql -h localhost -U nexti -d nexti -At -f /input/sql/dump.sql >> /work/case/out.txt 2>&1 || echo "NXERR|the tables could not be read" >> /work/case/out.txt; fi
   echo "NXCASE|$N"
   cat /work/case/out.txt
-  for F in FILES; do echo "NXF|$F|$(base64 -w0 /work/case/$F.dump 2>/dev/null)"; done
+  for F in FILES; do [ -n "$F" ] && echo "NXF|$F|$(base64 -w0 /work/case/$F.dump 2>/dev/null)"; done
 done
 if [ -n "SQLPROGRAMS" ]; then pg_ctl -D /work/pg -m fast stop > /dev/null 2>&1 || true; fi
 echo "NXDONE"

@@ -573,8 +573,8 @@ def translate(program: Program, text: str, schema: Schema, local_programs: set[s
 
         rewritten = rewrite_sql(match.group("body"), list(files))
         period = match.group("period")
-        if rewritten is None:
-            return AREA + "CONTINUE" + period
+        if rewritten is None:  # a DECLARE TABLE only documents the table: a comment keeps the line count honest
+            return "      * EXEC SQL DECLARE TABLE: table in PostgreSQL (NX)"
         return "\n".join(AREA + part for part in _wrapped(f"EXEC SQL {rewritten} END-EXEC")) + period
 
     body = _EXEC_CICS.sub(replacement, text)
@@ -1009,7 +1009,11 @@ def case_plan(
 
 
 def observe(
-    output: str, schema: Schema, case: Case, commarea_layouts: Mapping[str, list[Field]], files: Sequence[str] = ()
+    output: str,
+    schema: Schema,
+    case: Case,
+    commarea_layouts: Mapping[str, list[Field]],
+    files: Sequence[str] | None = None,
 ) -> Observation:
     """What the program did, from the lines the sandbox printed for the case: the sent map fields as outputs, the
     calls to substitutes, the RETURN, the files after the task (a rollback undoes the writes since the last
@@ -1064,7 +1068,8 @@ def observe(
     calls += pending_calls
     from nexti_adapter_cobol.sql import parse_dump
 
-    as_files = {f.upper() for f in files} if files else {t.name.upper() for t in schema.tables}
+    # `files` names the tables reached as files (the runner knows them); None, from older callers, means all of them
+    as_files = {f.upper() for f in files} if files is not None else {t.name.upper() for t in schema.tables}
     sql_tables = parse_dump(output, schema)
     tables: dict[str, list[dict[str, str | None]]] = {}
     for table in schema.tables:
