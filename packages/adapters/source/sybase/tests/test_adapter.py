@@ -206,7 +206,7 @@ def test_the_columns_a_program_loads_are_keyed_by_the_table_as_it_names_it() -> 
     text = (
         "create procedure sp_x as\ndeclare @a int, @b int\n"
         "select @a = dt_nombre_beneficiario from bp_detalle where dt_orden = 1\n"
-        "select @b = dt_tipo_cta from db_biz_pagos..bp_detalle where dt_orden = 1\nreturn 0\n"
+        "select @b = dt_tipo_cta from db_otra..bp_detalle where dt_orden = 1\nreturn 0\n"
     )
     found = SybaseAdapter().columns_read([SourceFile("sp/x.sp", text)])
-    assert found == {"bp_detalle": {"dt_nombre_beneficiario"}, "db_biz_pagos..bp_detalle": {"dt_tipo_cta"}}
+    assert found == {"bp_detalle": {"dt_nombre_beneficiario"}, "db_otra..bp_detalle": {"dt_tipo_cta"}}

@@ -760,7 +760,7 @@ def test_an_entity_is_asked_only_for_the_columns_loaded_from_its_own_table() -> 
     text = (
         "create procedure sp_x as\ndeclare @a int, @b int\n"
         "select @a = dt_nombre_beneficiario from bp_detalle where dt_orden = 1\n"
-        "select @b = dt_tipo_cta from db_biz_pagos..bp_detalle where dt_orden = 1\nreturn 0\n"
+        "select @b = dt_tipo_cta from db_otra..bp_detalle where dt_orden = 1\nreturn 0\n"
     )
     files = [SourceFile("sp/x.sp", text)]
     data = json.loads(DESIGN_JSON)
@@ -769,7 +769,7 @@ def test_an_entity_is_asked_only_for_the_columns_loaded_from_its_own_table() -> 
          "fields": [{"name": "orden", "type": "integer(32,signed)", "column": "dt_orden", "legacy": "dt_orden"},
                     {"name": "beneficiario", "type": "text(var,40,utf8)", "column": "dt_nombre_beneficiario",
                      "legacy": "dt_nombre_beneficiario"}]},
-        {"name": "DetallePagos", "table": "bp_detalle_pagos", "legacy_table": "db_biz_pagos..bp_detalle",
+        {"name": "DetallePagos", "table": "bp_detalle_pagos", "legacy_table": "db_otra..bp_detalle",
          "key": ["orden"],
          "fields": [{"name": "orden", "type": "integer(32,signed)", "column": "dt_orden", "legacy": "dt_orden"},
                     {"name": "tipo", "type": "text(fixed,3,utf8)", "column": "dt_tipo_cta", "legacy": "dt_tipo_cta"}]},
@@ -778,5 +778,5 @@ def test_an_entity_is_asked_only_for_the_columns_loaded_from_its_own_table() -> 
     assert [p for p in legacy_shape_problems(design, files) if "loads these of its columns" in p] == []
     data["entities"][-1]["fields"].pop()
     (problem,) = [p for p in legacy_shape_problems(Design.model_validate(data), files) if "loads these" in p]
-    assert problem.startswith("DetallePagos keeps db_biz_pagos..bp_detalle")
+    assert problem.startswith("DetallePagos keeps db_otra..bp_detalle")
     assert "dt_tipo_cta" in problem
