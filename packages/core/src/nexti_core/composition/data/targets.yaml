@@ -73,6 +73,9 @@ axes:
     - {key: sqlserver, name: "SQL Server", level: certified, wave: 1}
     - {key: oracle, name: "Oracle", level: certified, wave: 1}
     - {key: mongodb, name: "MongoDB", level: certified, wave: 3}
+    # ADR-0055: the data stays on the legacy's engine (data_strategy same_database): the target uses the legacy's
+    # driver, its qualified table names and calls its procedures; the called programs stay where they are.
+    - {key: sybase, name: "Sybase ASE (existing database)", level: certified, wave: 1}
   cloud:
     - {key: aws, name: "AWS", level: certified, wave: 1}
     - {key: azure, name: "Azure", level: certified, wave: 1}
