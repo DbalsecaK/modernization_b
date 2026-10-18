@@ -341,3 +341,24 @@ def test_the_programs_own_status_is_read_from_the_response_when_the_use_case_map
     # A thrown rejection still reads as the legacy code.
     thrown = {"error": {"code": "X", "legacy_code": "50005", "message": "m"}, "tables": {}, "calls": []}
     assert actual_view(design, use_case, thrown, []).returns == 50005
+
+
+def test_the_messages_of_the_called_programs_are_compared_in_canonical_form() -> None:
+    # ADR-0056 (phase D, N8): what the legacy's caller saw from a called program that failed (its raiserror text)
+    # is what the target's caller must see. The legacy run prefixes the server, procedure and line; the target's
+    # driver gives the number and the text; both sides compare as `20000: text`. The program's own messages are
+    # not in this view (its outputs carry them).
+    from nexti_core.spec.characterization import Observation
+    from nexti_core.spec.equivalence import actual_view
+    from nexti_core.spec.equivalence import expected_view as core_expected_view
+
+    observed = Observation(returns=5, messages=[
+        "20000: Server 'MYSYBASE', Procedure 'sp_debito', Line 7: Saldo insuficiente",
+        "50001: Server 'MYSYBASE', Procedure 'sp_pago_orden', Line 3: raised by the program",
+    ])  # fmt: skip
+    expected = core_expected_view(DESIGN, PAY, observed, [])
+    assert expected.messages == ["20000: Saldo insuficiente"]
+    actual = actual_view(DESIGN, PAY, {"response": {}, "messages": ["20000: Saldo insuficiente"]}, [], True, [])
+    assert actual.messages == expected.messages
+    silent = actual_view(DESIGN, PAY, {"response": {}}, [], True, [])
+    assert silent.messages == []

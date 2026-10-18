@@ -21,6 +21,7 @@ from nexti_adapter_sybase.types import to_neutral
 from nexti_core.adapters import SourceFile
 from nexti_core.spec.characterization import (
     OMITTED,
+    SUBSTITUTE_MESSAGE,
     Call,
     Case,
     Column,
@@ -40,7 +41,7 @@ NULL = "~"
 OMITTED_MARK = "^"  # an argument the caller did not pass (ADR-0056): the substitute saw its sentinel default
 # The number a substitute raises its messages with (ADR-0056): in the user range, so `observe` reads them as
 # business messages, as it reads the program's own raiserror.
-STUB_MESSAGE_NUMBER = 20000
+STUB_MESSAGE_NUMBER = SUBSTITUTE_MESSAGE
 _MESSAGE = re.compile(r"^Msg (?P<number>\d+), Level (?P<level>\d+), State \d+:")
 
 

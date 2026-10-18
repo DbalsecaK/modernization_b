@@ -15,7 +15,16 @@ from dataclasses import dataclass
 from dataclasses import field as dc_field
 from typing import Any
 
-from nexti_core.spec.characterization import OMITTED, Call, Case, GoldenMaster, Observation, Scalar, canonical
+from nexti_core.spec.characterization import (
+    OMITTED,
+    Call,
+    Case,
+    GoldenMaster,
+    Observation,
+    Scalar,
+    canonical,
+    substitute_message,
+)
 from nexti_core.spec.design import Design, Entity, UseCase
 
 
@@ -289,7 +298,14 @@ def expected_view(design: Design, use_case: UseCase, observed: Observation, foun
                                  for row in rows])  # fmt: skip
     return Observation(returns=observed.returns, outputs=outputs, tables=tables,
                        calls=_legacy_calls(design, observed.calls, found),
-                       undone=_legacy_calls(design, observed.undone, found))  # fmt: skip
+                       undone=_legacy_calls(design, observed.undone, found),
+                       messages=_substitute_messages(observed.messages))  # fmt: skip
+
+
+def _substitute_messages(raw: Sequence[Any]) -> list[str]:
+    """The messages the called programs raised, in canonical form (ADR-0056): what the legacy's caller saw from
+    them is what the target's caller must see."""
+    return [m for m in (substitute_message(str(text)) for text in raw) if m]
 
 
 def _legacy_calls(design: Design, observed: list[Call], found: list[Mask]) -> list[Call]:
@@ -348,12 +364,13 @@ def actual_view(
         ])  # fmt: skip
     # The harness reports the calls of the fakes that are in the final state and, apart, the ones its rollback
     # undid (ADR-0055); the undone ones are diagnostic, the comparison is on what survived.
+    messages = _substitute_messages(raw.get("messages") or [])
     if legacy_calls is not None:
         calls = _legacy_calls(design, list(legacy_calls), found)
-        return Observation(returns=returns, outputs=outputs, tables=tables, calls=calls)
+        return Observation(returns=returns, outputs=outputs, tables=tables, calls=calls, messages=messages)
     return Observation(returns=returns, outputs=outputs, tables=tables,
                        calls=_target_calls(design, raw.get("calls", [])),
-                       undone=_target_calls(design, raw.get("undone", [])))  # fmt: skip
+                       undone=_target_calls(design, raw.get("undone", [])), messages=messages)  # fmt: skip
 
 
 def _target_calls(design: Design, raw: list[dict[str, Any]]) -> list[Call]:

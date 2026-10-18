@@ -195,6 +195,22 @@ def same_program(a: str | None, b: str | None) -> bool:
     return bool(a and b) and program_key(a) == program_key(b)
 
 
+# The number a substitute raises the messages a case declares with (ADR-0056): in the user range of every engine
+# that has one, so the legacy run reads them as business messages and the target's adapter reports them back.
+SUBSTITUTE_MESSAGE = 20000
+_MESSAGE_ORIGIN = re.compile(r"^\s*(?:Server '[^']*',\s*)?(?:Procedure '[^']*',\s*)?(?:Line \d+:\s*)?")
+
+
+def substitute_message(text: str) -> str | None:
+    """A message of a called program in the canonical form both sides compare (`20000: text`): the legacy run
+    prefixes the server, procedure and line it came from, the target's driver does not. None for the messages of
+    the program itself, which the comparison reads through its outputs."""
+    number, _, detail = text.partition(":")
+    if number.strip() != str(SUBSTITUTE_MESSAGE):
+        return None
+    return f"{SUBSTITUTE_MESSAGE}: {_MESSAGE_ORIGIN.sub('', detail, count=1).strip()}"
+
+
 # A call log marks an argument the caller did not pass with this value (ADR-0056): a substitute declares its
 # parameters with a sentinel default, so an omitted argument is told apart from an explicit NULL, which the real
 # program treats differently (the default applies only when the argument is omitted). Omitted arguments are not in

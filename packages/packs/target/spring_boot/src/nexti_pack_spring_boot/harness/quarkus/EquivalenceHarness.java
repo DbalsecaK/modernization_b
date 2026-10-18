@@ -174,6 +174,8 @@ public final class EquivalenceHarness {
                 error.put("legacy_code", String.valueOf(call(e, "legacyCode")));
                 error.put("message", e.getMessage());
             }
+            ArrayNode raised = out.putArray("messages"); // ADR-0056: what the called programs raised
+            messages(service).forEach(raised::add);
             ObjectNode tables = out.putObject("tables");
             for (Map.Entry<String, JsonNode> entry : plan.get("dump").properties()) {
                 ArrayNode printedRows = tables.putArray(entry.getKey());
@@ -207,6 +209,25 @@ public final class EquivalenceHarness {
     }
 
     /** The UnitOfWork adapter among the service's ports (a field of the service), told to close what is open. */
+    private static List<String> messages(Object service) {
+        List<String> found = new ArrayList<>();
+        for (java.lang.reflect.Field field : service.getClass().getDeclaredFields()) {
+            try {
+                field.setAccessible(true);
+                Object port = field.get(service);
+                if (port != null) {
+                    Object kept = port.getClass().getMethod("messages").invoke(port);
+                    if (kept instanceof List<?> list) {
+                        list.forEach(item -> found.add(String.valueOf(item)));
+                    }
+                }
+            } catch (ReflectiveOperationException | RuntimeException e) {
+                // not an adapter that keeps messages
+            }
+        }
+        return found;
+    }
+
     private static void unitOfWork(Object service, String method) {
         for (java.lang.reflect.Field field : service.getClass().getDeclaredFields()) {
             try {
