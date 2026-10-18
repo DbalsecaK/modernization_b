@@ -286,8 +286,8 @@ def test_the_delta_is_generated_and_validated_with_every_test() -> None:
     verdict, _ = port.saved[0]
     statuses = {c.key: c.status for c in verdict.checks}
     assert (verdict.module, verdict.verdict) == ("delta-billpayapplication", "PROVEN"), verdict.checks
-    assert statuses == dict.fromkeys(["regression", "criteria_covered", "contract_kept", "fitness", "canary",
-                                      "traced_to_inputs"], "passed")  # fmt: skip
+    assert statuses == dict.fromkeys(["regression", "criteria_covered", "contract_kept", "fitness", "impact_bounded",
+                                      "canary", "traced_to_inputs"], "passed")  # fmt: skip
     assert "`src/main/java/com/contoso/billpay/domain/PaymentStatusService.java`" in port.artifacts[REPORT]
     delivery = asyncio.run(phases.delivery(_context("delivery")))
     assert delivery.summary.startswith("The delta (3 file(s))")
