@@ -889,10 +889,11 @@ class WorkerProjectPort:
             await self.objects.put(key, io.BytesIO(proof_pack), len(proof_pack), "application/zip")
             await conn.execute(
                 text("INSERT INTO verdict (tenant_id, project_id, run_id, module, verdict, checks, not_proven, "
-                     "proof_pack_key, attempt) VALUES (:t, :p, :r, :m, :v, CAST(:c AS jsonb), CAST(:n AS jsonb), "
-                     ":k, :a)"),
+                     "certainty, proof_pack_key, attempt) VALUES (:t, :p, :r, :m, :v, CAST(:c AS jsonb), "
+                     "CAST(:n AS jsonb), CAST(:x AS jsonb), :k, :a)"),
                 {"t": self.run.tenant_id, "p": self.run.project_id, "r": self.run.run_id, "m": verdict.module,
-                 "v": verdict.verdict, "c": json.dumps(checks), "n": json.dumps(verdict.not_proven), "k": key,
+                 "v": verdict.verdict, "c": json.dumps(checks), "n": json.dumps(verdict.not_proven),
+                 "x": json.dumps(verdict.certainty) if verdict.certainty is not None else None, "k": key,
                  "a": int(attempt)},
             )  # fmt: skip
             # The linked backlog follows the verdict (7.6): verified items to Done, a failed check opens a bug.

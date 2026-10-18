@@ -13,7 +13,7 @@ from nexti_pack_spring_boot import mongodb, mysql, oracle, sqlprobe
 from nexti_pack_spring_boot.build import IMAGE, apply_schema, compile_and_test
 from nexti_pack_spring_boot.canary import Mutation, mutations
 from nexti_pack_spring_boot.design import Design, Port, UseCase
-from nexti_pack_spring_boot.equivalence import run_equivalence
+from nexti_pack_spring_boot.equivalence import delivery_files, run_equivalence
 from nexti_pack_spring_boot.generate import (
     SPRING_BOOT_VERSION,
     SPRING_BOOT_VERSIONS,
@@ -161,6 +161,13 @@ class SpringBootPack:
 
     def mutations(self, source: str) -> Sequence[Mutation]:
         return mutations(source)
+
+    def delivery_files(
+        self, design: Design, use_case: UseCase, run: EquivalenceRun, master: GoldenMaster,
+        defaults: dict[str, Scalar] | None = None, engine: Any | None = None,
+    ) -> dict[str, str]:  # fmt: skip
+        """The golden master as an integration test of the delivered project (ADR-0056, phase E)."""
+        return delivery_files(design, use_case, run, master, defaults, engine)
 
     def describe(self) -> dict[str, Any]:
         return {"name": self.name, "image": self.image}

@@ -341,3 +341,53 @@ def test_the_programs_own_status_is_read_from_the_response_when_the_use_case_map
     # A thrown rejection still reads as the legacy code.
     thrown = {"error": {"code": "X", "legacy_code": "50005", "message": "m"}, "tables": {}, "calls": []}
     assert actual_view(design, use_case, thrown, []).returns == 50005
+
+
+def test_the_messages_of_the_called_programs_are_compared_in_canonical_form() -> None:
+    # ADR-0056 (phase D, N8): what the legacy's caller saw from a called program that failed (its raiserror text)
+    # is what the target's caller must see. The legacy run prefixes the server, procedure and line; the target's
+    # driver gives the number and the text; both sides compare as `20000: text`. The program's own messages are
+    # not in this view (its outputs carry them).
+    from nexti_core.spec.characterization import Observation
+    from nexti_core.spec.equivalence import actual_view
+    from nexti_core.spec.equivalence import expected_view as core_expected_view
+
+    observed = Observation(returns=5, messages=[
+        "20000: Server 'MYSYBASE', Procedure 'sp_debito', Line 7: Saldo insuficiente",
+        "50001: Server 'MYSYBASE', Procedure 'sp_pago_orden', Line 3: raised by the program",
+    ])  # fmt: skip
+    expected = core_expected_view(DESIGN, PAY, observed, [])
+    assert expected.messages == ["20000: Saldo insuficiente"]
+    actual = actual_view(DESIGN, PAY, {"response": {}, "messages": ["20000: Saldo insuficiente"]}, [], True, [])
+    assert actual.messages == expected.messages
+    silent = actual_view(DESIGN, PAY, {"response": {}}, [], True, [])
+    assert silent.messages == []
+
+
+def test_the_delivery_carries_the_golden_master_as_an_integration_test_of_the_project() -> None:
+    # ADR-0056 (phase E): the harness as a test, the plan without the platform's credentials, the cases and what
+    # the platform observed, so the customer runs the same golden master on a test engine of the legacy; with
+    # same_database, the datasource of that engine. Nothing when the harness did not run.
+    from nexti_core.spec.equivalence import EquivalenceRun
+    from nexti_pack_spring_boot.equivalence import delivery_files
+
+    raw = {r.case.name: {"name": r.case.name, "response": {"status": "0"}, "tables": {}, "messages": []}
+           for r in MASTER.results}  # fmt: skip
+    build = type("Build", (), {"compiled": True})()
+    run = EquivalenceRun(build, [], [], raw=raw)
+    same = Design.model_validate(
+        {**json.loads(DESIGN.model_dump_json(by_alias=True)), "data_strategy": "same_database"}
+    )
+    files = delivery_files(same, same.use_cases[0], run, MASTER)
+    assert "    static ObjectNode run(" in files["src/test/java/nexti/equivalence/EquivalenceHarness.java"]
+    assert "class GoldenMasterIT" in files["src/test/java/nexti/equivalence/GoldenMasterIT.java"]
+    assert "NEXTI_LEGACY_TEST_ENGINE" in files["src/test/java/nexti/equivalence/GoldenMasterIT.java"]
+    shipped_plan = json.loads(files["src/test/resources/golden-master/plan.json"])
+    assert (shipped_plan["jdbc_url"], shipped_plan["user"], shipped_plan["password"]) == ("", "", "")
+    cases = json.loads(files["src/test/resources/golden-master/cases.json"])
+    assert {c["name"] for c in cases} == set(raw)
+    expected = json.loads(files["src/test/resources/golden-master/expected.json"])
+    assert expected[MASTER.results[0].case.name] == {"response": {"status": "0"}, "tables": {}, "messages": []}
+    assert "prepareSQL=0" in files["src/main/resources/application-legacy.properties"]
+    assert "application-legacy.properties" not in " ".join(delivery_files(DESIGN, PAY, run, MASTER))
+    assert delivery_files(DESIGN, PAY, EquivalenceRun(build, [], [], "the harness did not run"), MASTER) == {}

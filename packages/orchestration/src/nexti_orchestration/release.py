@@ -115,6 +115,10 @@ class ReleasePhases:
         plan = nexti_delivery.plan(design)
         await self.port.save_artifacts(plan, dict.fromkeys(plan, "docs"), {})
         files = await _release_files(self.port)
+        if design.data_strategy == "same_database":
+            # ADR-0056 (phase E): the tables exist in the legacy's database; a DDL for them has no place in the
+            # release (a real delivery shipped a schema.sql that would have recreated the customer's tables).
+            files = {path: content for path, content in files.items() if not path.endswith("/db/schema.sql")}
         if not files:
             raise PhaseFailedError("There is no generated code to deliver")
         findings = await self._findings(files)

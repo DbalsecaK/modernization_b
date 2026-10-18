@@ -3313,6 +3313,35 @@ export interface components {
             /** Targets */
             targets: components["schemas"]["TargetOptionOut"][];
         };
+        /** CertaintyComponentOut */
+        CertaintyComponentOut: {
+            /** Detailen */
+            detailEn: string;
+            /** Detailes */
+            detailEs: string;
+            /** Key */
+            key: string;
+            /** Ratio */
+            ratio: number;
+            /** Score */
+            score: number;
+            /** Weight */
+            weight: number;
+        };
+        /**
+         * CertaintyOut
+         * @description The certainty index of a verdict (ADR-0056): computed from the artefacts, with its frontier in both languages.
+         */
+        CertaintyOut: {
+            /** Components */
+            components: components["schemas"]["CertaintyComponentOut"][];
+            /** Frontieren */
+            frontierEn: string;
+            /** Frontieres */
+            frontierEs: string;
+            /** Percent */
+            percent: number;
+        };
         /** ChainOut */
         ChainOut: {
             /** Checked */
@@ -6846,6 +6875,7 @@ export interface components {
         };
         /** VerdictOut */
         VerdictOut: {
+            certainty?: components["schemas"]["CertaintyOut"] | null;
             /** Checks */
             checks: components["schemas"]["CheckOut"][];
             /**

@@ -103,6 +103,10 @@ public final class EquivalenceHarness {
                 error.put("legacy_code", String.valueOf(call(e, "legacyCode")));
                 error.put("message", e.getMessage());
             }
+            // The messages the called programs raised through the generated adapters (ADR-0056): what the
+            // legacy's caller saw from them, the target's caller sees too.
+            ArrayNode raised = out.putArray("messages");
+            messages(service).forEach(raised::add);
             ObjectNode tables = out.putObject("tables");
             plan.get("dump").fields().forEachRemaining(entry -> {
                 ArrayNode rows = tables.putArray(entry.getKey());
@@ -141,6 +145,26 @@ public final class EquivalenceHarness {
         } catch (IllegalAccessException e) {
             throw new IllegalStateException(e);
         }
+    }
+
+    /** The messages the adapters of the called programs kept for this thread (their `messages()`), in order. */
+    private static List<String> messages(Object service) {
+        List<String> found = new ArrayList<>();
+        for (java.lang.reflect.Field field : service.getClass().getDeclaredFields()) {
+            try {
+                field.setAccessible(true);
+                Object port = field.get(service);
+                if (port != null) {
+                    Object kept = port.getClass().getMethod("messages").invoke(port);
+                    if (kept instanceof List<?> list) {
+                        list.forEach(item -> found.add(String.valueOf(item)));
+                    }
+                }
+            } catch (ReflectiveOperationException | RuntimeException e) {
+                // not an adapter that keeps messages
+            }
+        }
+        return found;
     }
 
     /** The UnitOfWork adapter among the service's ports (a field of the service), told to close what is open. */

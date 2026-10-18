@@ -7,9 +7,11 @@ characterization model (`nexti_core.spec.characterization`), JUnit counts and th
 - `verdict`: the six checks and PROVEN / PARTLY PROVEN / NOT PROVEN, with what the verdict does not prove.
 - `proof_pack`: the evidence in one archive, and the rule by rule comparison of source and target."""
 
+from nexti_verification.certainty import Certainty, Component, compute_certainty
 from nexti_verification.compare import Difference, differences
 from nexti_verification.fresh import fresh_suite
 from nexti_verification.proof_pack import build_proof_pack
+from nexti_verification.report import ReportItems, SubstituteAnswer, programmer_report
 from nexti_verification.verdict import (
     CHECKS,
     CaseOutcome,
@@ -24,14 +26,20 @@ from nexti_verification.verdict import (
 __all__ = [
     "CHECKS",
     "CaseOutcome",
+    "Certainty",
     "Check",
     "CheckStatus",
+    "Component",
     "Difference",
+    "ReportItems",
     "RuleTrace",
+    "SubstituteAnswer",
     "Verdict",
     "build_proof_pack",
     "compute",
+    "compute_certainty",
     "differences",
     "fresh_suite",
+    "programmer_report",
     "trace_rules",
 ]

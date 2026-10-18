@@ -1122,6 +1122,7 @@ class Verdict(Base):
     verdict: Mapped[str] = mapped_column(Text, nullable=False)
     checks: Mapped[list[Any]] = mapped_column(JSONB, nullable=False)
     not_proven: Mapped[list[Any]] = mapped_column(JSONB, nullable=False, server_default=text("'[]'::jsonb"))
+    certainty: Mapped[dict[str, Any] | None] = mapped_column(JSONB)  # ADR-0056: the index with its frontier (0028)
     proof_pack_key: Mapped[str | None] = mapped_column(Text)
     attempt: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("1"))  # per retry (0025)
     created_at: Mapped[datetime] = _now()
