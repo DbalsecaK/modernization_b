@@ -404,6 +404,8 @@ async def test_the_tests_travel_with_the_correction_and_failing_tests_do_not_sto
     assert "align them with the program" in second
     # Phase F: once the legacy is matched, only the test travels; the service is not shown nor changeable.
     assert "change ONLY the test file" in second
+    # The matched correction is kept (and journaled as such): a restart rebuilds from it, not from an older base.
+    assert "the correction was kept as the new base" in second
     assert f"### {SERVICE}" not in second
     assert "generation/convergence/attempt-1-request.md" in port.docs
     assert "generation/convergence/attempt-2-reply.md" in port.docs

@@ -489,8 +489,11 @@ async def converge(
             state["findings"] = artifact["findings"] or state["findings"]
             if build.ok:
                 return Verification(True)
-            # The legacy is matched; what is left is a unit test that contradicts the program.
-            return Verification(False, f"every case of the golden master matches, but {tests_note.strip()}")
+            # The legacy is matched; what is left is a unit test that contradicts the program. The correction is
+            # progress and is marked as kept, so a worker restart rebuilds this base from the journal instead of
+            # the last partial one (a real run lost its 57 of 57 and went back to 9 differing cases).
+            return Verification(False, f"every case of the golden master matches, but {tests_note.strip()}\n"
+                                f"(the correction was {KEPT})", progress=True)  # fmt: skip
         kept = KEPT if state["outcomes"] is outcomes else "discarded"
         await ctx.store.event("info", "running", f"Golden master after the correction: {left} of {len(outcomes)} "
                               f"case(s) differ, {total_differences(outcomes)} difference(s), distance "
