@@ -297,11 +297,10 @@ class VerificationPhases:
         # ADR-0055: where the equivalence was measured. Until the comparison runs on the final state of the database
         # with the called programs real, the verdict says so and stays PARTLY PROVEN.
         work = unit_of_work(source, master.program)
-        # The unit of work is a gap until the design declares it and the pack generates its boundary (phase D);
-        # the state is compared when the target ran against the legacy's engine (phase E).
-        generated = use_case.unit_of_work is not None
+        # The unit of work stays a gap until the final state is compared on the legacy's engine (phase E):
+        # a design that declares it and a pack that generates its boundary do not prove the target keeps it.
         found.append(checks.behaviour_boundary(
-            stubbed_programs(master), [] if generated else [line for line, _ in work],
+            stubbed_programs(master), [line for line, _ in work],
             rollbacks_without_case(work, master), state_compared=engine is not None,
         ))  # fmt: skip
         if master.coverage is not None:  # ADR-0050: the legacy covered, or each gap with a signed decision
