@@ -10,14 +10,14 @@ from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, Depends, Request
 from pydantic import Field
-from sqlalchemy import func, insert, select, update
+from sqlalchemy import delete, func, insert, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from nexti_api import license_gate
 from nexti_api.admin.common import audit, not_found, transaction
 from nexti_api.authz import names
-from nexti_api.authz.require import Authorized, deny, require_project, require_tenant
+from nexti_api.authz.require import GATE_PERMISSIONS, Authorized, deny, require_project, require_tenant
 from nexti_api.authz.sync import authz_change
 from nexti_api.catalog_store import load_catalog
 from nexti_api.errors import ProblemError
@@ -40,6 +40,7 @@ from nexti_core.db.models import (
     ProjectSkill,
     Role,
     RoleAssignment,
+    RolePermission,
 )
 
 router = APIRouter(prefix="/api/v1/projects", tags=["projects"])
@@ -230,11 +231,21 @@ class TeamMemberOut(ApiModel):
     role_name: str
 
 
+class GateApproversOut(ApiModel):
+    """Who can decide a gate in this project: the roles that grant it and the team members holding one of them,
+    so a person without the permission reads what role is needed and who has it, not just a refusal."""
+
+    gate: str
+    roles: list[str]
+    members: list[str]
+
+
 class ProjectDetail(ProjectOut):
     config: ConfigOut | None
     agents: list[ProjectAgentOut]
     skills: list[ProjectSkillOut]
     team: list[TeamMemberOut]
+    approvers: list[GateApproversOut] = Field(default_factory=list)
     budget_usd: Decimal | None
     permissions: list[str]
 
@@ -480,6 +491,19 @@ async def _detail(request: Request, auth: Authorized, project_id: uuid.UUID) -> 
                 select(Budget.amount_usd).where(Budget.project_id == project_id, Budget.period == "total")
             )
         ).scalar()
+        granting = (
+            await conn.execute(
+                select(Role.key, Role.name, RolePermission.permission_key)
+                .join(RolePermission, RolePermission.role_id == Role.id)
+                .where(Role.scope == "project", RolePermission.permission_key.in_(GATE_PERMISSIONS.values()))
+            )
+        ).all()
+    approvers = []
+    for gate, permission in GATE_PERMISSIONS.items():
+        roles = [(g.key, g.name) for g in granting if g.permission_key == permission]
+        role_keys = {k for k, _ in roles}
+        members = sorted({t.display_name for t in team if t.key in role_keys})
+        approvers.append(GateApproversOut(gate=gate, roles=[n for _, n in roles], members=members))
     allowed = await request.app.state.fga.batch_check(
         names.user(auth.user_id), names.project(project_id), [names.relation(k) for k in PROJECT_PERMISSIONS]
     )
@@ -502,6 +526,7 @@ async def _detail(request: Request, auth: Authorized, project_id: uuid.UUID) -> 
                           role_name=t.name)
             for t in team
         ],
+        approvers=approvers,
         budget_usd=budget,
         permissions=[k for k in PROJECT_PERMISSIONS if allowed.get(names.relation(k))],
     )  # fmt: skip
@@ -530,6 +555,52 @@ async def update_project(
                 await audit(conn, auth, "project.update", f"project:{project_id}", changes)
     except IntegrityError as exc:
         raise ProblemError(409, "project_name_taken", "A project with that name already exists.") from exc
+    return await _detail(request, auth, project_id)
+
+
+class TeamIn(ApiModel):
+    team: list[TeamMemberIn] = Field(default_factory=list, max_length=50)
+
+
+@router.put("/{project_id}/team", response_model=ProjectDetail)
+async def change_team(request: Request, project_id: uuid.UUID, body: TeamIn, auth: ConfigureProject) -> ProjectDetail:
+    """The team of a project that already exists (18.3 step 8 promised it for later): the roles by user replace
+    the current ones, except the project owners, who stay. A real project was created with its reviewer as
+    observer only, and nobody could approve C3 or C4 afterwards. The permissions follow through OpenFGA before
+    the answer, so the new roles work at once."""
+    assert auth.tenant_id is not None  # noqa: S101
+    async with transaction(request, auth) as conn:
+        await _project_row(conn, project_id)
+        async with authz_change(conn, auth.tenant_id):
+            owner_roles = set(
+                (
+                    await conn.execute(select(Role.id).where(Role.scope == "project", Role.key == "projectOwner"))
+                ).scalars()
+            )
+            rows = await _team_rows(conn, auth, project_id, body.team)
+            await conn.execute(
+                delete(RoleAssignment).where(
+                    RoleAssignment.project_id == project_id, RoleAssignment.scope == "project",
+                    RoleAssignment.role_id.not_in(owner_roles),
+                )
+            )  # fmt: skip
+            kept = set(
+                (
+                    await conn.execute(
+                        select(RoleAssignment.user_id, RoleAssignment.role_id).where(
+                            RoleAssignment.project_id == project_id, RoleAssignment.scope == "project"
+                        )
+                    )
+                ).all()
+            )
+            new = [r for r in rows if (r["user_id"], r["role_id"]) not in kept]
+            if new:
+                await conn.execute(insert(RoleAssignment), new)
+        await audit(
+            conn, auth, "project.team", f"project:{project_id}",
+            {"team": [{"user_id": str(m.user_id), "role_key": m.role_key} for m in body.team]},
+        )  # fmt: skip
+    await _publish_tuples(request, auth)
     return await _detail(request, auth, project_id)
 
 

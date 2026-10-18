@@ -2237,6 +2237,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/projects/{project_id}/team": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Change Team
+         * @description The team of a project that already exists (18.3 step 8 promised it for later): the roles by user replace
+         *     the current ones, except the project owners, who stay. A real project was created with its reviewer as
+         *     observer only, and nobody could approve C3 or C4 afterwards. The permissions follow through OpenFGA before
+         *     the answer, so the new roles work at once.
+         */
+        put: operations["change_team_api_v1_projects__project_id__team_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/projects/{project_id}/traceability": {
         parameters: {
             query?: never;
@@ -4126,6 +4149,19 @@ export interface components {
             /** Rule */
             rule: string | null;
         };
+        /**
+         * GateApproversOut
+         * @description Who can decide a gate in this project: the roles that grant it and the team members holding one of them,
+         *     so a person without the permission reads what role is needed and who has it, not just a refusal.
+         */
+        GateApproversOut: {
+            /** Gate */
+            gate: string;
+            /** Members */
+            members: string[];
+            /** Roles */
+            roles: string[];
+        };
         /** GateDecisionIn */
         GateDecisionIn: {
             /** Comment */
@@ -5443,6 +5479,8 @@ export interface components {
         ProjectDetail: {
             /** Agents */
             agents: components["schemas"]["ProjectAgentOut"][];
+            /** Approvers */
+            approvers?: components["schemas"]["GateApproversOut"][];
             /**
              * Artifactlanguage
              * @enum {string}
@@ -6529,6 +6567,11 @@ export interface components {
             runId: string;
             /** Title */
             title: string;
+        };
+        /** TeamIn */
+        TeamIn: {
+            /** Team */
+            team?: components["schemas"]["TeamMemberIn"][];
         };
         /** TeamMemberIn */
         TeamMemberIn: {
@@ -11676,6 +11719,41 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["StoryOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    change_team_api_v1_projects__project_id__team_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TeamIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectDetail"];
                 };
             };
             /** @description Validation Error */

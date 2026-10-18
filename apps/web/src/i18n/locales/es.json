@@ -1286,6 +1286,9 @@
     "inherited": "Asignación del cliente",
     "youAreOwner": "Serás el dueño del proyecto.",
     "teamLater": "Agrega al resto del equipo después desde el proyecto (requiere el permiso de gestionar usuarios).",
+    "teamEdit": "Editar equipo",
+    "teamSaved": "Equipo actualizado; los permisos ya rigen.",
+    "teamOwnerStays": "El dueño del proyecto conserva su rol. Quien lanza una generación no puede aprobar sus propias compuertas.",
     "creatingTitle": "Creando el proyecto",
     "creatingHint": "Los insumos se validan uno por uno antes de guardarse.",
     "projectCreated": "Proyecto creado.",
@@ -2922,6 +2925,8 @@
       "rejected": "Compuerta {{gate}} rechazada. La ejecución se detiene.",
       "segregation": "Tú lanzaste esta ejecución: otra persona debe decidir sus compuertas (segregación de funciones).",
       "noPermission": "No tienes el permiso para decidir esta compuerta.",
+      "whoCan": "La decide el rol {{roles}}; en este proyecto lo tiene: {{members}}.",
+      "nobody": "La decide el rol {{roles}} y nadie del equipo lo tiene: el dueño del proyecto puede asignarlo en Resumen › Equipo.",
       "hint": {
         "C1": "Reglas de negocio o especificación",
         "C2": "Pantallas y prototipos",

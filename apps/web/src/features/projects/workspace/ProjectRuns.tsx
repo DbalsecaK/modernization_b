@@ -414,7 +414,18 @@ function GateCard({
       <CardBody className="space-y-3">
         {ivvMapping && <IvvMappingStatus projectId={project.id} />}
         {launchedByMe && <p className="text-sm text-muted">{t('runsPage.gate.segregation')}</p>}
-        {!allowed && !launchedByMe && <p className="text-sm text-muted">{t('runsPage.gate.noPermission')}</p>}
+        {!allowed && !launchedByMe && (
+          <p className="text-sm text-muted">
+            {t('runsPage.gate.noPermission')}{' '}
+            {(() => {
+              const who = (project.approvers ?? []).find((a) => a.gate === key)
+              if (!who || who.roles.length === 0) return null
+              return who.members.length > 0
+                ? t('runsPage.gate.whoCan', { roles: who.roles.join(' / '), members: who.members.join(', ') })
+                : t('runsPage.gate.nobody', { roles: who.roles.join(' / ') })
+            })()}
+          </p>
+        )}
         <Textarea
           value={comment}
           onChange={(e) => setComment(e.target.value)}
