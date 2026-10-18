@@ -12,7 +12,7 @@ import pytest
 from nexti_adapter_sybase import golden
 from nexti_adapter_sybase.ase import AseRunner, MissingGoldenMasterError, RecordedRunner
 from nexti_core.adapters import SourceFile
-from nexti_core.spec.characterization import StubAnswer, Suite
+from nexti_core.spec.characterization import OMITTED, StubAnswer, Suite
 
 FIXTURES = Path(__file__).parent / "fixtures" / "pago_orden"
 FILES = [SourceFile("sp/sp_pago_orden.sp", (FIXTURES / "sp_pago_orden.sp").read_text(encoding="utf-8"))]
@@ -143,7 +143,7 @@ def test_a_substitute_tells_an_omitted_argument_from_an_explicit_null() -> None:
     assert golden.sentinel("smalldatetime") == "'2079-06-06 00:00:00'"
     assert golden.sentinel("bit") is None
     assert golden.sentinel("text") is None
-    assert golden.read_values("^|~|2:ab") == [golden.OMITTED, None, "ab"]
+    assert golden.read_values("^|~|2:ab") == [OMITTED, None, "ab"]
     output = "\n".join([" NXR|1:0", " NXC|db_cuentas..sp_debito|10:1000000001|^|8:100.0000|~", " NXKN|1",
                         " NXK|db_cuentas..sp_debito|10:1000000001|^|8:100.0000|~"])  # fmt: skip
     seen = golden.observe(plan, output)
