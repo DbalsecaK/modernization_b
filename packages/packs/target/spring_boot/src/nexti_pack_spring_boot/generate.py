@@ -426,12 +426,12 @@ _TRANSACTION_METHODS = (
 
 _SAVEPOINT_METHODS = (
     "    @Override\n    public void savepoint(String name) {\n"
-    '        try {\n            jdbc.execute("save tran " + label(name));\n            marks.put(name, true);\n'
+    '        try {\n            jdbc.execute("save tran " + label(name));\n            marks.get().add(name);\n'
     "        } catch (org.springframework.dao.DataAccessException e) {\n"
     '            throw new IllegalStateException("savepoint " + name + ": " + e.getMessage(), e);\n'
     "        }\n    }\n\n"
     "    @Override\n    public void rollbackTo(String name) {\n"
-    "        if (!marks.containsKey(name)) {\n"
+    "        if (!marks.get().contains(name)) {\n"
     '            throw new IllegalStateException("no savepoint " + name);\n        }\n'
     '        try {\n            jdbc.execute("rollback tran " + label(name));\n'
     "        } catch (org.springframework.dao.DataAccessException e) {\n"
@@ -483,22 +483,7 @@ def unit_of_work_adapter_file(design: Design, port: Port) -> tuple[str, str]:
         f"{transaction_fields}\n"
         f"    public Jdbc{port.name}(JdbcTemplate jdbc) {{\n        this.jdbc = jdbc;\n{transaction_init}    }}\n\n"
         f"{_TRANSACTION_METHODS if owns else ''}"
-<<<<<<< HEAD
-        "    @Override\n    public void savepoint(String name) {\n"
-        '        try {\n            jdbc.execute("save tran " + label(name));\n            marks.get().add(name);\n'
-        "        } catch (org.springframework.dao.DataAccessException e) {\n"
-        '            throw new IllegalStateException("savepoint " + name + ": " + e.getMessage(), e);\n'
-        "        }\n    }\n\n"
-        "    @Override\n    public void rollbackTo(String name) {\n"
-        "        if (!marks.get().contains(name)) {\n"
-        '            throw new IllegalStateException("no savepoint " + name);\n        }\n'
-        '        try {\n            jdbc.execute("rollback tran " + label(name));\n'
-        "        } catch (org.springframework.dao.DataAccessException e) {\n"
-        '            throw new IllegalStateException("rollback to " + name + ": " + e.getMessage(), e);\n'
-        "        }\n    }\n\n"
-=======
         f"{_SAVEPOINT_METHODS if {'savepoint', 'rollbackTo'} & declared else ''}"
->>>>>>> ccb6e89 (El adaptador UnitOfWork implementa solo los métodos que el puerto declara)
         "    private Connection connection() {\n"
         "        return DataSourceUtils.getConnection(java.util.Objects.requireNonNull(jdbc.getDataSource()));\n"
         "    }\n\n"
