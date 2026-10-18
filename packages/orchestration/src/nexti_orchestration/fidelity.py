@@ -401,6 +401,14 @@ async def converge(
         test_path = pack.test_path(design, use_case)
         if test_path in current:
             involved = {**involved, test_path: current[test_path]}
+        if differing(state["outcomes"]) == 0 and test_path in current:
+            # Phase F: the base reproduces the legacy on every case; what is left is a unit test that contradicts
+            # the program. Only the test travels: a correction of the service here can only move away from the
+            # legacy (a real round matched 57 of 57 and then broke 2 cases aligning a test).
+            involved = {test_path: current[test_path]}
+            feedback = ((feedback or "") + "\n\nEvery case of the golden master matches the program as it is: "
+                        "change ONLY the test file (align the failing tests with what the program does; the "
+                        "service and the adapters are not yours to change in this correction).").strip()  # fmt: skip
         context = pack.existing({p: c for p, c in current.items() if p not in involved}, design)
         schema = _schema_of(pack)
         if schema and schema in current and any(_is_adapter(p) for p in involved):
