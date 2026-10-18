@@ -3,7 +3,7 @@
 import asyncio
 import logging
 import sys
-from collections.abc import Mapping, MutableMapping
+from collections.abc import Callable, Mapping, MutableMapping
 from pathlib import Path
 from typing import Any
 
@@ -11,6 +11,7 @@ import httpx
 import structlog
 from sqlalchemy.ext.asyncio import create_async_engine
 
+from nexti_adapter_cobol.gnucobol import GnuCobolRunner
 from nexti_adapter_rpg.ibmi import DockerBridge, IbmiRunner
 from nexti_adapter_sybase.ase import AseRunner, LiveAseRunner, RecordedRunner
 from nexti_core.adapters import LegacyRunner
@@ -54,6 +55,14 @@ def legacy_runner(settings: WorkerSettings) -> LegacyRunner:
     if settings.golden_master_mode == "live":
         return live
     return RecordedRunner(Path(settings.golden_master_dir), settings.golden_master_mode, live)
+
+
+def local_runners(settings: WorkerSettings) -> dict[str, Callable[[], LegacyRunner]]:
+    """The engines the platform runs itself for the technologies its main engine does not (ADR-0056, point 7):
+    COBOL/CICS on GnuCOBOL in the sandbox."""
+    return {
+        "cobol-cics": lambda: GnuCobolRunner(lambda image: DockerSandbox(image=image, docker=settings.sandbox_docker))
+    }
 
 
 def live_runners(settings: WorkerSettings) -> dict[str, LiveRunnerFactory]:
@@ -102,6 +111,7 @@ async def run_worker(settings: WorkerSettings, *, name: str | None = None, wait:
             sandboxes=lambda image: DockerSandbox(image=image, docker=settings.sandbox_docker),
             legacy=lambda: legacy_runner(settings),
             live=live_runners(settings),
+            local=local_runners(settings),
             graph=GraphStore.connect(
                 settings.graph_uri, settings.graph_user, settings.graph_password.get_secret_value()
             ) if settings.graph_uri else None,

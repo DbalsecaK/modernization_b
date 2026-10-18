@@ -124,10 +124,14 @@ class SourceRunner:
         engine: Callable[[], LegacyRunner] | None,
         execution: Callable[[], Awaitable[LegacyExecution | None]] | None = None,
         live: Mapping[str, LiveRunnerFactory] | None = None,
+        local: Mapping[str, Callable[[], LegacyRunner]] | None = None,
     ) -> None:
         self._engine = engine
         self._execution = execution
         self._live = live or {}
+        # ADR-0056 (point 7): the engines the platform runs itself for a technology its main engine does not
+        # (GnuCOBOL for COBOL/CICS), chosen when the inputs carry no traces and the project asks for no live system.
+        self._local = local or {}
         self.engine = "none"
 
     async def run(self, files: list[SourceFile], suite: Suite) -> GoldenMaster:
@@ -162,9 +166,11 @@ class SourceRunner:
             return factory(setting.config, setting.credentials)
         if traced:
             return TraceRunner(branches=_branches)
+        technology = _technology(files)
+        if technology is not None and technology in self._local:
+            return self._local[technology]()
         if self._engine is not None:
             runner = self._engine()
-            technology = _technology(files)
             if not runs_technology(runner.engine, technology):
                 # The worker's engine is a Sybase ASE: handing it a COBOL/CICS program sent the test engineer
                 # round after round for "a program that is not in the source files". The phase waits instead,
@@ -181,6 +187,7 @@ class SourceRunner:
 ENGINE_TECHNOLOGIES: dict[str, frozenset[str]] = {
     "sybase": frozenset({"sybase-ase"}),
     "ibmi": frozenset({"rpg-ibmi"}),
+    "gnucobol": frozenset({"cobol-cics"}),
 }
 
 
@@ -291,6 +298,7 @@ class WorkerProjectPort:
         figma_reader: figma.FigmaReader | None = None,
         delivery: DeliveryServices | None = None,
         live: Mapping[str, LiveRunnerFactory] | None = None,
+        local: Mapping[str, Callable[[], LegacyRunner]] | None = None,
     ) -> None:
         self.engine = engine
         self.run = run
@@ -305,6 +313,7 @@ class WorkerProjectPort:
         self._figma = figma_reader
         self._delivery = delivery or DeliveryServices()
         self._live = live or {}
+        self._local = local or {}
 
     def _db(self) -> Any:
         return scoped_connection(self.engine, DbScope(tenant_id=self.run.tenant_id))
@@ -746,7 +755,7 @@ class WorkerProjectPort:
     # -- characterization (M4) -----------------------------------------------------------------------------------
     def legacy_runner(self) -> LegacyRunner | None:
         """How this legacy is observed, chosen by the project's setting and its inputs (see SourceRunner)."""
-        return SourceRunner(self._legacy, self.legacy_execution, self._live)
+        return SourceRunner(self._legacy, self.legacy_execution, self._live, self._local)
 
     async def legacy_execution(self) -> LegacyExecution | None:
         async with self._db() as conn:

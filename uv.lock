@@ -1303,12 +1303,14 @@ source = { editable = "packages/adapters/source/cobol" }
 dependencies = [
     { name = "nexti-adapter-bms" },
     { name = "nexti-core" },
+    { name = "nexti-sandbox" },
 ]
 
 [package.metadata]
 requires-dist = [
     { name = "nexti-adapter-bms", editable = "packages/adapters/source/bms" },
     { name = "nexti-core", editable = "packages/core" },
+    { name = "nexti-sandbox", editable = "packages/sandbox" },
 ]
 
 [[package]]
