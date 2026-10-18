@@ -88,19 +88,29 @@ class ScreenSpec(SpecModel):
         if repeated:
             raise ValueError(f"repeated field names: {', '.join(repeated)}")
         if self.rows and self.columns:
-            occupied: dict[tuple[int, int], str] = {}
+            # A terminal field takes one attribute byte before its data (8.3): `position` is the first data byte.
+            # Two attribute bytes on one cell, or two data bytes on one cell, overlap. An attribute byte on another
+            # field's data does not: on a 3270 the new attribute ends the previous field there (a one-byte stopper
+            # followed by the next field is a common pattern in real maps).
+            attributes: dict[tuple[int, int], str] = {}
+            data: dict[tuple[int, int], str] = {}
             for f in self.fields:
                 if f.position is None:
                     continue
-                # A terminal field takes one attribute byte before its data (8.3): it must fit in the row.
                 end = f.position.column + f.length
                 if f.position.row > self.rows or end - 1 > self.columns:
                     raise ValueError(f"{f.name}: does not fit in a {self.rows}x{self.columns} screen")
-                for column in range(max(f.position.column - 1, 1), end):
+                attribute = (f.position.row, f.position.column - 1)
+                if attribute in attributes:
+                    raise ValueError(f"{f.name} overlaps {attributes[attribute]} at row {attribute[0]}, column "
+                                     f"{attribute[1]}")  # fmt: skip
+                if f.position.column > 1:
+                    attributes[attribute] = f.name
+                for column in range(f.position.column, end):
                     cell = (f.position.row, column)
-                    if cell in occupied:
-                        raise ValueError(f"{f.name} overlaps {occupied[cell]} at row {cell[0]}, column {cell[1]}")
-                    occupied[cell] = f.name
+                    if cell in data:
+                        raise ValueError(f"{f.name} overlaps {data[cell]} at row {cell[0]}, column {cell[1]}")
+                    data[cell] = f.name
         return self
 
     def field(self, name: str) -> ScreenField | None:

@@ -53,10 +53,19 @@ def _kind(bms: BmsField) -> str:
     return "input" if "UNPROT" in bms.attributes else "output"
 
 
-def _field(bms: BmsField, file: str) -> ScreenField:
+def data_position(bms: BmsField, columns: int) -> tuple[int, int]:
+    """Where the field's data starts: BMS `POS` is the attribute byte, the screen spec's position is the first data
+    byte (8.3), one column later, on the next row when the attribute is the last column of its row."""
+    if bms.column >= columns:
+        return bms.row + 1, 1
+    return bms.row, bms.column + 1
+
+
+def _field(bms: BmsField, file: str, columns: int = 80) -> ScreenField:
     picture = bms.picin or bms.picout
+    row, column = data_position(bms, columns)
     return ScreenField.model_validate({
-        "name": _name(bms), "kind": _kind(bms), "position": {"row": bms.row, "column": bms.column},
+        "name": _name(bms), "kind": _kind(bms), "position": {"row": row, "column": column},
         "length": bms.length, "attributes": [ATTRIBUTES[a] for a in bms.attributes if a in ATTRIBUTES],
         "type": None if bms.label is None else picture_type(picture, bms.length),
         "required": any(v in ("MUSTFILL", "MUSTENTER") for v in bms.validn), "format": picture,
@@ -84,7 +93,7 @@ def screen_spec(bms_map: BmsMap, file: str, mapset: str | None = None) -> Screen
                  bms_map.name)  # fmt: skip
     return ScreenSpec(
         id=f"SCR-{bms_map.name.upper()}", name=title, mapset=mapset, map=bms_map.name, rows=bms_map.rows,
-        columns=bms_map.columns, fields=tuple(_field(f, file) for f in bms_map.fields),
+        columns=bms_map.columns, fields=tuple(_field(f, file, bms_map.columns) for f in bms_map.fields),
         actions=tuple(actions(bms_map.fields)),
         sources=(SourceRef(file=file, line_start=bms_map.line_start, line_end=bms_map.line_end),),
     )  # fmt: skip

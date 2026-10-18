@@ -3,27 +3,27 @@
   "mode": "record",
   "verdict": "NOT PROVEN",
   "checks": {
-    "tests_ran": "passed",
+    "tests_ran": "failed",
     "rules_traced": "failed",
-    "same_behaviour": "passed",
+    "same_behaviour": "failed",
     "fresh_inputs": "passed",
-    "canary": "passed",
+    "canary": "not_checked",
     "source_intact": "passed",
     "behaviour_boundary": "not_checked",
     "legacy_covered": "not_checked"
   },
   "details": {
-    "tests_ran": "60 test(s) passed in a clean build (JUnit XML)",
-    "rules_traced": "rules without a matching golden case: RULE-012",
-    "same_behaviour": "17 golden case(s) reproduced",
+    "tests_ran": "no JUnit report: the tests did not run",
+    "rules_traced": "rules without a matching golden case: RULE-001, RULE-002, RULE-003, RULE-004, RULE-005, RULE-006, RULE-007, RULE-008, RULE-009, RULE-010, RULE-011, RULE-012, RULE-013",
+    "same_behaviour": "the harness did not run: the project does not compile: the build did not finish (exit 6): 004_CompanyRowWithFlagOtherThanS_CommissionIsAddedToTotal\" time=\"0.0447527\" />\n    <testcase classname=\"Bank.Payments.Tests.PayOrderServiceTests\" name=\"Rule003_OrderFoundContinuesToTariffLookup\" time=\"0.0150659\" />\n    <testcase classname=\"Bank.Payments.Tests.PayOr",
     "fresh_inputs": "12 fresh input(s) matched on both sides",
-    "canary": "line 28 changed (&& Ne(request.AccountType, \"CTEX\")) turned test AccountLookupUsesAccountNumberAndType_Rule007 red",
+    "canary": "the unchanged code does not reproduce the golden master, so a deliberate change cannot be told apart",
     "source_intact": "the legacy is the code that was characterized (SHA-256)",
     "behaviour_boundary": "the equivalence compares the calls the legacy made and its own tables, not the final state of the database after the called programs ran; the called programs were stubs, their own logic and effects were not verified: cobis..sp_cerror, db_cuentas..sp_debito; the legacy has a unit of work (begin/save/commit/rollback at lines 108, 119, 136, 155, 161): whether the target keeps or undoes the same work was not verified",
-    "legacy_covered": "1 gap(s) of the legacy no case covers, accepted as not proven by c370e36a-9808-4bf8-ac43-e49ff56f492d"
+    "legacy_covered": "1 gap(s) of the legacy no case covers, accepted as not proven by f45eeb62-26e6-4839-8cfe-fd5c97bed4ab"
   },
-  "model_calls": 59,
-  "cost_usd": "1.63489000",
+  "model_calls": 58,
+  "cost_usd": "1.55883000",
   "decisions": [
     "questions",
     "C1",

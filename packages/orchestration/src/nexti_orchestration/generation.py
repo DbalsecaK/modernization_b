@@ -104,9 +104,40 @@ def with_parameter_defaults(design: Design, files: Sequence[SourceFile]) -> Desi
     return design.model_copy(update={"use_cases": use_cases}) if changed else design
 
 
-def _replaces(use_case: UseCase, master: GoldenMaster) -> bool:
-    """Whether the use case is the one the golden master's program became (by legacy program, or the only one)."""
-    return same_program(use_case.legacy_program, master.program) or use_case.legacy_program is None
+def program_use_case(design: Design, program: str) -> UseCase | None:
+    """The use case the legacy program became: the one that names it, or the only use case of the design. The
+    convergence of the generation and the verification prove this one, so both judge the same service (a run
+    converged every use case without a legacy program, and every one that named the program, against every case
+    of the program, while the verification proved only the first)."""
+    matching = [u for u in design.use_cases if same_program(u.legacy_program, program)]
+    if matching:
+        return matching[0]
+    return design.use_cases[0] if len(design.use_cases) == 1 else None
+
+
+def _replaces(use_case: UseCase, design: Design, master: GoldenMaster) -> bool:
+    """Whether the use case is the one the golden master's program became."""
+    return program_use_case(design, master.program) is use_case
+
+
+def split_program_problems(design: Design) -> list[str]:
+    """A legacy program becomes one use case (all source languages): every case of its golden master is a whole run
+    of the program (a CICS transaction from its first screen to its last, a procedure from its call to its
+    return), so only the use case that does all of it can reproduce them. A design that split one program into
+    several use cases had one of them (the first screen of a CICS program) compared against every case of the
+    program and it could never pass."""
+    by_program: dict[str, list[str]] = {}
+    for use_case in design.use_cases:
+        if use_case.legacy_program:
+            by_program.setdefault(program_key(use_case.legacy_program), []).append(use_case.name)
+    return [
+        f"use cases {', '.join(names)} all replace the legacy program {key.upper()}: one use case replaces one "
+        "program, because the golden master runs the whole program on every case (each screen, paragraph or "
+        "branch is a step of that one service): merge them into one use case with the inputs and outputs of the "
+        "whole program"
+        for key, names in by_program.items()
+        if len(names) > 1
+    ]
 
 
 ARCHITECT = "solution-architect"
@@ -165,7 +196,11 @@ def legacy_names(files: Sequence[SourceFile]) -> set[str]:
     """Every identifier of the legacy source, lowercase: what the design may name as legacy. A COBOL name keeps its
     hyphens and is also known with underscores (ORD-NUMERO is ord_numero), the form traces and targets use."""
     names = {m.group(0).lower() for f in files for m in _NAME.finditer(f.text)}
-    names |= {m.group(0).lower().replace("-", "_") for f in files for m in _COBOL_NAME.finditer(f.text)}
+    # The hyphenated name as the source writes it (the architect copies `P015-EMPRESA` literally; a real CICS
+    # design was rejected 21 times for names that were in the code) and its underscore form.
+    cobol = [m.group(0).lower() for f in files for m in _COBOL_NAME.finditer(f.text)]
+    names |= set(cobol)
+    names |= {n.replace("-", "_") for n in cobol}
     return names
 
 
@@ -432,19 +467,51 @@ SAME_ENGINE_DATABASES: dict[str, frozenset[str]] = {
 }
 
 
-def data_strategy_target_problems(design: Design, database: str | None, legacy: str | None) -> list[str]:
-    """`same_database` keeps the data on the legacy's engine, so a target that names another database contradicts
-    it: the data moves there (`migration`). Without a named target database, or on the legacy's own engine, the
-    architect's choice stands."""
+def required_data_strategy(database: str | None, legacy: str | None) -> str | None:
+    """The data strategy the project's target decides (ADR-0055): `same_database` when the target database is the
+    legacy's own engine, `migration` when it names another one, nothing when the target names no database (then the
+    architect chooses). A COBOL/CICS project with a PostgreSQL target failed its design twice because the model
+    answered `same_database` and the validator only said no: the value is not the model's to choose."""
     chosen = (database or "").lower()
-    if design.data_strategy != "same_database" or not chosen:
+    if not chosen:
+        return None
+    return "same_database" if chosen in SAME_ENGINE_DATABASES.get(legacy or "", frozenset()) else "migration"
+
+
+def data_strategy_text(database: str | None, legacy: str | None) -> str:
+    """What the architect is told about the data strategy before designing."""
+    required = required_data_strategy(database, legacy)
+    if required is None:
+        return ""
+    if required == "same_database":
+        return (f"Data strategy: the project's target is the legacy's own engine ({database}), so data_strategy is "
+                "'same_database': every entity keeps its legacy table as `table` with the legacy's qualified name "
+                "and its legacy columns, and the called programs stay where they are.")  # fmt: skip
+    return (f"Data strategy: the project's target keeps its data in {database}, so data_strategy is 'migration': "
+            "the tables move to the target database with target names; the called programs are ports.")  # fmt: skip
+
+
+def with_required_data_strategy(design: Design, database: str | None, legacy: str | None) -> Design:
+    """The design with the data strategy the target decides; a different answer of the architect is corrected,
+    never argued about."""
+    required = required_data_strategy(database, legacy)
+    if required is None or design.data_strategy == required:
+        return design
+    return design.model_copy(update={"data_strategy": required})
+
+
+def data_strategy_target_problems(design: Design, database: str | None, legacy: str | None) -> list[str]:
+    """A data strategy that contradicts the project's target (kept for designs that did not pass through
+    `with_required_data_strategy`): `same_database` on another engine, or `migration` on the legacy's own."""
+    required = required_data_strategy(database, legacy)
+    if required is None or design.data_strategy == required:
         return []
-    if chosen in SAME_ENGINE_DATABASES.get(legacy or "", frozenset()):
-        return []
-    return [
-        f"the project's target keeps its data in {chosen}: data_strategy must be 'migration' (same_database "
-        "needs the target on the legacy's own engine, and the tables and called programs stay there)"
-    ]
+    if required == "migration":
+        return [f"the project's target keeps its data in {(database or '').lower()}: data_strategy must be 'migration' "
+                "(same_database needs the target on the legacy's own engine, and the tables and called programs "
+                "stay there)"]  # fmt: skip
+    return [f"the project's target is the legacy's own engine ({(database or '').lower()}): data_strategy must be "
+            "'same_database' (the data and the called programs stay where they are)"]  # fmt: skip
 
 
 def design_problems(
@@ -481,6 +548,7 @@ def design_problems(
         problems.append(f"methods of ports that replace a legacy program need the argument of each input: "
                         f"{', '.join(sorted(set(external)))}")  # fmt: skip
     problems += unit_of_work_problems(design, files)
+    problems += split_program_problems(design)
     if (
         files
         and design.data_strategy is None
@@ -620,8 +688,19 @@ def status_output_problems(design: Design, files: Sequence[SourceFile]) -> list[
     if not callable(status_as_data):
         return []
     problems: list[str] = []
+    unit = next((p for p in design.ports if p.name == UNIT_OF_WORK_PORT and not p.legacy_program), None)
     for use_case in design.use_cases:
-        if not use_case.legacy_program or not status_as_data(list(files), use_case.legacy_program):
+        if not use_case.legacy_program:
+            continue
+        if not status_as_data(list(files), use_case.legacy_program):
+            # A program that rejects with a non-zero status: the REST adapter owns the transaction (a rejection
+            # undoes everything); a UnitOfWork with begin/commit/rollback here moved M4 away from the legacy.
+            owned = [m for m in (unit.methods if unit else []) if m.name in UNIT_OF_WORK_METHODS]
+            if owned and unit is not None and unit.name in use_case.ports:
+                problems.append(f"{use_case.name}: {use_case.legacy_program} rejects with a non-zero return status, "
+                                "so the REST adapter owns its transaction: the UnitOfWork port keeps only "
+                                "savepoint(name) and rollbackTo(name), without begin(), commit() or "
+                                "rollback()")  # fmt: skip
             continue
         status = next((f for f in use_case.outputs if (f.legacy or "").lower() == STATUS), None)
         if status is None:
@@ -802,7 +881,8 @@ async def propose_design(
                 else ""
             )
             + (f"\n\n{GUIDED_DESIGN}" if hints else "")
-            + (f"\n\n{guidance}" if hints and guidance else ""),
+            + (f"\n\n{guidance}" if hints and guidance else "")
+            + (f"\n\n{strategy}" if (strategy := data_strategy_text(database, legacy)) else ""),
         },
     ]
     usage: list[Usage] = []
@@ -816,7 +896,7 @@ async def propose_design(
                         f"design/attempt-{iteration}-reply.md": reply.content})  # fmt: skip
         try:
             data = design_json(reply.content) if hints else parse_json(reply.content)
-            design = Design.model_validate(data)
+            design = with_required_data_strategy(Design.model_validate(data), database, legacy)
             if hints:
                 design = without_numeric_messages(design)
             problems = design_problems(design, rules, names, hints=hints, files=files, written=written,
@@ -1008,7 +1088,7 @@ class GenerationPhases:
                 # legacy's engine when the data stays there (a Sybase design has no schema for PostgreSQL).
                 async with same_engine(design, source, master) as engine:
                     for use_case in design.use_cases:
-                        if not _replaces(use_case, master):
+                        if not _replaces(use_case, design, master):
                             continue
                         piece = ctx.for_shard(f"converge:{use_case.name}")
                         case_rules = {r.case.name: r.case.rules for r in master.results}

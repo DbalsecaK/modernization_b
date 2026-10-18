@@ -356,7 +356,8 @@ def test_the_messages_of_the_called_programs_are_compared_in_canonical_form() ->
         "20000: Server 'MYSYBASE', Procedure 'sp_debito', Line 7: Saldo insuficiente",
         "50001: Server 'MYSYBASE', Procedure 'sp_pago_orden', Line 3: raised by the program",
     ])  # fmt: skip
-    expected = core_expected_view(DESIGN, PAY, observed, [])
+    expected = core_expected_view(DESIGN, PAY, observed, [], strict_calls=True)  # the engine's log sees them
+    assert core_expected_view(DESIGN, PAY, observed, []).messages == []  # against fakes, nothing to compare
     assert expected.messages == ["20000: Saldo insuficiente"]
     actual = actual_view(DESIGN, PAY, {"response": {}, "messages": ["20000: Saldo insuficiente"]}, [], True, [])
     assert actual.messages == expected.messages
