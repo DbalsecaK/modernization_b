@@ -126,6 +126,11 @@ def test_the_reference_target_reproduces_the_golden_master(java_sandbox: DockerS
     different = [c.name for c in run.cases if c.failure or c.expected != c.actual]
     assert len(run.cases) == 12
     assert different == []
+    # ADR-0056 (point 12): the harness also ran the chosen case twice at once; the reference target serialises
+    # (the request is one transaction on PostgreSQL), so two runs end as two sequential ones would.
+    contended = run.raw["__concurrency__"]
+    assert contended["failures"] == [], contended
+    assert contended["serializable"] is True
 
     # M29 (ADR-0049): the golden master cases run under the native coverage tool of the stack; the reference target
     # has code no case runs (the infrastructure the harness replaces), so some region is reported.
@@ -391,3 +396,20 @@ def test_the_delivery_carries_the_golden_master_as_an_integration_test_of_the_pr
     assert "prepareSQL=0" in files["src/main/resources/application-legacy.properties"]
     assert "application-legacy.properties" not in " ".join(delivery_files(DESIGN, PAY, run, MASTER))
     assert delivery_files(DESIGN, PAY, EquivalenceRun(build, [], [], "the harness did not run"), MASTER) == {}
+
+
+def test_the_harness_plan_names_the_case_that_runs_twice_at_the_same_time() -> None:
+    # ADR-0056 (phase D, point 12): a use case with a unit of work gets a concurrency case, the first the legacy
+    # accepted and that changed a row; the harness runs it on two connections at once and says whether the final
+    # state is the one of two sequential runs. A use case that only reads gets none.
+    from nexti_pack_spring_boot.equivalence import concurrency_case
+
+    chosen = concurrency_case(DESIGN, PAY, MASTER)
+    assert chosen is not None
+    recorded = next(r for r in MASTER.results if r.case.name == chosen)
+    assert recorded.observation.returns == 0
+    data = json.loads(DESIGN.model_dump_json(by_alias=True))
+    reader = Design.model_validate({**data, "use_cases": [{**data["use_cases"][0], "name": "ReadOrder", "ports": [],
+                                                           "http_method": "GET", "unit_of_work": None}]})  # fmt: skip
+    assert concurrency_case(reader, reader.use_cases[0], MASTER) is None
+    assert "concurrency(" in harness_source()  # the Spring harness runs it
