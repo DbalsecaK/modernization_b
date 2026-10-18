@@ -221,7 +221,8 @@ def test_the_generated_driver_and_loaders_are_whole_programs() -> None:
     assert "CALL 'PAGOORD' USING NX-EIB NX-COMMAREA" in driver
     assert f"MOVE {eib_length()} TO NX-COUNT" in driver
     loader = loader_source("ORDENES", 32, 12)
-    assert "PIC X(12)." in loader and "PIC X(20)." in loader
+    assert "PIC X(12)." in loader
+    assert "PIC X(20)." in loader
     assert "WRITE NX-IDX-REC" in loader
 
 
