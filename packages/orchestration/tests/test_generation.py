@@ -827,7 +827,7 @@ lbl_error:
 
 
 def test_a_program_that_returns_its_status_as_data_needs_a_status_output_and_the_unit_of_work_port() -> None:
-    # Phase F of ADR-0055: the bank procedure of phase F returns 0 with the error in @o_error (and the code itself when the
+    # Phase F of ADR-0055: the bank procedure of phase F returns 0 with the error in @o_error (and the code itself
     # caller is COBIS); a target that threw read as a rejection in every such case. The design maps the status
     # with `return` and, as the service commits and rolls back where the legacy does, owns the transaction.
     from nexti_orchestration.generation import status_output_problems
