@@ -411,7 +411,7 @@ def test_the_same_engine_starts_on_a_private_network_and_hands_the_target_what_i
             assert target.network.startswith("nexti-eq-")
             assert target.name is not None
             assert target.name.startswith("nexti-ase-")
-            assert target.jdbc_url == f"jdbc:jtds:sybase://{target.name}:5000/nexti_gm"
+            assert target.jdbc_url == f"jdbc:jtds:sybase://{target.name}:5000/nexti_gm;prepareSQL=0"  # ADR-0056
             assert target.programs["db_cuentas..sp_debito"] == ["@i_cuenta", "@i_tipo", "@i_valor", "@i_referencia"]
             assert target.setup_for(SUITE.cases[0])[0] == "use nexti_gm"
             made = target.calls(

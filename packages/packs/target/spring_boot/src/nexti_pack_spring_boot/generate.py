@@ -253,59 +253,92 @@ def owns_transaction(port: Port) -> bool:
     return all(m in declared for m in UNIT_OF_WORK_METHODS)
 
 
+# ADR-0056 (phase B): the unit of work runs in the legacy's own transaction mode. `begin tran`, `commit tran` and
+# `rollback tran` are sent as T-SQL on one connection of the request's thread, with autocommit on (Sybase's
+# unchained mode, the mode the legacy's procedures and the ones they call were written for), instead of a JDBC
+# transaction (chained mode, which the legacy never ran in and which a called procedure may refuse). The connection
+# is bound to the thread so every JdbcTemplate call of the request, and every called program, runs on it.
 _TRANSACTION_METHODS = (
     "    @Override\n    public void begin() {\n"
-    "        if (status.get() != null) {\n"
+    "        if (open.get() != null) {\n"
     '            throw new IllegalStateException("the transaction is already open");\n        }\n'
-    "        status.set(manager.getTransaction(new DefaultTransactionDefinition()));\n        marks.remove();\n"
+    "        DataSource dataSource = java.util.Objects.requireNonNull(jdbc.getDataSource());\n"
+    "        boolean bound = TransactionSynchronizationManager.hasResource(dataSource);\n"
+    "        Connection connection = DataSourceUtils.getConnection(dataSource);\n"
+    "        if (!bound) {\n"
+    "            ConnectionHolder holder = new ConnectionHolder(connection);\n"
+    "            holder.setSynchronizedWithTransaction(true);\n"
+    "            TransactionSynchronizationManager.bindResource(dataSource, holder);\n"
+    "        }\n"
+    "        open.set(connection);\n        ownsBinding.set(!bound);\n        marks.remove();\n"
+    '        run(connection, "begin tran");\n'
     "    }\n\n"
     "    @Override\n    public void commit() {\n"
-    "        if (status.get() == null) {\n"
+    "        Connection connection = open.get();\n"
+    "        if (connection == null) {\n"
     '            throw new IllegalStateException("no transaction to commit");\n        }\n'
-    "        TransactionStatus open = status.get();\n        status.remove();\n        marks.remove();\n"
-    "        manager.commit(open);\n    }\n\n"
+    '        try {\n            run(connection, "commit tran");\n        } finally {\n'
+    "            release(connection);\n        }\n    }\n\n"
     "    @Override\n    public void rollback() {\n"
-    "        if (status.get() == null) {\n"
+    "        Connection connection = open.get();\n"
+    "        if (connection == null) {\n"
     '            throw new IllegalStateException("no transaction to roll back");\n        }\n'
-    "        TransactionStatus open = status.get();\n        status.remove();\n        marks.remove();\n"
-    "        manager.rollback(open);\n    }\n\n"
-    "    /** Confirms a transaction the use case left open (the caller's commit, in the legacy). */\n"
-    "    public void commitIfActive() {\n        if (status.get() != null) {\n            commit();\n        }\n"
-    "    }\n\n"
+    '        try {\n            run(connection, "rollback tran");\n        } finally {\n'
+    "            release(connection);\n        }\n    }\n\n"
+    "    /** Confirms a transaction the use case left open (the caller's commit, in the legacy); nothing when the "
+    "use case already closed it on the engine. */\n"
+    "    public void commitIfActive() {\n"
+    "        Connection connection = open.get();\n"
+    "        if (connection != null) {\n"
+    '            try {\n                run(connection, "if @@trancount > 0 commit tran");\n'
+    "            } finally {\n                release(connection);\n            }\n        }\n    }\n\n"
     "    /** Undoes a transaction a failure left open (the engine's rollback when a batch aborts). */\n"
-    "    public void rollbackIfActive() {\n        if (status.get() != null) {\n            rollback();\n        }\n"
-    "    }\n\n"
+    "    public void rollbackIfActive() {\n"
+    "        Connection connection = open.get();\n"
+    "        if (connection != null) {\n"
+    '            try {\n                run(connection, "if @@trancount > 0 rollback tran");\n'
+    "            } finally {\n                release(connection);\n            }\n        }\n    }\n\n"
+    "    private void release(Connection connection) {\n"
+    "        DataSource dataSource = java.util.Objects.requireNonNull(jdbc.getDataSource());\n"
+    "        boolean owned = Boolean.TRUE.equals(ownsBinding.get());\n"
+    "        open.remove();\n        ownsBinding.remove();\n        marks.remove();\n"
+    "        if (owned) {\n"
+    "            TransactionSynchronizationManager.unbindResource(dataSource);\n"
+    "            DataSourceUtils.releaseConnection(connection, dataSource);\n"
+    "        }\n    }\n\n"
+    "    private static void run(Connection connection, String sql) {\n"
+    "        try (java.sql.Statement statement = connection.createStatement()) {\n"
+    "            statement.execute(sql);\n"
+    "        } catch (SQLException e) {\n"
+    '            throw new IllegalStateException(sql + ": " + e.getMessage(), e);\n'
+    "        }\n    }\n\n"
 )
 
 
 def unit_of_work_adapter_file(design: Design, port: Port) -> tuple[str, str]:
     """Savepoints on the connection of the current transaction: `savepoint(name)` marks, `rollbackTo(name)` undoes
     the work since the mark and the use case goes on, as the legacy's `rollback tran <savepoint>` does. When the
-    port also declares `begin`, `commit` and `rollback` (phase F) the adapter owns the transaction through the
-    data source's transaction manager, so the service begins and ends it exactly where the legacy does."""
+    port also declares `begin`, `commit` and `rollback` (phase F) the adapter owns the transaction as T-SQL on a
+    connection bound to the request's thread, in the legacy's transaction mode (ADR-0056, phase B), so the service
+    begins and ends it exactly where and how the legacy does."""
     package = f"{design.base_package}.adapters.out.jdbc"
     owns = owns_transaction(port)
     transaction_imports = (
-        "import org.springframework.jdbc.datasource.DataSourceTransactionManager;\n"
-        "import org.springframework.transaction.PlatformTransactionManager;\n"
-        "import org.springframework.transaction.TransactionStatus;\n"
-        "import org.springframework.transaction.support.DefaultTransactionDefinition;\n"
+        "import javax.sql.DataSource;\n"
+        "import org.springframework.jdbc.datasource.ConnectionHolder;\n"
+        "import org.springframework.transaction.support.TransactionSynchronizationManager;\n"
         if owns
         else ""
     )
     transaction_fields = (
-        "    private final PlatformTransactionManager manager;\n"
-        "    private final ThreadLocal<TransactionStatus> status = new ThreadLocal<>();\n"
+        "    private final ThreadLocal<Connection> open = new ThreadLocal<>();\n"
+        "    private final ThreadLocal<Boolean> ownsBinding = new ThreadLocal<>();\n"
         if owns
         else ""
     )
-    transaction_init = (
-        "        this.manager = new DataSourceTransactionManager(\n"
-        "                java.util.Objects.requireNonNull(jdbc.getDataSource()));\n"
-        if owns
-        else ""
-    )
-    doc = ("the unit of work of the legacy (begin, commit, rollback and its savepoints), owned by the service"
+    transaction_init = ""
+    doc = ("the unit of work of the legacy (begin, commit, rollback and its savepoints), owned by the service and "
+           "run as T-SQL in the legacy's transaction mode"
            if owns else "the savepoints of the legacy on the transaction of the use case")  # fmt: skip
     return adapter_path(design, port), (
         f"package {package};\n\n"

@@ -194,10 +194,18 @@ def test_when_the_unit_of_work_port_begins_and_ends_the_service_owns_the_transac
     port = next(p for p in design.ports if p.name == "UnitOfWork")
     assert owns_transaction(port)
     _, adapter = unit_of_work_adapter_file(design, port)
-    assert "new DataSourceTransactionManager(" in adapter
-    assert "status.set(manager.getTransaction(new DefaultTransactionDefinition()));" in adapter
+    # ADR-0056 (phase B): the transaction is the legacy's own T-SQL on a connection bound to the request's thread
+    # (unchained mode), not a JDBC transaction (chained mode the legacy never ran in).
+    assert "DataSourceTransactionManager" not in adapter
+    assert 'run(connection, "begin tran");' in adapter
+    assert 'run(connection, "commit tran");' in adapter
+    assert 'run(connection, "rollback tran");' in adapter
+    assert "TransactionSynchronizationManager.bindResource(dataSource, holder);" in adapter
+    assert "DataSourceUtils.releaseConnection(connection, dataSource);" in adapter
     assert "public void commitIfActive()" in adapter
+    assert 'run(connection, "if @@trancount > 0 commit tran");' in adapter
     assert "public void rollbackIfActive()" in adapter
+    assert 'run(connection, "if @@trancount > 0 rollback tran");' in adapter
     assert 'jdbc.execute("save tran " + label(name))' in adapter
     _, controller = controller_file(design, design.use_cases[0])
     assert "TransactionTemplate" not in controller
@@ -231,7 +239,7 @@ def test_the_savepoint_marks_belong_to_the_requests_thread() -> None:
     assert "ThreadLocal<Set<String>> marks = ThreadLocal.withInitial(HashSet::new)" in adapter
     assert "marks.get().add(name);" in adapter
     assert "if (!marks.get().contains(name))" in adapter
-    assert adapter.count("marks.remove();") == 3  # begin, commit, rollback
+    assert adapter.count("marks.remove();") == 2  # begin, and the release after commit or rollback
     assert "HashMap" not in adapter
 
 

@@ -44,6 +44,10 @@ _ISQL = ". /opt/sybase/SYBASE.sh && isql -U{0} -P{1} -S{2} -w 32000 -b 2>&1"
 # argument (it would show in the process list of the worker's host and in its logs).
 _ISQL_CLIENT = '. /opt/sybase/SYBASE.sh && read -r NXPWD && isql -U{0} -P"$NXPWD" -S{1} -w 32000 -b 2>&1'
 CASE_MARK = "NXCASE|"
+# jTDS options of the engine a target runs against (ADR-0056, phase B): no server-side preparation of statements
+# (prepareSQL=0), so a batch runs as the literal T-SQL the legacy ran, inside the unchained transaction the target
+# opens as T-SQL on its connection; prepared handles and temporary procedures have no place in that transaction.
+JDBC_OPTIONS = ";prepareSQL=0"
 CALL_DEPTH = 8  # levels of calls followed on the customer's server for the tables they touch
 
 
@@ -265,7 +269,7 @@ class SameEngine:
         types = {program: [golden._neutral(s.type) for s in stub.parameters if not s.output]
                  for program, stub in plan.stubs.items()}  # fmt: skip
         return EngineTarget(
-            name=self.name, network=self.network, jdbc_url=f"jdbc:jtds:sybase://{self.name}:{self.PORT}/{plan.work}",
+            name=self.name, network=self.network, jdbc_url=f"jdbc:jtds:sybase://{self.name}:{self.PORT}/{plan.work}{JDBC_OPTIONS}",
             user=_SA[0], password=_SA[1], setup_for=lambda case: golden.case_setup_batches(plan, case),
             calls_query=golden.CALLS_QUERY, programs=programs, parse_args=golden.read_values, types=types,
         )  # fmt: skip
