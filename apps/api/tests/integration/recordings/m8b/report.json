@@ -13,14 +13,14 @@
     "legacy_covered": "not_checked"
   },
   "details": {
-    "tests_ran": "66 test(s) passed in a clean build (JUnit XML)",
+    "tests_ran": "58 test(s) passed in a clean build (JUnit XML)",
     "rules_traced": "rules without a matching golden case: RULE-012",
     "same_behaviour": "17 golden case(s) reproduced",
     "fresh_inputs": "12 fresh input(s) matched on both sides",
-    "canary": "line 22 changed (private static final BigDecimal OVERDRAFT_MARGIN = new BigDecimal(\"100.01\");) turned test rule007_non_vir_just_beyond_margin_is_rejected() red",
+    "canary": "line 22 changed (private static final BigDecimal OVERDRAFT_MARGIN = new BigDecimal(\"100.01\");) turned test rule007_non_vir_account_one_cent_beyond_margin_is_rejected() red",
     "source_intact": "the legacy is the code that was characterized (SHA-256)",
-    "behaviour_boundary": "the equivalence compares the calls the legacy made and its own tables, not the final state of the database after the called programs ran; the called programs were stubs, their own logic and effects were not verified: cobis..sp_cerror, db_cuentas..sp_debito",
-    "legacy_covered": "1 gap(s) of the legacy no case covers, accepted as not proven by e110dbaf-4f32-4cb6-b57f-54f0bd7c8604"
+    "behaviour_boundary": "the equivalence compares the calls the legacy made and its own tables, not the final state of the database after the called programs ran; the called programs were stubs, their own logic and effects were not verified: cobis..sp_cerror, db_cuentas..sp_debito; the legacy has a unit of work (begin/save/commit/rollback at lines 108, 119, 136, 155, 161): whether the target keeps or undoes the same work was not verified",
+    "legacy_covered": "1 gap(s) of the legacy no case covers, accepted as not proven by 25204d2c-68fa-4497-b5e7-3f03c92c341c"
   },
   "iac": {
     "verdict": "PROVEN",
@@ -33,8 +33,8 @@
       "logs": "passed"
     }
   },
-  "model_calls": 60,
-  "cost_usd": "1.71692200",
+  "model_calls": 59,
+  "cost_usd": "1.64461200",
   "decisions": [
     "questions",
     "C1",
