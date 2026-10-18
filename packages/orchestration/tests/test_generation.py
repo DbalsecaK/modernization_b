@@ -672,7 +672,27 @@ def test_the_design_declares_the_unit_of_work_the_legacy_has_and_every_rollback_
     assert target("sybase") == []
     (problem,) = target("oracle")
     assert problem.startswith("the project's target keeps its data in oracle: data_strategy must be 'migration'")
-    assert target("oracle", design=Design.model_validate({**data, "data_strategy": "migration"})) == []
+    moved = Design.model_validate({**data, "data_strategy": "migration"})
+    assert target("oracle", design=moved) == []
+    (own,) = target("sybase", design=moved)
+    assert own.startswith("the project's target is the legacy's own engine (sybase): data_strategy must be")
+    # The target decides, and the architect is told and corrected (a CICS project with a PostgreSQL target failed
+    # its design twice answering same_database): the value is not the model's to choose.
+    from nexti_orchestration.generation import (
+        data_strategy_text,
+        required_data_strategy,
+        with_required_data_strategy,
+    )
+
+    assert required_data_strategy(None, "sybase-ase") is None
+    assert required_data_strategy("postgresql", "cobol-cics") == "migration"
+    assert required_data_strategy("Sybase", "sybase-ase") == "same_database"
+    assert with_required_data_strategy(same, "postgresql", "cobol-cics").data_strategy == "migration"
+    assert with_required_data_strategy(moved, "sybase", "sybase-ase").data_strategy == "same_database"
+    assert with_required_data_strategy(same, None, "sybase-ase") is same
+    assert data_strategy_text(None, "sybase-ase") == ""
+    assert "data_strategy is 'migration'" in data_strategy_text("postgresql", "cobol-cics")
+    assert "data_strategy is 'same_database'" in data_strategy_text("sybase", "sybase-ase")
     data["data_strategy"] = "same_database"
     (renamed,) = [p for p in design_problems(Design.model_validate(data), RULES) if p.startswith("with same_database")]
     assert "PaymentOrder (payment_order vs db_pagos..pg_orden)" in renamed

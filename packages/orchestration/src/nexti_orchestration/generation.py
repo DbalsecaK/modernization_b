@@ -432,19 +432,51 @@ SAME_ENGINE_DATABASES: dict[str, frozenset[str]] = {
 }
 
 
-def data_strategy_target_problems(design: Design, database: str | None, legacy: str | None) -> list[str]:
-    """`same_database` keeps the data on the legacy's engine, so a target that names another database contradicts
-    it: the data moves there (`migration`). Without a named target database, or on the legacy's own engine, the
-    architect's choice stands."""
+def required_data_strategy(database: str | None, legacy: str | None) -> str | None:
+    """The data strategy the project's target decides (ADR-0055): `same_database` when the target database is the
+    legacy's own engine, `migration` when it names another one, nothing when the target names no database (then the
+    architect chooses). A COBOL/CICS project with a PostgreSQL target failed its design twice because the model
+    answered `same_database` and the validator only said no: the value is not the model's to choose."""
     chosen = (database or "").lower()
-    if design.data_strategy != "same_database" or not chosen:
+    if not chosen:
+        return None
+    return "same_database" if chosen in SAME_ENGINE_DATABASES.get(legacy or "", frozenset()) else "migration"
+
+
+def data_strategy_text(database: str | None, legacy: str | None) -> str:
+    """What the architect is told about the data strategy before designing."""
+    required = required_data_strategy(database, legacy)
+    if required is None:
+        return ""
+    if required == "same_database":
+        return (f"Data strategy: the project's target is the legacy's own engine ({database}), so data_strategy is "
+                "'same_database': every entity keeps its legacy table as `table` with the legacy's qualified name "
+                "and its legacy columns, and the called programs stay where they are.")  # fmt: skip
+    return (f"Data strategy: the project's target keeps its data in {database}, so data_strategy is 'migration': "
+            "the tables move to the target database with target names; the called programs are ports.")  # fmt: skip
+
+
+def with_required_data_strategy(design: Design, database: str | None, legacy: str | None) -> Design:
+    """The design with the data strategy the target decides; a different answer of the architect is corrected,
+    never argued about."""
+    required = required_data_strategy(database, legacy)
+    if required is None or design.data_strategy == required:
+        return design
+    return design.model_copy(update={"data_strategy": required})
+
+
+def data_strategy_target_problems(design: Design, database: str | None, legacy: str | None) -> list[str]:
+    """A data strategy that contradicts the project's target (kept for designs that did not pass through
+    `with_required_data_strategy`): `same_database` on another engine, or `migration` on the legacy's own."""
+    required = required_data_strategy(database, legacy)
+    if required is None or design.data_strategy == required:
         return []
-    if chosen in SAME_ENGINE_DATABASES.get(legacy or "", frozenset()):
-        return []
-    return [
-        f"the project's target keeps its data in {chosen}: data_strategy must be 'migration' (same_database "
-        "needs the target on the legacy's own engine, and the tables and called programs stay there)"
-    ]
+    if required == "migration":
+        return [f"the project's target keeps its data in {(database or '').lower()}: data_strategy must be 'migration' "
+                "(same_database needs the target on the legacy's own engine, and the tables and called programs "
+                "stay there)"]  # fmt: skip
+    return [f"the project's target is the legacy's own engine ({(database or '').lower()}): data_strategy must be "
+            "'same_database' (the data and the called programs stay where they are)"]  # fmt: skip
 
 
 def design_problems(
@@ -802,7 +834,8 @@ async def propose_design(
                 else ""
             )
             + (f"\n\n{GUIDED_DESIGN}" if hints else "")
-            + (f"\n\n{guidance}" if hints and guidance else ""),
+            + (f"\n\n{guidance}" if hints and guidance else "")
+            + (f"\n\n{strategy}" if (strategy := data_strategy_text(database, legacy)) else ""),
         },
     ]
     usage: list[Usage] = []
@@ -816,7 +849,7 @@ async def propose_design(
                         f"design/attempt-{iteration}-reply.md": reply.content})  # fmt: skip
         try:
             data = design_json(reply.content) if hints else parse_json(reply.content)
-            design = Design.model_validate(data)
+            design = with_required_data_strategy(Design.model_validate(data), database, legacy)
             if hints:
                 design = without_numeric_messages(design)
             problems = design_problems(design, rules, names, hints=hints, files=files, written=written,
