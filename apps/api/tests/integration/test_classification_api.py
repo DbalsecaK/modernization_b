@@ -86,5 +86,12 @@ async def test_coverage_marks_each_business_statement_and_warns_before_c1(
     marked = {(s["lineStart"], s["cited"]) for s in found["statements"] if s["label"] == "business"}
     assert (first["lineStart"], False) in marked
     assert all(cited for line, cited in marked if line != first["lineStart"]) or rest == []
-    warnings = api.get(f"/api/v1/projects/{project_id}/c1-check", headers=headers).json()["warnings"]
-    assert warnings == [f"1 of {len(business)} business statement(s) are cited by no rule (lines {first['lineStart']})"]
+    # ADR-0056: a business statement no rule cites blocks C1 (no rule asks the target to reproduce it); the
+    # statements no slice reached stay a warning.
+    check = api.get(f"/api/v1/projects/{project_id}/c1-check", headers=headers).json()
+    assert check["warnings"] == []
+    assert check["canApprove"] is False
+    assert check["blockers"] == [
+        f"1 of {len(business)} business statement(s) are cited by no rule (lines {first['lineStart']}): extract the "
+        "rules again so each one is cited, or classify the statement as infrastructure"
+    ]

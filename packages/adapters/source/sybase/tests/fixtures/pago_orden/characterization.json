@@ -883,5 +883,9 @@
     ]
    }
   }
- ]
+ ],
+ "unreachable": {
+  "call:cobis..sp_cerror:failure": "sp_cerror only records the error; the program never reads its status nor its outputs, so no failure of it changes what the program does",
+  "branch:154-159": "the update of the order after the debit cannot fail: the order row was read and locked by the lookup above; only an engine error, which no case can provoke, enters this rollback"
+ }
 }

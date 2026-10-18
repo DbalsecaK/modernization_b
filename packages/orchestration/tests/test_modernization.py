@@ -501,7 +501,11 @@ class GuidedModel(InsightModel):
     ) -> ModelReply:
         system, request = messages[0]["content"], messages[1]["content"]
         content: Any
-        if system.endswith(GUIDED_EXTRACTOR):
+        if system.endswith(GUIDED_EXTRACTOR) and "#uncited" in request:
+            # ADR-0056: the statements no rule cited come back once; this stand-in finds no more rules in them.
+            self.guided.append(("extract", messages))
+            content = {"rules": []}
+        elif system.endswith(GUIDED_EXTRACTOR):
             self.guided.append(("extract", messages))
             code = [int(n) for n, text in re.findall(r"^\s*(\d+)  (.*\S)", request.split("Slice:")[1], re.M)]
             first, second, third = code[5], code[30], code[60]
@@ -544,9 +548,13 @@ async def test_guided_extraction_reads_a_small_program_whole_with_its_map_and_me
     waiting = (await run_until_wait(graph, run))[0]
     assert waiting == {"type": "gate", "gate": "C1", "phase": "ruleReview"}
     model: GuidedModel = port.models
-    # The program has 172 lines: one extraction of the whole file, with the map of its blocks.
-    (extract,) = [m for kind, m in model.guided if kind == "extract"]
+    # The program has 172 lines: one extraction of the whole file, with the map of its blocks, and one more for
+    # the business statements the first rules did not cite (ADR-0056), named as such.
+    extract, *uncited = [m for kind, m in model.guided if kind == "extract"]
     assert "Unit: dbo.sp_pago_orden#whole" in extract[1]["content"]
+    assert len(uncited) == 1
+    assert "Unit: dbo.sp_pago_orden#uncited" in uncited[0][1]["content"]
+    assert "cited by no rule yet (ADR-0056)" in uncited[0][1]["content"]
     assert "Program map (orientation only" in extract[1]["content"]
     assert "(phase transaction)" in extract[1]["content"]
     # The two rules stating the same behaviour are one, with both citations and the most cautious state.

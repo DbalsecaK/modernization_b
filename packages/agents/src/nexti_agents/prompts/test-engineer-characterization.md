@@ -23,7 +23,14 @@ You receive the source of the program, its approved business rules with their ci
    Use small, readable values and dates in ISO format (`2026-03-02T09:30:00`).
 3. `unreachable` (optional): rule -> why no input, row or stub answer can make the program reach it (a defensive
    check after a lookup that already proved the row exists, dead code). Declare it instead of inventing a case the
-   legacy could never enter; the verdict lists it as not proven.
+   legacy could never enter; the verdict lists it as not proven. The same map declares a mandatory item the
+   suite cannot reach, under its key: `branch:<from>-<to>` (a branch with a rollback point), `quirk:<id>` (an
+   engine behaviour the program relies on), `call:<program>:failure` (a called program whose failure no case
+   can provoke).
+
+Mandatory, whatever the rules say: a case that enters every branch holding a rollback point (the golden master
+must show what the program undoes), a case that runs the lines of every engine behaviour the program relies on,
+and for every external program one case where it fails and one where it succeeds.
 
 Do not invent behaviour: the legacy decides the expected results when it runs. Answer with one JSON object only:
 {"program": "<name as created>", "schema": {"tables": [...]}, "cases": [...], "unreachable": {}}.

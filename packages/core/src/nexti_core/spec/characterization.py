@@ -471,8 +471,11 @@ def source_digest(files: "Sequence[SourceFile]") -> str:
 
 
 def suite_key(source: str, suite: Suite) -> str:
-    """The identity of a run: the same code and the same suite give the same observations (recordings, 12)."""
-    payload = json.dumps({"source": source, "suite": suite.model_dump(mode="json", by_alias=True)}, sort_keys=True)
+    """The identity of a run: the same code and the same suite give the same observations (recordings, 12). The
+    `unreachable` declarations are not part of it: they change nothing of what the engine runs (ADR-0056)."""
+    data = suite.model_dump(mode="json", by_alias=True)
+    data.pop("unreachable", None)
+    payload = json.dumps({"source": source, "suite": data}, sort_keys=True)
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
 

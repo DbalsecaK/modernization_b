@@ -20,6 +20,7 @@ from nexti_core.spec.characterization import (
     GoldenMaster,
     Schema,
     Suite,
+    program_key,
     quirk_combinations,
     unresolved_quirks,
 )
@@ -114,7 +115,8 @@ SCHEMA_REQUEST = (
 )
 CASES_REQUEST = (
     "The schema above is agreed: do not repeat it and use its table and column names. Answer with the cases for the "
-    'rules listed below only, as {"cases": [...]}: at least one case per rule listed, one per branch of a P0 rule.'
+    'rules listed below only, as {"cases": [...]}: at least one case per rule listed, one per branch of a P0 rule. '
+    'What no input can reach goes in "unreachable" next to the cases ({"cases": [...], "unreachable": {...}}).'
 )
 RULE_ID = re.compile(r"RULE-\d{3,}")
 
@@ -156,6 +158,15 @@ def parse_cases(content: str) -> list[Case]:
         ]
     except ValidationError as exc:
         raise ReplyError(f"the cases do not follow the format: {format_problems(exc)}") from exc
+
+
+def parse_unreachable(content: str) -> dict[str, str]:
+    """The `unreachable` declarations of a piece of cases (ADR-0056): rule or mandatory item -> reason."""
+    data = parse_json(content)
+    found = data.get("unreachable") if isinstance(data, dict) else None
+    if not isinstance(found, dict):
+        return {}
+    return {str(k): str(v) for k, v in found.items() if isinstance(k, str) and isinstance(v, str)}
 
 
 def groups_of(rules: Sequence[Rule], size: int = GROUP) -> list[list[Rule]]:
@@ -216,6 +227,69 @@ def branch_request(
     return text
 
 
+# ADR-0056 (phase C): what the suite must cover whatever the rules say, each with the key that declares it
+# unreachable in `unreachable` when no input can make the program reach it.
+MANDATORY_PREFIXES = ("branch:", "quirk:", "call:")
+
+
+def called_programs(files: Sequence[SourceFile], program: str) -> list[str]:
+    """The external programs the legacy program calls, from its source adapter when it knows them."""
+    from nexti_orchestration.modernization import pick_adapter
+
+    try:
+        signatures = getattr(pick_adapter(list(files)), "call_signatures", None)
+    except Exception:
+        return []
+    return sorted(signatures(list(files), program)) if callable(signatures) else []
+
+
+def mandatory_gaps(
+    suite: Suite, recorded: GoldenMaster, rollbacks: Sequence[int], programs: Sequence[str]
+) -> list[tuple[str, str]]:
+    """(key, what) of what the golden master must show and does not (ADR-0056): a branch with a rollback point no
+    case enters, an engine quirk confirmed on the engine that no case reaches, and a called program no case makes
+    fail (the legacy's answer to that failure is behaviour). Declared in `unreachable` under its key, with the
+    reason, an item is accepted and the verdict lists it."""
+
+    def normal(key: str) -> str:
+        # `call:db..sp_x:failure` and `call:sp_x:failure` name the same program (program_key).
+        parts = key.lower().split(":")
+        if len(parts) == 3 and parts[0] == "call":
+            return f"call:{program_key(parts[1])}:{parts[2]}"
+        return key.lower()
+
+    declared = {normal(k) for k, why in suite.unreachable.items() if why.strip()}
+    gaps: list[tuple[str, str]] = []
+    missed = recorded.coverage.not_exercised if recorded.coverage is not None else []
+    for branch in undoing(missed, rollbacks):
+        gaps.append((f"branch:{branch.line_start}-{branch.line_end}",
+                     f"the branch at lines {branch.line_start}-{branch.line_end} holds a rollback point of the "
+                     "program and no case enters it"))  # fmt: skip
+    for quirk in unresolved_quirks(recorded):
+        if quirk.confirmed:
+            gaps.append((f"quirk:{quirk.id}",
+                         f"the engine quirk {quirk.id} ({quirk.severity}) at lines "
+                         f"{', '.join(str(n) for n in quirk.lines[:10])} is confirmed on the engine and no case "
+                         "runs those lines"))  # fmt: skip
+    failing = {p.lower() for case in suite.cases for p, answers in case.stubs.items()
+               if any(a.returns != 0 for a in answers)}  # fmt: skip
+    for program in programs:
+        short = program.rsplit(".", 1)[-1].lower()
+        if not any(f == program.lower() or f.rsplit(".", 1)[-1] == short for f in failing):
+            gaps.append((f"call:{program}:failure",
+                         f"no case makes the called program {program} fail (a non-zero `returns`, with its "
+                         "`messages`): what the program does when it fails is not in the golden master"))  # fmt: skip
+    return [(key, what) for key, what in gaps if normal(key) not in declared]
+
+
+def mandatory_request(gaps: Sequence[tuple[str, str]]) -> str:
+    return (
+        "\n\nThese are mandatory (ADR-0056): the suite is not accepted until each one has a case, or is declared in "
+        "`unreachable` under its key with the reason no input, row or stub answer can make the program reach it:\n"
+        + "\n".join(f"- `{key}`: {what}" for key, what in gaps)
+    )
+
+
 def quirk_note(master: GoldenMaster) -> str:
     confirmed = sum(1 for q in master.quirks if q.confirmed)
     text = f"engine quirks: {len(master.quirks)} ({confirmed} confirmed on the engine"
@@ -270,7 +344,9 @@ def coverage_problems(suite: Suite, rules: Sequence[Rule], required: Sequence[Ru
     if missing:
         problems.append(f"rules without a case: {', '.join(missing)} (a rule no input can reach: declare it in "
                         "`unreachable` with the reason instead of inventing a case)")  # fmt: skip
-    unknown = sorted((covered | set(suite.unreachable)) - known)
+    # A declaration may also name a mandatory item of ADR-0056 (`branch:`, `quirk:`, `call:`), not only a rule.
+    unknown = sorted(k for k in (covered | set(suite.unreachable)) - known
+                     if not k.lower().startswith(MANDATORY_PREFIXES))  # fmt: skip
     if unknown:
         problems.append(f"cases cite rules that do not exist: {', '.join(unknown)}")
     blank = sorted(set(suite.unreachable) - declared)
@@ -363,11 +439,19 @@ class CharacterizationPhases:
             # their code and the rules that cite them; what stays uncovered after that round is reported, not looped.
             measured = recorded.coverage
             unreached = unresolved_quirks(recorded)  # M28: the engine quirks no case reaches go in the same round
-            # ADR-0055 (point 9): a branch with a rollback point is mandatory and gets one more round than the rest.
             rollbacks = [line for line, kind in unit_of_work(files, suite.program) if kind == "rollback"]
             missed = measured.not_exercised if measured is not None else []
-            rounds = 2 if undoing(missed, rollbacks) else 1
-            if guided and measured is not None and (missed or unreached) and len(branch_round) < rounds:
+            # ADR-0056 (phase C): a rollback branch, a confirmed quirk or a called program's failure without a
+            # case is mandatory: the suite goes back every time until it has the case or declares the item
+            # unreachable with its reason; the phase fails before it accepts a golden master without them.
+            gaps = mandatory_gaps(suite, recorded, rollbacks, called_programs(files, suite.program))
+            if gaps:
+                text = ""
+                if guided and measured is not None and (missed or unreached):
+                    branch_round.append(True)  # the branches go with the mandatory items: one request, not two
+                    text = branch_request(missed, files, rules, unreached, rollbacks)
+                return Verification(False, (text + mandatory_request(gaps)).strip())
+            if guided and measured is not None and (missed or unreached) and not branch_round:
                 branch_round.append(True)
                 return Verification(False, branch_request(missed, files, rules, unreached, rollbacks))
             return Verification(True)
@@ -375,7 +459,7 @@ class CharacterizationPhases:
         # Guided (ADR-0036): the schema first, then the cases a few rules at a time, so a long program never needs
         # one answer the size of its whole suite; a diagnostic re-asks only the pieces it points at.
         groups = groups_of(rules)
-        draft: dict[str, Any] = {"program": None, "schema": None, "cases": {}}
+        draft: dict[str, Any] = {"program": None, "schema": None, "cases": {}, "unreachable": {}}
         cut_before: dict[str, bool] = {}
         inventory = await self.port.inventory_digest()
 
@@ -394,6 +478,8 @@ class CharacterizationPhases:
                 cut_before[key] = bool(reply.cut_at)
                 raise
             cut_before[key] = False
+            if key != "schema":  # ADR-0056: a piece may declare what no input can reach
+                draft["unreachable"].update(parse_unreachable(reply.content))
             return value, reply.usage
 
         async def work_guided(iteration: int, feedback: str | None) -> Attempt:
@@ -422,7 +508,8 @@ class CharacterizationPhases:
                 return Attempt({"error": str(exc)[:3000]}, "suite with format errors", total(usage))
             cases = unique_names([c for i in sorted(draft["cases"]) for c in draft["cases"][i]])
             try:
-                suite = Suite(program=draft["program"], schema_=draft["schema"], cases=cases)
+                suite = Suite(program=draft["program"], schema_=draft["schema"], cases=cases,
+                              unreachable=dict(draft["unreachable"]))  # fmt: skip
             except ValidationError as exc:
                 return Attempt({"error": format_problems(exc)[:3000]}, "suite with format errors", total(usage))
             reference = await self.port.save_file("characterization/suite.json", suite.model_dump_json(by_alias=True))

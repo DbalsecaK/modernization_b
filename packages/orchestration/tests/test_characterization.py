@@ -226,7 +226,8 @@ class GuidedTester(StandInTester):
             if len(messages) == 2:  # the first round forgets the only case of RULE-001 in every request
                 self.forgot = True
                 cases = [c for c in cases if c["name"] != "account_type_not_allowed"]
-            content = {"cases": cases}
+            # ADR-0056: a piece declares what no input can reach (here the fixture's declarations, every time).
+            content = {"cases": cases, "unreachable": data.get("unreachable", {})}
         return ModelReply(json.dumps(content), Usage(model="t", input_tokens=5, output_tokens=50))
 
 
@@ -363,8 +364,21 @@ async def test_the_engine_quirks_no_case_reaches_go_in_the_branch_round_and_the_
                 "environment": [EnvironmentItem(key="language", value="us_english", source="engine")],
             })  # fmt: skip
 
+    class DeclaringTester(GuidedTester):
+        """ADR-0056: a confirmed quirk no case reaches is mandatory; the test engineer, asked, declares it."""
+
+        async def complete(
+            self, agent: str, phase: str, messages: list[dict[str, str]], *, iteration: int = 1, judge: int = 0
+        ) -> ModelReply:
+            reply = await super().complete(agent, phase, messages, iteration=iteration, judge=judge)
+            if any("mandatory (ADR-0056)" in m["content"] for m in messages) and '"cases"' in reply.content:
+                content = json.loads(reply.content)
+                content["unreachable"]["quirk:null-compare"] = "the compared variable is set two lines above"
+                return ModelReply(json.dumps(content), reply.usage)
+            return reply
+
     port = MemoryPort(QuirkRunner(), [SUITE])
-    port.tester = GuidedTester()
+    port.tester = DeclaringTester()
     port.models = port.tester
     phase = PhaseSpec("characterization", None, True)
     run = RunContext(uuid.uuid4(), uuid.uuid4(), uuid.uuid4(), "pipeline", "modernization", (phase,), ("C1",),
@@ -372,8 +386,11 @@ async def test_the_engine_quirks_no_case_reaches_go_in_the_branch_round_and_the_
                      options={"guided_extraction": True})  # fmt: skip
     result = await CharacterizationPhases(port).characterization(PhaseContext(run, MemoryStore(), phase, None))
     asked = [r[-1]["content"] for r in port.tester.requests if "behaviours of the legacy engine" in r[-1]["content"]]
-    assert len(asked) == 1
+    assert asked
     assert f"- null-compare (critical) at lines {ref.line_start}: NULL = NULL is true." in asked[0]
+    assert "- `quirk:null-compare`: the engine quirk null-compare (critical)" in asked[0]  # mandatory (ADR-0056)
+    accepted = Suite.model_validate_json(list(port.drafts.values())[-1])
+    assert "quirk:null-compare" in accepted.unreachable  # the declaration the engineer made, in the frozen suite
     assert "engine quirks: 1 (1 confirmed on the engine, 1 no case reaches); environment: 1 setting(s)" in (
         result.summary
     )
@@ -388,7 +405,9 @@ def test_a_rule_no_input_can_reach_is_declared_instead_of_invented() -> None:
     suite = parse_suite(json.dumps(data))
     assert coverage_problems(suite, RULES) == []
     assert "unreachable" in json.loads(suite.model_dump_json(by_alias=True))
-    assert "unreachable" not in json.loads(parse_suite(SUITE).model_dump_json(by_alias=True))  # as recorded
+    bare = json.loads(SUITE)
+    bare.pop("unreachable", None)
+    assert "unreachable" not in json.loads(parse_suite(json.dumps(bare)).model_dump_json(by_alias=True))  # as recorded
     data["unreachable"] = {"RULE-001": " ", "RULE-999": "nothing"}
     problems = coverage_problems(parse_suite(json.dumps(data)), RULES)
     assert problems[0].startswith("rules without a case: RULE-001 (a rule no input can reach")
@@ -400,6 +419,38 @@ def test_a_rule_no_input_can_reach_is_declared_instead_of_invented() -> None:
         column["key"] = column["name"] in marked["schema"]["tables"][0]["key"]
     marked["schema"]["tables"][0]["key"] = []
     assert parse_suite(json.dumps(marked)).schema_.tables[0].key == parse_suite(SUITE).schema_.tables[0].key
+
+
+def test_the_mandatory_gaps_are_rollback_branches_confirmed_quirks_and_called_programs_that_never_fail() -> None:
+    # ADR-0056 (phase C): what the golden master must show whatever the rules say; each item is accepted when a
+    # case covers it or when `unreachable` declares it under its key with the reason.
+    from nexti_core.spec.characterization import Coverage, CoveredBranch, EngineQuirk
+    from nexti_orchestration.characterization import called_programs, mandatory_gaps, mandatory_request
+
+    suite = parse_suite(SUITE)
+    programs = called_programs(FILES, suite.program)
+    assert programs == ["sp_cerror", "sp_debito"]
+    master = GoldenMaster(program=suite.program, source_sha256="0" * 64, engine="sybase-ase-16.0",
+                          schema_=suite.schema_, results=[])  # fmt: skip
+    branch = CoveredBranch(id="b1", kind="if-true", line_start=117, line_end=121, file="sp/sp_pago_orden.sp")
+    confirmed = EngineQuirk(id="null-compare", severity="critical", behavior="b", target="t", lines=[118],
+                            probe="p", expected="true", observed="true")  # fmt: skip
+    denied = confirmed.model_copy(update={"id": "empty-string", "observed": "0"})
+    measured = master.model_copy(update={"coverage": Coverage(branches=[branch], executed={}),
+                                         "quirks": [confirmed, denied]})  # fmt: skip
+    gaps = mandatory_gaps(suite, measured, [119], programs)
+    assert [key for key, _ in gaps] == ["branch:117-121", "quirk:null-compare"]  # sp_debito fails in a case;
+    # sp_cerror's failure is declared unreachable in the suite; a quirk this engine denies is not mandatory
+    assert "no case enters it" in gaps[0][1]
+    text = mandatory_request(gaps)
+    assert "mandatory (ADR-0056)" in text
+    assert "- `quirk:null-compare`: the engine quirk null-compare (critical) at lines 118" in text
+    bare = json.loads(SUITE)
+    bare.pop("unreachable")
+    assert [key for key, _ in mandatory_gaps(parse_suite(json.dumps(bare)), master, [], programs)] == [
+        "call:sp_cerror:failure"
+    ]
+    assert coverage_problems(suite, RULES) == []  # the declaration under a mandatory key is not an unknown rule
 
 
 def test_a_branch_with_a_rollback_point_is_mandatory_in_the_branch_request() -> None:
