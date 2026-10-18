@@ -909,9 +909,21 @@ def test_a_program_that_returns_its_status_as_data_needs_a_status_output_and_the
     use_case["outputs"][-1]["type"] = "integer(32,signed)"
     use_case["ports"].append("UnitOfWork")
     assert status_output_problems(Design.model_validate(data), files) == []
-    # sp_pago_orden rejects with a non-zero status and no outputs: the exception model fits, nothing is demanded.
-    assert status_output_problems(Design.model_validate_json(DESIGN_JSON),
-                                  [SourceFile("sp/sp_pago_orden.sp", SOURCE)]) == []  # fmt: skip
+    # sp_pago_orden rejects with a non-zero status and no outputs: the exception model fits, nothing is demanded,
+    # and a UnitOfWork that begins and commits is sent back (the REST adapter owns that transaction).
+    pago = [SourceFile("sp/sp_pago_orden.sp", SOURCE)]
+    assert status_output_problems(Design.model_validate_json(DESIGN_JSON), pago) == []
+    rejecting = json.loads(DESIGN_JSON)
+    rejecting["ports"].append({"name": "UnitOfWork", "methods": [
+        {"name": "begin", "inputs": [], "returns": None},
+        {"name": "commit", "inputs": [], "returns": None},
+        {"name": "rollback", "inputs": [], "returns": None},
+        {"name": "savepoint", "inputs": [{"name": "name", "type": "text(var,30,iso8859-1)"}], "returns": None},
+        {"name": "rollbackTo", "inputs": [{"name": "name", "type": "text(var,30,iso8859-1)"}], "returns": None},
+    ]})  # fmt: skip
+    rejecting["use_cases"][0]["ports"].append("UnitOfWork")
+    (owned,) = status_output_problems(Design.model_validate(rejecting), pago)
+    assert owned.startswith("PayOrder: dbo.sp_pago_orden rejects with a non-zero return status")
     assert status_output_problems(Design.model_validate(data), []) == []
 
 

@@ -21,10 +21,11 @@ Rules of the design:
   everything, or `savepoint:<name>` when it undoes part of the work and goes on. The platform generates the
   transaction boundary from it; never leave a rollback point out. When there are savepoints, declare a port named
   `UnitOfWork` with the methods `savepoint(name)` and `rollbackTo(name)` (text inputs, void): the platform
-  implements it and the service calls it where the legacy does. When the program returns its status as data
-  (below), the same `UnitOfWork` port also has `begin()`, `commit()` and `rollback()` (no inputs, void): the
+  implements it and the service calls it where the legacy does. Only when the program returns its status as data
+  (below) the same `UnitOfWork` port also has `begin()`, `commit()` and `rollback()` (no inputs, void): the
   service begins, confirms and undoes the transaction exactly where the legacy does, because its error exit
-  undoes the work and still returns its outputs.
+  undoes the work and still returns its outputs. A program that rejects with a non-zero status never gets
+  `begin()`, `commit()` or `rollback()`: the REST adapter owns that transaction and a rejection undoes everything.
 - The program's own return status. When the legacy returns it as data (it returns an output parameter, or
   returns 0 with the error code in an output parameter: `select @o_error = @w_num_error return 0`), the use case
   declares an output field with `legacy: "return"` (type `integer(32,signed)`) and the target returns the status

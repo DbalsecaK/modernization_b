@@ -656,8 +656,19 @@ def status_output_problems(design: Design, files: Sequence[SourceFile]) -> list[
     if not callable(status_as_data):
         return []
     problems: list[str] = []
+    unit = next((p for p in design.ports if p.name == UNIT_OF_WORK_PORT and not p.legacy_program), None)
     for use_case in design.use_cases:
-        if not use_case.legacy_program or not status_as_data(list(files), use_case.legacy_program):
+        if not use_case.legacy_program:
+            continue
+        if not status_as_data(list(files), use_case.legacy_program):
+            # A program that rejects with a non-zero status: the REST adapter owns the transaction (a rejection
+            # undoes everything); a UnitOfWork with begin/commit/rollback here moved M4 away from the legacy.
+            owned = [m for m in (unit.methods if unit else []) if m.name in UNIT_OF_WORK_METHODS]
+            if owned and unit is not None and unit.name in use_case.ports:
+                problems.append(f"{use_case.name}: {use_case.legacy_program} rejects with a non-zero return status, "
+                                "so the REST adapter owns its transaction: the UnitOfWork port keeps only "
+                                "savepoint(name) and rollbackTo(name), without begin(), commit() or "
+                                "rollback()")  # fmt: skip
             continue
         status = next((f for f in use_case.outputs if (f.legacy or "").lower() == STATUS), None)
         if status is None:
