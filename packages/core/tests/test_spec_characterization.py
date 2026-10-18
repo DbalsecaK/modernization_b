@@ -118,3 +118,21 @@ def test_the_gaps_are_the_branches_without_a_case_and_the_quirks_no_case_reaches
     master = _quirk_master()
     assert legacy_gaps(master) == ["branch 20-22 (else)", "quirk unreached (high) at lines 21"]
     assert legacy_gaps(master.model_copy(update={"coverage": None})) == []
+
+
+def test_a_program_is_the_same_whatever_the_mention_calls_it() -> None:
+    # ADR-0056: a trace's TRANSFERENCIA, a design's Transferencia.aspx and the file Transferencia.aspx.cs are one
+    # program; a procedure qualified by database or owner is the same procedure. A WebForms design named its use
+    # cases after the pages and the verification found no use case for the golden master's program.
+    from nexti_core.spec.characterization import program_key, same_program
+
+    assert program_key("TRANSFERENCIA") == "transferencia"
+    assert program_key("pages/Transferencia.aspx.cs") == "transferencia"
+    assert program_key("Transferencia.aspx") == "transferencia"
+    assert program_key("db_pagos..sp_pago_orden") == "sp_pago_orden"
+    assert program_key("dbo.sp_pago_orden") == "sp_pago_orden"
+    assert program_key("qrpglesrc/ACTSALDO.rpgle") == "actsaldo"
+    assert program_key("SSITP007.cbl") == "ssitp007"
+    assert same_program("Transferencia.aspx", "TRANSFERENCIA")
+    assert not same_program("Comprobante.aspx", "TRANSFERENCIA")
+    assert not same_program(None, "TRANSFERENCIA")

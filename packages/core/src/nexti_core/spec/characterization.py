@@ -75,7 +75,9 @@ class Schema(CharacterizationModel):
 class StubAnswer(CharacterizationModel):
     """How an external program answers one call: its return code, its output parameters and, when the case needs
     them, the rows it leaves in the tables it writes (ADR-0055: a transactional substitute, whose effects happen
-    inside the caller's unit of work and are undone by its rollback, as the real program's would be)."""
+    inside the caller's unit of work and are undone by its rollback, as the real program's would be) and the error
+    messages it raises before returning (ADR-0056: the substitute fails the way the real program fails, so the
+    target is proven to go on, or to stop, as the legacy does)."""
 
     returns: int = 0
     outputs: dict[str, Scalar] = Field(default_factory=dict)
@@ -83,14 +85,21 @@ class StubAnswer(CharacterizationModel):
         default_factory=dict,
         description="Table -> rows the program leaves: updated when a row with the same key exists, inserted otherwise",
     )
+    messages: list[str] = Field(
+        default_factory=list,
+        max_length=5,
+        description="Error messages the program raises (raiserror, ABEND, escape message) before it returns",
+    )
 
     @model_serializer(mode="wrap")
     def _without_empty_effects(self, handler: SerializerFunctionWrapHandler) -> Any:
-        # An answer without effects serialises as before the field existed: the keys of the recordings (the case's
-        # JSON) and the recordings themselves stay valid.
+        # An answer without effects or messages serialises as before the fields existed: the keys of the recordings
+        # (the case's JSON) and the recordings themselves stay valid.
         data = handler(self)
-        if isinstance(data, dict) and not data.get("effects"):
-            data.pop("effects", None)
+        if isinstance(data, dict):
+            for optional in ("effects", "messages"):
+                if not data.get(optional):
+                    data.pop(optional, None)
         return data
 
 
@@ -137,9 +146,65 @@ class Suite(CharacterizationModel):
         return self
 
 
+# The ways a legacy program is named across the platform: `db..sp_x`, `dbo.sp_x`, `SP_X`, `Transferencia.aspx`,
+# `pages/Transferencia.aspx.cs`, `PAGOORD.cbl`. The key drops the path, the qualifiers and the source extensions.
+_PROGRAM_EXTENSIONS = (
+    ".aspx.cs",
+    ".aspx.vb",
+    ".ascx.cs",
+    ".ascx.vb",
+    ".aspx",
+    ".ascx",
+    ".cbl",
+    ".cob",
+    ".cobol",
+    ".pco",
+    ".sqb",
+    ".rpgle",
+    ".sqlrpgle",
+    ".rpg",
+    ".clle",
+    ".clp",
+    ".sp",
+    ".sql",
+    ".prc",
+    ".proc",
+    ".tsql",
+    ".syb",
+    ".json",
+)
+
+
+def program_key(name: str | None) -> str:
+    """The name under which two mentions of the same legacy program match: a trace's `TRANSFERENCIA`, a design's
+    `Transferencia.aspx` and the file `Transferencia.aspx.cs` are one program; `db..sp_x` and `dbo.sp_x` are one
+    procedure. A WebForms design once named its use cases after the pages and the verification found no use case
+    for the golden master's program (ADR-0056)."""
+    text = (name or "").strip().lower().replace("\\", "/").rsplit("/", 1)[-1]
+    changed = True
+    while changed:
+        changed = False
+        for extension in _PROGRAM_EXTENSIONS:
+            if text.endswith(extension) and len(text) > len(extension):
+                text = text[: -len(extension)]
+                changed = True
+    return text.rsplit(".", 1)[-1]
+
+
+def same_program(a: str | None, b: str | None) -> bool:
+    return bool(a and b) and program_key(a) == program_key(b)
+
+
+# A call log marks an argument the caller did not pass with this value (ADR-0056): a substitute declares its
+# parameters with a sentinel default, so an omitted argument is told apart from an explicit NULL, which the real
+# program treats differently (the default applies only when the argument is omitted). Omitted arguments are not in
+# `Call.arguments`; a target that passes a NULL where the legacy passed nothing differs.
+OMITTED = "<omitted>"
+
+
 class Call(CharacterizationModel):
     program: str
-    arguments: dict[str, str | None]
+    arguments: dict[str, str | None] = Field(description="Argument -> value; an argument the caller omitted is absent")
 
 
 class Observation(CharacterizationModel):

@@ -20,6 +20,7 @@ from nexti_adapter_sybase.parser import Procedure, parse
 from nexti_adapter_sybase.types import to_neutral
 from nexti_core.adapters import SourceFile
 from nexti_core.spec.characterization import (
+    OMITTED,
     Call,
     Case,
     Column,
@@ -36,6 +37,10 @@ WORK_DB = "nexti_gm"
 DATABASE_MB = 30  # at least the size of model (24 MB on a 2 KB page server)
 DEVICE_MB = 400
 NULL = "~"
+OMITTED_MARK = "^"  # an argument the caller did not pass (ADR-0056): the substitute saw its sentinel default
+# The number a substitute raises its messages with (ADR-0056): in the user range, so `observe` reads them as
+# business messages, as it reads the program's own raiserror.
+STUB_MESSAGE_NUMBER = 20000
 _MESSAGE = re.compile(r"^Msg (?P<number>\d+), Level (?P<level>\d+), State \d+:")
 
 
@@ -202,13 +207,62 @@ def _joined(parts: list[str]) -> str:
     return " + '|' + ".join(parts) if parts else "''"
 
 
+def sentinel(legacy_type: str) -> str | None:
+    """The default a substitute declares for an input parameter (ADR-0056): a value no caller passes, so the
+    substitute can tell an omitted argument from an explicit NULL (`= null` made both look the same). None for the
+    types that cannot carry one (bit, text, image, binary): there the distinction is not observed."""
+    base, _, rest = legacy_type.partition("(")
+    base = base.strip().lower()
+    if base in ("char", "varchar", "nchar", "nvarchar", "unichar", "univarchar", "sysname"):
+        return "'~'"
+    if base in ("int", "integer"):
+        return "-2147483647"
+    if base == "bigint":
+        return "-9223372036854775807"
+    if base == "smallint":
+        return "-32767"
+    if base == "tinyint":
+        return "255"
+    if base in ("numeric", "decimal"):
+        digits = [int(x) for x in re.findall(r"\d+", rest)] or [18, 0]
+        precision, scale = digits[0], digits[1] if len(digits) > 1 else 0
+        whole = precision - scale
+        return "-" + ("9" * whole if whole > 0 else "0") + ("." + "9" * scale if scale > 0 else "")
+    if base == "money":
+        return "-922337203685477.5807"
+    if base == "smallmoney":
+        return "-214748.3648"
+    if base in ("float", "real", "double precision"):
+        return "-1.0e30"
+    if base in ("datetime", "bigdatetime"):
+        return "'1753-01-01 00:00:00'"
+    if base == "smalldatetime":
+        return "'2079-06-06 00:00:00'"
+    if base == "date":
+        return "'0001-01-01'"
+    return None
+
+
+def _argument(parameter: "StubParameter") -> str:
+    """How a substitute logs one input: the omitted mark when the caller left it to the sentinel default, else the
+    length-prefixed value (NULL included)."""
+    printed = _prefixed(parameter.name, parameter.type)
+    default = sentinel(parameter.type)
+    if default is None:
+        return printed
+    return f"case when {parameter.name} = {default} then '{OMITTED_MARK}' else {printed} end"
+
+
 def read_values(text: str) -> list[str | None]:
-    """The inverse of `_prefixed` joined with `|`."""
+    """The inverse of `_prefixed` joined with `|`; the omitted mark reads as `OMITTED`."""
     values: list[str | None] = []
     i = 0
     while i < len(text):
         if text[i] == NULL:
             values.append(None)
+            i += 1
+        elif text[i] == OMITTED_MARK:
+            values.append(OMITTED)
             i += 1
         else:
             colon = text.index(":", i)
@@ -408,9 +462,15 @@ def _anymode(program: str) -> str:
     return f"exec sp_procxmode '{_local(program)}', 'anymode'"
 
 
+def _default(parameter: StubParameter) -> str:
+    # An output is always bound to a variable; an input takes the sentinel, so an omitted argument is logged apart
+    # from an explicit NULL (ADR-0056).
+    return "null" if parameter.output else (sentinel(parameter.type) or "null")
+
+
 def _stub_body(stub: Stub, answers: list[StubAnswer], work: str = WORK_DB, schema: Schema | None = None) -> str:
-    params = ", ".join(f"{s.name} {s.type} = null{' output' if s.output else ''}" for s in stub.parameters)
-    args = _joined([_prefixed(s.name, s.type) for s in stub.parameters if not s.output])
+    params = ", ".join(f"{s.name} {s.type} = {_default(s)}{' output' if s.output else ''}" for s in stub.parameters)
+    args = _joined([_argument(s) for s in stub.parameters if not s.output])
     lines = [
         f"create procedure {_local(stub.program)} {params} as",
         "begin",
@@ -426,7 +486,10 @@ def _stub_body(stub: Stub, answers: list[StubAnswer], work: str = WORK_DB, schem
         sets = [f"{name.lower()} = {literal(v, (stub.parameter(name) or StubParameter(name, 'varchar', True)).type)}"
                 for name, v in answer.outputs.items()]  # fmt: skip
         effects = "".join(f"{statement}\n    " for statement in _effects(schema, answer))
-        body = effects + (f"select {', '.join(sets)} " if sets else "") + f"return {answer.returns}"
+        # The messages the real program would raise (ADR-0056): raised before the status, as a procedure does, so
+        # the caller is observed going on (Sybase: a callee's raiserror does not abort it) or stopping.
+        raised = "".join(f"raiserror {STUB_MESSAGE_NUMBER} {_quote(text)}\n    " for text in answer.messages)
+        body = effects + raised + (f"select {', '.join(sets)} " if sets else "") + f"return {answer.returns}"
         last = n == len(answers or [StubAnswer()])
         lines.append(f"  {body}" if last else f"  if @nx_n = {n} begin\n    {body}\n  end")
     lines.append("end")
@@ -566,8 +629,8 @@ def _call(p: Plan, text: str) -> Call:
     stub = p.stubs.get(program)
     values = read_values(rest) if rest else []
     params = [s for s in stub.parameters if not s.output] if stub else []
-    return Call(program=program, arguments={
-        s.name: canonical(_neutral(s.type), v) for s, v in zip(params, values, strict=False)})  # fmt: skip
+    passed = [(s, v) for s, v in zip(params, values, strict=False) if v != OMITTED]
+    return Call(program=program, arguments={s.name: canonical(_neutral(s.type), v) for s, v in passed})
 
 
 # -- The customer's Sybase (ADR-0055, point 8): the tables the called programs touch ---------------------------------

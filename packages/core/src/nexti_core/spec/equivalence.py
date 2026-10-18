@@ -15,7 +15,7 @@ from dataclasses import dataclass
 from dataclasses import field as dc_field
 from typing import Any
 
-from nexti_core.spec.characterization import Call, Case, GoldenMaster, Observation, Scalar, canonical
+from nexti_core.spec.characterization import OMITTED, Call, Case, GoldenMaster, Observation, Scalar, canonical
 from nexti_core.spec.design import Design, Entity, UseCase
 
 
@@ -67,7 +67,7 @@ class EngineTarget:
             kinds = self.types.get(key) or []
             found.append(Call(program=program, arguments={
                 n: canonical(kinds[i] if i < len(kinds) else None, v)
-                for i, (n, v) in enumerate(zip(names, values, strict=False))
+                for i, (n, v) in enumerate(zip(names, values, strict=False)) if v != OMITTED
             }))  # fmt: skip
         return found
 
@@ -293,7 +293,9 @@ def expected_view(design: Design, use_case: UseCase, observed: Observation, foun
 
 
 def _legacy_calls(design: Design, observed: list[Call], found: list[Mask]) -> list[Call]:
-    """The legacy's calls without the masked programs, each argument in the canonical text of its port's type."""
+    """The legacy's calls without the masked programs, each argument in the canonical text of its port's type. Every
+    argument the legacy passed counts (ADR-0056): one the port does not map is a difference the design must close,
+    not one the view hides."""
     calls = []
     ports = {(p.legacy_program or "").lower(): p for p in design.ports if p.legacy_program}
     for call in observed:
@@ -302,7 +304,7 @@ def _legacy_calls(design: Design, observed: list[Call], found: list[Mask]) -> li
         port = ports.get(call.program.lower())
         types = {(f.legacy or "").lower(): f.type for m in port.methods for f in m.inputs} if port else {}
         calls.append(Call(program=call.program, arguments={
-            n: canonical(types.get(n.lower()), v) for n, v in call.arguments.items() if not port or n.lower() in types
+            n: canonical(types.get(n.lower()), v) for n, v in call.arguments.items()
         }))  # fmt: skip
     return calls
 

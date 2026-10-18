@@ -17,6 +17,7 @@ from nexti_core.spec.characterization import (
     Suite,
     engine_not_proven,
     legacy_gaps,
+    same_program,
     source_digest,
 )
 from nexti_core.spec.design import Design, UseCase
@@ -187,13 +188,13 @@ def target_not_run(measured: TargetCoverage) -> list[str]:
 
 
 def _module(design: Design, master: GoldenMaster) -> UseCase:
-    short = master.program.rsplit(".", 1)[-1].lower()
-    matching = [u for u in design.use_cases if (u.legacy_program or "").rsplit(".", 1)[-1].lower() == short]
+    matching = [u for u in design.use_cases if same_program(u.legacy_program, master.program)]
     if matching:
         return matching[0]
     if len(design.use_cases) == 1:
         return design.use_cases[0]
-    raise PhaseFailedError(f"No use case of the design replaces {master.program}")
+    named = ", ".join(f"{u.name} ({u.legacy_program or 'no legacy program'})" for u in design.use_cases)
+    raise PhaseFailedError(f"No use case of the design replaces {master.program}: the use cases are {named}")
 
 
 class VerificationPhases:

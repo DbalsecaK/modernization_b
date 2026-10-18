@@ -719,6 +719,26 @@ def test_an_output_must_be_a_parameter_of_the_called_program_not_its_return_stat
     assert call_output_problems(Design.model_validate(data), []) == []
 
 
+def test_the_adapter_passes_exactly_the_arguments_the_legacys_calls_pass() -> None:
+    # ADR-0056 (N7): a method input the calls never pass reaches the program as NULL where the legacy let its
+    # default apply; an argument the calls pass but no input maps lets the default apply where the legacy sent a
+    # value. Either way the call log differs, so the design is corrected before anything is generated.
+    from nexti_orchestration.generation import call_output_problems
+
+    files = [SourceFile("sp/sp_pago_orden.sp", SOURCE)]
+    data = json.loads(DESIGN_JSON)
+    port = next(p for p in data["ports"] if p.get("legacy_program"))
+    method = port["methods"][0]
+    method["inputs"].append({"name": "channel", "type": "text(var,3,iso8859-1)", "legacy": "@i_canal"})
+    (problem,) = call_output_problems(Design.model_validate(data), files)
+    assert "never pass @i_canal: drop these inputs" in problem
+    data = json.loads(DESIGN_JSON)
+    port = next(p for p in data["ports"] if p.get("legacy_program"))
+    dropped = port["methods"][0]["inputs"].pop()
+    (problem,) = call_output_problems(Design.model_validate(data), files)
+    assert f"pass {dropped['legacy']}, which no input of the method maps" in problem
+
+
 def test_a_savepoint_keeps_the_name_the_legacy_gives_it() -> None:
     # Phase F (ADR-0055): the architect named the savepoint `sp_debito_empresa`, as the program does, and the design
     # was rejected for not being a Java identifier; it is a label the UnitOfWork port receives, not an identifier.
