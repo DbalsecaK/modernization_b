@@ -223,3 +223,23 @@ def test_the_sql_probe_accepts_the_reference_adapters_and_names_a_missing_table(
         checked += 1
         break
     assert checked == 1
+
+
+def test_the_rest_contract_comes_from_the_legacy_signature_in_dotnet() -> None:
+    # ADR-0056 (phase D): a use case that replaces a legacy program reads its body as the program reads its
+    # arguments: absent takes the default, null stays null, text is cut to the length, a decimal to the scale.
+    from nexti_pack_dotnet.generate import controller_file
+
+    data = json.loads(DESIGN.model_dump_json(by_alias=True))
+    use_case = data["use_cases"][0]
+    channel = next(f for f in use_case["inputs"] if f["legacy"] == "@i_canal")
+    channel.update({"defaulted": True, "default": "WEB"})
+    design = Design.model_validate(data)
+    _, controller = controller_file(design, design.use_cases[0])
+    assert "public PayOrderResponse Handle([FromBody] JsonElement body)" in controller
+    assert f'Read<string?>(body, "{channel["name"]}", "WEB")' in controller
+    assert "Fit(Read<string?>(body," in controller
+    assert "Scale(Read<decimal?>(body," in controller
+    assert "private static T Read<T>(JsonElement body, string name, T whenAbsent)" in controller
+    plain = Design.model_validate({**data, "use_cases": [{**use_case, "legacy_program": None, "unit_of_work": None}]})
+    assert "Handle([FromBody] PayOrderRequest request)" in controller_file(plain, plain.use_cases[0])[1]

@@ -103,3 +103,27 @@ async def test_traced_rpg_brings_the_quirks_of_its_code() -> None:
     assert master.engine == "ibmi-trace"
     assert [q.id for q in master.quirks] == ["decimal-truncation", "record-not-found", "immediate-writes"]
     assert ("rpg:datfmt", "*ISO (default)") in [(e.key, e.value) for e in master.environment]
+
+
+async def test_a_technology_the_main_engine_does_not_run_goes_to_the_local_engine_of_the_platform() -> None:
+    # ADR-0056 (point 7): a COBOL/CICS project without traces and without a live system runs on the platform's
+    # own engine for that technology (GnuCOBOL), never on the Sybase engine and never in a silent wait.
+    class LocalCobol:
+        engine = "gnucobol-3"
+
+        async def run(self, files: list[SourceFile], suite: Suite) -> GoldenMaster:
+            return GoldenMaster(program=suite.program, source_sha256="0" * 64, engine=self.engine, schema_=Schema(),
+                                results=[])  # fmt: skip
+
+    cobol = [SourceFile("cbl/PAGOORD.cbl", "       IDENTIFICATION DIVISION.\n       PROGRAM-ID. PAGOORD.\n"
+                        "       PROCEDURE DIVISION.\n           EXEC CICS RETURN END-EXEC.\n")]  # fmt: skip
+    runner = SourceRunner(Engine, setting(None), local={"cobol-cics": LocalCobol})
+    master = await runner.run(cobol, SUITE)
+    assert (master.engine, runner.engine) == ("gnucobol-3", "gnucobol-3")
+    # Traces still win, and the project's `traces` setting never runs the local engine.
+    trace = SourceFile("traces/PAGOORD.json", '{"engine": "cics-trace", "program": "OTRO", "results": []}')
+    with pytest.raises(ValueError, match="no traces of PAGOORD"):
+        await SourceRunner(Engine, setting(None), local={"cobol-cics": LocalCobol}).run([*cobol, trace], SUITE)
+    # Without a local engine for the technology, the Sybase engine still refuses it and the phase waits.
+    with pytest.raises(LegacyUnavailableError, match="runs Sybase ASE procedures, not cobol-cics"):
+        await SourceRunner(Engine, setting(None)).run(cobol, SUITE)

@@ -56,7 +56,7 @@ def test_the_core_is_the_spring_boot_one_and_only_the_edges_change() -> None:
     resource = quarkus[f"{BASE}/adapters/in/rest/PayOrderResource.java"]
     assert '@Path("/api/payments")' in resource
     assert '@POST\n    @Path("/orders/pay")' in resource
-    assert "public PayOrderResponse handle(PayOrderRequest request)" in resource
+    assert "public PayOrderResponse handle(JsonNode body)" in resource  # ADR-0056: the contract of the signature
     assert "RULE-001" in resource
     wiring = quarkus[f"{BASE}/config/Wiring.java"]
     assert "@Produces\n    @Singleton" in wiring

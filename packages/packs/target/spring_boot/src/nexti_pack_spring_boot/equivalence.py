@@ -8,6 +8,7 @@ from importlib.resources import files as package_files
 from typing import Any
 
 from nexti_core.spec.characterization import GoldenMaster, Observation, Scalar
+from nexti_core.spec.design import writes
 from nexti_core.spec.equivalence import (
     CaseRun,
     EngineTarget,
@@ -78,6 +79,28 @@ def plan(design: Design, use_case: UseCase, engine: EngineTarget | None = None) 
         "dump": dump,
         **({"service_transaction": True} if owned else {}),
     }
+
+
+CONCURRENCY = "__concurrency__"  # the name of the harness's concurrency result among the cases (ADR-0056)
+
+
+def concurrency_case(design: Design, use_case: UseCase, master: GoldenMaster) -> str | None:
+    """The case the harness runs twice at the same time (ADR-0056, point 12): the first one the legacy accepted and
+    that changed a row, for a use case with a unit of work. None when there is nothing to contend for."""
+    if use_case.unit_of_work is None and not writes(design, use_case):
+        return None
+    for recorded in master.results:
+        observation = recorded.observation
+        if observation.error is not None or observation.returns not in (0, None):
+            continue
+        before = {t.lower(): rows for t, rows in recorded.case.setup.items()}
+        after = {t.lower(): rows for t, rows in observation.tables.items()}
+        for table, rows in after.items():
+            initial = before.get(table, [])
+            seen = {str(x) for row in initial for x in row.values()}
+            if len(rows) != len(initial) or any(str(v) not in seen for row in rows for v in row.values()):
+                return recorded.case.name
+    return None
 
 
 def target_case(
@@ -165,9 +188,13 @@ async def run_equivalence(
     run against the legacy's engine on the run's network instead of the sandbox's PostgreSQL (ADR-0055)."""
     recorded = [r for r in master.results if r.observation.error is None]
     cases = [target_case(design, use_case, r.case, defaults, engine) for r in recorded]
+    harness_plan = plan(design, use_case, engine)
+    chosen = concurrency_case(design, use_case, master)
+    if chosen is not None and harness is None:  # the Spring harness runs it; the Quarkus one does not yet
+        harness_plan["concurrency"] = chosen
     extra = {
         "harness/EquivalenceHarness.java": harness if harness is not None else harness_source(),
-        "harness/plan.json": json.dumps(plan(design, use_case, engine)),
+        "harness/plan.json": json.dumps(harness_plan),
         "harness/cases.json": json.dumps(cases),
     }
     if engine is not None:
@@ -188,10 +215,13 @@ async def run_equivalence(
         if line.startswith("NXE "):
             item = json.loads(line[4:])
             raw[item["name"]] = item
+    if CONCURRENCY in raw:
+        for key in ("sequential", "concurrent"):  # the two dumps are diagnostic: kept out of the delivery's expected
+            raw[CONCURRENCY].pop(key, None)
     runs = []
     for recorded_case in recorded:
         item = raw.get(recorded_case.case.name)
-        expected = expected_view(design, use_case, recorded_case.observation, found)
+        expected = expected_view(design, use_case, recorded_case.observation, found, strict_calls=engine is not None)
         if item is None or item.get("failure"):
             failure = (item or {}).get("failure") or "the harness printed nothing for this case"
             runs.append(CaseRun(recorded_case.case.name, expected, Observation(), failure))

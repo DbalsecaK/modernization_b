@@ -229,6 +229,8 @@ def _certainty(
     stubbed = stubbed_programs(master)
     if master.from_traces:
         kind: Engine = "traces"
+    elif master.engine.lower().startswith("gnucobol"):
+        kind = "other"  # the platform's own engine for COBOL (ADR-0056, point 7): the logic, not the product
     elif engine is not None:
         kind = "same_local"  # the legacy's engine, started by the platform (ADR-0055)
     else:
@@ -241,7 +243,8 @@ def _certainty(
         quirks_confirmed=len(confirmed), quirks_without_case=len(without),
         called_programs=len(stubbed), substituted_programs=len(stubbed),
         omitted_vs_null=engine is not None and not master.from_traces,
-        concurrency_case=False, contract_exercised=False, engine=kind,
+        concurrency_case=bool((golden_run.raw.get("__concurrency__") or {}).get("serializable")),
+        contract_exercised=False, engine=kind,
     )  # fmt: skip
 
 
@@ -383,6 +386,18 @@ class VerificationPhases:
         if stubbed_programs(master):
             not_proven.append("External programs are replaced by stubs that answer as the case says; their own logic "
                               "and their effects on the database are not verified here (ADR-0055)")  # fmt: skip
+            if engine is not None:
+                not_proven.append("The substitutes run in any transaction mode (sp_procxmode 'anymode'); the real "
+                                  "programs of the customer must accept a caller in unchained mode, as the target "
+                                  "calls them (ADR-0056)")  # fmt: skip
+        contended = golden_run.raw.get("__concurrency__")
+        if contended is not None and not contended.get("serializable"):
+            why = (
+                "; ".join(str(f) for f in contended.get("failures", []))
+                or "the final state differed from two sequential runs"
+            )
+            not_proven.append(f"Concurrency: two simultaneous runs of {contended.get('case')} were not serializable "
+                              f"({why[:300]}) (ADR-0056)")  # fmt: skip
         not_proven += [f"{rule}: declared unreachable by the test engineer, no case enters it ({why})"
                        for rule, why in sorted(master.unreachable.items())]  # fmt: skip
         if master.coverage is not None:  # ADR-0047: the branches of the legacy no case exercised are not proven

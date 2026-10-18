@@ -358,7 +358,66 @@ def handler_file(design: Design, use_case: UseCase) -> tuple[str, str]:
     body = use_case.http_method in _BODY_METHODS
     std = ["context", "net/http", *(["encoding/json"] if body else [])]
     local = [f"{module_path(design)}/{APP}"]
-    if body:
+    external: list[str] = []
+    helpers = ""
+    if body and use_case.legacy_program:
+        # ADR-0056 (phase D): the request is read as the legacy reads its arguments: a field absent from the body
+        # takes the parameter's default, an explicit null stays null, text is cut to the parameter's length and a
+        # decimal is brought to its scale.
+        reads = []
+        for field in use_case.inputs:
+            kind = go_type(field.type)
+            value = nt.parse(field.type)
+            target = f"request.{pascal(field.name)}"
+            absent = f"\t\t\t{target} = {_go_literal(field.default, kind)}\n" if field.defaulted else ""
+            fix = ""
+            if isinstance(value, nt.Text) and value.length:
+                fix = f"\t\t{target} = fitString({target}, {value.length})\n"
+            elif isinstance(value, nt.Decimal):
+                fix = f"\t\t{target} = scaleDecimal({target}, {value.scale})\n"
+            reads.append(
+                f'\t\tif raw, ok := fields["{field.name}"]; ok {{\n'
+                f"\t\t\tif err := json.Unmarshal(raw, &{target}); err != nil {{\n"
+                "\t\t\t\twriteError(w, badRequest{err})\n\t\t\t\treturn\n\t\t\t}\n"
+                + ("\t\t} else {\n" + absent if absent else "")
+                + "\t\t}\n"
+                + fix
+            )
+        decode = (
+            f"\t\tvar request app.{name}Request\n"
+            "\t\tvar fields map[string]json.RawMessage\n"
+            "\t\tif err := json.NewDecoder(r.Body).Decode(&fields); err != nil {\n"
+            "\t\t\twriteError(w, badRequest{err})\n\t\t\treturn\n\t\t}\n" + "".join(reads)
+        )
+        if any(isinstance(nt.parse(f.type), nt.Decimal) for f in use_case.inputs):
+            external.append("github.com/shopspring/decimal")
+        if any(f.defaulted and isinstance(nt.parse(f.type), nt.Date | nt.Timestamp) for f in use_case.inputs):
+            std.append("time")
+        helpers = (
+            "\n// fitString cuts a text to the length of the legacy parameter, as the legacy engine does.\n"
+            "func fitString(value *string, length int) *string {\n"
+            "\tif value == nil {\n\t\treturn nil\n\t}\n"
+            "\trunes := []rune(*value)\n\tif len(runes) <= length {\n\t\treturn value\n\t}\n"
+            "\tcut := string(runes[:length])\n\treturn &cut\n}\n"
+        )
+        if "github.com/shopspring/decimal" in external:
+            helpers += (
+                "\n// scaleDecimal brings a decimal to the scale of the legacy parameter, half away from zero.\n"
+                "func scaleDecimal(value *decimal.Decimal, scale int32) *decimal.Decimal {\n"
+                "\tif value == nil {\n\t\treturn nil\n\t}\n"
+                "\trounded := value.Round(scale)\n\treturn &rounded\n}\n"
+            )
+        if any(f.defaulted for f in use_case.inputs):
+            helpers += "\n// ptr is the default of a legacy parameter as the pointer the request holds.\n"
+            helpers += "func ptr[T any](value T) *T {\n\treturn &value\n}\n"
+        if "time" in std:
+            helpers += (
+                "\n// mustTime is a default date of the legacy signature, fixed in the source.\n"
+                "func mustTime(layout string, value string) time.Time {\n"
+                "\tparsed, err := time.Parse(layout, value)\n\tif err != nil {\n\t\tpanic(err)\n\t}\n"
+                "\treturn parsed\n}\n"
+            )
+    elif body:
         decode = (
             f"\t\tvar request app.{name}Request\n"
             "\t\tif err := json.NewDecoder(r.Body).Decode(&request); err != nil {\n"
@@ -375,7 +434,7 @@ def handler_file(design: Design, use_case: UseCase) -> tuple[str, str]:
             )
     rules = ", ".join(use_case.rules)
     return f"{HTTP}/{snake(name)}_handler.go", (
-        f"package httpapi\n\n{_imports(std, [], local)}"
+        f"package httpapi\n\n{_imports(std, external, local)}"
         f"// {name} is the REST adapter of {name} (rules {rules}): {route(design, use_case)}.\n"
         f"func {name}(tx Transactor, service *app.{name}Service) http.HandlerFunc {{\n"
         "\treturn func(w http.ResponseWriter, r *http.Request) {\n"
@@ -385,7 +444,30 @@ def handler_file(design: Design, use_case: UseCase) -> tuple[str, str]:
         "\t\t\tvar err error\n\t\t\tresponse, err = service.Execute(ctx, request)\n\t\t\treturn err\n\t\t})\n"
         "\t\tif err != nil {\n\t\t\twriteError(w, err)\n\t\t\treturn\n\t\t}\n"
         "\t\twriteJSON(w, http.StatusOK, response)\n\t}\n}\n"
+        f"{helpers}"
     )
+
+
+def _go_literal(value: object, kind: str) -> str:
+    """A default of the legacy as a Go expression of the field's (pointer) type."""
+    if value is None:
+        return "nil"
+    if kind == "*string":
+        text = str(value).replace("\\", "\\\\").replace('"', '\\"')
+        return f'ptr("{text}")'
+    if kind == "*decimal.Decimal":
+        return f'ptr(decimal.RequireFromString("{value}"))'
+    if kind == "*int64":
+        return f"ptr(int64({int(float(str(value)))}))"
+    if kind == "*int32":
+        return f"ptr(int32({int(float(str(value)))}))"
+    if kind == "*bool":
+        return "ptr(true)" if value in (True, 1, "1", "true", "True") else "ptr(false)"
+    if kind == "*time.Time":
+        text = str(value).replace(" ", "T")[:19]
+        layout = "2006-01-02T15:04:05" if "T" in text else "2006-01-02"
+        return f'ptr(mustTime("{layout}", "{text}"))'
+    return "nil"
 
 
 def adapter_name(port: str) -> str:

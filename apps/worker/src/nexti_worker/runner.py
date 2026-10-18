@@ -61,6 +61,8 @@ class Runtime:
     legacy: Callable[[], LegacyRunner] | None = None  # the engine that runs the legacy for the golden master (M4)
     # Runners on a customer's live system, by kind (ADR-0052): a project in `live` mode without one waits.
     live: Mapping[str, LiveRunnerFactory] = field(default_factory=dict)
+    # The engines the platform runs itself for a technology (ADR-0056, point 7): COBOL/CICS on GnuCOBOL.
+    local: Mapping[str, Callable[[], LegacyRunner]] = field(default_factory=dict)
     figma: FigmaReader | None = None  # Figma answers (tests and demo); by default the tenant's integration (M7)
     trackers: TrackerFactory | None = None  # Jira / Azure DevOps clients (tests and demo); by default the real ones
     osv_url: str | None = None  # dependencies of the generated code in OSV (M9a); None: not checked (tests)
@@ -150,6 +152,7 @@ async def execute_run(runtime: Runtime, run_id: uuid.UUID, tenant_id: uuid.UUID)
             runtime.figma or LiveFigma(runtime.engine, tenant_id, runtime.secrets, runtime.http, runtime.figma_url),
             DeliveryServices(runtime.http, runtime.secrets, runtime.osv_url, runtime.allow_private_hosts),
             runtime.live,
+            runtime.local,
         )
         if runtime.gateway is not None
         else None

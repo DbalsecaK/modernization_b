@@ -55,7 +55,117 @@ public final class EquivalenceHarness {
         for (JsonNode testCase : cases) {
             System.out.println("NXE " + JSON.writeValueAsString(run(plan, testCase, jdbc, transaction)));
         }
+        if (plan.hasNonNull("concurrency")) {
+            System.out.println("NXE " + JSON.writeValueAsString(concurrency(plan, cases, jdbc, transaction, password)));
+        }
         dataSource.destroy();
+    }
+
+    /**
+     * ADR-0056 (phase D, point 12): the case the plan names runs twice at the same time, each run on its own
+     * connection, on the same rows; the final state must be the one of running it twice one after the other
+     * (serializable), and neither run may fail with a lock or a deadlock the sequential runs do not have.
+     */
+    static ObjectNode concurrency(JsonNode plan, JsonNode cases, JdbcTemplate jdbc, TransactionTemplate transaction,
+            String password) throws Exception {
+        ObjectNode out = JSON.createObjectNode();
+        out.put("name", "__concurrency__");
+        String wanted = plan.get("concurrency").asText();
+        JsonNode testCase = null;
+        for (JsonNode candidate : cases) {
+            if (candidate.get("name").asText().equals(wanted)) {
+                testCase = candidate;
+            }
+        }
+        if (testCase == null) {
+            out.put("failure", "the plan names a case that is not in the suite: " + wanted);
+            return out;
+        }
+        out.put("case", wanted);
+        // The sequential twin: the case twice, one after the other, on one connection.
+        run(plan, testCase, jdbc, transaction);
+        ObjectNode sequential = runAgain(plan, testCase, jdbc, transaction);
+        // The concurrent run: reset once, then two threads on two connections.
+        for (JsonNode sql : plan.get("reset")) {
+            jdbc.execute(sql.asText());
+        }
+        for (JsonNode sql : testCase.get("setup")) {
+            jdbc.execute(sql.asText());
+        }
+        org.springframework.jdbc.datasource.DriverManagerDataSource pool =
+                new org.springframework.jdbc.datasource.DriverManagerDataSource(
+                        plan.get("jdbc_url").asText(), plan.get("user").asText(), password);
+        List<String> failures = java.util.Collections.synchronizedList(new ArrayList<>());
+        java.util.concurrent.CountDownLatch ready = new java.util.concurrent.CountDownLatch(2);
+        java.util.concurrent.CountDownLatch go = new java.util.concurrent.CountDownLatch(1);
+        final JsonNode chosen = testCase;
+        Runnable one = () -> {
+            try {
+                JdbcTemplate own = new JdbcTemplate(pool);
+                TransactionTemplate ownTransaction = new TransactionTemplate(new DataSourceTransactionManager(pool));
+                List<ObjectNode> calls = new ArrayList<>();
+                Object service = service(plan, chosen, own, calls);
+                Object request = record(Class.forName(plan.get("request").asText()), chosen.get("request"));
+                Method execute = service.getClass().getMethod("execute", request.getClass());
+                ready.countDown();
+                go.await();
+                try {
+                    if (plan.path("service_transaction").asBoolean(false)) {
+                        try {
+                            invoke(execute, service, request);
+                            unitOfWork(service, "commitIfActive");
+                        } catch (RuntimeException e) {
+                            unitOfWork(service, "rollbackIfActive");
+                            throw e;
+                        }
+                    } else {
+                        ownTransaction.executeWithoutResult(status -> invoke(execute, service, request));
+                    }
+                } catch (RuntimeException e) {
+                    if (!e.getClass().getSimpleName().equals("BusinessError")) {
+                        failures.add(e.getClass().getName() + ": " + e.getMessage());
+                    }
+                }
+            } catch (Exception e) {
+                failures.add(e.getClass().getName() + ": " + e.getMessage());
+            }
+        };
+        Thread a = new Thread(one, "nexti-concurrent-a");
+        Thread b = new Thread(one, "nexti-concurrent-b");
+        a.start();
+        b.start();
+        ready.await();
+        go.countDown();
+        a.join(120000);
+        b.join(120000);
+        if (a.isAlive() || b.isAlive()) {
+            failures.add("a run did not finish in 120 s (a lock the sequential runs do not have)");
+        }
+        ObjectNode concurrent = JSON.createObjectNode();
+        ObjectNode tables = concurrent.putObject("tables");
+        plan.get("dump").fields().forEachRemaining(entry -> {
+            ArrayNode rows = tables.putArray(entry.getKey());
+            for (Map<String, Object> row : jdbc.queryForList(entry.getValue().asText())) {
+                ObjectNode printed = rows.addObject();
+                row.forEach((column, value) -> printed.put(column, text(value)));
+            }
+        });
+        ArrayNode failed = out.putArray("failures");
+        failures.forEach(failed::add);
+        out.set("sequential", sequential.get("tables"));
+        out.set("concurrent", concurrent.get("tables"));
+        out.put("serializable", failures.isEmpty() && sequential.get("tables").equals(concurrent.get("tables")));
+        return out;
+    }
+
+    /** The case once more on the rows the previous run left (no reset): the second of two sequential runs. */
+    private static ObjectNode runAgain(JsonNode plan, JsonNode testCase, JdbcTemplate jdbc,
+            TransactionTemplate transaction) {
+        ObjectNode copy = testCase.deepCopy();
+        copy.putArray("setup");
+        ObjectNode bare = plan.deepCopy();
+        bare.putArray("reset");
+        return run(bare, copy, jdbc, transaction);
     }
 
     private static ObjectNode run(JsonNode plan, JsonNode testCase, JdbcTemplate jdbc, TransactionTemplate transaction) {

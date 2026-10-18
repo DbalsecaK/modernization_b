@@ -3,11 +3,12 @@ name = "nexti-adapter-cobol"
 version = "0.1.0"
 description = "Source adapter for COBOL/CICS: deterministic parsing of programs, copybooks and CSD into the Transaction -> Program -> Map family (spec 8.3, ADR-0015)."
 requires-python = ">=3.12"
-dependencies = ["nexti-core", "nexti-adapter-bms"]
+dependencies = ["nexti-core", "nexti-adapter-bms", "nexti-sandbox"]
 
 [tool.uv.sources]
 nexti-core = { workspace = true }
 nexti-adapter-bms = { workspace = true }
+nexti-sandbox = { workspace = true }
 
 [build-system]
 requires = ["hatchling"]
