@@ -696,6 +696,11 @@ async def _new_connection(ctx: Ctx) -> Request:
     return "/api/v1/ai/connections", {"name": f"OR {uuid.uuid4().hex[:8]}", "apiKey": "sk-or-v1-test-new"}
 
 
+async def _team(ctx: Ctx) -> Request:
+    body = {"team": [{"userId": str(ctx.world.shared), "roleKey": "architect"}]}
+    return f"/api/v1/projects/{ctx.world.project_a}/team", body
+
+
 async def _link_backlog(ctx: Ctx) -> Request:
     body = {"integrationId": str(await ctx.tracker()), "externalProject": "CARDS"}
     return f"/api/v1/projects/{ctx.world.project_a}/backlog", body
@@ -1186,11 +1191,9 @@ CASES = [
         "PUT", "/api/v1/projects/{project_id}/config", "admin", "member",
         fixed("/api/v1/projects/{project_a}/config", CONFIG),
     ),
-    # The team of an existing project (PR #125): project.configure changes it; an empty team keeps the owners.
-    Case(
-        "PUT", "/api/v1/projects/{project_id}/team", "admin", "member",
-        fixed("/api/v1/projects/{project_a}/team", {"team": []}),
-    ),
+    # The team of an existing project (PR #125): project.configure changes it. The body keeps the shared user's
+    # architect role on project A, which the cases below rely on.
+    Case("PUT", "/api/v1/projects/{project_id}/team", "admin", "member", _team),
     Case(
         "GET", "/api/v1/projects/{project_id}/config/versions", "member", "outsider",
         fixed("/api/v1/projects/{project_a}/config/versions"),
