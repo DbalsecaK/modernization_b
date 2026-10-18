@@ -250,6 +250,47 @@ class SybaseAdapter:
 
         return [q for source, proc in _procedures(files) for q in quirks.detect(source, proc)]
 
+    def call_signatures(self, files: list[SourceFile], program: str) -> dict[str, tuple[set[str], set[str]]]:
+        """How `program` calls each external program (ADR-0055, phase F): by the short name of the callee, the
+        parameters it passes by name (`@param = value`) and the variables that receive the return status
+        (`exec @rc = proc`). A status variable is not an output parameter: a design that maps it as one asks the
+        adapter for a parameter the program does not have."""
+        from nexti_adapter_sybase import golden
+
+        found: dict[str, tuple[set[str], set[str]]] = {}
+        for source, procedure in golden.procedures(files):
+            if procedure.name.rsplit(".", 1)[-1].lower() != program.rsplit(".", 1)[-1].lower():
+                continue
+            tokens, _ = tokenize(source.text)
+            for statement in procedure.statements():
+                if statement.kind != "exec":
+                    continue
+                toks = [t for t in tokens if statement.line_start <= t.line <= statement.line_end]
+                start = next((i for i, t in enumerate(toks) if t.is_word("EXEC", "EXECUTE")), None)
+                if start is None:
+                    continue
+                i = start + 1
+                status: str | None = None
+                if i + 1 < len(toks) and toks[i].kind == "variable" and toks[i + 1].is_symbol("="):
+                    status, i = toks[i].text.lower(), i + 2
+                parts: list[str] = []
+                while i < len(toks) and (toks[i].kind == "word" or toks[i].is_symbol(".", "..")):
+                    parts.append(toks[i].text)
+                    i += 1
+                if not parts:
+                    continue
+                callee = "".join(parts).rsplit(".", 1)[-1].lower()
+                parameters, receivers = found.setdefault(callee, (set(), set()))
+                if status:
+                    receivers.add(status)
+                while i < len(toks):
+                    if toks[i].kind == "variable" and i + 1 < len(toks) and toks[i + 1].is_symbol("="):
+                        parameters.add(toks[i].text.lower())
+                        i += 2
+                    else:
+                        i += 1
+        return found
+
     def unit_of_work(self, files: list[SourceFile], program: str) -> list[tuple[int, str]]:
         """Where the procedure starts, saves, confirms or undoes its work (ADR-0055): (line, kind), in order."""
         short = program.rsplit(".", 1)[-1].lower()

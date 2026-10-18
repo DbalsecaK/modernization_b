@@ -116,3 +116,19 @@ def test_a_use_case_that_writes_without_a_legacy_makes_the_request_its_transacti
     reader = _with(use_cases=[{**data, "name": "ReadOrder", "ports": [], "http_method": "GET"}])
     _, bare = controller_file(reader, reader.use_cases[0])
     assert "TransactionTemplate" not in bare
+
+
+def test_a_program_method_that_returns_a_scalar_without_an_output_returns_the_status() -> None:
+    # ADR-0055 (phase F): `returns: int` with no legacy_output is the program's return status; the adapter used to
+    # emit `void` and the skeleton did not compile against its own port.
+    from nexti_pack_spring_boot.design import Port
+
+    port = next(p for p in DESIGN.ports if p.legacy_program)
+    data = json.loads(port.model_dump_json(by_alias=True))
+    data["methods"][0].update({"returns": "int", "legacy_output": None, "legacy_outputs": {}})
+    _, adapter = program_adapter_file(DESIGN, Port.model_validate(data))
+    assert "public int " in adapter
+    assert "return status;" in adapter
+    data["methods"][0]["returns"] = "boolean"
+    _, adapter = program_adapter_file(DESIGN, Port.model_validate(data))
+    assert "return status == 0;" in adapter

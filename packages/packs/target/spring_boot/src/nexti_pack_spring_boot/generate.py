@@ -328,6 +328,12 @@ def program_adapter_file(design: Design, port: Port) -> tuple[str, str]:
             fallback = {"boolean": "false", "int": "0", "long": "0L"}[java]
             answer = (f"Object value = row.get(\"{outputs[0][1]}\");\n"
                       f"        return value == null ? {fallback} : {_from_row('value', java)};")  # fmt: skip
+        elif method.returns in ("int", "long", "boolean"):
+            # No output parameter: the method returns the program's return status (ADR-0055, phase F).
+            result = method.returns
+            answer = {"int": "return status;", "long": "return (long) status;", "boolean": "return status == 0;"}[
+                method.returns
+            ]
         else:
             result = "void"
             answer = ""

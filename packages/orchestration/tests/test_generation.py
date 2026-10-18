@@ -697,3 +697,23 @@ def test_production_code_with_stub_conventions_goes_back_to_the_developer() -> N
     assert found[1].startswith("line 4: the harness's own stub convention")
     assert found[2].startswith("line 5: a hard-coded, fake or mock answer")
     assert stub_conventions("public class X { int debit() { return jdbc.queryForObject(SQL, Integer.class); } }") == []
+
+
+def test_an_output_must_be_a_parameter_of_the_called_program_not_its_return_status() -> None:
+    # ADR-0055 (phase F): the architect mapped @w_return (where the caller keeps the status of sp_debito) as an
+    # output; the adapter would ask the program for a parameter it does not have. A method that returns the status
+    # declares `returns` int with no output.
+    from nexti_orchestration.generation import call_output_problems
+
+    files = [SourceFile("sp/sp_pago_orden.sp", SOURCE)]
+    data = json.loads(DESIGN_JSON)
+    port = next(p for p in data["ports"] if p.get("legacy_program"))
+    method = port["methods"][0]
+    method["legacy_output"] = "@w_return"
+    (problem,) = call_output_problems(Design.model_validate(data), files)
+    assert problem.startswith(f"{port['name']}.{method['name']}: @w_return is where")
+    method["legacy_output"] = "@o_nope"
+    (problem,) = call_output_problems(Design.model_validate(data), files)
+    assert "@o_nope is not a parameter of" in problem
+    assert call_output_problems(Design.model_validate(json.loads(DESIGN_JSON)), files) == []
+    assert call_output_problems(Design.model_validate(data), []) == []
