@@ -187,7 +187,9 @@ public final class EquivalenceHarness {
                     jdbc.update(effect.get("insert").asText());
                 }
             }
-            if (answer.path("returns").asInt(0) != 0) {
+            // A method that carries the status (a field mapped to `return`) receives it as data, as the legacy
+            // does; only a method that cannot carry it fails on a non-zero status (ADR-0055, phase F).
+            if (answer.path("returns").asInt(0) != 0 && !answer.path("carries_status").asBoolean(false)) {
                 throw new RuntimeException(name + " answered " + answer.path("returns").asInt());
             }
             JsonNode outputs = answer.path("outputs");

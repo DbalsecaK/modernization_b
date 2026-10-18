@@ -36,9 +36,10 @@ Rules of the design:
   `legacy_program` and, when a method returns one of its output parameters, `legacy_output` (several: an entity
   with `legacy_outputs` on the METHOD, field -> output parameter); each use case has
   `legacy_program` and `legacy_message` (the output parameter that carries the message of a rejection).
-  The return status of a called program (`exec @rc = proc`) is not an output parameter: a method that returns
-  it declares `returns` "int" with no `legacy_output`; never map the caller's status variable (@w_return,
-  @rc...) as an output, the adapter raises a failure on a non-zero status.
+  The return status of a called program (`exec @rc = proc`) is data the program reads and acts on: map it with
+  the reserved legacy name `return` (a field of the result entity in `legacy_outputs`, e.g. `"returnCode":
+  "return"`, or `legacy_output: "return"` of a method that returns "int"); never map the caller's status
+  variable (@w_return, @rc...) as an output, it is not a parameter of the program.
   `infrastructure` lists the legacy programs that are only infrastructure (e.g. error logging).
 - `masks` only for differences with the legacy that are deliberate and explained (`path` like
   `outputs:@o_x`, `when` "always" or "rejected", `reason`). A reviewer approves them at C3 and the verdict lists

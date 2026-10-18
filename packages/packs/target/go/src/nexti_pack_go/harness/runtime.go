@@ -38,6 +38,7 @@ type effect struct {
 
 type answer struct {
 	Returns *int     `json:"returns"`
+	CarriesStatus bool `json:"carries_status"`
 	Output  any      `json:"output"`
 	Effects []effect `json:"effects"`
 }
@@ -95,7 +96,7 @@ func (r *recorder) call(ctx context.Context, port, method string, arguments ...*
 			}
 		}
 	}
-	if found.Returns != nil && *found.Returns != 0 {
+	if found.Returns != nil && *found.Returns != 0 && !found.CarriesStatus {
 		return nil, fmt.Errorf("%s answered %d", port, *found.Returns)
 	}
 	if found.Output == nil {

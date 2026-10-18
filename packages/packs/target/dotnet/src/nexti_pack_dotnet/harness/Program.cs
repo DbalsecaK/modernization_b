@@ -248,8 +248,10 @@ public class FakePort : DispatchProxy
                 if (changed == 0) Apply!(effect.GetProperty("insert").GetString()!);
             }
         }
-        if (has && answer.TryGetProperty("returns", out var returns) && returns.ValueKind == JsonValueKind.Number
-            && returns.GetInt32() != 0)
+        var carriesStatus = has && answer.TryGetProperty("carries_status", out var carries)
+            && carries.ValueKind == JsonValueKind.True;
+        if (has && !carriesStatus && answer.TryGetProperty("returns", out var returns)
+            && returns.ValueKind == JsonValueKind.Number && returns.GetInt32() != 0)
         {
             throw new InvalidOperationException($"{Name} answered {returns.GetInt32()}");
         }

@@ -84,8 +84,8 @@ def test_the_savepoints_of_the_legacy_are_a_generated_port_adapter() -> None:
     port = next(p for p in design.ports if p.name == "UnitOfWork")
     path, adapter = unit_of_work_adapter_file(design, port)
     assert path == "src/main/java/com/bancoficticio/payments/adapters/out/jdbc/JdbcUnitOfWork.java"
-    assert "connection().setSavepoint(name)" in adapter
-    assert "connection().rollback(mark)" in adapter
+    assert 'jdbc.execute("save tran " + label(name))' in adapter  # the engine's own savepoint (phase F)
+    assert 'jdbc.execute("rollback tran " + label(name))' in adapter
     assert "DataSourceUtils.getConnection" in adapter
     assert skeleton(design)[path] == adapter
     # A rollback that names a savepoint the use case does not declare is refused by the design itself.
@@ -132,3 +132,42 @@ def test_a_program_method_that_returns_a_scalar_without_an_output_returns_the_st
     data["methods"][0]["returns"] = "boolean"
     _, adapter = program_adapter_file(DESIGN, Port.model_validate(data))
     assert "return status == 0;" in adapter
+
+
+def test_the_generated_adapter_returns_the_status_as_data_and_marks_savepoints_with_t_sql() -> None:
+    # ADR-0055 (phase F): a result entity field mapped to `return` is filled from the return status and the
+    # adapter does not throw on a non-zero one; the savepoints use the engine's own `save tran`.
+    data = json.loads(DESIGN.model_dump_json(by_alias=True))
+    port = next(p for p in data["ports"] if p.get("legacy_program"))
+    data["entities"].append(
+        {
+            "name": "DebitResult",
+            "key": [],
+            "fields": [
+                {"name": "status", "type": "integer(32,signed)", "legacy": "return"},
+                {"name": "sequence", "type": "integer(64,signed)", "legacy": "@o_secuencial"},
+            ],
+        }
+    )
+    port["methods"][0].update(
+        {
+            "returns": "DebitResult",
+            "legacy_output": None,
+            "legacy_outputs": {"status": "return", "sequence": "@o_secuencial"},
+        }
+    )
+    design = Design.model_validate(data)
+    _, adapter = program_adapter_file(design, next(p for p in design.ports if p.legacy_program))
+    assert "answered" not in adapter  # the status is data
+    assert "(Object) status" in adapter
+    assert "@o_secuencial = @o_secuencial output" in adapter
+    assert "return = return output" not in adapter
+    name = {"name": "name", "type": "text(var,40,utf8)"}
+    unit_port = {"name": "UnitOfWork", "methods": [{"name": "savepoint", "inputs": [name]},
+                                                   {"name": "rollbackTo", "inputs": [name]}]}  # fmt: skip
+    with_work = _with(ports=[*json.loads(DESIGN.model_dump_json(by_alias=True))["ports"], unit_port])
+    work_port = next(p for p in with_work.ports if p.name == "UnitOfWork")
+    _, unit = unit_of_work_adapter_file(with_work, work_port)
+    assert 'jdbc.execute("save tran " + label(name))' in unit
+    assert 'jdbc.execute("rollback tran " + label(name))' in unit
+    assert "setSavepoint" not in unit

@@ -264,3 +264,33 @@ def test_against_the_legacys_engine_every_port_is_real_and_the_calls_come_from_t
     view = actual_view(DESIGN, PAY, raw, [], legacy_calls=logged)
     assert [c.program for c in view.calls] == ["db_cuentas..sp_debito"]
     assert view.calls[0].arguments["@i_valor"] == "100.0000"
+
+
+def test_the_return_status_of_a_called_program_travels_as_data_when_the_design_maps_it() -> None:
+    # ADR-0055 (phase F): a field mapped to the reserved name `return` carries the status; the fake delivers it
+    # (carries_status) instead of throwing, as the legacy reads @w_return and goes on.
+    data = json.loads(DESIGN.model_dump_json(by_alias=True))
+    port = next(p for p in data["ports"] if p.get("legacy_program"))
+    data["entities"].append(
+        {
+            "name": "DebitResult",
+            "key": [],
+            "fields": [
+                {"name": "status", "type": "integer(32,signed)", "legacy": "return"},
+                {"name": "sequence", "type": "integer(64,signed)", "legacy": "@o_secuencial"},
+            ],
+        }
+    )
+    port["methods"][0].update(
+        {
+            "returns": "DebitResult",
+            "legacy_output": None,
+            "legacy_outputs": {"status": "return", "sequence": "@o_secuencial"},
+        }
+    )
+    design = Design.model_validate(data)
+    case = next(r.case for r in MASTER.results if r.case.stubs)
+    (first, *_) = target_case(design, design.use_cases[0], case)["stubs"][port["name"]]
+    assert first["carries_status"] is True
+    assert first["outputs"]["status"] == first["returns"]
+    assert "sequence" in first["outputs"]

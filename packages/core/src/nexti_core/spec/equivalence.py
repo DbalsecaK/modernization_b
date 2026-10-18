@@ -95,6 +95,9 @@ def sql_literal(value: str | None, sql_type: str) -> str:
     return "CAST('" + value.replace("'", "''") + f"' AS {sql_type})"
 
 
+STATUS = "return"  # the reserved legacy name of a called program's return status (ADR-0055, phase F)
+
+
 def target_case(
     design: Design,
     use_case: UseCase,
@@ -123,13 +126,26 @@ def target_case(
             continue
         answers = next((a for p, a in case.stubs.items() if p.lower() == port.legacy_program.lower()), [])
         output_name = next((m.legacy_output for m in port.methods if m.legacy_output), None)
-        # One call, every output (ADR-0043): the entity the method returns carries the program's outputs.
+        # One call, every output (ADR-0043): the entity the method returns carries the program's outputs. The
+        # reserved name `return` is the call's return status (ADR-0055, phase F): data the legacy reads and acts
+        # on, delivered by the fake instead of thrown.
         mapped = {field: legacy for m in port.methods for field, legacy in m.legacy_outputs.items()}
+        carries = output_name == STATUS or STATUS in mapped.values()
         stubs[port.name] = [
             {
                 "returns": a.returns,
-                "output": a.outputs.get(output_name) if output_name else None,
-                **({"outputs": {field: a.outputs.get(legacy) for field, legacy in mapped.items()}} if mapped else {}),
+                "output": (a.returns if output_name == STATUS else a.outputs.get(output_name)) if output_name else None,
+                **(
+                    {
+                        "outputs": {
+                            field: (a.returns if legacy == STATUS else a.outputs.get(legacy))
+                            for field, legacy in mapped.items()
+                        }
+                    }
+                    if mapped
+                    else {}
+                ),
+                **({"carries_status": True} if carries else {}),
                 **({"effects": effects} if (effects := target_effects(design, a.effects, sql_type)) else {}),
             }
             for a in answers

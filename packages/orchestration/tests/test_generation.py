@@ -780,3 +780,16 @@ def test_an_entity_is_asked_only_for_the_columns_loaded_from_its_own_table() -> 
     (problem,) = [p for p in legacy_shape_problems(Design.model_validate(data), files) if "loads these" in p]
     assert problem.startswith("DetallePagos keeps db_otra..bp_detalle")
     assert "dt_tipo_cta" in problem
+
+
+def test_the_reserved_name_return_is_the_status_of_the_call() -> None:
+    # ADR-0055 (phase F): `return` is not a legacy name to check nor a parameter of the program: it is the status.
+    from nexti_orchestration.generation import _invented, call_output_problems
+
+    files = [SourceFile("sp/sp_pago_orden.sp", SOURCE)]
+    data = json.loads(DESIGN_JSON)
+    port = next(p for p in data["ports"] if p.get("legacy_program"))
+    port["methods"][0]["legacy_output"] = "return"
+    design = Design.model_validate(data)
+    assert call_output_problems(design, files) == []
+    assert "return" not in _invented(design, legacy_names(files))

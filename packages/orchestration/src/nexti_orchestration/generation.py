@@ -212,7 +212,7 @@ def _invented(design: Design, names: set[str]) -> list[str]:
     cited += [u.legacy_program for u in design.use_cases] + list(design.infrastructure)
     missing = []
     for name in cited:
-        if name and not _known(name, names):
+        if name and name.lower() != STATUS and not _known(name, names):
             missing.append(name)
     return sorted(set(missing))
 
@@ -507,6 +507,9 @@ def design_problems(
     return problems
 
 
+STATUS = "return"  # the reserved legacy name of a called program's return status (ADR-0055, phase F)
+
+
 def call_output_problems(design: Design, files: Sequence[SourceFile]) -> list[str]:
     """An output a port method reads from a called program must be a parameter the program passes by name (ADR-0055,
     phase F): the variable that receives the return status (`exec @rc = proc`) is not one, and a design that maps it
@@ -538,11 +541,14 @@ def call_output_problems(design: Design, files: Sequence[SourceFile]) -> list[st
                 outputs = [method.legacy_output] if method.legacy_output else []
                 outputs += list(method.legacy_outputs.values())
                 for name in outputs:
+                    if name.lower() == STATUS:
+                        continue  # the call's return status, carried as data (ADR-0055, phase F)
                     if name.lower() in receivers:
                         problems.append(f"{port.name}.{method.name}: {name} is where {use_case.legacy_program} keeps "
-                                        f"the return status of {port.legacy_program}, not an output parameter: "
-                                        "declare the method with `returns` int and no legacy_output (the adapter "
-                                        "returns the status; a non-zero status is a failure)")  # fmt: skip
+                                        f"the return status of {port.legacy_program}, not an output parameter: map "
+                                        "the status with the reserved name `return` (a field of the result "
+                                        "entity in legacy_outputs, or legacy_output of a method that returns "
+                                        "int)")  # fmt: skip
                     elif parameters and name.lower() not in parameters:
                         passed = ", ".join(sorted(parameters))
                         problems.append(f"{port.name}.{method.name}: {name} is not a parameter of "
