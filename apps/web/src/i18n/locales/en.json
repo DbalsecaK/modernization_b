@@ -1286,6 +1286,9 @@
     "inherited": "Customer assignment",
     "youAreOwner": "You will be the owner of the project.",
     "teamLater": "Add the rest of the team later from the project (needs the permission to manage users).",
+    "teamEdit": "Edit team",
+    "teamSaved": "Team updated; the permissions apply now.",
+    "teamOwnerStays": "The project owner keeps the role. Whoever launches a generation cannot approve its own gates.",
     "creatingTitle": "Creating the project",
     "creatingHint": "The inputs are validated one by one before they are stored.",
     "projectCreated": "Project created.",
@@ -2922,6 +2925,8 @@
       "rejected": "Gate {{gate}} rejected. The run stops.",
       "segregation": "You launched this run: someone else must decide its gates (segregation of duties).",
       "noPermission": "You do not have the permission to decide this gate.",
+      "whoCan": "The role {{roles}} decides it; in this project: {{members}}.",
+      "nobody": "The role {{roles}} decides it and nobody in the team has it: the project owner can assign it under Overview › Team.",
       "hint": {
         "C1": "Business rules or specification",
         "C2": "Screens and prototypes",

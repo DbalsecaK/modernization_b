@@ -1,13 +1,138 @@
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ArrowRight } from 'lucide-react'
+import { ArrowRight, X } from 'lucide-react'
 import { cn } from '@/lib/cn'
 import { formatUsd } from '@/lib/format'
-import { useCatalog, useInputs, type ProjectDetail } from '@/api/projects'
+import { useMembers } from '@/api/admin'
+import { PROJECT_CONFIGURE } from '@/api/backlog'
+import { can } from '@/api/access'
+import { useCatalog, useChangeTeam, useInputs, type ProjectDetail } from '@/api/projects'
 import { useRun, useRuns } from '@/api/runs'
-import { Badge, Button, Card, CardBody, CardHeader, StatTile } from '@/components/ui/primitives'
+import { useMe } from '@/api/session'
+import { Badge, Button, Card, CardBody, CardHeader, Select, StatTile } from '@/components/ui/primitives'
+import { toast } from '@/components/ui/overlay'
 import { agentName } from '@/features/catalog/AgentCard'
+import { ApiError } from '@/api/client'
 import { Notice } from '../NewProjectWizard'
 import type { ProjectTab } from '../ProjectWorkspace'
+
+const PROJECT_ROLES = ['architect', 'analyst', 'businessReviewer', 'developer', 'observer'] as const
+
+/** The team after creation: the owner adds, changes or removes roles; the owners themselves stay (ADR-0001). */
+function TeamEditor({ project }: { project: ProjectDetail }) {
+  const { t } = useTranslation()
+  const me = useMe()
+  const canEdit = project.permissions.includes(PROJECT_CONFIGURE)
+  const members = useMembers(canEdit && can(me, 'users.manage'))
+  const change = useChangeTeam(project.id)
+  const [editing, setEditing] = useState(false)
+  const [team, setTeam] = useState<{ userId: string; roleKey: string }[]>([])
+  const owners = project.team.filter((m) => m.roleKey === 'projectOwner')
+  const others = project.team.filter((m) => m.roleKey !== 'projectOwner')
+  const start = () => {
+    setTeam(others.map((m) => ({ userId: m.userId, roleKey: m.roleKey })))
+    setEditing(true)
+  }
+  const save = () =>
+    change.mutate(
+      { team },
+      {
+        onSuccess: () => {
+          setEditing(false)
+          toast(t('wizard.teamSaved'))
+        },
+        onError: (e) => toast(e instanceof ApiError ? e.message : t('common.error')),
+      },
+    )
+  const nameOf = (userId: string) =>
+    members.data?.find((u) => u.id === userId)?.displayName ??
+    project.team.find((m) => m.userId === userId)?.displayName ??
+    userId
+  return (
+    <div className="mt-4 border-t border-border pt-3">
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <span className="text-xs text-muted">{t('wizard.teamTitle')}</span>
+        {canEdit && !editing && (
+          <Button variant="ghost" onClick={start}>
+            {t('wizard.teamEdit')}
+          </Button>
+        )}
+      </div>
+      {!editing ? (
+        <ul className="space-y-1 text-sm">
+          {project.team.map((m) => (
+            <li key={`${m.userId}-${m.roleKey}`} className="flex justify-between gap-2">
+              <span className="text-text">{m.displayName}</span>
+              <span className="text-muted">{t(`roles.${m.roleKey}`, { defaultValue: m.roleName })}</span>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <div className="space-y-2">
+          {owners.map((m) => (
+            <div key={m.userId} className="flex justify-between gap-2 text-sm">
+              <span className="text-text">{m.displayName}</span>
+              <span className="text-muted">{t('roles.projectOwner')}</span>
+            </div>
+          ))}
+          {team.map((member, i) => (
+            <div
+              key={`${member.userId}-${i}`}
+              className="flex flex-wrap items-center gap-3 rounded-md border border-border p-3"
+            >
+              <div className="min-w-0 flex-1 text-sm font-medium text-text">{nameOf(member.userId)}</div>
+              <Select
+                id={`team-role-${i}`}
+                className="h-9 w-48"
+                value={member.roleKey}
+                onChange={(e) => setTeam(team.map((m, j) => (j === i ? { ...m, roleKey: e.target.value } : m)))}
+                aria-label={t('wizard.role')}
+              >
+                {PROJECT_ROLES.map((r) => (
+                  <option key={r} value={r}>
+                    {t(`roles.${r}`)}
+                  </option>
+                ))}
+              </Select>
+              <button
+                onClick={() => setTeam(team.filter((_, j) => j !== i))}
+                className="rounded p-1 text-muted hover:text-critical"
+                aria-label={t('common.remove')}
+              >
+                <X size={16} />
+              </button>
+            </div>
+          ))}
+          <Select
+            id="team-add-member"
+            className="max-w-sm"
+            value=""
+            onChange={(e) => e.target.value && setTeam([...team, { userId: e.target.value, roleKey: 'observer' }])}
+            aria-label={t('wizard.addMember')}
+          >
+            <option value="">{t('wizard.addMember')}</option>
+            {(members.data ?? [])
+              .filter((u) => u.status === 'active' && !owners.some((o) => o.userId === u.id))
+              .map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.displayName}
+                </option>
+              ))}
+          </Select>
+          <p className="text-xs text-muted">{t('wizard.teamOwnerStays')}</p>
+          <div className="flex gap-2">
+            <Button variant="primary" disabled={change.isPending} onClick={save}>
+              {t('common.save')}
+            </Button>
+            <Button disabled={change.isPending} onClick={() => setEditing(false)}>
+              {t('common.cancel')}
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
 
 export function ProjectOverview({ project, onOpen }: { project: ProjectDetail; onOpen: (tab: ProjectTab) => void }) {
   const { t, i18n } = useTranslation()
@@ -135,18 +260,8 @@ export function ProjectOverview({ project, onOpen }: { project: ProjectDetail; o
                 </dd>
               </div>
             </dl>
-            {project.team.length > 0 && (
-              <div className="mt-4 border-t border-border pt-3">
-                <div className="mb-2 text-xs text-muted">{t('wizard.teamTitle')}</div>
-                <ul className="space-y-1 text-sm">
-                  {project.team.map((m) => (
-                    <li key={`${m.userId}-${m.roleKey}`} className="flex justify-between gap-2">
-                      <span className="text-text">{m.displayName}</span>
-                      <span className="text-muted">{t(`roles.${m.roleKey}`, { defaultValue: m.roleName })}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
+            {(project.team.length > 0 || project.permissions.includes(PROJECT_CONFIGURE)) && (
+              <TeamEditor project={project} />
             )}
             {project.agents.length > 0 && (
               <p className="mt-3 text-xs text-muted">

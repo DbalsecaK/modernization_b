@@ -112,6 +112,13 @@ export const useUpdateProject = (id: string) =>
     () => [keys.project(id), keys.projects],
   )
 
+export const useChangeTeam = (id: string) =>
+  useRefreshing(
+    (body: Schemas['TeamIn']) =>
+      unwrap(api.PUT('/api/v1/projects/{project_id}/team', { params: { path: { project_id: id } }, body })),
+    () => [keys.project(id), keys.projects],
+  )
+
 export const useChangeConfig = (id: string) =>
   useRefreshing(
     (body: ConfigInput) =>

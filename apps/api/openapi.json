@@ -3705,6 +3705,36 @@
         "title": "FlowStepOut",
         "type": "object"
       },
+      "GateApproversOut": {
+        "description": "Who can decide a gate in this project: the roles that grant it and the team members holding one of them,\nso a person without the permission reads what role is needed and who has it, not just a refusal.",
+        "properties": {
+          "gate": {
+            "title": "Gate",
+            "type": "string"
+          },
+          "members": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Members",
+            "type": "array"
+          },
+          "roles": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Roles",
+            "type": "array"
+          }
+        },
+        "required": [
+          "gate",
+          "roles",
+          "members"
+        ],
+        "title": "GateApproversOut",
+        "type": "object"
+      },
       "GateDecisionIn": {
         "properties": {
           "comment": {
@@ -7653,6 +7683,13 @@
             "title": "Agents",
             "type": "array"
           },
+          "approvers": {
+            "items": {
+              "$ref": "#/components/schemas/GateApproversOut"
+            },
+            "title": "Approvers",
+            "type": "array"
+          },
           "artifactLanguage": {
             "enum": [
               "en",
@@ -10650,6 +10687,20 @@
           "createdAt"
         ],
         "title": "TaskOut",
+        "type": "object"
+      },
+      "TeamIn": {
+        "properties": {
+          "team": {
+            "items": {
+              "$ref": "#/components/schemas/TeamMemberIn"
+            },
+            "maxItems": 50,
+            "title": "Team",
+            "type": "array"
+          }
+        },
+        "title": "TeamIn",
         "type": "object"
       },
       "TeamMemberIn": {
@@ -18911,6 +18962,60 @@
         "summary": "Split Story",
         "tags": [
           "spec"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/team": {
+      "put": {
+        "description": "The team of a project that already exists (18.3 step 8 promised it for later): the roles by user replace\nthe current ones, except the project owners, who stay. A real project was created with its reviewer as\nobserver only, and nobody could approve C3 or C4 afterwards. The permissions follow through OpenFGA before\nthe answer, so the new roles work at once.",
+        "operationId": "change_team_api_v1_projects__project_id__team_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TeamIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Change Team",
+        "tags": [
+          "projects"
         ]
       }
     },

@@ -156,6 +156,49 @@ async def test_creating_a_project_sets_up_everything_in_one_step(
     assert audited == 1
 
 
+async def test_the_team_of_an_existing_project_can_be_changed_and_the_owner_stays(
+    api: TestClient, fga: OpenFga, app_engine: AsyncEngine, world: World
+) -> None:
+    # A real project was created with its reviewer as observer only and nobody could approve C3 afterwards: the
+    # owner changes the team later; the new roles reach OpenFGA before the answer and the owner is never removed.
+    await reconcile(app_engine, fga)
+    headers = sign_in(api, world.a_user)
+    body = new_project(team=[{"userId": str(world.shared), "roleKey": "observer"}])
+    project = api.post("/api/v1/projects", json=body, headers=headers).json()
+    project_id = project["id"]
+    sign_in(api, world.shared)
+    assert "gate.c3.approve" not in api.get(f"/api/v1/projects/{project_id}").json()["permissions"]
+
+    headers = sign_in(api, world.a_user)
+    res = api.put(
+        f"/api/v1/projects/{project_id}/team",
+        json={"team": [{"userId": str(world.shared), "roleKey": "architect"},
+                       {"userId": str(world.shared), "roleKey": "businessReviewer"}]},
+        headers=headers,
+    )  # fmt: skip
+    assert res.status_code == 200, res.text
+    assert {(m["email"], m["roleKey"]) for m in res.json()["team"]} == {
+        ("mtorres@andesbank.example", "projectOwner"),
+        ("cruiz@nexti.example", "architect"),
+        ("cruiz@nexti.example", "businessReviewer"),
+    }
+    sign_in(api, world.shared)
+    assert "gate.c3.approve" in api.get(f"/api/v1/projects/{project_id}").json()["permissions"]
+
+    # An empty team keeps the owner; the others lose their roles. An unknown role is refused.
+    headers = sign_in(api, world.a_user)
+    res = api.put(f"/api/v1/projects/{project_id}/team", json={"team": []}, headers=headers)
+    assert res.status_code == 200, res.text
+    assert {(m["email"], m["roleKey"]) for m in res.json()["team"]} == {("mtorres@andesbank.example", "projectOwner")}
+    unknown = api.put(
+        f"/api/v1/projects/{project_id}/team",
+        json={"team": [{"userId": str(world.shared), "roleKey": "wizard"}]},
+        headers=headers,
+    )
+    assert unknown.status_code == 422
+    assert unknown.json()["code"] == "unknown_project_role"
+
+
 async def test_a_project_cannot_be_created_without_its_control_agents(
     api: TestClient, owner_engine: AsyncEngine, world: World
 ) -> None:
