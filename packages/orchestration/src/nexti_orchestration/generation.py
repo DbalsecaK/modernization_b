@@ -441,7 +441,9 @@ def design_problems(
     unmapped = [f"{e.name}.{f.name}" for e in design.entities if e.legacy_table for f in e.fields if not f.legacy]
     if unmapped:
         problems.append(f"fields of entities with a legacy table need their legacy column: {', '.join(unmapped)}")
-    not_columns = [f"{e.name}.{f.name} = {f.legacy}" for e in design.entities for f in e.fields
+    # Only entities that keep a legacy table: a result entity of a port method (ADR-0043) has no table and its
+    # fields carry the output parameters of the called program (phase F: the rule rejected every such field).
+    not_columns = [f"{e.name}.{f.name} = {f.legacy}" for e in design.entities if e.legacy_table for f in e.fields
                    if f.legacy and f.legacy[:1] in "@#"]  # fmt: skip
     if not_columns:
         problems.append("entity fields map to columns of their legacy table, not to parameters or variables: "

@@ -32,8 +32,12 @@ Rules of the design:
 - Traceability to the legacy, used to replay the golden master on the target: every field has `legacy` (the
   legacy column of an entity field, the legacy parameter of a use case input or output, the argument of the
   external program for a port method input); a port that replaces an external legacy program has
-  `legacy_program` and, when a method returns one of its output parameters, `legacy_output`; each use case has
-  `legacy_program` and `legacy_message` (the output parameter that carries the message of a rejection);
+  `legacy_program` and, when a method returns one of its output parameters, `legacy_output` (several: an entity
+  with `legacy_outputs` on the METHOD, field -> output parameter); each use case has
+  `legacy_program` and `legacy_message` (the output parameter that carries the message of a rejection).
+  The return status of a called program (`exec @rc = proc`) is not an output parameter: a method that returns
+  it declares `returns` "int" with no `legacy_output`; never map the caller's status variable (@w_return,
+  @rc...) as an output, the adapter raises a failure on a non-zero status.
   `infrastructure` lists the legacy programs that are only infrastructure (e.g. error logging).
 - `masks` only for differences with the legacy that are deliberate and explained (`path` like
   `outputs:@o_x`, `when` "always" or "rejected", `reason`). A reviewer approves them at C3 and the verdict lists
