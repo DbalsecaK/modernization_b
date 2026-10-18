@@ -206,6 +206,44 @@ def controller_file(design: Design, use_case: UseCase) -> tuple[str, str]:
     verb = {"GET": "HttpGet", "POST": "HttpPost", "PUT": "HttpPut", "PATCH": "HttpPatch",
             "DELETE": "HttpDelete"}[use_case.http_method]  # fmt: skip
     source = "[FromBody] " if use_case.http_method in ("POST", "PUT", "PATCH") else "[FromQuery] "
+    if use_case.legacy_program and use_case.http_method in ("POST", "PUT", "PATCH"):
+        # ADR-0056 (phase D): the request is read as the legacy reads its arguments: a field absent from the body
+        # takes the parameter's default, an explicit null stays null, text is cut to the parameter's length and a
+        # decimal is brought to its scale.
+        arguments = []
+        for field in use_case.inputs:
+            kind = cs_type(field.type)
+            value = nt.parse(field.type)
+            absent = _cs_literal(field.default, kind) if field.defaulted else "null"
+            read = f'Read<{kind}>(body, "{field.name}", {absent})'
+            if isinstance(value, nt.Text) and value.length:
+                read = f"Fit({read}, {value.length})"
+            elif isinstance(value, nt.Decimal):
+                read = f"Scale({read}, {value.scale})"
+            arguments.append(f"            {read}")
+        built = ",\n".join(arguments)
+        return f"{APP}/Adapters/In/Rest/{use_case.name}Controller.cs", (
+            f"using System.Text.Json;\nusing Microsoft.AspNetCore.Mvc;\nusing {ns}.Application;\n\n"
+            f"namespace {ns}.Adapters.In.Rest;\n\n"
+            f"/// <summary>REST adapter of {use_case.name} (rules {', '.join(use_case.rules)}). The request is read "
+            "as the legacy reads its arguments (ADR-0056): absent takes the default, null stays null, text is cut "
+            "to the parameter's length, a decimal is brought to its scale.</summary>\n"
+            f'[ApiController]\n[Route("api/{design.context}")]\n'
+            f"public sealed class {use_case.name}Controller({use_case.name}Service service) : ControllerBase\n{{\n"
+            f'    [{verb}("{path.lstrip("/")}")]\n'
+            f"    public {use_case.name}Response Handle([FromBody] JsonElement body)\n    {{\n"
+            f"        var request = new {use_case.name}Request(\n{built});\n"
+            "        return service.Execute(request);\n    }\n\n"
+            "    private static T Read<T>(JsonElement body, string name, T whenAbsent)\n    {\n"
+            "        if (body.ValueKind != JsonValueKind.Object || !body.TryGetProperty(name, out var node))\n"
+            "        {\n            return whenAbsent;\n        }\n"
+            "        return node.ValueKind == JsonValueKind.Null ? default! : node.Deserialize<T>()!;\n    }\n\n"
+            "    private static string? Fit(string? value, int length) =>\n"
+            "        value != null && value.Length > length ? value[..length] : value;\n\n"
+            "    private static decimal? Scale(decimal? value, int digits) =>\n"
+            "        value is null ? null : Math.Round(value.Value, digits, MidpointRounding.AwayFromZero);\n"
+            "}\n"
+        )
     return f"{APP}/Adapters/In/Rest/{use_case.name}Controller.cs", (
         f"using Microsoft.AspNetCore.Mvc;\nusing {ns}.Application;\n\n"
         f"namespace {ns}.Adapters.In.Rest;\n\n"
@@ -216,6 +254,26 @@ def controller_file(design: Design, use_case: UseCase) -> tuple[str, str]:
         f"    public {use_case.name}Response Handle({source}{use_case.name}Request request) => service.Execute(request);\n"
         "}\n"
     )
+
+
+def _cs_literal(value: object, kind: str) -> str:
+    """A default of the legacy as a C# expression of the field's type."""
+    if value is None:
+        return "null"
+    if kind == "string?":
+        text = str(value).replace("\\", "\\\\").replace('"', '\\"')
+        return f'"{text}"'
+    if kind == "decimal?":
+        return f"{value}m"
+    if kind in ("int?", "long?"):
+        return str(int(float(str(value))))
+    if kind == "bool?":
+        return "true" if value in (True, 1, "1", "true", "True") else "false"
+    if kind == "DateOnly?":
+        return f'DateOnly.Parse("{str(value)[:10]}")'
+    if kind in ("DateTime?", "DateTimeOffset?"):
+        return f'{kind[:-1]}.Parse("{str(value).replace(" ", "T")}")'
+    return "null"
 
 
 def wiring_file(design: Design) -> tuple[str, str]:

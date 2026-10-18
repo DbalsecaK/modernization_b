@@ -221,7 +221,7 @@ async def run_equivalence(
     runs = []
     for recorded_case in recorded:
         item = raw.get(recorded_case.case.name)
-        expected = expected_view(design, use_case, recorded_case.observation, found)
+        expected = expected_view(design, use_case, recorded_case.observation, found, strict_calls=engine is not None)
         if item is None or item.get("failure"):
             failure = (item or {}).get("failure") or "the harness printed nothing for this case"
             runs.append(CaseRun(recorded_case.case.name, expected, Observation(), failure))

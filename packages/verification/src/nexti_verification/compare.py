@@ -38,6 +38,8 @@ def differences(expected: Observation, actual: Observation) -> list[Difference]:
             for column in sorted(set(row) | set(other)):
                 if row.get(column) != other.get(column):
                     found.append(Difference(f"tables:{table}[{index}].{column}", row.get(column), other.get(column)))
+    if expected.messages != actual.messages:  # ADR-0056: what the called programs raised
+        found.append(Difference("messages", _text(expected.messages), _text(actual.messages)))
     if len(expected.calls) != len(actual.calls):
         found.append(Difference("calls", _text([c.program for c in expected.calls]),
                                 _text([c.program for c in actual.calls])))  # fmt: skip

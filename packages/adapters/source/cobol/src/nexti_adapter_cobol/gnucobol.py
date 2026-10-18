@@ -8,7 +8,7 @@ a guess."""
 
 import re
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from importlib.resources import files as package_files
 
 from nexti_adapter_bms import BmsAdapter
@@ -50,8 +50,18 @@ mkdir -p /work/bin /work/src /work/case /work/tmp
 export TMPDIR=/work/tmp
 cp -r /input/src/. /work/src/
 cd /work/src
-if ! cobc -x -o /work/bin/NXMAIN -I /input/cpy -I /input/nx NXMAIN.cbl PROGRAMS NXCICS.cbl > /work/cobc.txt 2>&1; then
+for P in SQLPROGRAMS; do
+  if ! ocesql $P.cbl $P.pre.cbl > /work/ocesql.txt 2>&1; then echo "NXCOMPILE-FAILED"; cat /work/ocesql.txt; exit 3; fi
+  mv $P.pre.cbl $P.cbl
+done
+if ! cobc -x -o /work/bin/NXMAIN -I /input/cpy -I /input/nx -I /opt/ocesql/copy LINKSQL NXMAIN.cbl PROGRAMS NXCICS.cbl > /work/cobc.txt 2>&1; then
   echo "NXCOMPILE-FAILED"; cat /work/cobc.txt; exit 3
+fi
+if [ -n "SQLPROGRAMS" ]; then
+  if ! initdb -D /work/pg -U nexti --auth=trust -E UTF8 --no-locale > /work/pg-init.log 2>&1; then echo "NXCOMPILE-FAILED"; cat /work/pg-init.log; exit 5; fi
+  if ! pg_ctl -D /work/pg -l /work/pg.log -o "-k /work -c listen_addresses=localhost -c port=5432 -F" -w start > /dev/null; then echo "NXCOMPILE-FAILED"; cat /work/pg.log; exit 5; fi
+  psql -h localhost -U nexti -d postgres -q -c "CREATE DATABASE nexti" > /dev/null
+  if ! psql -h localhost -U nexti -d nexti -q -v ON_ERROR_STOP=1 -f /input/sql/schema.sql > /work/schema.log 2>&1; then echo "NXCOMPILE-FAILED"; cat /work/schema.log; exit 6; fi
 fi
 for F in FILES; do
   cobc -x -o /work/bin/NXLD_$F NXLD_$F.cbl >> /work/cobc.txt 2>&1 || { echo "NXCOMPILE-FAILED"; cat /work/cobc.txt; exit 3; }
@@ -61,12 +71,15 @@ for DIR in /input/cases/*/; do
   N=$(basename "$DIR")
   rm -rf /work/case; mkdir -p /work/case; cp "$DIR"/* /work/case/; : > /work/case/out.txt
   for F in FILES; do /work/bin/NXLD_$F > /dev/null 2>> /work/case/out.txt || echo "NXERR|load $F failed" >> /work/case/out.txt; done
+  if [ -f /work/case/case.sql ]; then psql -h localhost -U nexti -d nexti -q -v ON_ERROR_STOP=1 -f /work/case/case.sql > /dev/null 2>> /work/case/out.txt || echo "NXERR|the rows of the case could not be loaded" >> /work/case/out.txt; fi
   /work/bin/NXMAIN > /work/case/stdout.txt 2>&1 || echo "NXERR|the program ended with status $?: $(tail -c 300 /work/case/stdout.txt)" >> /work/case/out.txt
   for F in FILES; do /work/bin/NXDP_$F > /dev/null 2>> /work/case/out.txt || echo "NXERR|dump $F failed" >> /work/case/out.txt; done
+  if [ -f /input/sql/dump.sql ]; then psql -h localhost -U nexti -d nexti -At -f /input/sql/dump.sql >> /work/case/out.txt 2>&1 || echo "NXERR|the tables could not be read" >> /work/case/out.txt; fi
   echo "NXCASE|$N"
   cat /work/case/out.txt
   for F in FILES; do echo "NXF|$F|$(base64 -w0 /work/case/$F.dump 2>/dev/null)"; done
 done
+if [ -n "SQLPROGRAMS" ]; then pg_ctl -D /work/pg -m fast stop > /dev/null 2>&1 || true; fi
 echo "NXDONE"
 """
 
@@ -141,7 +154,8 @@ class GnuCobolRunner:
             output = sections.get(case.name)
             if output is None:
                 raise LegacyUnavailableError(f"the local COBOL engine printed nothing for the case {case.name}")
-            results.append(Recorded(case=case, observation=observe(output, suite.schema_, case, prepared.layouts)))
+            results.append(Recorded(case=case, observation=observe(output, suite.schema_, case, prepared.layouts,
+                                                                   prepared.files)))  # fmt: skip
         return GoldenMaster(
             program=prepared.program, source_sha256=source_digest(files), engine=ENGINE, schema_=suite.schema_,
             results=results, unreachable=dict(suite.unreachable),
@@ -170,10 +184,6 @@ class GnuCobolRunner:
                              - {c.upper() for c in SYSTEM_COPYBOOKS})  # fmt: skip
             if missing:
                 waiting.append(f"{program.name}: copybook(s) not in the inputs: {', '.join(missing)}")
-            if _EXEC_SQL.search(_text_of(files, program)):
-                waiting.append(
-                    f"{program.name}: EXEC SQL is not substituted by the local engine yet (DB2 -> PostgreSQL)"
-                )
         local = {p.name.upper() for p in programs}
         translations: dict[str, Translation] = {}
         for program in programs:
@@ -201,6 +211,7 @@ class GnuCobolRunner:
                 if target and area and target.group(1).upper() not in local:
                     layouts.setdefault(target.group(1).upper(), group_layout(items, area.group(1)))
         file_sizes = {name: size for t in translations.values() for name, size in t.files.items()}
+        sql_programs = [name for name, t in translations.items() if t.sql]
         transid = _transid(files, main.name)
         inputs: dict[str, bytes] = {}
         for name, found in translations.items():
@@ -229,10 +240,21 @@ class GnuCobolRunner:
             inputs[f"{folder}/eib.bin"] = plan.eib
             inputs[f"{folder}/commarea.bin"] = plan.commarea
             inputs[f"{folder}/case.json"] = plan.case_json.encode("utf-8")
-        script = (RUN_SCRIPT.replace("PROGRAMS", " ".join(f"{name}.cbl" for name in translations))
+        if sql_programs:
+            from nexti_adapter_cobol.sql import case_sql, dump_sql, schema_sql
+
+            inputs["sql/schema.sql"] = schema_sql(suite.schema_, list(file_sizes)).encode("utf-8")
+            inputs["sql/dump.sql"] = dump_sql(suite.schema_, list(file_sizes)).encode("utf-8")
+            for case in suite.cases:
+                inputs[f"cases/{case.name}/case.sql"] = case_sql(suite.schema_, case.setup, list(file_sizes)).encode(
+                    "utf-8"
+                )
+        script = (RUN_SCRIPT.replace("SQLPROGRAMS", " ".join(sql_programs))
+                  .replace("LINKSQL", "-L/opt/ocesql/lib -locesql" if sql_programs else "")
+                  .replace("PROGRAMS", " ".join(f"{name}.cbl" for name in translations))
                   .replace("FILES", " ".join(file_sizes) or "''"))  # fmt: skip
         inputs["run.sh"] = script.encode("utf-8")
-        return Prepared(main.name, inputs, layouts)
+        return Prepared(main.name, inputs, layouts, list(file_sizes))
 
 
 @dataclass(frozen=True)
@@ -240,6 +262,7 @@ class Prepared:
     program: str
     inputs: dict[str, bytes]
     layouts: dict[str, list[Field]]
+    files: list[str] = field(default_factory=list)  # the tables reached as files; the rest are SQL tables
 
 
 def _commarea_length(program: Program, copybooks: dict[str, Copybook]) -> int:

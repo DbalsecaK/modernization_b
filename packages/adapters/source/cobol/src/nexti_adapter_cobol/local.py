@@ -449,7 +449,8 @@ def output_layout(bms_map: BmsMap) -> list[dict[str, Any]]:
 
 
 # -- the translation of EXEC CICS ---------------------------------------------------------------------------------
-_EXEC_CICS = re.compile(r"EXEC\s+CICS\s+(?P<body>.*?)\s*END-EXEC(?P<period>\.?)", re.IGNORECASE | re.DOTALL)
+_EXEC_SQL = re.compile(r"[ \t]*EXEC\s+SQL\s+(?P<body>.*?)\s*END-EXEC(?P<period>\.?)", re.IGNORECASE | re.DOTALL)
+_EXEC_CICS = re.compile(r"[ \t]*EXEC\s+CICS\s+(?P<body>.*?)\s*END-EXEC(?P<period>\.?)", re.IGNORECASE | re.DOTALL)
 _DFHRESP = re.compile(r"DFHRESP\s*\(\s*([A-Z0-9]+)\s*\)", re.IGNORECASE)
 _DIVISION = re.compile(
     r"^(.{7})(IDENTIFICATION|ID|ENVIRONMENT|DATA|PROCEDURE)\s+DIVISION\b(.*)$", re.IGNORECASE | re.MULTILINE
@@ -534,6 +535,7 @@ class Translation:
     unsupported: list[str] = field(default_factory=list)
     linked: list[str] = field(default_factory=list)  # programs called by LINK/XCTL
     maps: list[str] = field(default_factory=list)
+    sql: bool = False  # the program embeds EXEC SQL: it runs against the PostgreSQL of the sandbox
 
 
 def translate(program: Program, text: str, schema: Schema, local_programs: set[str], *, main: bool) -> Translation:
@@ -543,6 +545,7 @@ def translate(program: Program, text: str, schema: Schema, local_programs: set[s
     files = {t.name.upper(): t for t in schema.tables}
     found = Translation(text="")
     used: dict[str, tuple[int, int]] = {}
+    found.sql = bool(_EXEC_SQL.search(text))
 
     def file_of(name: str) -> str:
         table = files.get(name.upper())
@@ -565,10 +568,21 @@ def translate(program: Program, text: str, schema: Schema, local_programs: set[s
         out = "\n".join(AREA + part for line in lines for part in _wrapped(line))
         return out + period
 
+    def sql_replacement(match: re.Match[str]) -> str:
+        from nexti_adapter_cobol.sql import rewrite_sql
+
+        rewritten = rewrite_sql(match.group("body"), list(files))
+        period = match.group("period")
+        if rewritten is None:
+            return AREA + "CONTINUE" + period
+        return "\n".join(AREA + part for part in _wrapped(f"EXEC SQL {rewritten} END-EXEC")) + period
+
     body = _EXEC_CICS.sub(replacement, text)
     body = _DFHRESP.sub(lambda m: str(DFHRESP.get(m.group(1).upper(), 1)), body)
+    if found.sql:
+        body = _EXEC_SQL.sub(sql_replacement, body)
     found.files = used
-    found.text = _with_environment(body, program, used)
+    found.text = _with_environment(body, program, used, sql=found.sql, main=main)
     return found
 
 
@@ -650,10 +664,13 @@ def _translate_command(
         transid = _literal(options.get("TRANSID")) or "-"
         area = options.get("COMMAREA", "NX-NAME")
         length = options.get("LENGTH", f"LENGTH OF {area}" if "COMMAREA" in options else "0")
-        return [f"MOVE {length} TO NX-LEN", f"CALL 'NXCICS' USING 'RETURN  ' {_lit8(transid)} {area} NX-LEN", "GOBACK"]
+        commit = ["EXEC SQL COMMIT WORK END-EXEC"] if found.sql else []  # the task ends: its work is confirmed
+        return [*commit, f"MOVE {length} TO NX-LEN", f"CALL 'NXCICS' USING 'RETURN  ' {_lit8(transid)} {area} NX-LEN",
+                "GOBACK"]  # fmt: skip
     if command in ("SYNCPOINT", "SYNCPOINT ROLLBACK"):
         kind = "ROLLBACK" if "ROLLBACK" in command or "ROLLBACK" in flags else "COMMIT"
-        return ["MOVE 0 TO NX-LEN", f"CALL 'NXCICS' USING 'SYNC    ' '{kind}' NX-NAME NX-LEN"]
+        sql = [f"EXEC SQL {kind} WORK END-EXEC"] if found.sql else []
+        return [*sql, "MOVE 0 TO NX-LEN", f"CALL 'NXCICS' USING 'SYNC    ' '{kind}' NX-NAME NX-LEN"]
     if command == "ASSIGN":
         lines = []
         for what, target in options.items():
@@ -683,7 +700,9 @@ def _translate_command(
     return None
 
 
-def _with_environment(body: str, program: Program, files: Mapping[str, tuple[int, int]]) -> str:
+def _with_environment(
+    body: str, program: Program, files: Mapping[str, tuple[int, int]], *, sql: bool = False, main: bool = False
+) -> str:
     """The declarations the translated program needs: the files it uses, the working items of the substitutes,
     the EIB and the COMMAREA in LINKAGE, the PROCEDURE DIVISION receiving them and the files opened at the start."""
     lines = body.split("\n")
@@ -713,6 +732,21 @@ def _with_environment(body: str, program: Program, files: Mapping[str, tuple[int
         )
     ]
     opens = [f"           OPEN I-O NX-F-{name}." for name in files]
+    if sql:
+        work += [
+            "       01  NX-DB-NAME             PIC X(30)",
+            "                               VALUE 'nexti@localhost:5432'.",
+            "       01  NX-DB-USER             PIC X(30) VALUE 'nexti'.",
+            "       01  NX-DB-PASS             PIC X(30) VALUE SPACE.",
+        ]
+        if "INCLUDE SQLCA" not in body.upper():
+            work.append("           EXEC SQL INCLUDE SQLCA END-EXEC.")
+        if main:  # one connection per task, opened by the program that starts it (ADR-0056, point 7)
+            opens = [
+                "           EXEC SQL CONNECT :NX-DB-USER IDENTIFIED BY :NX-DB-PASS",
+                "                USING :NX-DB-NAME END-EXEC.",
+                *opens,
+            ]
     out: list[str] = []
     seen_env = seen_data = seen_ws = seen_linkage = seen_proc = False
     has_commarea = any(it.name.upper() == "DFHCOMMAREA" for it in program.data)
@@ -764,7 +798,7 @@ def _with_environment(body: str, program: Program, files: Mapping[str, tuple[int
                         "       01  DFHCOMMAREA            PIC X(32767)."]  # fmt: skip
             seen_proc = True
             out.append("       PROCEDURE DIVISION USING DFHEIBLK DFHCOMMAREA.")
-            if files:
+            if opens:
                 out += ["       NX-0000-OPEN-FILES.", *opens]
             i += 1
             continue
@@ -974,7 +1008,9 @@ def case_plan(
                     json.dumps(plan, ensure_ascii=False))  # fmt: skip
 
 
-def observe(output: str, schema: Schema, case: Case, commarea_layouts: Mapping[str, list[Field]]) -> Observation:
+def observe(
+    output: str, schema: Schema, case: Case, commarea_layouts: Mapping[str, list[Field]], files: Sequence[str] = ()
+) -> Observation:
     """What the program did, from the lines the sandbox printed for the case: the sent map fields as outputs, the
     calls to substitutes, the RETURN, the files after the task (a rollback undoes the writes since the last
     syncpoint: the writes are replayed on the rows of the case), and an abend as a failure."""
@@ -1026,8 +1062,15 @@ def observe(output: str, schema: Schema, case: Case, commarea_layouts: Mapping[s
         elif line.startswith("NXERR|"):
             error = line[6:]
     calls += pending_calls
+    from nexti_adapter_cobol.sql import parse_dump
+
+    as_files = {f.upper() for f in files} if files else {t.name.upper() for t in schema.tables}
+    sql_tables = parse_dump(output, schema)
     tables: dict[str, list[dict[str, str | None]]] = {}
     for table in schema.tables:
+        if table.name.upper() not in as_files:
+            tables[table.name] = sql_tables.get(table.name, [])
+            continue
         layout = record_layout(table)
         length = sum(f.length for f in layout)
         if rolled_back:

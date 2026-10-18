@@ -279,8 +279,12 @@ def _masked(path: str, found: list[Mask], rejected: bool = False) -> bool:
     return any(path.lower() == m.path.lower() and (m.when == "always" or rejected) for m in found)
 
 
-def expected_view(design: Design, use_case: UseCase, observed: Observation, found: list[Mask]) -> Observation:
-    """What the legacy did, in legacy names and canonical target types, without what is masked."""
+def expected_view(
+    design: Design, use_case: UseCase, observed: Observation, found: list[Mask], strict_calls: bool = False
+) -> Observation:
+    """What the legacy did, in legacy names and canonical target types, without what is masked. With
+    `strict_calls` (the target ran on the legacy's engine, whose log sees every argument) every argument the
+    legacy passed counts; against fakes, which only see the inputs the port maps, only those are compared."""
     outputs = {}
     rejected = observed.returns not in (0, None)
     by_output = {(f.legacy or "").lower(): f for f in use_case.outputs if f.legacy}
@@ -300,9 +304,9 @@ def expected_view(design: Design, use_case: UseCase, observed: Observation, foun
                                   if c.lower() in by_legacy and not _masked(f"tables:{table}.{c}", found)}
                                  for row in rows])  # fmt: skip
     return Observation(returns=observed.returns, outputs=outputs, tables=tables,
-                       calls=_legacy_calls(design, observed.calls, found),
-                       undone=_legacy_calls(design, observed.undone, found),
-                       messages=_substitute_messages(observed.messages))  # fmt: skip
+                       calls=_legacy_calls(design, observed.calls, found, strict_calls),
+                       undone=_legacy_calls(design, observed.undone, found, strict_calls),
+                       messages=_substitute_messages(observed.messages) if strict_calls else [])  # fmt: skip
 
 
 def _substitute_messages(raw: Sequence[Any]) -> list[str]:
@@ -311,10 +315,10 @@ def _substitute_messages(raw: Sequence[Any]) -> list[str]:
     return [m for m in (substitute_message(str(text)) for text in raw) if m]
 
 
-def _legacy_calls(design: Design, observed: list[Call], found: list[Mask]) -> list[Call]:
-    """The legacy's calls without the masked programs, each argument in the canonical text of its port's type. Every
-    argument the legacy passed counts (ADR-0056): one the port does not map is a difference the design must close,
-    not one the view hides."""
+def _legacy_calls(design: Design, observed: list[Call], found: list[Mask], strict: bool = False) -> list[Call]:
+    """The legacy's calls without the masked programs, each argument in the canonical text of its port's type. With
+    `strict` every argument the legacy passed counts (ADR-0056: one the port does not map is a difference the
+    design must close); without it, only the arguments the port maps, which is all a fake can report."""
     calls = []
     ports = {(p.legacy_program or "").lower(): p for p in design.ports if p.legacy_program}
     for call in observed:
@@ -324,6 +328,7 @@ def _legacy_calls(design: Design, observed: list[Call], found: list[Mask]) -> li
         types = {(f.legacy or "").lower(): f.type for m in port.methods for f in m.inputs} if port else {}
         calls.append(Call(program=call.program, arguments={
             n: canonical(types.get(n.lower()), v) for n, v in call.arguments.items()
+            if strict or not port or n.lower() in types
         }))  # fmt: skip
     return calls
 
@@ -367,13 +372,13 @@ def actual_view(
         ])  # fmt: skip
     # The harness reports the calls of the fakes that are in the final state and, apart, the ones its rollback
     # undid (ADR-0055); the undone ones are diagnostic, the comparison is on what survived.
-    messages = _substitute_messages(raw.get("messages") or [])
-    if legacy_calls is not None:
-        calls = _legacy_calls(design, list(legacy_calls), found)
+    if legacy_calls is not None:  # the engine's log sees every argument and the messages of the substitutes
+        calls = _legacy_calls(design, list(legacy_calls), found, strict=True)
+        messages = _substitute_messages(raw.get("messages") or [])
         return Observation(returns=returns, outputs=outputs, tables=tables, calls=calls, messages=messages)
     return Observation(returns=returns, outputs=outputs, tables=tables,
                        calls=_target_calls(design, raw.get("calls", [])),
-                       undone=_target_calls(design, raw.get("undone", [])), messages=messages)  # fmt: skip
+                       undone=_target_calls(design, raw.get("undone", [])))  # fmt: skip
 
 
 def _target_calls(design: Design, raw: list[dict[str, Any]]) -> list[Call]:
