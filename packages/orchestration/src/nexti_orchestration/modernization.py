@@ -92,6 +92,40 @@ def uncovered_slices(
     return found
 
 
+UNCITED_NOTE = (
+    "Every business statement in this slice is cited by no rule yet (ADR-0056): a statement no rule cites is a "
+    "behaviour the new system is never asked to reproduce. Write the rules that this code implements, citing each "
+    "of these lines; a statement that is not business logic (logging, housekeeping) gets a rule of priority P2 "
+    "that says what it does, so it is read and decided at the review."
+)
+
+
+def uncited_slices(
+    statements: Sequence[dict[str, Any]], views: Sequence[SliceView], rules: Sequence[Rule], context: int = 2
+) -> list[SliceView]:
+    """One extra slice per unit with the business statements an agent read but no rule cites (ADR-0056, phase C):
+    they go back to the extractor once, named, before the review; what stays uncited after that blocks C1."""
+    report = coverage(statements, views, rules)
+    by_unit: dict[tuple[str, str], list[tuple[int, int]]] = {}
+    for st in report["statements"]:
+        if not st["in_slice"] or st["cited"]:
+            continue
+        start, end = int(st["line_start"]), int(st["line_end"])
+        by_unit.setdefault((str(st.get("unit", "")), str(st["file"])), []).append(
+            (max(1, start - context), end + context)
+        )
+    found = []
+    for (unit, file), ranges in sorted(by_unit.items()):
+        merged: list[tuple[int, int]] = []
+        for start, end in sorted(ranges):
+            if merged and start <= merged[-1][1] + 1:
+                merged[-1] = (merged[-1][0], max(merged[-1][1], end))
+            else:
+                merged.append((start, end))
+        found.append(SliceView(f"{unit}#uncited", file, tuple(merged), note=UNCITED_NOTE))
+    return found
+
+
 def coverage(statements: Sequence[dict[str, Any]], views: Sequence[SliceView], rules: Sequence[Rule]) -> dict[str, Any]:
     """Which business statements reached no slice (no agent read them) and which no rule cites (read, but no rule
     came out): the check against leaving business logic out of the specification."""
@@ -309,7 +343,16 @@ class ModernizationPhases:
         failed = [r["failed"] for batch in found for r in batch if "failed" in r]
         if failed and len(failed) == len(views):
             raise PhaseFailedError(f"No slice gave valid rules ({len(failed)} failed); see the activity for why")
-        rules = consolidate([Rule.model_validate(r) for batch in found for r in batch if "failed" not in r])
+        candidates = [Rule.model_validate(r) for batch in found for r in batch if "failed" not in r]
+        if statements is not None:
+            # ADR-0056 (phase C): the business statements no rule cites go back to the extractor once, named, so
+            # the rules cover what the code does; what stays uncited after this round blocks C1.
+            uncited = uncited_slices(statements, views, consolidate(candidates))
+            if uncited:
+                views += uncited
+                more = await ctx.fan_out([v.unit for v in uncited], one)
+                candidates += [Rule.model_validate(r) for batch in more for r in batch if "failed" not in r]
+        rules = consolidate(candidates)
         if guided_on:
             rules = await self._consolidate_meaning(ctx, rules)
         rules = await self._review(ctx, rules, sources, guided_on=guided_on)

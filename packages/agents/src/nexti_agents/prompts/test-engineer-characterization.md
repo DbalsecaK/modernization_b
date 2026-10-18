@@ -13,15 +13,24 @@ You receive the source of the program, its approved business rules with their ci
    - `name` in snake_case, a `description` and the `rules` it exercises (RULE-NNN);
    - `inputs`: parameter -> value, with the parameter names of the program including the `@`;
    - `setup`: table -> the rows the case starts from (only the columns that matter; others take NULL);
-   - `stubs`: external program -> its answers, one per call in order (`returns`, `outputs` by parameter name
-     and, when the program writes rows the case depends on, `effects`: table -> the rows it leaves, each with
-     the table's key columns). The external programs do not run: the substitute answers, records how it was
-     called and writes its effects inside the caller's transaction, so a rollback undoes them as it would the
-     real program's writes.
+   - `stubs`: external program -> its answers, one per call in order (`returns`, `outputs` by parameter name,
+     when the program writes rows the case depends on, `effects`: table -> the rows it leaves, each with the
+     table's key columns, and when the program fails, `messages`: the error texts it raises before returning).
+     The external programs do not run: the substitute answers, records how it was called and writes its effects
+     inside the caller's transaction, so a rollback undoes them as it would the real program's writes. Every
+     external program needs at least one case where it fails (a non-zero `returns` with its `messages`) and one
+     where it succeeds.
    Use small, readable values and dates in ISO format (`2026-03-02T09:30:00`).
 3. `unreachable` (optional): rule -> why no input, row or stub answer can make the program reach it (a defensive
    check after a lookup that already proved the row exists, dead code). Declare it instead of inventing a case the
-   legacy could never enter; the verdict lists it as not proven.
+   legacy could never enter; the verdict lists it as not proven. The same map declares a mandatory item the
+   suite cannot reach, under its key: `branch:<from>-<to>` (a branch with a rollback point), `quirk:<id>` (an
+   engine behaviour the program relies on), `call:<program>:failure` (a called program whose failure no case
+   can provoke).
+
+Mandatory, whatever the rules say: a case that enters every branch holding a rollback point (the golden master
+must show what the program undoes), a case that runs the lines of every engine behaviour the program relies on,
+and for every external program one case where it fails and one where it succeeds.
 
 Do not invent behaviour: the legacy decides the expected results when it runs. Answer with one JSON object only:
 {"program": "<name as created>", "schema": {"tables": [...]}, "cases": [...], "unreachable": {}}.

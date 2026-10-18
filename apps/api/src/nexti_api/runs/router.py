@@ -285,7 +285,10 @@ async def _decide(
             raise ProblemError(409, "run_finished", "The run has already finished.")
         # C1 approves the spec, the user stories and the plan together (7.7): code decides whether it can.
         if approve and gate == "C1" and run["kind"] == "pipeline":
+            from nexti_api.spec.classification import coverage_blockers
+
             blockers = await spec_common.c1_blockers(conn, project_id)
+            blockers += await coverage_blockers(request, conn, project_id)  # ADR-0056
             if blockers:
                 raise ProblemError(409, "c1_blocked", "C1 cannot be approved yet.", blockers=blockers)
             await approve_stories(conn, auth, project_id)

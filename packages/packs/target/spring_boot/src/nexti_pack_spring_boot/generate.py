@@ -190,6 +190,34 @@ def controller_file(design: Design, use_case: UseCase, transactional: bool = Tru
         else f"    public {use_case.name}Controller({service} service) {{\n        this.service = service;\n    }}\n"
     )
     call = "transaction.execute(status -> service.execute(request))" if work else "service.execute(request)"
+    contract = _contract(use_case)
+    if contract is not None:
+        parameter, building, helpers = contract
+        fields += "    private final ObjectMapper mapper;\n"
+        imports += (
+            "import com.fasterxml.jackson.databind.JsonNode;\nimport com.fasterxml.jackson.databind.ObjectMapper;\n"
+        )
+        constructor = (
+            constructor.replace(
+                " service, TransactionTemplate transaction) {",
+                " service, TransactionTemplate transaction, ObjectMapper mapper) {",
+            )
+            if work
+            else constructor.replace(" service) {", " service, ObjectMapper mapper) {")
+        )
+        constructor = constructor.replace(
+            "        this.service = service;\n", "        this.service = service;\n        this.mapper = mapper;\n"
+        )
+        return _path(package, f"{use_case.name}Controller"), (
+            f"package {package};\n\n{imports}\n"
+            f"/** REST adapter of {use_case.name} (rules {', '.join(use_case.rules)}).{doc}{CONTRACT_DOC} */\n"
+            f'@RestController\n@RequestMapping("/api/{design.context}")\n'
+            f"public class {use_case.name}Controller {{\n\n{fields}\n{constructor}\n"
+            f'    @{mapping}("{path}")\n'
+            f"    public {use_case.name}Response handle({parameter}) {{\n"
+            f"{building}"
+            f"        return {call};\n    }}\n{helpers}}}\n"
+        )
     return _path(package, f"{use_case.name}Controller"), (
         f"package {package};\n\n{imports}\n"
         f"/** REST adapter of {use_case.name} (rules {', '.join(use_case.rules)}).{doc} */\n"
@@ -199,6 +227,74 @@ def controller_file(design: Design, use_case: UseCase, transactional: bool = Tru
         f"    public {use_case.name}Response handle({body}{use_case.name}Request request) {{\n"
         f"        return {call};\n    }}\n}}\n"
     )
+
+
+# ADR-0056 (phase D): the contract of a use case that replaces a legacy program comes from the program's signature.
+CONTRACT_DOC = (
+    " The request is read as the legacy reads its arguments (ADR-0056): a field absent from the body takes the "
+    "parameter's default, an explicit null stays null, text longer than the parameter is cut to its length and a "
+    "decimal is brought to the parameter's scale."
+)
+
+_CONTRACT_HELPERS = (
+    "\n    /** The field as the legacy takes the argument: absent takes the default, null stays null. */\n"
+    "    private <T> T read(JsonNode body, String field, Class<T> type, T whenAbsent) {\n"
+    "        if (body == null || !body.has(field)) {\n            return whenAbsent;\n        }\n"
+    "        JsonNode node = body.get(field);\n"
+    "        return node.isNull() ? null : mapper.convertValue(node, type);\n    }\n\n"
+    "    private static String fit(String value, int length) {\n"
+    "        return value != null && value.length() > length ? value.substring(0, length) : value;\n    }\n\n"
+    "    private static java.math.BigDecimal scale(java.math.BigDecimal value, int digits) {\n"
+    "        return value == null ? null : value.setScale(digits, java.math.RoundingMode.HALF_UP);\n    }\n"
+)
+
+
+def _java_literal(value: object, java: str) -> str:
+    """A default of the legacy as a Java expression of the field's type."""
+    if value is None:
+        return "null"
+    if java == "String":
+        text = str(value).replace("\\", "\\\\").replace('"', '\\"')
+        return f'"{text}"'
+    if java == "java.math.BigDecimal":
+        return f'new java.math.BigDecimal("{value}")'
+    if java in ("Long", "long"):
+        return f"Long.valueOf({int(float(str(value)))}L)"
+    if java in ("Integer", "int"):
+        return f"Integer.valueOf({int(float(str(value)))})"
+    if java in ("Boolean", "boolean"):
+        return "Boolean.TRUE" if value in (True, 1, "1", "true", "True") else "Boolean.FALSE"
+    if java == "java.time.LocalDate":
+        return f'java.time.LocalDate.parse("{str(value)[:10]}")'
+    if java == "java.time.LocalDateTime":
+        return f'java.time.LocalDateTime.parse("{str(value).replace(" ", "T")}")'
+    return "null"
+
+
+def _contract(use_case: UseCase) -> tuple[str, str, str] | None:
+    """(handler parameter, lines that build the request, helper methods) when the use case replaces a legacy program
+    and takes a body: the request is built field by field from the JSON, with the semantics of the legacy's
+    signature (ADR-0056). None for the other use cases (the record binds as before)."""
+    if not use_case.legacy_program or use_case.http_method not in ("POST", "PUT", "PATCH"):
+        return None
+    arguments = []
+    for field in use_case.inputs:
+        java = java_type(field.type)
+        value = nt.parse(field.type)
+        absent = _java_literal(field.default, java) if field.defaulted else "null"
+        read = f'read(body, "{field.name}", {java}.class, {absent})'
+        if isinstance(value, nt.Text) and value.length:
+            read = f"fit({read}, {value.length})"
+        elif isinstance(value, nt.Decimal):
+            read = f"scale({read}, {value.scale})"
+        arguments.append(f"                {read}")
+    built = ",\n".join(arguments)
+    building = (
+        f"        {use_case.name}Request request = new {use_case.name}Request(\n{built});\n"
+        if arguments
+        else f"        {use_case.name}Request request = new {use_case.name}Request();\n"
+    )
+    return "@RequestBody(required = false) JsonNode body", building, _CONTRACT_HELPERS
 
 
 def _service_owned_controller(design: Design, use_case: UseCase, unit: Port) -> str:
@@ -217,21 +313,34 @@ def _service_owned_controller(design: Design, use_case: UseCase, unit: Port) -> 
     lines = ", ".join(f"rollback at {r.legacy_line}" for r in work.rollbacks) if work else ""
     doc = (f" The service owns the unit of work of the legacy (begin at {work.begins_at}, {lines}, commit at "
            f"{work.commits_at}) through the UnitOfWork port." if work else "")  # fmt: skip
+    contract = _contract(use_case)
+    parameter = f"{body}{use_case.name}Request request"
+    building = helpers = imports = mapper_field = mapper_parameter = mapper_init = ""
+    if contract is not None:
+        parameter, building, helpers = contract
+        doc += CONTRACT_DOC
+        imports = (
+            "import com.fasterxml.jackson.databind.JsonNode;\nimport com.fasterxml.jackson.databind.ObjectMapper;\n"
+        )
+        mapper_field, mapper_parameter = "    private final ObjectMapper mapper;\n", ", ObjectMapper mapper"
+        mapper_init = "        this.mapper = mapper;\n"
     return (
-        f"package {package};\n\nimport org.springframework.web.bind.annotation.*;\n\n"
+        f"package {package};\n\n{imports}import org.springframework.web.bind.annotation.*;\n\n"
         f"/** REST adapter of {use_case.name} (rules {', '.join(use_case.rules)}).{doc} */\n"
         f'@RestController\n@RequestMapping("/api/{design.context}")\n'
         f"public class {use_case.name}Controller {{\n\n"
-        f"    private final {service} service;\n    private final {adapter} unitOfWork;\n\n"
-        f"    public {use_case.name}Controller({service} service, {adapter} unitOfWork) {{\n"
-        "        this.service = service;\n        this.unitOfWork = unitOfWork;\n    }\n\n"
+        f"    private final {service} service;\n    private final {adapter} unitOfWork;\n{mapper_field}\n"
+        f"    public {use_case.name}Controller({service} service, {adapter} unitOfWork{mapper_parameter}) {{\n"
+        f"        this.service = service;\n        this.unitOfWork = unitOfWork;\n{mapper_init}    }}\n\n"
         f'    @{mapping}("{path}")\n'
-        f"    public {use_case.name}Response handle({body}{use_case.name}Request request) {{\n"
+        f"    public {use_case.name}Response handle({parameter}) {{\n"
+        f"{building}"
         "        try {\n"
         f"            {use_case.name}Response response = service.execute(request);\n"
         "            unitOfWork.commitIfActive();\n            return response;\n"
         "        } catch (RuntimeException e) {\n"
-        "            unitOfWork.rollbackIfActive();\n            throw e;\n        }\n    }\n}\n"
+        "            unitOfWork.rollbackIfActive();\n            throw e;\n        }\n    }\n"
+        f"{helpers}}}\n"
     )
 
 
@@ -253,82 +362,117 @@ def owns_transaction(port: Port) -> bool:
     return all(m in declared for m in UNIT_OF_WORK_METHODS)
 
 
+# ADR-0056 (phase B): the unit of work runs in the legacy's own transaction mode. `begin tran`, `commit tran` and
+# `rollback tran` are sent as T-SQL on one connection of the request's thread, with autocommit on (Sybase's
+# unchained mode, the mode the legacy's procedures and the ones they call were written for), instead of a JDBC
+# transaction (chained mode, which the legacy never ran in and which a called procedure may refuse). The connection
+# is bound to the thread so every JdbcTemplate call of the request, and every called program, runs on it.
 _TRANSACTION_METHODS = (
     "    @Override\n    public void begin() {\n"
-    "        if (status.get() != null) {\n"
+    "        if (open.get() != null) {\n"
     '            throw new IllegalStateException("the transaction is already open");\n        }\n'
-    "        status.set(manager.getTransaction(new DefaultTransactionDefinition()));\n        marks.clear();\n"
+    "        DataSource dataSource = java.util.Objects.requireNonNull(jdbc.getDataSource());\n"
+    "        boolean bound = TransactionSynchronizationManager.hasResource(dataSource);\n"
+    "        Connection connection = DataSourceUtils.getConnection(dataSource);\n"
+    "        if (!bound) {\n"
+    "            ConnectionHolder holder = new ConnectionHolder(connection);\n"
+    "            holder.setSynchronizedWithTransaction(true);\n"
+    "            TransactionSynchronizationManager.bindResource(dataSource, holder);\n"
+    "        }\n"
+    "        open.set(connection);\n        ownsBinding.set(!bound);\n        marks.remove();\n"
+    '        run(connection, "begin tran");\n'
     "    }\n\n"
     "    @Override\n    public void commit() {\n"
-    "        if (status.get() == null) {\n"
+    "        Connection connection = open.get();\n"
+    "        if (connection == null) {\n"
     '            throw new IllegalStateException("no transaction to commit");\n        }\n'
-    "        TransactionStatus open = status.get();\n        status.remove();\n        marks.clear();\n"
-    "        manager.commit(open);\n    }\n\n"
+    '        try {\n            run(connection, "commit tran");\n        } finally {\n'
+    "            release(connection);\n        }\n    }\n\n"
     "    @Override\n    public void rollback() {\n"
-    "        if (status.get() == null) {\n"
+    "        Connection connection = open.get();\n"
+    "        if (connection == null) {\n"
     '            throw new IllegalStateException("no transaction to roll back");\n        }\n'
-    "        TransactionStatus open = status.get();\n        status.remove();\n        marks.clear();\n"
-    "        manager.rollback(open);\n    }\n\n"
-    "    /** Confirms a transaction the use case left open (the caller's commit, in the legacy). */\n"
-    "    public void commitIfActive() {\n        if (status.get() != null) {\n            commit();\n        }\n"
-    "    }\n\n"
+    '        try {\n            run(connection, "rollback tran");\n        } finally {\n'
+    "            release(connection);\n        }\n    }\n\n"
+    "    /** Confirms a transaction the use case left open (the caller's commit, in the legacy); nothing when the "
+    "use case already closed it on the engine. */\n"
+    "    public void commitIfActive() {\n"
+    "        Connection connection = open.get();\n"
+    "        if (connection != null) {\n"
+    '            try {\n                run(connection, "if @@trancount > 0 commit tran");\n'
+    "            } finally {\n                release(connection);\n            }\n        }\n    }\n\n"
     "    /** Undoes a transaction a failure left open (the engine's rollback when a batch aborts). */\n"
-    "    public void rollbackIfActive() {\n        if (status.get() != null) {\n            rollback();\n        }\n"
-    "    }\n\n"
+    "    public void rollbackIfActive() {\n"
+    "        Connection connection = open.get();\n"
+    "        if (connection != null) {\n"
+    '            try {\n                run(connection, "if @@trancount > 0 rollback tran");\n'
+    "            } finally {\n                release(connection);\n            }\n        }\n    }\n\n"
+    "    private void release(Connection connection) {\n"
+    "        DataSource dataSource = java.util.Objects.requireNonNull(jdbc.getDataSource());\n"
+    "        boolean owned = Boolean.TRUE.equals(ownsBinding.get());\n"
+    "        open.remove();\n        ownsBinding.remove();\n        marks.remove();\n"
+    "        if (owned) {\n"
+    "            TransactionSynchronizationManager.unbindResource(dataSource);\n"
+    "            DataSourceUtils.releaseConnection(connection, dataSource);\n"
+    "        }\n    }\n\n"
+    "    private static void run(Connection connection, String sql) {\n"
+    "        try (java.sql.Statement statement = connection.createStatement()) {\n"
+    "            statement.execute(sql);\n"
+    "        } catch (SQLException e) {\n"
+    '            throw new IllegalStateException(sql + ": " + e.getMessage(), e);\n'
+    "        }\n    }\n\n"
 )
 
 
 def unit_of_work_adapter_file(design: Design, port: Port) -> tuple[str, str]:
     """Savepoints on the connection of the current transaction: `savepoint(name)` marks, `rollbackTo(name)` undoes
     the work since the mark and the use case goes on, as the legacy's `rollback tran <savepoint>` does. When the
-    port also declares `begin`, `commit` and `rollback` (phase F) the adapter owns the transaction through the
-    data source's transaction manager, so the service begins and ends it exactly where the legacy does."""
+    port also declares `begin`, `commit` and `rollback` (phase F) the adapter owns the transaction as T-SQL on a
+    connection bound to the request's thread, in the legacy's transaction mode (ADR-0056, phase B), so the service
+    begins and ends it exactly where and how the legacy does."""
     package = f"{design.base_package}.adapters.out.jdbc"
     owns = owns_transaction(port)
     transaction_imports = (
-        "import org.springframework.jdbc.datasource.DataSourceTransactionManager;\n"
-        "import org.springframework.transaction.PlatformTransactionManager;\n"
-        "import org.springframework.transaction.TransactionStatus;\n"
-        "import org.springframework.transaction.support.DefaultTransactionDefinition;\n"
+        "import javax.sql.DataSource;\n"
+        "import org.springframework.jdbc.datasource.ConnectionHolder;\n"
+        "import org.springframework.transaction.support.TransactionSynchronizationManager;\n"
         if owns
         else ""
     )
     transaction_fields = (
-        "    private final PlatformTransactionManager manager;\n"
-        "    private final ThreadLocal<TransactionStatus> status = new ThreadLocal<>();\n"
+        "    private final ThreadLocal<Connection> open = new ThreadLocal<>();\n"
+        "    private final ThreadLocal<Boolean> ownsBinding = new ThreadLocal<>();\n"
         if owns
         else ""
     )
-    transaction_init = (
-        "        this.manager = new DataSourceTransactionManager(\n"
-        "                java.util.Objects.requireNonNull(jdbc.getDataSource()));\n"
-        if owns
-        else ""
-    )
-    doc = ("the unit of work of the legacy (begin, commit, rollback and its savepoints), owned by the service"
+    transaction_init = ""
+    doc = ("the unit of work of the legacy (begin, commit, rollback and its savepoints), owned by the service and "
+           "run as T-SQL in the legacy's transaction mode"
            if owns else "the savepoints of the legacy on the transaction of the use case")  # fmt: skip
     return adapter_path(design, port), (
         f"package {package};\n\n"
         f"import {design.base_package}.domain.port.{port.name};\n"
         "import java.sql.Connection;\nimport java.sql.SQLException;\n"
-        "import java.util.HashMap;\nimport java.util.Map;\n"
+        "import java.util.HashSet;\nimport java.util.Set;\n"
         "import org.springframework.jdbc.core.JdbcTemplate;\n"
         "import org.springframework.jdbc.datasource.DataSourceUtils;\n"
         f"{transaction_imports}"
         "import org.springframework.stereotype.Repository;\n\n"
-        f"/** Generated by the platform (ADR-0055): {doc}. */\n"
+        f"/** Generated by the platform (ADR-0055): {doc}. The marks and the transaction belong to the request's "
+        "thread (ADR-0056): two concurrent requests never see each other's savepoints. */\n"
         f"@Repository\npublic class Jdbc{port.name} implements {port.name} {{\n\n"
-        "    private final JdbcTemplate jdbc;\n    private final Map<String, Boolean> marks = new HashMap<>();\n"
+        "    private final JdbcTemplate jdbc;\n"
+        "    private final ThreadLocal<Set<String>> marks = ThreadLocal.withInitial(HashSet::new);\n"
         f"{transaction_fields}\n"
         f"    public Jdbc{port.name}(JdbcTemplate jdbc) {{\n        this.jdbc = jdbc;\n{transaction_init}    }}\n\n"
         f"{_TRANSACTION_METHODS if owns else ''}"
         "    @Override\n    public void savepoint(String name) {\n"
-        '        try {\n            jdbc.execute("save tran " + label(name));\n            marks.put(name, true);\n'
+        '        try {\n            jdbc.execute("save tran " + label(name));\n            marks.get().add(name);\n'
         "        } catch (org.springframework.dao.DataAccessException e) {\n"
         '            throw new IllegalStateException("savepoint " + name + ": " + e.getMessage(), e);\n'
         "        }\n    }\n\n"
         "    @Override\n    public void rollbackTo(String name) {\n"
-        "        if (!marks.containsKey(name)) {\n"
+        "        if (!marks.get().contains(name)) {\n"
         '            throw new IllegalStateException("no savepoint " + name);\n        }\n'
         '        try {\n            jdbc.execute("rollback tran " + label(name));\n'
         "        } catch (org.springframework.dao.DataAccessException e) {\n"
@@ -482,10 +626,17 @@ def program_adapter_file(design: Design, port: Port) -> tuple[str, str]:
         f"import {design.base_package}.domain.port.{port.name};\n{imports}"
         "import org.springframework.jdbc.core.JdbcTemplate;\nimport org.springframework.stereotype.Repository;\n\n"
         f"/** Generated by the platform (ADR-0055, same database): {program} called where it lives, inside the "
-        "transaction of the use case; its return status decides, its output parameters come back. */\n"
+        "transaction of the use case; its return status decides, its output parameters come back. The messages it "
+        "raises (ADR-0056) are kept for the caller and never abort the call, as the legacy engine does not abort "
+        "the caller of a procedure that raises. */\n"
         f"@Repository\npublic class Jdbc{port.name} implements {port.name} {{\n\n"
-        "    private final JdbcTemplate jdbc;\n\n"
+        "    private final JdbcTemplate jdbc;\n"
+        "    private final ThreadLocal<java.util.List<String>> raised = "
+        "ThreadLocal.withInitial(java.util.ArrayList::new);\n\n"
         f"    public Jdbc{port.name}(JdbcTemplate jdbc) {{\n        this.jdbc = jdbc;\n    }}\n\n"
+        "    /** The messages the last call of this thread raised (raiserror), oldest first. */\n"
+        "    public java.util.List<String> messages() {\n"
+        "        return java.util.List.copyOf(raised.get());\n    }\n\n"
         + "\n".join(methods)
         + CALL_HELPER
         + "\n    private static <T> T nullable(Object value, java.util.function.Function<Object, T> convert) {\n"
@@ -495,36 +646,54 @@ def program_adapter_file(design: Design, port: Port) -> tuple[str, str]:
 
 # The batch of a legacy program may return result sets of its own (a substitute prints the call it received, a real
 # procedure may select rows) before the final SELECT with the status: the row that carries the status is the answer.
+# An error the program raises (raiserror) reaches the driver as an SQLException between results (ADR-0056): it is
+# kept as a message and the reading goes on to the status, as the legacy caller goes on; only a lost connection
+# (SQLState 08xxx) or a batch with no status at all fails the call.
 CALL_HELPER = (
     "\n    /** Runs the batch and returns the row of its last SELECT (the status and the outputs); the program's own"
-    " result sets are skipped. */\n"
+    " result sets are skipped and its raised messages are kept in {@link #messages()}. */\n"
     "    private java.util.Map<String, Object> call(String batch, Object... arguments) {\n"
+    "        raised.get().clear();\n"
     "        java.util.Map<String, Object> found = jdbc.execute("
     "(org.springframework.jdbc.core.ConnectionCallback<java.util.Map<String, Object>>) connection -> {\n"
     "            try (java.sql.PreparedStatement statement = connection.prepareStatement(batch)) {\n"
     "                for (int i = 0; i < arguments.length; i++) {\n"
     "                    statement.setObject(i + 1, arguments[i]);\n                }\n"
     "                java.util.Map<String, Object> last = null;\n"
-    "                boolean results = statement.execute();\n"
+    "                boolean results;\n"
+    "                try {\n                    results = statement.execute();\n"
+    "                } catch (java.sql.SQLException e) {\n"
+    "                    keep(e);\n                    results = statement.getMoreResults();\n                }\n"
     "                while (true) {\n"
-    "                    if (results) {\n"
-    "                        try (java.sql.ResultSet rs = statement.getResultSet()) {\n"
-    "                            java.sql.ResultSetMetaData meta = rs.getMetaData();\n"
-    "                            if (rs.next()) {\n"
-    "                                java.util.Map<String, Object> row = new java.util.LinkedHashMap<>();\n"
-    "                                for (int c = 1; c <= meta.getColumnCount(); c++) {\n"
-    "                                    row.put(meta.getColumnLabel(c), rs.getObject(c));\n"
-    "                                }\n"
-    f'                                if (row.containsKey("{SP_STATUS}")) {{\n'
-    "                                    last = row;\n"
-    "                                }\n                            }\n                        }\n"
-    "                    } else if (statement.getUpdateCount() == -1) {\n"
-    "                        break;\n                    }\n"
-    "                    results = statement.getMoreResults();\n                }\n"
+    "                    try {\n"
+    "                        if (results) {\n"
+    "                            try (java.sql.ResultSet rs = statement.getResultSet()) {\n"
+    "                                java.sql.ResultSetMetaData meta = rs.getMetaData();\n"
+    "                                if (rs.next()) {\n"
+    "                                    java.util.Map<String, Object> row = new java.util.LinkedHashMap<>();\n"
+    "                                    for (int c = 1; c <= meta.getColumnCount(); c++) {\n"
+    "                                        row.put(meta.getColumnLabel(c), rs.getObject(c));\n"
+    "                                    }\n"
+    f'                                    if (row.containsKey("{SP_STATUS}")) {{\n'
+    "                                        last = row;\n"
+    "                                    }\n                                }\n                            }\n"
+    "                        } else if (statement.getUpdateCount() == -1) {\n"
+    "                            break;\n                        }\n"
+    "                        results = statement.getMoreResults();\n"
+    "                    } catch (java.sql.SQLException e) {\n"
+    "                        keep(e);\n                        results = statement.getMoreResults();\n"
+    "                    }\n                }\n"
     "                return last;\n            }\n        });\n"
     "        if (found == null) {\n"
-    '            throw new IllegalStateException("the program returned no status");\n        }\n'
-    "        return found;\n    }\n"
+    '            throw new IllegalStateException("the program returned no status"\n'
+    '                    + (raised.get().isEmpty() ? "" : ": " + String.join("; ", raised.get())));\n        }\n'
+    "        return found;\n    }\n\n"
+    "    /** A message the program raised is kept; a connection failure is not a message of the program. */\n"
+    "    private void keep(java.sql.SQLException e) throws java.sql.SQLException {\n"
+    '        if (e.getSQLState() != null && e.getSQLState().startsWith("08")) {\n'
+    "            throw e;\n        }\n"
+    "        for (java.sql.SQLException next = e; next != null; next = next.getNextException()) {\n"
+    '            raised.get().add(next.getErrorCode() + ": " + next.getMessage());\n        }\n    }\n'
 )
 
 

@@ -190,10 +190,11 @@ def test_the_signature_of_every_call_the_program_makes_is_read_from_the_code() -
 
     files = [SourceFile("sp/sp_pago_orden.sp", FIXTURE.read_text(encoding="utf-8"))]
     found = SybaseAdapter().call_signatures(files, "sp_pago_orden")
-    parameters, receivers = found["sp_debito"]
+    parameters, receivers, outputs = found["sp_debito"]
     assert "@w_return" in receivers
     assert parameters
     assert all(p.startswith("@") for p in parameters)
+    assert outputs == {"@o_secuencial"}  # ADR-0056: the inputs the adapter must pass are the rest
     assert "sp_cerror" in found
     assert SybaseAdapter().call_signatures(files, "nope") == {}
 

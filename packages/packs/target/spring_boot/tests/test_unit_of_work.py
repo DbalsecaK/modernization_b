@@ -194,10 +194,18 @@ def test_when_the_unit_of_work_port_begins_and_ends_the_service_owns_the_transac
     port = next(p for p in design.ports if p.name == "UnitOfWork")
     assert owns_transaction(port)
     _, adapter = unit_of_work_adapter_file(design, port)
-    assert "new DataSourceTransactionManager(" in adapter
-    assert "status.set(manager.getTransaction(new DefaultTransactionDefinition()));" in adapter
+    # ADR-0056 (phase B): the transaction is the legacy's own T-SQL on a connection bound to the request's thread
+    # (unchained mode), not a JDBC transaction (chained mode the legacy never ran in).
+    assert "DataSourceTransactionManager" not in adapter
+    assert 'run(connection, "begin tran");' in adapter
+    assert 'run(connection, "commit tran");' in adapter
+    assert 'run(connection, "rollback tran");' in adapter
+    assert "TransactionSynchronizationManager.bindResource(dataSource, holder);" in adapter
+    assert "DataSourceUtils.releaseConnection(connection, dataSource);" in adapter
     assert "public void commitIfActive()" in adapter
+    assert 'run(connection, "if @@trancount > 0 commit tran");' in adapter
     assert "public void rollbackIfActive()" in adapter
+    assert 'run(connection, "if @@trancount > 0 rollback tran");' in adapter
     assert 'jdbc.execute("save tran " + label(name))' in adapter
     _, controller = controller_file(design, design.use_cases[0])
     assert "TransactionTemplate" not in controller
@@ -213,3 +221,66 @@ def test_when_the_unit_of_work_port_begins_and_ends_the_service_owns_the_transac
     # With savepoints only, the REST adapter wraps the use case as before.
     assert "transaction.execute(status -> service.execute(request))" in controller_file(DESIGN, PAY)[1]
     assert "@Transactional" in resource_file(DESIGN, PAY)[1]
+
+
+def test_the_rest_contract_comes_from_the_legacy_signature() -> None:
+    # ADR-0056 (phase D): a use case that replaces a legacy program reads its request as the program reads its
+    # arguments: a field absent from the body takes the parameter's default, an explicit null stays null, text is
+    # cut to the parameter's length and a decimal is brought to its scale. The record itself does not change.
+    data = json.loads(DESIGN.model_dump_json(by_alias=True))
+    use_case = data["use_cases"][0]
+    channel = next(f for f in use_case["inputs"] if f["legacy"] == "@i_canal")
+    channel.update({"defaulted": True, "default": "WEB"})
+    design = Design.model_validate(data)
+    _, controller = controller_file(design, design.use_cases[0])
+    assert "public PayOrderResponse handle(@RequestBody(required = false) JsonNode body)" in controller
+    assert f'read(body, "{channel["name"]}", String.class, "WEB")' in controller
+    assert "fit(read(body," in controller  # text inputs cut to the legacy length
+    assert "scale(read(body," in controller  # decimal inputs at the legacy scale
+    assert "private final ObjectMapper mapper;" in controller
+    assert "return transaction.execute(status -> service.execute(request));" in controller
+    assert "if (body == null || !body.has(field)) {" in controller
+    # The record keeps its shape, and a field without a default serialises as before.
+    assert "defaulted" not in json.dumps(json.loads(DESIGN.model_dump_json(by_alias=True)))
+    assert (
+        json.loads(design.model_dump_json(by_alias=True))["use_cases"][0]["inputs"][use_case["inputs"].index(channel)]
+        == channel
+    )
+    # A use case without a legacy program binds the record as before.
+    plain = _with(use_cases=[{**use_case, "legacy_program": None, "unit_of_work": None}])
+    assert "handle(@RequestBody PayOrderRequest request)" in controller_file(plain, plain.use_cases[0])[1]
+
+
+def test_the_savepoint_marks_belong_to_the_requests_thread() -> None:
+    # ADR-0056 (N2): a shared map of marks let one request roll back to a savepoint another request made; the
+    # marks live with the transaction status, per thread, and go away with it.
+    data = json.loads(DESIGN.model_dump_json(by_alias=True))
+    data["ports"].append({"name": "UnitOfWork", "methods": [
+        {"name": "begin", "inputs": [], "returns": None},
+        {"name": "commit", "inputs": [], "returns": None},
+        {"name": "rollback", "inputs": [], "returns": None},
+        {"name": "savepoint", "inputs": [{"name": "name", "type": "text(var,30,iso8859-1)"}], "returns": None},
+        {"name": "rollbackTo", "inputs": [{"name": "name", "type": "text(var,30,iso8859-1)"}], "returns": None},
+    ]})  # fmt: skip
+    design = Design.model_validate(data)
+    _, adapter = unit_of_work_adapter_file(design, next(p for p in design.ports if p.name == "UnitOfWork"))
+    assert "ThreadLocal<Set<String>> marks = ThreadLocal.withInitial(HashSet::new)" in adapter
+    assert "marks.get().add(name);" in adapter
+    assert "if (!marks.get().contains(name))" in adapter
+    assert adapter.count("marks.remove();") == 2  # begin, and the release after commit or rollback
+    assert "HashMap" not in adapter
+
+
+def test_the_program_adapter_keeps_the_messages_the_program_raises_and_reads_on_to_the_status() -> None:
+    # ADR-0056 (N1): a raiserror inside the called program reaches JDBC as an SQLException between results; the
+    # legacy caller goes on, so the adapter keeps the message, reads on to `select @nx_rc` and only a lost
+    # connection (SQLState 08xxx) fails the call.
+    same = _with(data_strategy="same_database")
+    debit = next(p for p in same.ports if p.legacy_program == "db_cuentas..sp_debito")
+    _, adapter = program_adapter_file(same, debit)
+    assert "ThreadLocal<java.util.List<String>> raised" in adapter
+    assert "public java.util.List<String> messages()" in adapter
+    assert "} catch (java.sql.SQLException e) {\n                        keep(e);\n" in adapter
+    assert 'e.getSQLState().startsWith("08")' in adapter
+    assert "results = statement.getMoreResults();" in adapter
+    assert 'String.join("; ", raised.get())' in adapter

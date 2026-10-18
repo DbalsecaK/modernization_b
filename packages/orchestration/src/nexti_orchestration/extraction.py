@@ -141,7 +141,7 @@ def _context(view: SliceView, types: dict[str, str]) -> str:
     return (
         f"File: {view.file}\nUnit: {view.unit}\nParameters this slice depends on: "
         f"{', '.join(view.parameters) or 'none'}\nTables: {', '.join(view.tables) or 'none'}\n"
-        f"Declared types (source -> neutral):\n{declared or '- none'}"
+        f"Declared types (source -> neutral):\n{declared or '- none'}" + (f"\n\n{view.note}" if view.note else "")
     )
 
 

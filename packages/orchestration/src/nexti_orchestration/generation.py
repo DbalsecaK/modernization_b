@@ -22,7 +22,7 @@ from pydantic import ValidationError
 from nexti_adapter_sybase.golden import parameter_defaults
 from nexti_agents import prompt
 from nexti_core.adapters import SourceFile
-from nexti_core.spec.characterization import GoldenMaster, engine_notes, quirk_cases
+from nexti_core.spec.characterization import GoldenMaster, engine_notes, program_key, quirk_cases, same_program
 from nexti_core.spec.model import Rule
 from nexti_orchestration import frontend, infrastructure
 from nexti_orchestration.context import Attempt, PhaseContext, Verification
@@ -79,10 +79,34 @@ def outcomes(run: Any, rules: Mapping[str, Sequence[str]]) -> list[CaseOutcome]:
                         c.failure) for c in run.cases]  # fmt: skip
 
 
+def with_parameter_defaults(design: Design, files: Sequence[SourceFile]) -> Design:
+    """The design with the defaults of the legacy signature on the inputs of every use case that replaces a program
+    (ADR-0056, phase D): the pack generates the contract from them (a request without the field takes the default,
+    an explicit null stays null), so the target's callers get what the legacy's callers got. Filled by the platform
+    from the source, never by the architect."""
+    use_cases = []
+    changed = False
+    for use_case in design.use_cases:
+        defaults = parameter_defaults(list(files), use_case.legacy_program) if use_case.legacy_program else {}
+        if not defaults:
+            use_cases.append(use_case)
+            continue
+        by_name = {k.lower(): v for k, v in defaults.items()}
+        inputs = []
+        for field in use_case.inputs:
+            key = (field.legacy or "").lower()
+            if key in by_name and not field.defaulted:
+                inputs.append(field.model_copy(update={"defaulted": True, "default": by_name[key]}))
+                changed = True
+            else:
+                inputs.append(field)
+        use_cases.append(use_case.model_copy(update={"inputs": inputs}))
+    return design.model_copy(update={"use_cases": use_cases}) if changed else design
+
+
 def _replaces(use_case: UseCase, master: GoldenMaster) -> bool:
     """Whether the use case is the one the golden master's program became (by legacy program, or the only one)."""
-    short = master.program.rsplit(".", 1)[-1].lower()
-    return (use_case.legacy_program or "").rsplit(".", 1)[-1].lower() == short or use_case.legacy_program is None
+    return same_program(use_case.legacy_program, master.program) or use_case.legacy_program is None
 
 
 ARCHITECT = "solution-architect"
@@ -534,13 +558,29 @@ def call_output_problems(design: Design, files: Sequence[SourceFile]) -> list[st
         for port in design.ports:
             if not port.legacy_program:
                 continue
-            signature = found.get(port.legacy_program.rsplit(".", 1)[-1].lower())
+            signature = found.get(program_key(port.legacy_program))
             if signature is None:
                 continue
-            parameters, receivers = signature
+            parameters, receivers, passed_outputs = signature
             for method in port.methods:
                 outputs = [method.legacy_output] if method.legacy_output else []
                 outputs += list(method.legacy_outputs.values())
+                # The adapter passes exactly what the legacy's calls pass (ADR-0056, N7): an input the calls never
+                # pass would reach the program as NULL where the legacy let its default apply, and one the calls
+                # pass but the method lacks would let the default apply where the legacy sent a value.
+                declared_inputs = {(f.legacy or "").lower() for f in method.inputs if f.legacy}
+                every_passed = {p.lower() for p in parameters}
+                passed_inputs = every_passed - {o.lower() for o in passed_outputs} - receivers
+                extra = sorted(declared_inputs - every_passed) if parameters else []
+                lacking = sorted(passed_inputs - declared_inputs) if parameters else []
+                if extra:
+                    problems.append(f"{port.name}.{method.name}: the calls of {port.legacy_program} in "
+                                    f"{use_case.legacy_program} never pass {', '.join(extra)}: drop these inputs, "
+                                    "the program takes its default for them")  # fmt: skip
+                if lacking:
+                    problems.append(f"{port.name}.{method.name}: the calls of {port.legacy_program} in "
+                                    f"{use_case.legacy_program} pass {', '.join(lacking)}, which no input of the "
+                                    "method maps: add them (the adapter passes what the legacy passes)")  # fmt: skip
                 for name in outputs:
                     if name.lower() == STATUS:
                         continue  # the call's return status, carried as data (ADR-0055, phase F)
@@ -840,6 +880,8 @@ class GenerationPhases:
                     )  # fmt: skip
             except ReplyError as exc:
                 raise PhaseFailedError(str(exc)[:1500]) from exc
+            if ctx.run.flow != "newFeature":
+                design = with_parameter_defaults(design, files)  # ADR-0056: the contract from the signature
             await self.port.save_design(design)
             summary = (f"{len(design.use_cases)} use case(s), {len(design.entities)} entities, "
                        f"{len(design.ports)} ports, {len(design.decisions)} decisions")  # fmt: skip

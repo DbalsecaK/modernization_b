@@ -12,7 +12,7 @@ import pytest
 from nexti_adapter_sybase import golden
 from nexti_adapter_sybase.ase import AseRunner, MissingGoldenMasterError, RecordedRunner
 from nexti_core.adapters import SourceFile
-from nexti_core.spec.characterization import Suite
+from nexti_core.spec.characterization import OMITTED, StubAnswer, Suite
 
 FIXTURES = Path(__file__).parent / "fixtures" / "pago_orden"
 FILES = [SourceFile("sp/sp_pago_orden.sp", (FIXTURES / "sp_pago_orden.sp").read_text(encoding="utf-8"))]
@@ -124,6 +124,45 @@ def test_a_call_the_rollback_undid_is_reported_apart_from_the_ones_in_the_final_
     broken = golden.observe(plan, "Msg 208, Level 16, State 1:\nServer 'MYSYBASE', Line 5:\nx..y not found.")
     assert broken.error is not None
     assert "Msg 208" in broken.error
+
+
+def test_a_substitute_tells_an_omitted_argument_from_an_explicit_null() -> None:
+    # ADR-0056 (N7): the inputs of a substitute default to a sentinel of their type instead of null, the log marks
+    # an omitted argument apart (`^`) and the call drops it, so a target that passes NULL where the legacy passed
+    # nothing differs. Outputs stay `= null`: they are always bound.
+    plan = golden.plan(FILES, SUITE)
+    script = golden.case_script(plan, SUITE.cases[0])
+    assert "create procedure dbo.sp_debito @i_cuenta char(10) = '~', @i_tipo char(3) = '~', " in script
+    assert "@i_valor money = -922337203685477.5807, @i_referencia varchar(255) = '~', " in script
+    assert "@o_secuencial int = null output as" in script
+    assert "case when @i_cuenta = '~' then '^' else case when @i_cuenta is null then '~'" in script
+    assert golden.sentinel("numeric(5,2)") == "-999.99"
+    assert golden.sentinel("numeric(3,3)") == "-0.999"
+    assert golden.sentinel("decimal") == "-999999999999999999"
+    assert golden.sentinel("tinyint") == "255"
+    assert golden.sentinel("smalldatetime") == "'2079-06-06 00:00:00'"
+    assert golden.sentinel("bit") is None
+    assert golden.sentinel("text") is None
+    assert golden.read_values("^|~|2:ab") == [OMITTED, None, "ab"]
+    output = "\n".join([" NXR|1:0", " NXC|db_cuentas..sp_debito|10:1000000001|^|8:100.0000|~", " NXKN|1",
+                        " NXK|db_cuentas..sp_debito|10:1000000001|^|8:100.0000|~"])  # fmt: skip
+    seen = golden.observe(plan, output)
+    assert seen.calls[0].arguments == {"@i_cuenta": "1000000001", "@i_valor": "100.0000", "@i_referencia": None}
+
+
+def test_a_substitute_raises_the_messages_the_case_declares_before_it_returns() -> None:
+    # ADR-0056 (N1): a case says the called program fails with raiserror; the substitute raises the same texts in
+    # the user range and then returns the status, so the legacy is observed going on (or not) exactly as with the
+    # real program, and the target has to do the same.
+    suite = _suite({"stubs": {"db_cuentas..sp_debito": [{"returns": 5, "messages": ["Saldo insuficiente"]}]}})
+    plan = golden.plan(FILES, suite)
+    script = golden.case_script(plan, suite.cases[0])
+    raised = f"raiserror {golden.STUB_MESSAGE_NUMBER} 'Saldo insuficiente'\n    return 5"
+    assert raised in script
+    assert script.index("insert nexti_gm..nx_call") < script.index(raised)
+    # The answer without messages serialises as before (the recordings keep their keys).
+    assert json.loads(StubAnswer(returns=5).model_dump_json()) == {"returns": 5, "outputs": {}}
+    assert json.loads(StubAnswer(messages=["x"]).model_dump_json()) == {"returns": 0, "outputs": {}, "messages": ["x"]}
 
 
 def test_the_recorded_golden_master_is_the_behaviour_of_the_legacy() -> None:
@@ -372,7 +411,7 @@ def test_the_same_engine_starts_on_a_private_network_and_hands_the_target_what_i
             assert target.network.startswith("nexti-eq-")
             assert target.name is not None
             assert target.name.startswith("nexti-ase-")
-            assert target.jdbc_url == f"jdbc:jtds:sybase://{target.name}:5000/nexti_gm"
+            assert target.jdbc_url == f"jdbc:jtds:sybase://{target.name}:5000/nexti_gm;prepareSQL=0"  # ADR-0056
             assert target.programs["db_cuentas..sp_debito"] == ["@i_cuenta", "@i_tipo", "@i_valor", "@i_referencia"]
             assert target.setup_for(SUITE.cases[0])[0] == "use nexti_gm"
             made = target.calls(

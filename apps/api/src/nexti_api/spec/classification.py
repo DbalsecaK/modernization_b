@@ -4,7 +4,7 @@ describes the code's structure like the graph does, so seeing the project is eno
 
 import json
 import uuid
-from typing import Annotated, Literal
+from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, Depends, Request
 from sqlalchemy import text
@@ -76,21 +76,44 @@ async def newest(conn: AsyncConnection, project_id: uuid.UUID, path: str) -> str
     return key
 
 
-async def coverage_warnings(request: Request, conn: AsyncConnection, project_id: uuid.UUID) -> list[str]:
-    """For the review before C1: business statements no slice reached or no rule cites (a warning, not a blocker:
-    a person decides whether they hold business logic the specification is missing)."""
+async def _coverage(request: Request, conn: AsyncConnection, project_id: uuid.UUID) -> dict[str, Any] | None:
     key = await newest(conn, project_id, COVERAGE)
     if key is None:
+        return None
+    found: dict[str, Any] = json.loads(b"".join(await services.store(request).read(key)))
+    return found
+
+
+def _shown(lines: list[str]) -> str:
+    return ", ".join(lines[:15]) + ("…" if len(lines) > 15 else "")
+
+
+async def coverage_warnings(request: Request, conn: AsyncConnection, project_id: uuid.UUID) -> list[str]:
+    """For the review before C1: business statements no slice reached (a warning: a person decides whether they
+    hold business logic the specification is missing) and the warnings of the guided extraction."""
+    found = await _coverage(request, conn, project_id)
+    if found is None:
         return []
-    found = json.loads(b"".join(await services.store(request).read(key)))
     statements = found.get("statements", [])
     unread = [str(c["line_start"]) for c in statements if not c["in_slice"]]
-    uncited = [str(c["line_start"]) for c in statements if c["in_slice"] and not c["cited"]]
     warnings = []
-    for count, lines, what in ((found.get("not_sliced", 0), unread, "reached no slice"),
-                               (found.get("not_cited", 0), uncited, "are cited by no rule")):  # fmt: skip
-        if count:
-            shown = ", ".join(lines[:15]) + ("…" if len(lines) > 15 else "")
-            warnings.append(f"{count} of {found.get('business', 0)} business statement(s) {what} (lines {shown})")
+    if found.get("not_sliced", 0):
+        warnings.append(f"{found['not_sliced']} of {found.get('business', 0)} business statement(s) reached no "
+                        f"slice (lines {_shown(unread)})")  # fmt: skip
     # Guided extraction (ADR-0033): too many P0 rules, instruction-shaped text in the source.
     return warnings + [str(w) for w in found.get("warnings", [])]
+
+
+async def coverage_blockers(request: Request, conn: AsyncConnection, project_id: uuid.UUID) -> list[str]:
+    """Why C1 cannot be approved by the coverage of the rules (ADR-0056): a business statement no rule cites is a
+    behaviour no rule asks the target to reproduce, so the golden master cannot be asked to prove it. The rules are
+    extracted again citing it, or the statement is classified as infrastructure; a person does not approve past
+    it."""
+    found = await _coverage(request, conn, project_id)
+    if found is None or not found.get("not_cited", 0):
+        return []
+    statements = found.get("statements", [])
+    uncited = [str(c["line_start"]) for c in statements if c["in_slice"] and not c["cited"]]
+    return [f"{found['not_cited']} of {found.get('business', 0)} business statement(s) are cited by no rule (lines "
+            f"{_shown(uncited)}): extract the rules again so each one is cited, or classify the statement as "
+            "infrastructure"]  # fmt: skip

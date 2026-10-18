@@ -72,6 +72,7 @@ class SliceView:
     lines: tuple[tuple[int, int], ...]
     parameters: tuple[str, ...] = ()
     tables: tuple[str, ...] = ()
+    note: str = ""  # what the agent is told about the slice beyond its code (ADR-0056: lines no rule cites)
 
 
 class SourceAdapter(Protocol):
