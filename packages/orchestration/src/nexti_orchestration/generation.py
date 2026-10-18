@@ -165,7 +165,11 @@ def legacy_names(files: Sequence[SourceFile]) -> set[str]:
     """Every identifier of the legacy source, lowercase: what the design may name as legacy. A COBOL name keeps its
     hyphens and is also known with underscores (ORD-NUMERO is ord_numero), the form traces and targets use."""
     names = {m.group(0).lower() for f in files for m in _NAME.finditer(f.text)}
-    names |= {m.group(0).lower().replace("-", "_") for f in files for m in _COBOL_NAME.finditer(f.text)}
+    # The hyphenated name as the source writes it (the architect copies `P015-EMPRESA` literally; a real CICS
+    # design was rejected 21 times for names that were in the code) and its underscore form.
+    cobol = [m.group(0).lower() for f in files for m in _COBOL_NAME.finditer(f.text)]
+    names |= set(cobol)
+    names |= {n.replace("-", "_") for n in cobol}
     return names
 
 

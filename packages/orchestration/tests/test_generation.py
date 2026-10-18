@@ -913,3 +913,15 @@ def test_a_program_that_returns_its_status_as_data_needs_a_status_output_and_the
     assert status_output_problems(Design.model_validate_json(DESIGN_JSON),
                                   [SourceFile("sp/sp_pago_orden.sp", SOURCE)]) == []  # fmt: skip
     assert status_output_problems(Design.model_validate(data), []) == []
+
+
+def test_cobol_names_are_known_with_their_hyphens_and_with_underscores() -> None:
+    # A real CICS design named P015-EMPRESA exactly as the copybook field appears in the program and the validator
+    # only knew p015_empresa: both forms are legacy names.
+    from nexti_orchestration.generation import _known, legacy_names
+
+    cobol = SourceFile("SSITP007.cbl", "MOVE P015-EMPRESA TO W-CONEMPRESA. MOVE M15CEMPI TO INSSI011-EMPRESA.")
+    names = legacy_names([cobol])
+    assert {"p015-empresa", "p015_empresa", "w-conempresa", "inssi011-empresa", "m15cempi"} <= names
+    assert _known("P015-EMPRESA", names)
+    assert _known("p015_empresa", names)
