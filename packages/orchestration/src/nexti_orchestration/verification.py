@@ -197,6 +197,9 @@ def _module(design: Design, master: GoldenMaster) -> UseCase:
     raise PhaseFailedError(f"No use case of the design replaces {master.program}: the use cases are {named}")
 
 
+VERDICT_DOC = "docs/verification/VERDICT.json"  # ADR-0056: the verdict travels with the delivery
+
+
 class VerificationPhases:
     def __init__(self, port: VerificationPort) -> None:
         self.port = port
@@ -340,6 +343,7 @@ class VerificationPhases:
         verdict = checks.compute(use_case.name, found, not_proven)
         pack = build_proof_pack(verdict, golden, fresh, traces, golden_run.build.junit_xml, extra)
         key = await self.port.save_verdict(verdict, pack)
+        await self._ship_golden_master(backend, design, use_case, golden_run, master, defaults, engine, verdict)
         passed = sum(1 for c in verdict.checks if c.status == "passed")
         summary = f"{use_case.name}: {verdict.verdict} ({passed} of {len(verdict.checks)} checks passed)"
         front = await self._frontend(ctx)
@@ -349,6 +353,23 @@ class VerificationPhases:
         if iac:
             summary += f"; {iac}"
         return {"summary": summary, "verdict": verdict.verdict, "proof_pack": key}
+
+    async def _ship_golden_master(
+        self, backend: BackendPack, design: Design, use_case: UseCase, golden_run: EquivalenceRun,
+        master: GoldenMaster, defaults: dict[str, Any], engine: Any | None, verdict: Verdict,
+    ) -> None:  # fmt: skip
+        """ADR-0056 (phase E): the delivery carries the evidence. The verdict as a document and, when the pack
+        knows how, the golden master as an integration test of the project (the harness, the cases, what the
+        platform observed), so the customer runs it on a test engine of the legacy and sees the same."""
+        if not hasattr(self.port, "save_artifacts"):
+            return
+        shipped: dict[str, str] = {}
+        ship = getattr(backend, "delivery_files", None)
+        if callable(ship):
+            shipped.update(ship(design, use_case, golden_run, master, defaults, engine))
+        shipped[VERDICT_DOC] = json.dumps(verification_document(verdict), ensure_ascii=False, indent=1, default=str)
+        layers = {p: "docs" if p.startswith("docs/") else backend.layer_of(p, design) for p in shipped}
+        await self.port.save_artifacts(shipped, layers, {})
 
     async def _frontend(self, ctx: PhaseContext) -> str:
         """The frontend's own verdict (ADR-0016): rebuilt from the stored files and checked screen by screen."""

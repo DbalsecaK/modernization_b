@@ -95,6 +95,9 @@ class EquivalenceRun:
     cases: list[CaseRun]
     masks: list[Mask]
     problem: str | None = None  # the harness could not run at all
+    # What the harness printed for each case, as it printed it (ADR-0056, phase E): the delivery ships it with the
+    # harness and the cases, so the customer can run the golden master on a test engine and see the same.
+    raw: dict[str, Any] = dc_field(default_factory=dict)
 
 
 def column_of(field_name: str, column: str | None) -> str:

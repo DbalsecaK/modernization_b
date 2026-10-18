@@ -136,3 +136,22 @@ def test_a_failed_push_leaves_the_zip_and_the_reason() -> None:
     assert (release.kind, release.status) == ("push", "failed")
     assert "could not be read" in (release.error or "")
     assert "secret-token" not in result.summary
+
+
+def test_with_the_same_database_the_release_carries_no_ddl_for_the_legacy_tables() -> None:
+    # ADR-0056 (phase E): the tables exist in the legacy's database; the schema.sql of the working files (the
+    # developers' view of the target schema) stays out of what the customer receives.
+    class SameDatabase(MemoryPort):
+        async def load_design(self) -> Design:
+            return Design.model_validate({**json.loads(DESIGN.model_dump_json(by_alias=True)),
+                                          "data_strategy": "same_database"})  # fmt: skip
+
+    port = SameDatabase()
+    port.files["src/main/resources/db/schema.sql"] = "CREATE TABLE payment_order (...);\n"
+    result = asyncio.run(ReleasePhases(port).delivery(_context("delivery")))
+    assert "ready to download (ZIP)" in result.summary
+    assert port.releases[0].files == 5  # the two generated files, the plan, the infrastructure: not the schema
+    plain = MemoryPort()
+    plain.files["src/main/resources/db/schema.sql"] = "CREATE TABLE payment_order (...);\n"
+    asyncio.run(ReleasePhases(plain).delivery(_context("delivery")))
+    assert plain.releases[0].files == 6

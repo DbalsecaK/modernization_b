@@ -362,3 +362,32 @@ def test_the_messages_of_the_called_programs_are_compared_in_canonical_form() ->
     assert actual.messages == expected.messages
     silent = actual_view(DESIGN, PAY, {"response": {}}, [], True, [])
     assert silent.messages == []
+
+
+def test_the_delivery_carries_the_golden_master_as_an_integration_test_of_the_project() -> None:
+    # ADR-0056 (phase E): the harness as a test, the plan without the platform's credentials, the cases and what
+    # the platform observed, so the customer runs the same golden master on a test engine of the legacy; with
+    # same_database, the datasource of that engine. Nothing when the harness did not run.
+    from nexti_core.spec.equivalence import EquivalenceRun
+    from nexti_pack_spring_boot.equivalence import delivery_files
+
+    raw = {r.case.name: {"name": r.case.name, "response": {"status": "0"}, "tables": {}, "messages": []}
+           for r in MASTER.results}  # fmt: skip
+    build = type("Build", (), {"compiled": True})()
+    run = EquivalenceRun(build, [], [], raw=raw)
+    same = Design.model_validate(
+        {**json.loads(DESIGN.model_dump_json(by_alias=True)), "data_strategy": "same_database"}
+    )
+    files = delivery_files(same, same.use_cases[0], run, MASTER)
+    assert "    static ObjectNode run(" in files["src/test/java/nexti/equivalence/EquivalenceHarness.java"]
+    assert "class GoldenMasterIT" in files["src/test/java/nexti/equivalence/GoldenMasterIT.java"]
+    assert "NEXTI_LEGACY_TEST_ENGINE" in files["src/test/java/nexti/equivalence/GoldenMasterIT.java"]
+    shipped_plan = json.loads(files["src/test/resources/golden-master/plan.json"])
+    assert (shipped_plan["jdbc_url"], shipped_plan["user"], shipped_plan["password"]) == ("", "", "")
+    cases = json.loads(files["src/test/resources/golden-master/cases.json"])
+    assert {c["name"] for c in cases} == set(raw)
+    expected = json.loads(files["src/test/resources/golden-master/expected.json"])
+    assert expected[MASTER.results[0].case.name] == {"response": {"status": "0"}, "tables": {}, "messages": []}
+    assert "prepareSQL=0" in files["src/main/resources/application-legacy.properties"]
+    assert "application-legacy.properties" not in " ".join(delivery_files(DESIGN, PAY, run, MASTER))
+    assert delivery_files(DESIGN, PAY, EquivalenceRun(build, [], [], "the harness did not run"), MASTER) == {}
