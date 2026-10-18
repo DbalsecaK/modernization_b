@@ -181,3 +181,18 @@ def test_a_slice_in_many_pieces_reads_as_blocks_and_a_short_one_is_left_as_it_is
     assert readable(pieces) == ((1, 198),)
     few = [(1, 2), (10, 12)]
     assert readable(few) == ((1, 2), (10, 12))
+
+
+def test_the_signature_of_every_call_the_program_makes_is_read_from_the_code() -> None:
+    # ADR-0055 (phase F): sp_pago_orden calls sp_debito by name and keeps its return status in @w_return; the
+    # design cannot map @w_return as an output parameter, the adapter would ask the program for it.
+    from nexti_core.adapters import SourceFile
+
+    files = [SourceFile("sp/sp_pago_orden.sp", FIXTURE.read_text(encoding="utf-8"))]
+    found = SybaseAdapter().call_signatures(files, "sp_pago_orden")
+    parameters, receivers = found["sp_debito"]
+    assert "@w_return" in receivers
+    assert parameters
+    assert all(p.startswith("@") for p in parameters)
+    assert "sp_cerror" in found
+    assert SybaseAdapter().call_signatures(files, "nope") == {}

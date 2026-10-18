@@ -464,6 +464,7 @@ def design_problems(
                         "they are; the target uses the legacy's driver, its qualified table names and calls its "
                         "procedures) or 'migration' (the data moves to the target database)")  # fmt: skip
     problems += data_strategy_target_problems(design, database, legacy)
+    problems += call_output_problems(design, files)
     if design.data_strategy == "same_database":
         renamed = [f"{e.name} ({e.table} vs {e.legacy_table})" for e in design.entities
                    if e.legacy_table and e.table and e.table != e.legacy_table]  # fmt: skip
@@ -501,6 +502,49 @@ def design_problems(
                             "program's inputs and returning every output it sets: an entity whose fields map to the "
                             "output parameters through `legacy_outputs` ({\"field\": \"@o_param\", ...}), or a "
                             f"single output through `legacy_output`: {'; '.join(split)}")  # fmt: skip
+    return problems
+
+
+def call_output_problems(design: Design, files: Sequence[SourceFile]) -> list[str]:
+    """An output a port method reads from a called program must be a parameter the program passes by name (ADR-0055,
+    phase F): the variable that receives the return status (`exec @rc = proc`) is not one, and a design that maps it
+    makes the generated adapter ask for a parameter the program does not have. A method that returns the status
+    declares `returns` int with no legacy_output."""
+    if not files:
+        return []
+    from nexti_orchestration.modernization import pick_adapter
+
+    try:
+        signatures = getattr(pick_adapter(list(files)), "call_signatures", None)
+    except Exception:
+        return []
+    if not callable(signatures):
+        return []
+    problems: list[str] = []
+    for use_case in design.use_cases:
+        if not use_case.legacy_program:
+            continue
+        found = signatures(list(files), use_case.legacy_program)
+        for port in design.ports:
+            if not port.legacy_program:
+                continue
+            signature = found.get(port.legacy_program.rsplit(".", 1)[-1].lower())
+            if signature is None:
+                continue
+            parameters, receivers = signature
+            for method in port.methods:
+                outputs = [method.legacy_output] if method.legacy_output else []
+                outputs += list(method.legacy_outputs.values())
+                for name in outputs:
+                    if name.lower() in receivers:
+                        problems.append(f"{port.name}.{method.name}: {name} is where {use_case.legacy_program} keeps "
+                                        f"the return status of {port.legacy_program}, not an output parameter: "
+                                        "declare the method with `returns` int and no legacy_output (the adapter "
+                                        "returns the status; a non-zero status is a failure)")  # fmt: skip
+                    elif parameters and name.lower() not in parameters:
+                        passed = ", ".join(sorted(parameters))
+                        problems.append(f"{port.name}.{method.name}: {name} is not a parameter of "
+                                        f"{port.legacy_program} (its calls pass {passed})")  # fmt: skip
     return problems
 
 
@@ -722,7 +766,7 @@ class GenerationPhases:
                         hints=guided_enabled(ctx.run.options), files=files, written=written_tables(files),
                         read=read_tables(files), guidance=stack_guidance(ctx.run.target),
                         package_root=ctx.run.target.get("package_root"),
-                        save=self._save_docs if guided_enabled(ctx.run.options) else None,
+                        save=self._save_docs,  # every run: a failed design can be diagnosed (ADR-0045)
                         database=str(ctx.run.target.get("database") or "") or None, legacy=legacy_name,
                     )  # fmt: skip
             except ReplyError as exc:
