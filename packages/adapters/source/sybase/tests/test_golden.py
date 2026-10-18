@@ -442,8 +442,10 @@ def test_a_statement_error_the_program_lived_through_is_a_message_not_a_failure_
     seen = golden.observe(plan, output)
     assert seen.error is None
     assert seen.returns == 50007
-    assert seen.messages == ["Msg 515: Server 'MYSYBASE', Procedure 'sp_pago_orden', Line 144: Attempt to insert NULL "
-                             "value into column 'ord_fecha_pago'; column does not allow nulls. Update fails."]  # fmt: skip
+    assert seen.messages == [
+        "Msg 515: Server 'MYSYBASE', Procedure 'sp_pago_orden', Line 144: Attempt to insert NULL value into column "
+        "'ord_fecha_pago'; column does not allow nulls. Update fails."
+    ]
     # A fatal error (level 17 and up), or a program that never returned, still fails the case.
     fatal = golden.observe(plan, "Msg 1105, Level 17, State 2:\nServer 'MYSYBASE':\nCan't allocate space.\n NXR|1:0")
     assert fatal.error is not None
