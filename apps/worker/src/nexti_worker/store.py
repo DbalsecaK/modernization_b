@@ -84,9 +84,13 @@ class DbRunStore:
         )
 
     async def phase_started(self, phase: str) -> bool:
+        # A phase that resumes after a wait drops the text of the wait ("N question(s) waiting for an answer"):
+        # the card of the run showed it as the phase's detail while the phase was already running again.
         result = await self._execute(
             "WITH old AS (SELECT status FROM phase_run WHERE run_id = :run AND phase = :phase FOR UPDATE) "
-            "UPDATE phase_run p SET status = 'running', started_at = COALESCE(p.started_at, now()), finished_at = NULL "
+            "UPDATE phase_run p SET status = 'running', started_at = COALESCE(p.started_at, now()), "
+            "finished_at = NULL, "
+            "detail = CASE WHEN old.status IN ('waiting', 'unavailable') THEN NULL ELSE p.detail END "
             "FROM old WHERE p.run_id = :run AND p.phase = :phase RETURNING old.status",
             {"phase": phase},
         )
