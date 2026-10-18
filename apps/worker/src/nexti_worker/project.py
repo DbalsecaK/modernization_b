@@ -163,8 +163,42 @@ class SourceRunner:
         if traced:
             return TraceRunner(branches=_branches)
         if self._engine is not None:
-            return self._engine()
+            runner = self._engine()
+            technology = _technology(files)
+            if not runs_technology(runner.engine, technology):
+                # The worker's engine is a Sybase ASE: handing it a COBOL/CICS program sent the test engineer
+                # round after round for "a program that is not in the source files". The phase waits instead,
+                # saying what this legacy needs (ADR-0052: never a silent change of mode).
+                raise LegacyUnavailableError(
+                    f"the worker's engine ({runner.engine}) runs Sybase ASE procedures, not {technology}: give the "
+                    "project recorded traces (traces/<program>.json) or a live system to observe it"
+                )
+            return runner
         raise LegacyUnavailableError("there is no engine to run this legacy and no recorded traces")
+
+
+# The source technologies each engine family runs (by the prefix of `LegacyRunner.engine`).
+ENGINE_TECHNOLOGIES: dict[str, frozenset[str]] = {
+    "sybase": frozenset({"sybase-ase"}),
+    "ibmi": frozenset({"rpg-ibmi"}),
+}
+
+
+def _technology(files: list[SourceFile]) -> str | None:
+    """The source technology of the inputs (the adapter's name), None when no adapter claims them."""
+    try:
+        return str(pick_adapter(files).name)
+    except Exception:
+        return None
+
+
+def runs_technology(engine: str, technology: str | None) -> bool:
+    """Whether an engine runs programs of a technology: an engine family with a known list runs only those; an
+    unknown engine or an unknown technology is not refused here (the engine itself says so when it runs)."""
+    if technology is None:
+        return True
+    family = next((f for f in ENGINE_TECHNOLOGIES if engine.lower().startswith(f)), None)
+    return family is None or technology in ENGINE_TECHNOLOGIES[family]
 
 
 async def check_legacy_execution(
