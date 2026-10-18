@@ -37,6 +37,12 @@ async def test_without_traces_the_given_engine_runs_or_the_phase_waits() -> None
     assert (master.engine, runner.engine) == ("sybase-ase-16.0", "sybase-ase-16.0")
     with pytest.raises(LegacyUnavailableError):
         await SourceRunner(None).run([], SUITE)
+    # A Sybase engine does not run a COBOL/CICS program: the phase waits for traces or a live system instead of
+    # blaming the test engineer for "a program that is not in the source files" (a real CICS project did, 5 times).
+    cobol = SourceFile("SSITP007.cbl", "       IDENTIFICATION DIVISION.\n       PROGRAM-ID. SSITP007.\n"
+                       "       PROCEDURE DIVISION.\n           EXEC CICS RETURN END-EXEC.\n")  # fmt: skip
+    with pytest.raises(LegacyUnavailableError, match="runs Sybase ASE procedures, not cobol-cics"):
+        await SourceRunner(Engine).run([cobol], Suite(program="SSITP007", cases=SUITE.cases))
 
 
 class LiveIbmi(Engine):
@@ -85,8 +91,9 @@ async def test_the_project_setting_chooses_traces_or_the_live_system_and_never_f
     without = LegacyExecution("live", "ibmi", config, None)
     with pytest.raises(LegacyUnavailableError, match="has no credentials"):
         await SourceRunner(Engine, setting(without), {"ibmi": factory}).run(SOURCE, SUITE)
-    # No setting (or `auto`) keeps the behaviour by inputs.
-    assert (await SourceRunner(Engine, setting(None)).run(SOURCE, SUITE)).engine == "sybase-ase-16.0"
+    # No setting (or `auto`) keeps the behaviour by inputs: the engine runs the technology it is for.
+    sybase = [SourceFile("sp/x.sp", "create procedure x as return 0")]
+    assert (await SourceRunner(Engine, setting(None)).run(sybase, SUITE)).engine == "sybase-ase-16.0"
 
 
 async def test_traced_rpg_brings_the_quirks_of_its_code() -> None:
