@@ -19,7 +19,7 @@ from nexti_core.spec.design import writes
 from nexti_core.spec.equivalence import EquivalenceRun
 from nexti_pack_spring_boot.design import Design, UseCase
 from nexti_pack_spring_boot.equivalence import harness_source, run_equivalence
-from nexti_pack_spring_boot.generate import _pascal, _path, _snake, java_type
+from nexti_pack_spring_boot.generate import _pascal, _path, _snake, java_type, owns_transaction, unit_of_work_port
 from nexti_pack_spring_boot.generate import skeleton as core_skeleton
 from nexti_pack_spring_boot.pack import SCHEMA, SpringBootPack
 from nexti_sandbox import Sandbox
@@ -54,7 +54,10 @@ def resource_file(design: Design, use_case: UseCase) -> tuple[str, str]:
         imports.append("jakarta.ws.rs.QueryParam")
     # ADR-0055: the unit of work of the legacy is the transaction of the request (a rejection undoes everything).
     # ADR-0055 (point 17): a use case that writes without a legacy makes the request its transaction too.
-    bounded = use_case.unit_of_work is not None or (use_case.legacy_program is None and writes(design, use_case))
+    unit = unit_of_work_port(design)
+    owned = unit is not None and owns_transaction(unit) and unit.name in use_case.ports
+    bounded = not owned and (use_case.unit_of_work is not None
+                             or (use_case.legacy_program is None and writes(design, use_case)))  # fmt: skip
     transactional = "    @Transactional\n" if bounded else ""
     if bounded:
         imports.append("jakarta.transaction.Transactional")

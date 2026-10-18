@@ -237,7 +237,9 @@ public final class EquivalenceHarness {
             if (answer.path("effects").size() > 0) { // ADR-0055: the effects of a substitute are rows of SQL tables
                 throw new IllegalStateException(name + ": the effects of a substitute are not supported on MongoDB");
             }
-            if (answer.path("returns").asInt(0) != 0) {
+            // A method that carries the status (a field mapped to `return`) receives it as data, as the legacy
+            // does; only a method that cannot carry it fails on a non-zero status (ADR-0055, phase F).
+            if (answer.path("returns").asInt(0) != 0 && !answer.path("carries_status").asBoolean(false)) {
                 throw new RuntimeException(name + " answered " + answer.path("returns").asInt());
             }
             JsonNode outputs = answer.path("outputs");

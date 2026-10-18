@@ -390,17 +390,21 @@ async def test_the_tests_travel_with_the_correction_and_failing_tests_do_not_sto
     # Attempt 1: the correction matches the legacy but a unit test contradicts it (build not ok, compiled): the
     # developer is told; attempt 2 aligns the test and everything passes.
     pack = FakePack(runs=[_run(3), _run(0), _run(0)], builds=[FakeBuild(ok=False), FakeBuild()])
-    aligned = _reply("v3") + f"\n### {TEST}\n```java\nclass T {{}}\n```"
+    aligned = f"### {TEST}\n```java\nclass T {{}}\n```"
     port = FakePort(replies=[_reply("v2"), aligned])
     ctx, _store = _ctx()
     files, result = await _converge(ctx, port, pack, {SERVICE: "v1", TEST: "class T { /* wrong */ }"})
     assert files[TEST] == "class T {}\n"
+    assert "/* v2 */" in files[SERVICE]  # the service that matched the legacy is the one kept
     assert result.differing == 0
     assert result.iterations == 2
     first, second = (r[1]["content"] for r in port.models.requests)
     assert f"### {TEST}" in first  # the test file is among the files involved
     assert "every case of the golden master matches, but" in second
     assert "align them with the program" in second
+    # Phase F: once the legacy is matched, only the test travels; the service is not shown nor changeable.
+    assert "change ONLY the test file" in second
+    assert f"### {SERVICE}" not in second
     assert "generation/convergence/attempt-1-request.md" in port.docs
     assert "generation/convergence/attempt-2-reply.md" in port.docs
 

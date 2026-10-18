@@ -21,7 +21,15 @@ Rules of the design:
   everything, or `savepoint:<name>` when it undoes part of the work and goes on. The platform generates the
   transaction boundary from it; never leave a rollback point out. When there are savepoints, declare a port named
   `UnitOfWork` with the methods `savepoint(name)` and `rollbackTo(name)` (text inputs, void): the platform
-  implements it and the service calls it where the legacy does.
+  implements it and the service calls it where the legacy does. When the program returns its status as data
+  (below), the same `UnitOfWork` port also has `begin()`, `commit()` and `rollback()` (no inputs, void): the
+  service begins, confirms and undoes the transaction exactly where the legacy does, because its error exit
+  undoes the work and still returns its outputs.
+- The program's own return status. When the legacy returns it as data (it returns an output parameter, or
+  returns 0 with the error code in an output parameter: `select @o_error = @w_num_error return 0`), the use case
+  declares an output field with `legacy: "return"` (type `integer(32,signed)`) and the target returns the status
+  and the outputs as the legacy does on every path; those error exits are not exceptions and are not listed as
+  `errors`. Only a program that fails (non-zero return status, no outputs) rejects with a business error.
 - `data_strategy`: `same_database` when the data and the programs the legacy calls stay where they are (the target
   uses the legacy's driver, its qualified table names as `table`, its columns as `column`, and calls its procedures
   through generated adapters) or `migration` when the data moves to the target database. Required.
@@ -36,9 +44,10 @@ Rules of the design:
   `legacy_program` and, when a method returns one of its output parameters, `legacy_output` (several: an entity
   with `legacy_outputs` on the METHOD, field -> output parameter); each use case has
   `legacy_program` and `legacy_message` (the output parameter that carries the message of a rejection).
-  The return status of a called program (`exec @rc = proc`) is not an output parameter: a method that returns
-  it declares `returns` "int" with no `legacy_output`; never map the caller's status variable (@w_return,
-  @rc...) as an output, the adapter raises a failure on a non-zero status.
+  The return status of a called program (`exec @rc = proc`) is data the program reads and acts on: map it with
+  the reserved legacy name `return` (a field of the result entity in `legacy_outputs`, e.g. `"returnCode":
+  "return"`, or `legacy_output: "return"` of a method that returns "int"); never map the caller's status
+  variable (@w_return, @rc...) as an output, it is not a parameter of the program.
   `infrastructure` lists the legacy programs that are only infrastructure (e.g. error logging).
 - `masks` only for differences with the legacy that are deliberate and explained (`path` like
   `outputs:@o_x`, `when` "always" or "rejected", `reason`). A reviewer approves them at C3 and the verdict lists

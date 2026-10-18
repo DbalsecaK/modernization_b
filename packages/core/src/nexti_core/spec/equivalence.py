@@ -12,6 +12,7 @@ the target never calls is not masked: it is a difference."""
 import json
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
+from dataclasses import field as dc_field
 from typing import Any
 
 from nexti_core.spec.characterization import Call, Case, GoldenMaster, Observation, Scalar, canonical
@@ -52,16 +53,22 @@ class EngineTarget:
     calls_query: str
     programs: dict[str, list[str]]  # program -> names of its input parameters, in order
     parse_args: Callable[[str], list[str | None]]
+    # program -> neutral type of each input parameter, in the order of `programs` (phase F: a `char(4)` the
+    # substitute logs as `C1  ` is the `C1` the characterization canonicalised; without the type every case differed)
+    types: dict[str, list[str | None]] = dc_field(default_factory=dict)
 
     def calls(self, rows: Sequence[dict[str, Any]]) -> list[Call]:
         found = []
         for row in rows:
             program = str(row.get("program") or "")
             values = self.parse_args(str(row.get("args") or "")) if row.get("args") is not None else []
-            names = self.programs.get(program.lower()) or self.programs.get(program) or []
-            found.append(
-                Call(program=program, arguments={n: canonical(None, v) for n, v in zip(names, values, strict=False)})
-            )
+            key = program.lower() if program.lower() in self.programs else program
+            names = self.programs.get(key) or []
+            kinds = self.types.get(key) or []
+            found.append(Call(program=program, arguments={
+                n: canonical(kinds[i] if i < len(kinds) else None, v)
+                for i, (n, v) in enumerate(zip(names, values, strict=False))
+            }))  # fmt: skip
         return found
 
 
@@ -95,6 +102,16 @@ def sql_literal(value: str | None, sql_type: str) -> str:
     return "CAST('" + value.replace("'", "''") + f"' AS {sql_type})"
 
 
+STATUS = "return"  # the reserved legacy name of a called program's return status (ADR-0055, phase F)
+
+
+def status_field(use_case: UseCase) -> Any | None:
+    """The output of the use case that carries the program's own return status (legacy name `return`, phase F):
+    a program whose error exit returns 0 with the code in an output parameter signals errors as data, and the
+    target returns the status and the outputs instead of throwing."""
+    return next((f for f in use_case.outputs if (f.legacy or "").lower() == STATUS), None)
+
+
 def target_case(
     design: Design,
     use_case: UseCase,
@@ -123,13 +140,26 @@ def target_case(
             continue
         answers = next((a for p, a in case.stubs.items() if p.lower() == port.legacy_program.lower()), [])
         output_name = next((m.legacy_output for m in port.methods if m.legacy_output), None)
-        # One call, every output (ADR-0043): the entity the method returns carries the program's outputs.
+        # One call, every output (ADR-0043): the entity the method returns carries the program's outputs. The
+        # reserved name `return` is the call's return status (ADR-0055, phase F): data the legacy reads and acts
+        # on, delivered by the fake instead of thrown.
         mapped = {field: legacy for m in port.methods for field, legacy in m.legacy_outputs.items()}
+        carries = output_name == STATUS or STATUS in mapped.values()
         stubs[port.name] = [
             {
                 "returns": a.returns,
-                "output": a.outputs.get(output_name) if output_name else None,
-                **({"outputs": {field: a.outputs.get(legacy) for field, legacy in mapped.items()}} if mapped else {}),
+                "output": (a.returns if output_name == STATUS else a.outputs.get(output_name)) if output_name else None,
+                **(
+                    {
+                        "outputs": {
+                            field: (a.returns if legacy == STATUS else a.outputs.get(legacy))
+                            for field, legacy in mapped.items()
+                        }
+                    }
+                    if mapped
+                    else {}
+                ),
+                **({"carries_status": True} if carries else {}),
                 **({"effects": effects} if (effects := target_effects(design, a.effects, sql_type)) else {}),
             }
             for a in answers
@@ -202,6 +232,7 @@ def masks(design: Design, use_case: UseCase, master: GoldenMaster) -> list[Mask]
         found += [Mask(f"tables:{table.name}.{c.name}", "the target does not keep this legacy column")
                   for c in table.columns if c.name.lower() not in kept]  # fmt: skip
     mapped = {(f.legacy or "").lower() for f in use_case.outputs} | {(use_case.legacy_message or "").lower()}
+    mapped.discard(STATUS)  # the status is `returns`, never an output parameter
     outputs = {o for r in master.results for o in r.observation.outputs}
     found += [Mask(f"outputs:{o}", "no output of the use case returns this legacy parameter")
               for o in sorted(outputs) if o.lower() not in mapped]  # fmt: skip
@@ -212,7 +243,7 @@ def masks(design: Design, use_case: UseCase, master: GoldenMaster) -> list[Mask]
     rejected_outputs = [
         f.legacy
         for f in use_case.outputs
-        if f.legacy and f.legacy.lower() != message and f"outputs:{f.legacy}".lower() not in masked_paths
+        if f.legacy and f.legacy.lower() not in (message, STATUS) and f"outputs:{f.legacy}".lower() not in masked_paths
     ]
     found += [Mask(f"outputs:{legacy}", REJECTED_REASON, "rejected") for legacy in rejected_outputs]
     # An output the program never assigns echoes what the caller passed (ADR-0044): not behaviour to reproduce.
@@ -285,7 +316,10 @@ def actual_view(
     already in legacy terms, filtered by the masks."""
     outputs: dict[str, str | None] = {}
     error = raw.get("error")
+    status = status_field(use_case)
     for field in use_case.outputs:
+        if field is status:
+            continue
         if field.legacy and not _masked(f"outputs:{field.legacy}", found, rejected):
             value = (raw.get("response") or {}).get(field.name) if error is None else None
             outputs[field.legacy] = canonical(field.type, value)
@@ -297,6 +331,10 @@ def actual_view(
     if error is not None:
         code = str(error.get("legacy_code") or "")
         returns = int(code) if code.lstrip("-").isdigit() else -1
+    elif status is not None:
+        # The program's own status as data (phase F): what the response says it returned, 0 when it says nothing.
+        text = canonical(status.type, (raw.get("response") or {}).get(status.name))
+        returns = int(text) if text is not None and text.lstrip("-").isdigit() else 0
     tables = {}
     for entity in design.entities:
         if not entity.table or not entity.legacy_table or _masked(f"tables:{entity.legacy_table}", found):

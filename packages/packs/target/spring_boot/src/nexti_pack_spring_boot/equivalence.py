@@ -21,7 +21,7 @@ from nexti_core.spec.equivalence import (
 from nexti_core.spec.equivalence import target_case as neutral_target_case
 from nexti_pack_spring_boot.build import LIMITS, compile_and_test
 from nexti_pack_spring_boot.design import Design, UseCase
-from nexti_pack_spring_boot.generate import adapter_path, sql_type
+from nexti_pack_spring_boot.generate import adapter_path, owns_transaction, sql_type, unit_of_work_port
 from nexti_sandbox import Sandbox
 
 __all__ = ["CaseRun", "EquivalenceRun", "Mask", "expected_view", "masks", "plan", "run_equivalence", "target_case"]
@@ -50,6 +50,10 @@ def plan(design: Design, use_case: UseCase, engine: EngineTarget | None = None) 
         adapter = adapter_path(design, port).split("src/main/java/", 1)[1] if real else None
         ports.append({"interface": f"{design.base_package}.domain.port.{name}",
                       "adapter": adapter.removesuffix(".java").replace("/", ".") if adapter else None})  # fmt: skip
+    # Phase F: with a UnitOfWork port that begins, commits and rolls back, the service owns the transaction and
+    # the harness does not wrap the use case (the legacy begins after some work and returns after committing).
+    unit = unit_of_work_port(design)
+    owned = unit is not None and owns_transaction(unit) and unit.name in use_case.ports
     tables = [e for e in design.entities if e.table]
     dump = {}
     for entity in tables:
@@ -62,6 +66,7 @@ def plan(design: Design, use_case: UseCase, engine: EngineTarget | None = None) 
             "service": f"{design.base_package}.application.{use_case.name}Service",
             "request": f"{design.base_package}.adapters.in.rest.{use_case.name}Request",
             "ports": ports, "reset": [], "dump": dump, "calls": engine.calls_query,
+            **({"service_transaction": True} if owned else {}),
         }  # fmt: skip
     return {
         "jdbc_url": JDBC_URL,
@@ -71,6 +76,7 @@ def plan(design: Design, use_case: UseCase, engine: EngineTarget | None = None) 
         "ports": ports,
         "reset": [f"TRUNCATE {', '.join(e.table for e in tables if e.table)}"] if tables else [],
         "dump": dump,
+        **({"service_transaction": True} if owned else {}),
     }
 
 
@@ -165,8 +171,11 @@ async def run_equivalence(
         "harness/cases.json": json.dumps(cases),
     }
     if engine is not None:
+        # Against the legacy's engine every case resets the engine and the call log travels with the output: more
+        # time and more output than a local run (phase F: the sandbox killed a 17-case run at 600 s).
         build = await compile_and_test(sandbox, files, extra_inputs=extra, after=engine_script(engine),
-                                       limits=replace(LIMITS, network=engine.network))  # fmt: skip
+                                       limits=replace(LIMITS, network=engine.network, timeout_seconds=1800,
+                                                      max_output_bytes=16 * 1024 * 1024))  # fmt: skip
     else:
         build = await compile_and_test(sandbox, files, extra_inputs=extra, after=SCRIPT)
     found = masks(design, use_case, master)

@@ -780,3 +780,81 @@ def test_an_entity_is_asked_only_for_the_columns_loaded_from_its_own_table() -> 
     (problem,) = [p for p in legacy_shape_problems(Design.model_validate(data), files) if "loads these" in p]
     assert problem.startswith("DetallePagos keeps db_otra..bp_detalle")
     assert "dt_tipo_cta" in problem
+
+
+def test_the_reserved_name_return_is_the_status_of_the_call() -> None:
+    # ADR-0055 (phase F): `return` is not a legacy name to check nor a parameter of the program: it is the status.
+    from nexti_orchestration.generation import _invented, call_output_problems
+
+    files = [SourceFile("sp/sp_pago_orden.sp", SOURCE)]
+    data = json.loads(DESIGN_JSON)
+    port = next(p for p in data["ports"] if p.get("legacy_program"))
+    port["methods"][0]["legacy_output"] = "return"
+    design = Design.model_validate(data)
+    assert call_output_problems(design, files) == []
+    assert "return" not in _invented(design, legacy_names(files))
+
+
+STATUS_SOURCE = """create procedure dbo.sp_debito_empresa
+(
+    @i_cuenta   char(10),
+    @i_aplcobis char(1),
+    @o_error    int output
+)
+as
+declare @w_num_error int, @w_return int
+begin tran
+update bp_orden set or_estado = 'P' where or_cuenta = @i_cuenta
+if @@error <> 0
+begin
+    select @w_num_error = 122002
+    goto lbl_error
+end
+commit tran
+select @o_error = 0
+return 0
+lbl_error:
+    if @@trancount > 0
+        rollback tran
+    if @i_aplcobis = 'S'
+    begin
+        exec cobis..sp_cerror @i_num = @w_num_error
+        return @w_num_error
+    end
+    select @o_error = @w_num_error
+    return 0
+"""
+
+
+def test_a_program_that_returns_its_status_as_data_needs_a_status_output_and_the_unit_of_work_port() -> None:
+    # Phase F of ADR-0055: the bank procedure of phase F returns 0 with the error in @o_error (and the code itself
+    # caller is COBIS); a target that threw read as a rejection in every such case. The design maps the status
+    # with `return` and, as the service commits and rolls back where the legacy does, owns the transaction.
+    from nexti_orchestration.generation import status_output_problems
+
+    files = [SourceFile("sp/sp_debito_empresa.sp", STATUS_SOURCE)]
+    data = json.loads(DESIGN_JSON)
+    use_case = data["use_cases"][0]
+    use_case["legacy_program"] = "dbo.sp_debito_empresa"
+    problems = status_output_problems(Design.model_validate(data), files)
+    assert len(problems) == 2
+    assert problems[0].startswith("PayOrder: dbo.sp_debito_empresa returns its status as data")
+    assert "declare a port named UnitOfWork with the void methods begin(), commit(), rollback()" in problems[1]
+    use_case["outputs"].append({"name": "status", "type": "text(var,10,iso8859-1)", "legacy": "return"})
+    data["ports"].append({"name": "UnitOfWork", "methods": [
+        {"name": "begin", "inputs": [], "returns": None},
+        {"name": "commit", "inputs": [], "returns": None},
+        {"name": "rollback", "inputs": [], "returns": None},
+        {"name": "savepoint", "inputs": [{"name": "name", "type": "text(var,30,iso8859-1)"}], "returns": None},
+        {"name": "rollbackTo", "inputs": [{"name": "name", "type": "text(var,30,iso8859-1)"}], "returns": None},
+    ]})  # fmt: skip
+    (wrong_type, not_listed) = status_output_problems(Design.model_validate(data), files)
+    assert wrong_type.startswith('PayOrder: the output status mapped to "return" is the return status')
+    assert not_listed == "PayOrder: the UnitOfWork port is not in the use case's ports"
+    use_case["outputs"][-1]["type"] = "integer(32,signed)"
+    use_case["ports"].append("UnitOfWork")
+    assert status_output_problems(Design.model_validate(data), files) == []
+    # sp_pago_orden rejects with a non-zero status and no outputs: the exception model fits, nothing is demanded.
+    assert status_output_problems(Design.model_validate_json(DESIGN_JSON),
+                                  [SourceFile("sp/sp_pago_orden.sp", SOURCE)]) == []  # fmt: skip
+    assert status_output_problems(Design.model_validate(data), []) == []

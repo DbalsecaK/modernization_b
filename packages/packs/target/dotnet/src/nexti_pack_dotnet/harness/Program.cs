@@ -154,7 +154,7 @@ public static class Harness
         throw new InvalidOperationException($"{serviceType.Name} has no constructor taking its {ports.Count} ports");
     }
 
-    static object Record(Type type, JsonElement values)
+    public static object Record(Type type, JsonElement values)
     {
         var constructor = type.GetConstructors().OrderByDescending(c => c.GetParameters().Length).First();
         var arguments = constructor.GetParameters().Select(p =>
@@ -248,12 +248,20 @@ public class FakePort : DispatchProxy
                 if (changed == 0) Apply!(effect.GetProperty("insert").GetString()!);
             }
         }
-        if (has && answer.TryGetProperty("returns", out var returns) && returns.ValueKind == JsonValueKind.Number
-            && returns.GetInt32() != 0)
+        var carriesStatus = has && answer.TryGetProperty("carries_status", out var carries)
+            && carries.ValueKind == JsonValueKind.True;
+        if (has && !carriesStatus && answer.TryGetProperty("returns", out var returns)
+            && returns.ValueKind == JsonValueKind.Number && returns.GetInt32() != 0)
         {
             throw new InvalidOperationException($"{Name} answered {returns.GetInt32()}");
         }
         if (method.ReturnType == typeof(void)) return null;
+        // One call, every output (ADR-0043): the entity the method returns, built from the outputs of the case
+        // (the status among them when the design maps it to `return`, ADR-0055 phase F).
+        if (has && answer.TryGetProperty("outputs", out var outputs) && outputs.ValueKind == JsonValueKind.Object)
+        {
+            return Harness.Record(Nullable.GetUnderlyingType(method.ReturnType) ?? method.ReturnType, outputs);
+        }
         string? output = null;
         if (has && answer.TryGetProperty("output", out var value) && value.ValueKind != JsonValueKind.Null)
         {

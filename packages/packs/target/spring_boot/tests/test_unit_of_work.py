@@ -84,8 +84,8 @@ def test_the_savepoints_of_the_legacy_are_a_generated_port_adapter() -> None:
     port = next(p for p in design.ports if p.name == "UnitOfWork")
     path, adapter = unit_of_work_adapter_file(design, port)
     assert path == "src/main/java/com/bancoficticio/payments/adapters/out/jdbc/JdbcUnitOfWork.java"
-    assert "connection().setSavepoint(name)" in adapter
-    assert "connection().rollback(mark)" in adapter
+    assert 'jdbc.execute("save tran " + label(name))' in adapter  # the engine's own savepoint (phase F)
+    assert 'jdbc.execute("rollback tran " + label(name))' in adapter
     assert "DataSourceUtils.getConnection" in adapter
     assert skeleton(design)[path] == adapter
     # A rollback that names a savepoint the use case does not declare is refused by the design itself.
@@ -132,3 +132,84 @@ def test_a_program_method_that_returns_a_scalar_without_an_output_returns_the_st
     data["methods"][0]["returns"] = "boolean"
     _, adapter = program_adapter_file(DESIGN, Port.model_validate(data))
     assert "return status == 0;" in adapter
+
+
+def test_the_generated_adapter_returns_the_status_as_data_and_marks_savepoints_with_t_sql() -> None:
+    # ADR-0055 (phase F): a result entity field mapped to `return` is filled from the return status and the
+    # adapter does not throw on a non-zero one; the savepoints use the engine's own `save tran`.
+    data = json.loads(DESIGN.model_dump_json(by_alias=True))
+    port = next(p for p in data["ports"] if p.get("legacy_program"))
+    data["entities"].append(
+        {
+            "name": "DebitResult",
+            "key": [],
+            "fields": [
+                {"name": "status", "type": "integer(32,signed)", "legacy": "return"},
+                {"name": "sequence", "type": "integer(64,signed)", "legacy": "@o_secuencial"},
+            ],
+        }
+    )
+    port["methods"][0].update(
+        {
+            "returns": "DebitResult",
+            "legacy_output": None,
+            "legacy_outputs": {"status": "return", "sequence": "@o_secuencial"},
+        }
+    )
+    design = Design.model_validate(data)
+    _, adapter = program_adapter_file(design, next(p for p in design.ports if p.legacy_program))
+    assert "answered" not in adapter  # the status is data
+    assert "(Object) status" in adapter
+    assert "@o_secuencial = @o_secuencial output" in adapter
+    assert "return = return output" not in adapter
+    name = {"name": "name", "type": "text(var,40,utf8)"}
+    unit_port = {"name": "UnitOfWork", "methods": [{"name": "savepoint", "inputs": [name]},
+                                                   {"name": "rollbackTo", "inputs": [name]}]}  # fmt: skip
+    with_work = _with(ports=[*json.loads(DESIGN.model_dump_json(by_alias=True))["ports"], unit_port])
+    work_port = next(p for p in with_work.ports if p.name == "UnitOfWork")
+    _, unit = unit_of_work_adapter_file(with_work, work_port)
+    assert 'jdbc.execute("save tran " + label(name))' in unit
+    assert 'jdbc.execute("rollback tran " + label(name))' in unit
+    assert "setSavepoint" not in unit
+
+
+def test_when_the_unit_of_work_port_begins_and_ends_the_service_owns_the_transaction() -> None:
+    # Phase F: the legacy begins its transaction after some work and returns its status after committing or
+    # rolling back; with begin/commit/rollback on the UnitOfWork port the platform's adapter owns the transaction,
+    # nothing wraps the use case (REST adapter, Quarkus resource, harness) and a failure only closes what is open.
+    from nexti_pack_spring_boot.equivalence import harness_source, plan
+    from nexti_pack_spring_boot.generate import owns_transaction
+    from nexti_pack_spring_boot.quarkus import resource_file
+
+    data = json.loads(DESIGN.model_dump_json(by_alias=True))
+    data["ports"].append({"name": "UnitOfWork", "methods": [
+        {"name": "begin", "inputs": [], "returns": None},
+        {"name": "commit", "inputs": [], "returns": None},
+        {"name": "rollback", "inputs": [], "returns": None},
+        {"name": "savepoint", "inputs": [{"name": "name", "type": "text(var,30,iso8859-1)"}], "returns": None},
+        {"name": "rollbackTo", "inputs": [{"name": "name", "type": "text(var,30,iso8859-1)"}], "returns": None},
+    ]})  # fmt: skip
+    data["use_cases"][0]["ports"].append("UnitOfWork")
+    design = Design.model_validate(data)
+    port = next(p for p in design.ports if p.name == "UnitOfWork")
+    assert owns_transaction(port)
+    _, adapter = unit_of_work_adapter_file(design, port)
+    assert "new DataSourceTransactionManager(" in adapter
+    assert "status.set(manager.getTransaction(new DefaultTransactionDefinition()));" in adapter
+    assert "public void commitIfActive()" in adapter
+    assert "public void rollbackIfActive()" in adapter
+    assert 'jdbc.execute("save tran " + label(name))' in adapter
+    _, controller = controller_file(design, design.use_cases[0])
+    assert "TransactionTemplate" not in controller
+    assert "unitOfWork.commitIfActive();" in controller
+    assert "unitOfWork.rollbackIfActive();" in controller
+    assert "The service owns the unit of work of the legacy (begin at 108" in controller
+    assert plan(design, design.use_cases[0])["service_transaction"] is True
+    assert "service_transaction" not in plan(DESIGN, PAY)
+    assert 'plan.path("service_transaction").asBoolean(false)' in harness_source()
+    assert 'plan.path("service_transaction").asBoolean(false)' in harness_source("quarkus")
+    _, resource = resource_file(design, design.use_cases[0])
+    assert "@Transactional" not in resource
+    # With savepoints only, the REST adapter wraps the use case as before.
+    assert "transaction.execute(status -> service.execute(request))" in controller_file(DESIGN, PAY)[1]
+    assert "@Transactional" in resource_file(DESIGN, PAY)[1]

@@ -100,8 +100,10 @@ async def compile_and_test(
         return BuildResult(False, errors.replace("/work/p/", "").strip(), duration_ms=result.duration_ms)
     if "===DONE===" not in out:
         detail = (result.stderr or out)[-3000:]
-        return BuildResult(False, f"the build did not finish (exit {result.exit_code}): {detail}",
-                           duration_ms=result.duration_ms)  # fmt: skip
+        why = f"timed out after {limits.timeout_seconds} s" if result.timed_out else f"exit {result.exit_code}"
+        if result.truncated:
+            why += ", output truncated"
+        return BuildResult(False, f"the build did not finish ({why}): {detail}", duration_ms=result.duration_ms)
     xml = out.split(REPORT_START, 1)[1].split("===AFTER===", 1)[0] if REPORT_START in out else ""
     after_output = out.split("===AFTER===", 1)[1].split("===DONE===", 1)[0] if "===AFTER===" in out else ""
     return BuildResult(True, tests=parse_junit(xml), junit_xml=xml.strip(), duration_ms=result.duration_ms,

@@ -13,14 +13,14 @@
     "legacy_covered": "not_checked"
   },
   "details": {
-    "tests_ran": "61 test(s) passed in a clean build (JUnit XML)",
+    "tests_ran": "60 test(s) passed in a clean build (JUnit XML)",
     "rules_traced": "rules without a matching golden case: RULE-012",
     "same_behaviour": "17 golden case(s) reproduced",
     "fresh_inputs": "12 fresh input(s) matched on both sides",
-    "canary": "line 22 changed (private static final BigDecimal OVERDRAFT_MARGIN = new BigDecimal(\"100.01\");) turned test non_vir_account_one_cent_beyond_margin_is_rejected_rule_007() red",
+    "canary": "line 111 changed (.setScale(2, RoundingMode.DOWN);) turned test rule005_web_channel_smallest_tariff_rounds_half_up() red",
     "source_intact": "the legacy is the code that was characterized (SHA-256)",
     "behaviour_boundary": "the equivalence compares the calls the legacy made and its own tables, not the final state of the database after the called programs ran; the called programs were stubs, their own logic and effects were not verified: cobis..sp_cerror, db_cuentas..sp_debito; the legacy has a unit of work (begin/save/commit/rollback at lines 108, 119, 136, 155, 161): whether the target keeps or undoes the same work was not verified",
-    "legacy_covered": "1 gap(s) of the legacy no case covers, accepted as not proven by cd52086a-fd2c-4a28-8130-071d241dc94d"
+    "legacy_covered": "1 gap(s) of the legacy no case covers, accepted as not proven by 8628eed7-841e-46ad-b5af-e5505eb47430"
   },
   "not_proven": [
     "Declared mask calls:cobis..sp_cerror (always): declared infrastructure by the design: the target framework replaces it (6.2)",
@@ -29,16 +29,18 @@
     "RULE-012: declared unreachable by the test engineer, no case enters it (The update uses the same key (ord_numero, ord_empresa) as the lookup that already proved the row exists, within the same transaction, so it always affects exactly one row. The stubs cannot delete that row or make the UPDATE fail, so neither @w_error <> 0 nor @w_rowcount = 0 can occur.)",
     "Legacy coverage: 25 of 26 measurable branches exercised",
     "Branch not exercised by any case: lines 154-159 (if-true)",
-    "Target coverage: 124 of 150 executable lines of the target run by the golden master cases (jacoco)",
+    "Target coverage: 136 of 165 executable lines of the target run by the golden master cases (jacoco)",
     "Target code no golden case runs (logic the legacy may not have, or a case the suite misses): src/main/java/com/bank/payments/PaymentsApplication.java lines 7-11",
     "Target code no golden case runs (logic the legacy may not have, or a case the suite misses): src/main/java/com/bank/payments/adapters/in/rest/PayOrderController.java lines 14-21",
-    "Target code no golden case runs (logic the legacy may not have, or a case the suite misses): src/main/java/com/bank/payments/adapters/out/jdbc/JdbcDebitGateway.java lines 23-47",
-    "Target code no golden case runs (logic the legacy may not have, or a case the suite misses): src/main/java/com/bank/payments/application/PayOrderService.java lines 142-143",
-    "Target code no golden case runs (logic the legacy may not have, or a case the suite misses): src/main/java/com/bank/payments/application/PayOrderService.java lines 146-146",
-    "Target code no golden case runs (logic the legacy may not have, or a case the suite misses): src/main/java/com/bank/payments/application/PayOrderService.java lines 164-164",
+    "Target code no golden case runs (logic the legacy may not have, or a case the suite misses): src/main/java/com/bank/payments/adapters/out/jdbc/JdbcDebitGateway.java lines 28-50",
+    "Target code no golden case runs (logic the legacy may not have, or a case the suite misses): src/main/java/com/bank/payments/application/PayOrderService.java lines 46-46",
+    "Target code no golden case runs (logic the legacy may not have, or a case the suite misses): src/main/java/com/bank/payments/application/PayOrderService.java lines 50-50",
+    "Target code no golden case runs (logic the legacy may not have, or a case the suite misses): src/main/java/com/bank/payments/application/PayOrderService.java lines 153-154",
+    "Target code no golden case runs (logic the legacy may not have, or a case the suite misses): src/main/java/com/bank/payments/application/PayOrderService.java lines 177-178",
+    "Target code no golden case runs (logic the legacy may not have, or a case the suite misses): src/main/java/com/bank/payments/application/PayOrderService.java lines 181-181",
     "Target code no golden case runs (logic the legacy may not have, or a case the suite misses): src/main/java/com/bank/payments/config/Wiring.java lines 8-12",
     "Behaviour boundary: the equivalence compares the calls the legacy made and its own tables, not the final state of the database after the called programs ran; the called programs were stubs, their own logic and effects were not verified: cobis..sp_cerror, db_cuentas..sp_debito; the legacy has a unit of work (begin/save/commit/rollback at lines 108, 119, 136, 155, 161): whether the target keeps or undoes the same work was not verified",
-    "Legacy covered: 1 gap(s) of the legacy no case covers, accepted as not proven by cd52086a-fd2c-4a28-8130-071d241dc94d"
+    "Legacy covered: 1 gap(s) of the legacy no case covers, accepted as not proven by 8628eed7-841e-46ad-b5af-e5505eb47430"
   ],
   "evaluation": {
     "reference": "pago_orden (Banco Ficticio, fictitious)",
@@ -77,7 +79,7 @@
     "precision": 0.615
   },
   "model_calls": 59,
-  "cost_usd": "1.63354400",
+  "cost_usd": "1.61667000",
   "decisions": [
     "questions",
     "C1",
