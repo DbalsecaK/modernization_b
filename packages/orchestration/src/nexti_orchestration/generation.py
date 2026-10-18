@@ -104,9 +104,40 @@ def with_parameter_defaults(design: Design, files: Sequence[SourceFile]) -> Desi
     return design.model_copy(update={"use_cases": use_cases}) if changed else design
 
 
-def _replaces(use_case: UseCase, master: GoldenMaster) -> bool:
-    """Whether the use case is the one the golden master's program became (by legacy program, or the only one)."""
-    return same_program(use_case.legacy_program, master.program) or use_case.legacy_program is None
+def program_use_case(design: Design, program: str) -> UseCase | None:
+    """The use case the legacy program became: the one that names it, or the only use case of the design. The
+    convergence of the generation and the verification prove this one, so both judge the same service (a run
+    converged every use case without a legacy program, and every one that named the program, against every case
+    of the program, while the verification proved only the first)."""
+    matching = [u for u in design.use_cases if same_program(u.legacy_program, program)]
+    if matching:
+        return matching[0]
+    return design.use_cases[0] if len(design.use_cases) == 1 else None
+
+
+def _replaces(use_case: UseCase, design: Design, master: GoldenMaster) -> bool:
+    """Whether the use case is the one the golden master's program became."""
+    return program_use_case(design, master.program) is use_case
+
+
+def split_program_problems(design: Design) -> list[str]:
+    """A legacy program becomes one use case (all source languages): every case of its golden master is a whole run
+    of the program (a CICS transaction from its first screen to its last, a procedure from its call to its
+    return), so only the use case that does all of it can reproduce them. A design that split one program into
+    several use cases had one of them (the first screen of a CICS program) compared against every case of the
+    program and it could never pass."""
+    by_program: dict[str, list[str]] = {}
+    for use_case in design.use_cases:
+        if use_case.legacy_program:
+            by_program.setdefault(program_key(use_case.legacy_program), []).append(use_case.name)
+    return [
+        f"use cases {', '.join(names)} all replace the legacy program {key.upper()}: one use case replaces one "
+        "program, because the golden master runs the whole program on every case (each screen, paragraph or "
+        "branch is a step of that one service): merge them into one use case with the inputs and outputs of the "
+        "whole program"
+        for key, names in by_program.items()
+        if len(names) > 1
+    ]
 
 
 ARCHITECT = "solution-architect"
@@ -517,6 +548,7 @@ def design_problems(
         problems.append(f"methods of ports that replace a legacy program need the argument of each input: "
                         f"{', '.join(sorted(set(external)))}")  # fmt: skip
     problems += unit_of_work_problems(design, files)
+    problems += split_program_problems(design)
     if (
         files
         and design.data_strategy is None
@@ -1056,7 +1088,7 @@ class GenerationPhases:
                 # legacy's engine when the data stays there (a Sybase design has no schema for PostgreSQL).
                 async with same_engine(design, source, master) as engine:
                     for use_case in design.use_cases:
-                        if not _replaces(use_case, master):
+                        if not _replaces(use_case, design, master):
                             continue
                         piece = ctx.for_shard(f"converge:{use_case.name}")
                         case_rules = {r.case.name: r.case.rules for r in master.results}

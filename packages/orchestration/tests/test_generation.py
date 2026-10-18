@@ -937,3 +937,28 @@ def test_cobol_names_are_known_with_their_hyphens_and_with_underscores() -> None
     assert {"p015-empresa", "p015_empresa", "w-conempresa", "inssi011-empresa", "m15cempi"} <= names
     assert _known("P015-EMPRESA", names)
     assert _known("p015_empresa", names)
+
+
+def test_one_legacy_program_becomes_one_use_case_and_generation_converges_the_one_verification_proves() -> None:
+    # ADR-0056: a CICS design split PAGOORD into its first screen and its processing; the first-screen use case was
+    # compared against every trace of the program (payments included) and escalated. Every case of a golden master
+    # is a whole run of the program, so one use case replaces it, and generation converges the one verification
+    # proves (not every use case that names the program or names none).
+    from nexti_core.spec.characterization import GoldenMaster, Schema
+    from nexti_orchestration.generation import _replaces, program_use_case, split_program_problems
+
+    design = Design.model_validate_json(DESIGN_JSON)
+    data = design.model_dump(mode="json")
+    first = {**data["use_cases"][0], "name": "StartOrderEntry", "legacy_program": "PAGOORD"}
+    rest = {**data["use_cases"][0], "name": "ProcessOrderEntry", "legacy_program": "pagoord.cbl"}
+    split = Design.model_validate({**data, "use_cases": [first, rest]})
+    (problem,) = split_program_problems(split)
+    assert "StartOrderEntry, ProcessOrderEntry all replace the legacy program PAGOORD" in problem
+    assert split_program_problems(design) == []
+
+    master = GoldenMaster(program="PAGOORD", source_sha256="0" * 64, engine="x", schema_=Schema(), results=[])
+    assert program_use_case(split, "PAGOORD") is split.use_cases[0]
+    assert [u.name for u in split.use_cases if _replaces(u, split, master)] == ["StartOrderEntry"]
+    other = {**data["use_cases"][0], "name": "NewFeature", "legacy_program": None}
+    mixed = Design.model_validate({**data, "use_cases": [{**first, "name": "Entry"}, other]})
+    assert [u.name for u in mixed.use_cases if _replaces(u, mixed, master)] == ["Entry"]  # not the new feature

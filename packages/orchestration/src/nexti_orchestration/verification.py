@@ -18,7 +18,6 @@ from nexti_core.spec.characterization import (
     Suite,
     engine_not_proven,
     legacy_gaps,
-    same_program,
     source_digest,
     unresolved_quirks,
 )
@@ -201,11 +200,11 @@ def target_not_run(measured: TargetCoverage) -> list[str]:
 
 
 def _module(design: Design, master: GoldenMaster) -> UseCase:
-    matching = [u for u in design.use_cases if same_program(u.legacy_program, master.program)]
-    if matching:
-        return matching[0]
-    if len(design.use_cases) == 1:
-        return design.use_cases[0]
+    from nexti_orchestration.generation import program_use_case
+
+    found = program_use_case(design, master.program)  # the one the generation converged (ADR-0056)
+    if found is not None:
+        return found
     named = ", ".join(f"{u.name} ({u.legacy_program or 'no legacy program'})" for u in design.use_cases)
     raise PhaseFailedError(f"No use case of the design replaces {master.program}: the use cases are {named}")
 
