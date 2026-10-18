@@ -12,7 +12,7 @@
      "name": "L01C02",
      "kind": "literal",
      "row": 1,
-     "column": 2,
+     "column": 3,
      "length": 8,
      "attributes": [
       "autoskip"
@@ -26,7 +26,7 @@
      "name": "L01C25",
      "kind": "literal",
      "row": 1,
-     "column": 25,
+     "column": 26,
      "length": 30,
      "attributes": [
       "autoskip",
@@ -41,7 +41,7 @@
      "name": "FECHA",
      "kind": "output",
      "row": 1,
-     "column": 71,
+     "column": 72,
      "length": 8,
      "attributes": [
       "autoskip"
@@ -55,7 +55,7 @@
      "name": "L04C10",
      "kind": "literal",
      "row": 4,
-     "column": 10,
+     "column": 11,
      "length": 30,
      "attributes": [
       "autoskip"
@@ -69,7 +69,7 @@
      "name": "L05C10",
      "kind": "literal",
      "row": 5,
-     "column": 10,
+     "column": 11,
      "length": 30,
      "attributes": [
       "autoskip"
@@ -83,7 +83,7 @@
      "name": "L08C10",
      "kind": "literal",
      "row": 8,
-     "column": 10,
+     "column": 11,
      "length": 16,
      "attributes": [
       "autoskip"
@@ -97,7 +97,7 @@
      "name": "OPCION",
      "kind": "input",
      "row": 8,
-     "column": 27,
+     "column": 28,
      "length": 1,
      "attributes": [
       "unprotected",
@@ -113,7 +113,7 @@
      "name": "L08C29",
      "kind": "literal",
      "row": 8,
-     "column": 29,
+     "column": 30,
      "length": 1,
      "attributes": [
       "autoskip"
@@ -127,7 +127,7 @@
      "name": "MENSAJE",
      "kind": "output",
      "row": 22,
-     "column": 2,
+     "column": 3,
      "length": 78,
      "attributes": [
       "autoskip",
@@ -142,7 +142,7 @@
      "name": "L24C02",
      "kind": "literal",
      "row": 24,
-     "column": 2,
+     "column": 3,
      "length": 40,
      "attributes": [
       "autoskip"
@@ -164,7 +164,7 @@
      "name": "L01C02",
      "kind": "literal",
      "row": 1,
-     "column": 2,
+     "column": 3,
      "length": 8,
      "attributes": [
       "autoskip"
@@ -178,7 +178,7 @@
      "name": "L01C25",
      "kind": "literal",
      "row": 1,
-     "column": 25,
+     "column": 26,
      "length": 30,
      "attributes": [
       "autoskip",
@@ -193,7 +193,7 @@
      "name": "L04C05",
      "kind": "literal",
      "row": 4,
-     "column": 5,
+     "column": 6,
      "length": 20,
      "attributes": [
       "autoskip"
@@ -207,7 +207,7 @@
      "name": "ORDEN",
      "kind": "input",
      "row": 4,
-     "column": 26,
+     "column": 27,
      "length": 7,
      "attributes": [
       "unprotected",
@@ -224,7 +224,7 @@
      "name": "L04C34",
      "kind": "literal",
      "row": 4,
-     "column": 34,
+     "column": 35,
      "length": 1,
      "attributes": [
       "autoskip"
@@ -238,7 +238,7 @@
      "name": "L05C05",
      "kind": "literal",
      "row": 5,
-     "column": 5,
+     "column": 6,
      "length": 20,
      "attributes": [
       "autoskip"
@@ -252,7 +252,7 @@
      "name": "EMPRESA",
      "kind": "input",
      "row": 5,
-     "column": 26,
+     "column": 27,
      "length": 5,
      "attributes": [
       "unprotected",
@@ -267,7 +267,7 @@
      "name": "L05C32",
      "kind": "literal",
      "row": 5,
-     "column": 32,
+     "column": 33,
      "length": 1,
      "attributes": [
       "autoskip"
@@ -281,7 +281,7 @@
      "name": "L06C05",
      "kind": "literal",
      "row": 6,
-     "column": 5,
+     "column": 6,
      "length": 20,
      "attributes": [
       "autoskip"
@@ -295,7 +295,7 @@
      "name": "SERVIC",
      "kind": "input",
      "row": 6,
-     "column": 26,
+     "column": 27,
      "length": 10,
      "attributes": [
       "unprotected"
@@ -309,7 +309,7 @@
      "name": "L06C37",
      "kind": "literal",
      "row": 6,
-     "column": 37,
+     "column": 38,
      "length": 1,
      "attributes": [
       "autoskip"
@@ -323,7 +323,7 @@
      "name": "L07C05",
      "kind": "literal",
      "row": 7,
-     "column": 5,
+     "column": 6,
      "length": 20,
      "attributes": [
       "autoskip"
@@ -337,7 +337,7 @@
      "name": "TIPCTA",
      "kind": "input",
      "row": 7,
-     "column": 26,
+     "column": 27,
      "length": 3,
      "attributes": [
       "unprotected"
@@ -351,7 +351,7 @@
      "name": "L07C30",
      "kind": "literal",
      "row": 7,
-     "column": 30,
+     "column": 31,
      "length": 1,
      "attributes": [
       "autoskip"
@@ -365,7 +365,7 @@
      "name": "L08C05",
      "kind": "literal",
      "row": 8,
-     "column": 5,
+     "column": 6,
      "length": 20,
      "attributes": [
       "autoskip"
@@ -379,7 +379,7 @@
      "name": "CUENTA",
      "kind": "input",
      "row": 8,
-     "column": 26,
+     "column": 27,
      "length": 10,
      "attributes": [
       "unprotected",
@@ -394,7 +394,7 @@
      "name": "L08C37",
      "kind": "literal",
      "row": 8,
-     "column": 37,
+     "column": 38,
      "length": 1,
      "attributes": [
       "autoskip"
@@ -408,7 +408,7 @@
      "name": "L09C05",
      "kind": "literal",
      "row": 9,
-     "column": 5,
+     "column": 6,
      "length": 20,
      "attributes": [
       "autoskip"
@@ -422,7 +422,7 @@
      "name": "VALOR",
      "kind": "input",
      "row": 9,
-     "column": 26,
+     "column": 27,
      "length": 11,
      "attributes": [
       "unprotected",
@@ -437,7 +437,7 @@
      "name": "L09C38",
      "kind": "literal",
      "row": 9,
-     "column": 38,
+     "column": 39,
      "length": 1,
      "attributes": [
       "autoskip"
@@ -451,7 +451,7 @@
      "name": "L10C05",
      "kind": "literal",
      "row": 10,
-     "column": 5,
+     "column": 6,
      "length": 20,
      "attributes": [
       "autoskip"
@@ -465,7 +465,7 @@
      "name": "CANAL",
      "kind": "input",
      "row": 10,
-     "column": 26,
+     "column": 27,
      "length": 3,
      "attributes": [
       "unprotected"
@@ -479,7 +479,7 @@
      "name": "L10C30",
      "kind": "literal",
      "row": 10,
-     "column": 30,
+     "column": 31,
      "length": 1,
      "attributes": [
       "autoskip"
@@ -493,7 +493,7 @@
      "name": "L11C05",
      "kind": "literal",
      "row": 11,
-     "column": 5,
+     "column": 6,
      "length": 20,
      "attributes": [
       "autoskip"
@@ -507,7 +507,7 @@
      "name": "CLAVE",
      "kind": "input",
      "row": 11,
-     "column": 26,
+     "column": 27,
      "length": 6,
      "attributes": [
       "unprotected",
@@ -522,7 +522,7 @@
      "name": "L11C33",
      "kind": "literal",
      "row": 11,
-     "column": 33,
+     "column": 34,
      "length": 1,
      "attributes": [
       "autoskip"
@@ -536,7 +536,7 @@
      "name": "MENSAJE",
      "kind": "output",
      "row": 22,
-     "column": 2,
+     "column": 3,
      "length": 78,
      "attributes": [
       "autoskip",
@@ -551,7 +551,7 @@
      "name": "L24C02",
      "kind": "literal",
      "row": 24,
-     "column": 2,
+     "column": 3,
      "length": 75,
      "attributes": [
       "autoskip"
@@ -573,7 +573,7 @@
      "name": "L01C02",
      "kind": "literal",
      "row": 1,
-     "column": 2,
+     "column": 3,
      "length": 8,
      "attributes": [
       "autoskip"
@@ -587,7 +587,7 @@
      "name": "L01C25",
      "kind": "literal",
      "row": 1,
-     "column": 25,
+     "column": 26,
      "length": 30,
      "attributes": [
       "autoskip",
@@ -602,7 +602,7 @@
      "name": "L04C05",
      "kind": "literal",
      "row": 4,
-     "column": 5,
+     "column": 6,
      "length": 20,
      "attributes": [
       "autoskip"
@@ -616,7 +616,7 @@
      "name": "RORDEN",
      "kind": "output",
      "row": 4,
-     "column": 26,
+     "column": 27,
      "length": 7,
      "attributes": [
       "autoskip"
@@ -630,7 +630,7 @@
      "name": "L05C05",
      "kind": "literal",
      "row": 5,
-     "column": 5,
+     "column": 6,
      "length": 20,
      "attributes": [
       "autoskip"
@@ -644,7 +644,7 @@
      "name": "RCOMIS",
      "kind": "output",
      "row": 5,
-     "column": 26,
+     "column": 27,
      "length": 10,
      "attributes": [
       "autoskip"
@@ -658,7 +658,7 @@
      "name": "L06C05",
      "kind": "literal",
      "row": 6,
-     "column": 5,
+     "column": 6,
      "length": 20,
      "attributes": [
       "autoskip"
@@ -672,7 +672,7 @@
      "name": "RMOVIM",
      "kind": "output",
      "row": 6,
-     "column": 26,
+     "column": 27,
      "length": 10,
      "attributes": [
       "autoskip"
@@ -686,7 +686,7 @@
      "name": "L07C05",
      "kind": "literal",
      "row": 7,
-     "column": 5,
+     "column": 6,
      "length": 20,
      "attributes": [
       "autoskip"
@@ -700,7 +700,7 @@
      "name": "RMENS",
      "kind": "output",
      "row": 7,
-     "column": 26,
+     "column": 27,
      "length": 40,
      "attributes": [
       "autoskip",
@@ -715,7 +715,7 @@
      "name": "L24C02",
      "kind": "literal",
      "row": 24,
-     "column": 2,
+     "column": 3,
      "length": 40,
      "attributes": [
       "autoskip"
