@@ -61,5 +61,6 @@ reemplaza y se marca el anterior como "Reemplazado por ADR-NNNN".
 | [0053](0053-runner-ibm-i-con-jtopen.md) | Runner en vivo de IBM i con JTOpen en un contenedor puente | Aceptada |
 | [0054](0054-programas-rpg-interactivos.md) | Programas RPG interactivos: pantallas 5250 y su golden master | Aceptada |
 | [0055](0055-equivalencia-por-estado-y-unidad-de-trabajo.md) | Equivalencia por estado de la base y unidad de trabajo | Aceptada |
+| [0056](0056-certidumbre-de-la-migracion.md) | Certidumbre de la migración: oráculo completo, sustitutos fieles, contrato en el oráculo, entrega con evidencia e índice | Aceptada |
 
 Plantilla: contexto, decisión, alternativas consideradas, consecuencias y cómo se valida.
