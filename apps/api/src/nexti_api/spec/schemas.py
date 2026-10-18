@@ -224,6 +224,26 @@ class DesignErrorOut(ApiModel):
     message: str = ""
 
 
+class DesignSavepointOut(ApiModel):
+    name: str
+    legacy_line: int
+
+
+class DesignRollbackOut(ApiModel):
+    legacy_line: int
+    outcome: str
+
+
+class DesignUnitOfWorkOut(ApiModel):
+    """The transaction of the use case as the legacy has it (ADR-0055): where it begins, its savepoints, each
+    rollback point with its outcome and where it commits."""
+
+    begins_at: int
+    commits_at: int | None = None
+    savepoints: list[DesignSavepointOut] = Field(default_factory=list)
+    rollbacks: list[DesignRollbackOut] = Field(default_factory=list)
+
+
 class DesignUseCaseOut(ApiModel):
     name: str
     description: str = ""
@@ -233,6 +253,7 @@ class DesignUseCaseOut(ApiModel):
     ports: list[str] = Field(default_factory=list)
     legacy_program: str | None = None
     errors: list[DesignErrorOut] = Field(default_factory=list)
+    unit_of_work: DesignUnitOfWorkOut | None = None
 
 
 class DesignDecisionOut(ApiModel):
@@ -252,6 +273,7 @@ class DesignOut(ApiModel):
     use_cases: list[DesignUseCaseOut] = Field(default_factory=list)
     decisions: list[DesignDecisionOut] = Field(default_factory=list)
     infrastructure: list[str] = Field(default_factory=list)
+    data_strategy: Literal["migration", "same_database"] | None = None  # ADR-0055: where the data lives
 
 
 class OperationOut(ApiModel):

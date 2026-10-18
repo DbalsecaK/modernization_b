@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Design } from '@/api/architecture'
-import { contextSummary, contractText } from './model'
+import { contextSummary, contractText, unitOfWorkText, type DesignUseCase } from './model'
 
 const makeUseCase = (name: string, rules: string[]) => ({
   name,
@@ -42,5 +42,32 @@ describe('contractText', () => {
     const long = contractText({ paths: Object.fromEntries(Array.from({ length: 50 }, (_, i) => [`/p${i}`, {}])) }, 10)
     expect(long.text.split('\n')).toHaveLength(10)
     expect(long.truncated).toBe(true)
+  })
+})
+
+describe('unit of work', () => {
+  it('reads the transaction of a use case in one line, or null when the design declares none', () => {
+    const useCase = {
+      name: 'PayOrder',
+      description: '',
+      httpMethod: 'POST',
+      path: '/orders/pay',
+      rules: ['RULE-001'],
+      unitOfWork: {
+        beginsAt: 402,
+        commitsAt: 2130,
+        savepoints: [{ name: 'spDebito', legacyLine: 408 }],
+        rollbacks: [
+          { legacyLine: 1338, outcome: 'savepoint:spDebito' },
+          { legacyLine: 1624, outcome: 'COMMISSION_DEBIT_FAILED' },
+        ],
+      },
+    } as DesignUseCase
+    expect(unitOfWorkText(useCase)).toBe(
+      'begin 402 · savepoint spDebito @408 · rollback 1338 → savepoint:spDebito · rollback 1624 → COMMISSION_DEBIT_FAILED · commit 2130',
+    )
+    expect(
+      unitOfWorkText({ name: 'Quote', description: '', httpMethod: 'GET', path: '/q' } as DesignUseCase),
+    ).toBeNull()
   })
 })

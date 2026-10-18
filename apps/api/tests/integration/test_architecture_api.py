@@ -50,6 +50,9 @@ async def test_the_design_and_the_openapi_contract(
     assert use_case["rules"] == ALL_RULES
     assert len(design["ports"]) == 4
     assert len(design["decisions"]) == 1
+    # ADR-0055: the data strategy and the unit of work the architect declared reach the people who approve C3.
+    assert design["dataStrategy"] in ("migration", "same_database", None)
+    assert "unitOfWork" in use_case
     contracts = api.get(f"/api/v1/projects/{project_id}/contracts", headers=headers).json()
     assert contracts["source"] == "openapi"
     assert contracts["openapi"]["openapi"] == "3.1.0"

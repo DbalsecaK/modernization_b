@@ -6,7 +6,7 @@ import { useContracts, useDesign } from '@/api/architecture'
 import type { ProjectDetail } from '@/api/projects'
 import { useVerdicts } from '@/api/validation'
 import { Badge, Button, Card, CardBody, CardHeader, Code, EmptyState, Table, Td, Th } from '@/components/ui/primitives'
-import { contextSummary, contractText, serviceOf } from './architecture/model'
+import { contextSummary, contractText, serviceOf, unitOfWorkText } from './architecture/model'
 import { allChecks, byModule, checkStatusKey, checkTitleKey, checkTone } from './validation/model'
 
 // Architecture tab (spec 18.3), connected to the API: the bounded context of the design approved at C3 with its use
@@ -67,6 +67,13 @@ export function ProjectArchitecture({ project, onOpenRuns }: { project: ProjectD
               ? `${target.architecture} · ${target.backend} · ${target.database} · ${d.basePackage}`
               : d.basePackage
           }
+          action={
+            d.dataStrategy ? (
+              <Badge tone={d.dataStrategy === 'same_database' ? 'info' : 'neutral'}>
+                {t(`architecture.dataStrategy.${d.dataStrategy}`)}
+              </Badge>
+            ) : undefined
+          }
         />
         <Table>
           <thead>
@@ -97,6 +104,7 @@ export function ProjectArchitecture({ project, onOpenRuns }: { project: ProjectD
               <Th>{t('architecture.rules')}</Th>
               <Th>{t('architecture.ports')}</Th>
               <Th>{t('architecture.legacy')}</Th>
+              <Th>{t('architecture.unitOfWork')}</Th>
             </tr>
           </thead>
           <tbody>
@@ -109,6 +117,7 @@ export function ProjectArchitecture({ project, onOpenRuns }: { project: ProjectD
                 <Td className="font-mono text-xs">{(u.rules ?? []).join(', ')}</Td>
                 <Td className="font-mono text-xs">{(u.ports ?? []).join(', ') || '—'}</Td>
                 <Td className="font-mono text-xs">{u.legacyProgram ?? '—'}</Td>
+                <Td className="font-mono text-xs">{unitOfWorkText(u) ?? t('architecture.noUnitOfWork')}</Td>
               </tr>
             ))}
           </tbody>
