@@ -973,6 +973,8 @@
     "noDifferences": "No differences."
   },
   "validation": {
+    "certainty": "Certainty index",
+    "certaintyHint": "Computed from the evidence with declared weights: how much of the legacy's behaviour the proof covers and where its frontier is.",
     "notYet": "Verification runs after generation. Nothing has been verified in this project yet.",
     "verdict": "Verification verdict",
     "computedByCode": "Computed by fixed rules from the evidence files, never by a model.",

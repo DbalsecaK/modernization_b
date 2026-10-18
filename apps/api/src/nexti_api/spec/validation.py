@@ -38,7 +38,8 @@ MAX_TARGET_FILES = 4
 
 async def _verdicts(conn: AsyncConnection, project_id: uuid.UUID) -> list[dict[str, Any]]:
     rows = await conn.execute(
-        text("SELECT id, run_id, module, verdict, checks, not_proven, proof_pack_key, created_at FROM verdict "
+        text("SELECT id, run_id, module, verdict, checks, not_proven, certainty, proof_pack_key, created_at "
+             "FROM verdict "
              "WHERE project_id = :p ORDER BY created_at DESC"),
         {"p": project_id},
     )  # fmt: skip

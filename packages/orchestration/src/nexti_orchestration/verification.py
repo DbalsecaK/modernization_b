@@ -8,6 +8,7 @@ import io
 import json
 import zipfile
 from collections.abc import Mapping, Sequence
+from dataclasses import replace
 from typing import Any, Protocol, cast
 
 from nexti_adapter_sybase.golden import parameter_defaults
@@ -19,6 +20,7 @@ from nexti_core.spec.characterization import (
     legacy_gaps,
     same_program,
     source_digest,
+    unresolved_quirks,
 )
 from nexti_core.spec.design import Design, UseCase
 from nexti_core.spec.equivalence import EquivalenceRun
@@ -37,8 +39,19 @@ from nexti_pack_frontend import contract_of
 from nexti_pack_frontend.build import FrontendRun, build_and_test
 from nexti_sandbox import Sandbox
 from nexti_sandbox.coverage import TargetCoverage, target_coverage
-from nexti_verification import Verdict, build_proof_pack, differences, fresh_suite
+from nexti_verification import (
+    Certainty,
+    ReportItems,
+    SubstituteAnswer,
+    Verdict,
+    build_proof_pack,
+    compute_certainty,
+    differences,
+    fresh_suite,
+    programmer_report,
+)
 from nexti_verification import verdict as checks
+from nexti_verification.certainty import Engine
 from nexti_verification.proof_pack import verification_document
 from nexti_verification.verdict import CaseOutcome
 
@@ -198,6 +211,57 @@ def _module(design: Design, master: GoldenMaster) -> UseCase:
 
 
 VERDICT_DOC = "docs/verification/VERDICT.json"  # ADR-0056: the verdict travels with the delivery
+REPORT_ES = "docs/verification/INFORME_PROGRAMADOR.md"
+REPORT_EN = "docs/verification/PROGRAMMER_REPORT.md"
+
+
+def _certainty(
+    golden: Sequence[CaseOutcome], golden_run: EquivalenceRun, master: GoldenMaster,
+    work: Sequence[tuple[int, str]], measured: TargetCoverage | None, engine: Any | None,
+) -> Certainty | None:  # fmt: skip
+    """The certainty index of this verification (ADR-0056, point 6), from what the run measured; None when the
+    harness did not run (there is nothing to measure)."""
+    if golden_run.problem:
+        return None
+    confirmed = [q for q in master.quirks if q.confirmed]
+    without = [q for q in unresolved_quirks(master) if q.confirmed]
+    rollbacks = [line for line, kind in work if kind == "rollback"]
+    stubbed = stubbed_programs(master)
+    if master.from_traces:
+        kind: Engine = "traces"
+    elif engine is not None:
+        kind = "same_local"  # the legacy's engine, started by the platform (ADR-0055)
+    else:
+        kind = "other"  # the target ran on the sandbox's database with fakes for the called programs
+    return compute_certainty(
+        cases_matched=sum(1 for o in golden if o.matched), cases_total=len(golden),
+        target_lines_covered=measured.lines_covered if measured else None,
+        target_lines_total=measured.lines_total if measured else None,
+        rollbacks_total=len(rollbacks), rollbacks_without_case=len(rollbacks_without_case(work, master)),
+        quirks_confirmed=len(confirmed), quirks_without_case=len(without),
+        called_programs=len(stubbed), substituted_programs=len(stubbed),
+        omitted_vs_null=engine is not None and not master.from_traces,
+        concurrency_case=False, contract_exercised=False, engine=kind,
+    )  # fmt: skip
+
+
+def _report_items(
+    design: Design, master: GoldenMaster, masks: Sequence[str], measured: TargetCoverage | None, engine: Any | None
+) -> ReportItems:
+    """What the programmer must look at, from the artefacts (ADR-0056, point 6)."""
+    substitutes: dict[str, list[SubstituteAnswer]] = {}
+    for recorded in master.results:
+        for program, answers in recorded.case.stubs.items():
+            for answer in answers:
+                substitutes.setdefault(program, []).append(SubstituteAnswer(
+                    recorded.case.name, answer.returns, dict(answer.outputs), list(answer.messages)))  # fmt: skip
+    quirks = [f"{q.id} ({q.severity}) at lines {', '.join(str(n) for n in q.lines[:10])}: {q.behavior}"
+              for q in unresolved_quirks(master) if q.confirmed]  # fmt: skip
+    not_run = [f"{r.file} lines {r.line_start}-{r.line_end}" for r in (measured.uncovered if measured else [])[:50]]
+    return ReportItems(
+        masks=list(masks), substitutes=substitutes, quirks_without_case=quirks, target_not_run=not_run,
+        unreachable=dict(master.unreachable), data_strategy=design.data_strategy, engine=master.engine,
+    )  # fmt: skip
 
 
 class VerificationPhases:
@@ -341,9 +405,13 @@ class VerificationPhases:
             not_proven += target_not_run(measured)
             extra["TARGET_COVERAGE.json"] = measured.as_json()
         verdict = checks.compute(use_case.name, found, not_proven)
+        # ADR-0056 (point 6): the certainty index, from the same measures, with its frontier.
+        certainty = _certainty(golden, golden_run, master, work, measured, engine)
+        verdict = replace(verdict, certainty=certainty.as_json() if certainty else None)
         pack = build_proof_pack(verdict, golden, fresh, traces, golden_run.build.junit_xml, extra)
         key = await self.port.save_verdict(verdict, pack)
-        await self._ship_golden_master(backend, design, use_case, golden_run, master, defaults, engine, verdict)
+        await self._ship_golden_master(backend, design, use_case, golden_run, master, defaults, engine, verdict,
+                                       certainty, masks, measured)  # fmt: skip
         passed = sum(1 for c in verdict.checks if c.status == "passed")
         summary = f"{use_case.name}: {verdict.verdict} ({passed} of {len(verdict.checks)} checks passed)"
         front = await self._frontend(ctx)
@@ -357,10 +425,12 @@ class VerificationPhases:
     async def _ship_golden_master(
         self, backend: BackendPack, design: Design, use_case: UseCase, golden_run: EquivalenceRun,
         master: GoldenMaster, defaults: dict[str, Any], engine: Any | None, verdict: Verdict,
+        certainty: Certainty | None, masks: Sequence[str], measured: TargetCoverage | None,
     ) -> None:  # fmt: skip
-        """ADR-0056 (phase E): the delivery carries the evidence. The verdict as a document and, when the pack
-        knows how, the golden master as an integration test of the project (the harness, the cases, what the
-        platform observed), so the customer runs it on a test engine of the legacy and sees the same."""
+        """ADR-0056 (phase E): the delivery carries the evidence. The verdict as a document, the report for the
+        programmer in Spanish and in English and, when the pack knows how, the golden master as an integration test
+        of the project (the harness, the cases, what the platform observed), so the customer runs it on a test
+        engine of the legacy and sees the same."""
         if not hasattr(self.port, "save_artifacts"):
             return
         shipped: dict[str, str] = {}
@@ -368,6 +438,9 @@ class VerificationPhases:
         if callable(ship):
             shipped.update(ship(design, use_case, golden_run, master, defaults, engine))
         shipped[VERDICT_DOC] = json.dumps(verification_document(verdict), ensure_ascii=False, indent=1, default=str)
+        items = _report_items(design, master, masks, measured, engine)
+        shipped[REPORT_ES] = programmer_report("es", verdict, certainty, items)
+        shipped[REPORT_EN] = programmer_report("en", verdict, certainty, items)
         layers = {p: "docs" if p.startswith("docs/") else backend.layer_of(p, design) for p in shipped}
         await self.port.save_artifacts(shipped, layers, {})
 

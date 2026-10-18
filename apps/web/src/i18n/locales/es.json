@@ -973,6 +973,8 @@
     "noDifferences": "Sin diferencias."
   },
   "validation": {
+    "certainty": "Índice de certidumbre",
+    "certaintyHint": "Calculado de la evidencia con pesos declarados: qué parte del comportamiento del legado cubre la prueba y dónde está su frontera.",
     "notYet": "La verificación corre después de la generación. En este proyecto todavía no se verificó nada.",
     "verdict": "Veredicto de verificación",
     "computedByCode": "Calculado con reglas fijas a partir de los archivos de evidencia, nunca por un modelo.",

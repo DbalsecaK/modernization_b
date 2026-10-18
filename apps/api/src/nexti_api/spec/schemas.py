@@ -137,6 +137,24 @@ class CheckOut(ApiModel):
     detail: str
 
 
+class CertaintyComponentOut(ApiModel):
+    key: str
+    weight: int
+    ratio: float
+    score: float
+    detail_es: str
+    detail_en: str
+
+
+class CertaintyOut(ApiModel):
+    """The certainty index of a verdict (ADR-0056): computed from the artefacts, with its frontier in both languages."""
+
+    percent: int
+    components: list[CertaintyComponentOut]
+    frontier_es: str
+    frontier_en: str
+
+
 class VerdictOut(ApiModel):
     id: uuid.UUID
     run_id: uuid.UUID
@@ -144,6 +162,7 @@ class VerdictOut(ApiModel):
     verdict: Literal["PROVEN", "PARTLY PROVEN", "NOT PROVEN"]
     checks: list[CheckOut]
     not_proven: list[str]
+    certainty: CertaintyOut | None = None  # ADR-0056: the index with its components and frontier
     has_proof_pack: bool
     created_at: datetime
 

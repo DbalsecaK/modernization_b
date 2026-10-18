@@ -41,6 +41,7 @@ def verification_document(verdict: Verdict, computed_at: datetime | None = None)
             for c in verdict.checks
         ],
         "not_proven": verdict.not_proven,
+        "certainty": verdict.certainty,  # ADR-0056: the index and its frontier travel with the evidence
         "computed_at": (computed_at or datetime.now(UTC)).isoformat(timespec="seconds"),
         "computed_by": "nexti_verification (fixed rules, spec 11.3)",
     }

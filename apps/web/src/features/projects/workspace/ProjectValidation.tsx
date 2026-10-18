@@ -157,7 +157,7 @@ function ModuleVerdict({
   projectId: string
   canViewCode: boolean
 }) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const v: VerdictOut = group.latest
   return (
     <section className="space-y-6" aria-label={t('validation.moduleVerdict', { module: group.module })}>
@@ -179,6 +179,18 @@ function ModuleVerdict({
           action={<VerdictBadge verdict={toVerdict(v.verdict)} />}
         />
         <CardBody className="space-y-3">
+          {v.certainty && (
+            <div className="flex items-start gap-3 rounded-md border border-border bg-surface-2 p-3">
+              <div className="text-2xl font-semibold tabular-nums text-text">{v.certainty.percent}%</div>
+              <div className="min-w-0 flex-1">
+                <div className="text-sm font-medium text-text">{t('validation.certainty')}</div>
+                <div className="text-sm break-words text-text-2">
+                  {i18n.language.startsWith('es') ? v.certainty.frontierEs : v.certainty.frontierEn}
+                </div>
+                <div className="mt-1 text-xs text-muted">{t('validation.certaintyHint')}</div>
+              </div>
+            </div>
+          )}
           <ul className="space-y-3" aria-label={t('validation.checksOf', { module: group.module })}>
             {allChecks(v.checks, v.module).map((c) => {
               const Icon = c.missing ? CircleDashed : statusIcon[c.status]

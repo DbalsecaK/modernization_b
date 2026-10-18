@@ -137,6 +137,9 @@ class Verdict:
     verdict: VerdictValue
     checks: list[Check]
     not_proven: list[str]
+    # ADR-0056 (point 6): the certainty index with its components and frontier (`nexti_verification.certainty`),
+    # None when the verification could not measure it (the harness did not run).
+    certainty: dict[str, Any] | None = None
 
 
 def tests_ran(passed: int, failed: int, report_found: bool) -> Check:

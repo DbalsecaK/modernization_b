@@ -1295,6 +1295,76 @@
         "title": "CatalogOut",
         "type": "object"
       },
+      "CertaintyComponentOut": {
+        "properties": {
+          "detailEn": {
+            "title": "Detailen",
+            "type": "string"
+          },
+          "detailEs": {
+            "title": "Detailes",
+            "type": "string"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "ratio": {
+            "title": "Ratio",
+            "type": "number"
+          },
+          "score": {
+            "title": "Score",
+            "type": "number"
+          },
+          "weight": {
+            "title": "Weight",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "key",
+          "weight",
+          "ratio",
+          "score",
+          "detailEs",
+          "detailEn"
+        ],
+        "title": "CertaintyComponentOut",
+        "type": "object"
+      },
+      "CertaintyOut": {
+        "description": "The certainty index of a verdict (ADR-0056): computed from the artefacts, with its frontier in both languages.",
+        "properties": {
+          "components": {
+            "items": {
+              "$ref": "#/components/schemas/CertaintyComponentOut"
+            },
+            "title": "Components",
+            "type": "array"
+          },
+          "frontierEn": {
+            "title": "Frontieren",
+            "type": "string"
+          },
+          "frontierEs": {
+            "title": "Frontieres",
+            "type": "string"
+          },
+          "percent": {
+            "title": "Percent",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "percent",
+          "components",
+          "frontierEs",
+          "frontierEn"
+        ],
+        "title": "CertaintyOut",
+        "type": "object"
+      },
       "ChainOut": {
         "properties": {
           "checked": {
@@ -11355,6 +11425,16 @@
       },
       "VerdictOut": {
         "properties": {
+          "certainty": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CertaintyOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "checks": {
             "items": {
               "$ref": "#/components/schemas/CheckOut"
