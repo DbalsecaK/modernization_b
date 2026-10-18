@@ -75,7 +75,19 @@ public final class EquivalenceHarness {
             Method execute = service.getClass().getMethod("execute", request.getClass());
             Object[] response = new Object[1];
             try {
-                transaction.executeWithoutResult(status -> response[0] = invoke(execute, service, request));
+                if (plan.path("service_transaction").asBoolean(false)) {
+                    // Phase F: the service begins, commits and rolls back through its UnitOfWork port, as the
+                    // legacy does; the harness only closes what a failure left open.
+                    try {
+                        response[0] = invoke(execute, service, request);
+                        unitOfWork(service, "commitIfActive");
+                    } catch (RuntimeException e) {
+                        unitOfWork(service, "rollbackIfActive");
+                        throw e;
+                    }
+                } else {
+                    transaction.executeWithoutResult(status -> response[0] = invoke(execute, service, request));
+                }
                 out.set("response", fields(response[0]));
             } catch (RuntimeException e) {
                 // The rollback undoes the tables (dumped after it) and the effects of the calls made inside the
@@ -128,6 +140,22 @@ public final class EquivalenceHarness {
             throw new IllegalStateException(e.getCause());
         } catch (IllegalAccessException e) {
             throw new IllegalStateException(e);
+        }
+    }
+
+    /** The UnitOfWork adapter among the service's ports (a field of the service), told to close what is open. */
+    private static void unitOfWork(Object service, String method) {
+        for (java.lang.reflect.Field field : service.getClass().getDeclaredFields()) {
+            try {
+                field.setAccessible(true);
+                Object port = field.get(service);
+                if (port != null && port.getClass().getSimpleName().equals("JdbcUnitOfWork")) {
+                    port.getClass().getMethod(method).invoke(port);
+                    return;
+                }
+            } catch (ReflectiveOperationException | RuntimeException e) {
+                // not this field
+            }
         }
     }
 

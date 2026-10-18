@@ -260,10 +260,14 @@ class SameEngine:
             await self.__aexit__(None, None, None)
             raise
         programs = {program: [s.name for s in stub.parameters if not s.output] for program, stub in plan.stubs.items()}
+        # The neutral type of each logged argument (phase F): the comparison canonicalises what the substitute
+        # logged as the characterization did (`char(4)` without its trailing blanks).
+        types = {program: [golden._neutral(s.type) for s in stub.parameters if not s.output]
+                 for program, stub in plan.stubs.items()}  # fmt: skip
         return EngineTarget(
             name=self.name, network=self.network, jdbc_url=f"jdbc:jtds:sybase://{self.name}:{self.PORT}/{plan.work}",
             user=_SA[0], password=_SA[1], setup_for=lambda case: golden.case_setup_batches(plan, case),
-            calls_query=golden.CALLS_QUERY, programs=programs, parse_args=golden.read_values,
+            calls_query=golden.CALLS_QUERY, programs=programs, parse_args=golden.read_values, types=types,
         )  # fmt: skip
 
     async def __aexit__(self, *_: object) -> None:

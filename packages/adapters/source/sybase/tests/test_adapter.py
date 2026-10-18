@@ -210,3 +210,43 @@ def test_the_columns_a_program_loads_are_keyed_by_the_table_as_it_names_it() -> 
     )
     found = SybaseAdapter().columns_read([SourceFile("sp/x.sp", text)])
     assert found == {"bp_detalle": {"dt_nombre_beneficiario"}, "db_otra..bp_detalle": {"dt_tipo_cta"}}
+
+
+def test_the_adapter_says_when_a_program_returns_its_status_as_data() -> None:
+    # Phase F of ADR-0055: `return @o_error`, or `select @o_error = @w_num_error ... return @w_num_error`, is a
+    # status the caller reads together with the outputs; `return @w_error` after sp_cerror is a plain rejection.
+    adapter = SybaseAdapter()
+    assert adapter.status_as_data([SourceFile("sp/sp_pago_orden.sp", SOURCE)], "dbo.sp_pago_orden") is False
+    data = """create procedure dbo.sp_debito_empresa
+(
+    @i_cuenta   char(10),
+    @i_aplcobis char(1),
+    @o_error    int output
+)
+as
+declare @w_num_error int, @w_return int
+begin tran
+update bp_orden set or_estado = 'P' where or_cuenta = @i_cuenta
+if @@error <> 0
+begin
+    select @w_num_error = 122002
+    goto lbl_error
+end
+commit tran
+select @o_error = 0
+return 0
+lbl_error:
+    if @@trancount > 0
+        rollback tran
+    if @i_aplcobis = 'S'
+    begin
+        exec cobis..sp_cerror @i_num = @w_num_error
+        return @w_num_error
+    end
+    select @o_error = @w_num_error
+    return 0
+"""
+    assert adapter.status_as_data([SourceFile("sp/sp_debito_empresa.sp", data)], "sp_debito_empresa") is True
+    direct = data.replace("select @o_error = @w_num_error" + chr(10) + "    return 0", "return @o_error")
+    assert adapter.status_as_data([SourceFile("sp/x.sp", direct)], "sp_debito_empresa") is True
+    assert adapter.status_as_data([SourceFile("sp/x.sp", direct)], "sp_otro") is False

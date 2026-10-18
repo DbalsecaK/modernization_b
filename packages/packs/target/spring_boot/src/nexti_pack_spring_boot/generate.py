@@ -165,6 +165,9 @@ def controller_file(design: Design, use_case: UseCase, transactional: bool = Tru
                "DELETE": "DeleteMapping"}[use_case.http_method]  # fmt: skip
     body = "@RequestBody " if use_case.http_method in ("POST", "PUT", "PATCH") else ""
     work = use_case.unit_of_work
+    unit = unit_of_work_port(design)
+    if work is not None and unit is not None and owns_transaction(unit) and unit.name in use_case.ports:
+        return _path(package, f"{use_case.name}Controller"), _service_owned_controller(design, use_case, unit)
     # ADR-0055 (point 17): without a legacy to copy the unit of work from, a use case that writes makes the
     # request its transaction (a rejection undoes every write).
     own = work is None and use_case.legacy_program is None and writes(design, use_case)
@@ -198,7 +201,42 @@ def controller_file(design: Design, use_case: UseCase, transactional: bool = Tru
     )
 
 
+def _service_owned_controller(design: Design, use_case: UseCase, unit: Port) -> str:
+    """The REST adapter when the service owns the transaction (phase F): the legacy begins it after some work,
+    commits or rolls back and still returns its status and outputs, so nothing wraps `execute`. The adapter only
+    guards what the legacy's engine would: a failure that escapes undoes an open transaction, and a transaction
+    still open when the use case returns is confirmed (as the caller's commit would)."""
+    package = f"{design.base_package}.adapters.in.rest"
+    service = f"{design.base_package}.application.{use_case.name}Service"
+    adapter = f"{design.base_package}.adapters.out.jdbc.Jdbc{unit.name}"
+    path = use_case.path or "/" + _snake(use_case.name).replace("_", "-")
+    mapping = {"GET": "GetMapping", "POST": "PostMapping", "PUT": "PutMapping", "PATCH": "PatchMapping",
+               "DELETE": "DeleteMapping"}[use_case.http_method]  # fmt: skip
+    body = "@RequestBody " if use_case.http_method in ("POST", "PUT", "PATCH") else ""
+    work = use_case.unit_of_work
+    lines = ", ".join(f"rollback at {r.legacy_line}" for r in work.rollbacks) if work else ""
+    doc = (f" The service owns the unit of work of the legacy (begin at {work.begins_at}, {lines}, commit at "
+           f"{work.commits_at}) through the UnitOfWork port." if work else "")  # fmt: skip
+    return (
+        f"package {package};\n\nimport org.springframework.web.bind.annotation.*;\n\n"
+        f"/** REST adapter of {use_case.name} (rules {', '.join(use_case.rules)}).{doc} */\n"
+        f'@RestController\n@RequestMapping("/api/{design.context}")\n'
+        f"public class {use_case.name}Controller {{\n\n"
+        f"    private final {service} service;\n    private final {adapter} unitOfWork;\n\n"
+        f"    public {use_case.name}Controller({service} service, {adapter} unitOfWork) {{\n"
+        "        this.service = service;\n        this.unitOfWork = unitOfWork;\n    }\n\n"
+        f'    @{mapping}("{path}")\n'
+        f"    public {use_case.name}Response handle({body}{use_case.name}Request request) {{\n"
+        "        try {\n"
+        f"            {use_case.name}Response response = service.execute(request);\n"
+        "            unitOfWork.commitIfActive();\n            return response;\n"
+        "        } catch (RuntimeException e) {\n"
+        "            unitOfWork.rollbackIfActive();\n            throw e;\n        }\n    }\n}\n"
+    )
+
+
 UNIT_OF_WORK_PORT = "UnitOfWork"
+UNIT_OF_WORK_METHODS = ("begin", "commit", "rollback")
 SP_STATUS = "nx_rc"
 STATUS = "return"  # the reserved legacy name of a called program's return status (ADR-0055, phase F)
 
@@ -208,10 +246,67 @@ def unit_of_work_port(design: Design) -> Port | None:
     return next((p for p in design.ports if p.name == UNIT_OF_WORK_PORT and not p.legacy_program), None)
 
 
+def owns_transaction(port: Port) -> bool:
+    """Whether the UnitOfWork port begins, commits and rolls back (phase F): then the service owns the transaction
+    and calls them where the legacy does; with savepoints only, the REST adapter wraps the use case."""
+    declared = {m.name for m in port.methods}
+    return all(m in declared for m in UNIT_OF_WORK_METHODS)
+
+
+_TRANSACTION_METHODS = (
+    "    @Override\n    public void begin() {\n"
+    "        if (status.get() != null) {\n"
+    '            throw new IllegalStateException("the transaction is already open");\n        }\n'
+    "        status.set(manager.getTransaction(new DefaultTransactionDefinition()));\n        marks.clear();\n"
+    "    }\n\n"
+    "    @Override\n    public void commit() {\n"
+    "        if (status.get() == null) {\n"
+    '            throw new IllegalStateException("no transaction to commit");\n        }\n'
+    "        TransactionStatus open = status.get();\n        status.remove();\n        marks.clear();\n"
+    "        manager.commit(open);\n    }\n\n"
+    "    @Override\n    public void rollback() {\n"
+    "        if (status.get() == null) {\n"
+    '            throw new IllegalStateException("no transaction to roll back");\n        }\n'
+    "        TransactionStatus open = status.get();\n        status.remove();\n        marks.clear();\n"
+    "        manager.rollback(open);\n    }\n\n"
+    "    /** Confirms a transaction the use case left open (the caller's commit, in the legacy). */\n"
+    "    public void commitIfActive() {\n        if (status.get() != null) {\n            commit();\n        }\n"
+    "    }\n\n"
+    "    /** Undoes a transaction a failure left open (the engine's rollback when a batch aborts). */\n"
+    "    public void rollbackIfActive() {\n        if (status.get() != null) {\n            rollback();\n        }\n"
+    "    }\n\n"
+)
+
+
 def unit_of_work_adapter_file(design: Design, port: Port) -> tuple[str, str]:
     """Savepoints on the connection of the current transaction: `savepoint(name)` marks, `rollbackTo(name)` undoes
-    the work since the mark and the use case goes on, as the legacy's `rollback tran <savepoint>` does."""
+    the work since the mark and the use case goes on, as the legacy's `rollback tran <savepoint>` does. When the
+    port also declares `begin`, `commit` and `rollback` (phase F) the adapter owns the transaction through the
+    data source's transaction manager, so the service begins and ends it exactly where the legacy does."""
     package = f"{design.base_package}.adapters.out.jdbc"
+    owns = owns_transaction(port)
+    transaction_imports = (
+        "import org.springframework.jdbc.datasource.DataSourceTransactionManager;\n"
+        "import org.springframework.transaction.PlatformTransactionManager;\n"
+        "import org.springframework.transaction.TransactionStatus;\n"
+        "import org.springframework.transaction.support.DefaultTransactionDefinition;\n"
+        if owns
+        else ""
+    )
+    transaction_fields = (
+        "    private final PlatformTransactionManager manager;\n"
+        "    private final ThreadLocal<TransactionStatus> status = new ThreadLocal<>();\n"
+        if owns
+        else ""
+    )
+    transaction_init = (
+        "        this.manager = new DataSourceTransactionManager(\n"
+        "                java.util.Objects.requireNonNull(jdbc.getDataSource()));\n"
+        if owns
+        else ""
+    )
+    doc = ("the unit of work of the legacy (begin, commit, rollback and its savepoints), owned by the service"
+           if owns else "the savepoints of the legacy on the transaction of the use case")  # fmt: skip
     return adapter_path(design, port), (
         f"package {package};\n\n"
         f"import {design.base_package}.domain.port.{port.name};\n"
@@ -219,12 +314,14 @@ def unit_of_work_adapter_file(design: Design, port: Port) -> tuple[str, str]:
         "import java.util.HashMap;\nimport java.util.Map;\n"
         "import org.springframework.jdbc.core.JdbcTemplate;\n"
         "import org.springframework.jdbc.datasource.DataSourceUtils;\n"
+        f"{transaction_imports}"
         "import org.springframework.stereotype.Repository;\n\n"
-        "/** Generated by the platform (ADR-0055): the savepoints of the legacy on the transaction of the use "
-        "case. */\n"
+        f"/** Generated by the platform (ADR-0055): {doc}. */\n"
         f"@Repository\npublic class Jdbc{port.name} implements {port.name} {{\n\n"
-        "    private final JdbcTemplate jdbc;\n    private final Map<String, Boolean> marks = new HashMap<>();\n\n"
-        f"    public Jdbc{port.name}(JdbcTemplate jdbc) {{\n        this.jdbc = jdbc;\n    }}\n\n"
+        "    private final JdbcTemplate jdbc;\n    private final Map<String, Boolean> marks = new HashMap<>();\n"
+        f"{transaction_fields}\n"
+        f"    public Jdbc{port.name}(JdbcTemplate jdbc) {{\n        this.jdbc = jdbc;\n{transaction_init}    }}\n\n"
+        f"{_TRANSACTION_METHODS if owns else ''}"
         "    @Override\n    public void savepoint(String name) {\n"
         '        try {\n            jdbc.execute("save tran " + label(name));\n            marks.put(name, true);\n'
         "        } catch (org.springframework.dao.DataAccessException e) {\n"

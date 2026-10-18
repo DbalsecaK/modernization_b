@@ -14,6 +14,11 @@ For an application service (`<base_package>.application.<UseCase>Service`):
   the platform generates the transaction boundary of the use case around `execute` from the design's
   `unit_of_work`. When the design declares savepoints, the use case has a `UnitOfWork` port: call
   `savepoint(name)` and `rollbackTo(name)` exactly where the legacy saves and undoes part of its work.
+- When the `UnitOfWork` port also has `begin()`, `commit()` and `rollback()`, the service owns the transaction:
+  call them exactly where the legacy has `begin tran`, `commit tran` and `rollback tran`.
+- When the response has a field mapped to the legacy name `return` (the program's own return status), the legacy
+  signals its errors as data: on those paths return the response with that status and the outputs the legacy
+  sets, and throw `BusinessError` only where the legacy returns a non-zero status without outputs.
 
 For a JDBC adapter (`<base_package>.adapters.out.jdbc.Jdbc<Port>`):
 - A class annotated `@jakarta.enterprise.context.ApplicationScoped` implementing the port, with one public

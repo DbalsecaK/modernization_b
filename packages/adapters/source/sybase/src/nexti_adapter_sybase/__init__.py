@@ -299,6 +299,25 @@ class SybaseAdapter:
                 return analysis.unit_of_work(proc)
         return []
 
+    def status_as_data(self, files: list[SourceFile], program: str) -> bool:
+        """Whether the program's return status is data its caller reads together with the output parameters
+        (ADR-0055, phase F): it returns an OUTPUT parameter (`return @o_error`), or returns a variable it also
+        assigns to one (`select @o_error = @w_num_error ... return @w_num_error`). Such a program signals its errors
+        as data, often with `return 0`, and a target that throws instead changes the contract."""
+        short = program.rsplit(".", 1)[-1].lower()
+        for _, proc in _procedures(files):
+            if proc.name.rsplit(".", 1)[-1].lower() != short:
+                continue
+            outputs = {q.name.lower() for q in proc.parameters if q.output}
+            statements = proc.statements()
+            returned = {v.lower() for s in statements if s.kind == "return" for v in s.vars_read}
+            if returned & outputs:
+                return True
+            into_outputs = {v.lower() for s in statements if {w.lower() for w in s.vars_written} & outputs
+                            for v in s.vars_read}  # fmt: skip
+            return bool(returned & into_outputs)
+        return False
+
     def unassigned_outputs(self, files: list[SourceFile], program: str) -> list[str]:
         """The OUTPUT parameters of a procedure no statement assigns (ADR-0044): the legacy echoes the caller's
         value, so the design leaves them out (step 9 of the plan)."""

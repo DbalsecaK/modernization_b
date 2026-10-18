@@ -10,6 +10,11 @@ the rules of the use case. Write one test class:
   fakes of the ports written in the test (anonymous classes or lambdas). No mocking library, no Spring context.
 - Call `service.execute(request)` and assert the response, the calls the fakes recorded, or the BusinessError
   (assert its `legacyCode()` or `code()` with AssertJ: `assertThatThrownBy(...).isInstanceOf(BusinessError.class)`).
+- When the response record has a field mapped to the legacy name `return` (the program's own return status),
+  the legacy signals its errors as data: for those scenarios assert the status and the outputs of the response
+  (for example status 0 and the error code in the error output), not a thrown BusinessError. When the use
+  case has a `UnitOfWork` port with `begin()`, `commit()` and `rollback()`, record its calls in the fake and
+  assert them where the scenario says the legacy confirms or undoes its work.
 - One test method per scenario, named after it in snake_case. Use `java.math.BigDecimal` with string literals
   (`new BigDecimal("100.63")`) and compare with `isEqualByComparingTo` when the scale may differ.
 - Only JUnit 5 (`org.junit.jupiter.api.Test`) and AssertJ (`org.assertj.core.api.Assertions`) are available.

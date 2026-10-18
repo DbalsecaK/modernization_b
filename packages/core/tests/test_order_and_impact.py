@@ -82,3 +82,13 @@ def test_a_use_case_writes_when_a_port_of_its_acknowledges_or_says_so() -> None:
                       {"name": "QuoteOrder", "rules": ["RULE-002"], "ports": ["RateReader"]}],
     })  # fmt: skip
     assert [writes(design, u) for u in design.use_cases] == [True, False]
+
+
+def test_a_service_owned_transaction_counts_as_a_transaction_boundary() -> None:
+    # Phase F: the service calls unitOfWork.begin() where the legacy has `begin tran`; the verifier that demands a
+    # transaction boundary in every writing use case finds it there.
+    from nexti_core.impact import TRANSACTION_BOUNDARY
+
+    assert TRANSACTION_BOUNDARY.search("        unitOfWork.begin();")
+    assert TRANSACTION_BOUNDARY.search("import org.springframework.transaction.support.TransactionTemplate;")
+    assert not TRANSACTION_BOUNDARY.search("        unitOfWork.savepoint(SAVEPOINT);")

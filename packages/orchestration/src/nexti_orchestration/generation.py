@@ -467,6 +467,7 @@ def design_problems(
                         "procedures) or 'migration' (the data moves to the target database)")  # fmt: skip
     problems += data_strategy_target_problems(design, database, legacy)
     problems += call_output_problems(design, files)
+    problems += status_output_problems(design, files)
     if design.data_strategy == "same_database":
         renamed = [f"{e.name} ({e.table} vs {e.legacy_table})" for e in design.entities
                    if e.legacy_table and e.table and e.table != e.legacy_table]  # fmt: skip
@@ -553,6 +554,58 @@ def call_output_problems(design: Design, files: Sequence[SourceFile]) -> list[st
                         passed = ", ".join(sorted(parameters))
                         problems.append(f"{port.name}.{method.name}: {name} is not a parameter of "
                                         f"{port.legacy_program} (its calls pass {passed})")  # fmt: skip
+    return problems
+
+
+UNIT_OF_WORK_PORT = "UnitOfWork"
+UNIT_OF_WORK_METHODS = ("begin", "commit", "rollback")
+
+
+def status_output_problems(design: Design, files: Sequence[SourceFile]) -> list[str]:
+    """A program whose return status is data (it returns an output parameter, or a variable it also assigns to one:
+    `select @o_error = @w_num_error ... return 0 / return @w_num_error`) signals its errors to the caller as data,
+    not by failing (ADR-0055, phase F). Its use case declares an output with the reserved legacy name `return`
+    (the status, integer) so the target returns status and outputs as the legacy does, and, when the legacy works
+    inside a transaction, a `UnitOfWork` port with `begin()`, `commit()` and `rollback()` (plus `savepoint(name)`
+    and `rollbackTo(name)`) that the service calls exactly where the legacy does: the error exit undoes the work
+    and still returns its outputs, which a thrown exception cannot."""
+    if not files:
+        return []
+    from nexti_orchestration.modernization import pick_adapter
+
+    try:
+        status_as_data = getattr(pick_adapter(list(files)), "status_as_data", None)
+    except Exception:
+        return []
+    if not callable(status_as_data):
+        return []
+    problems: list[str] = []
+    for use_case in design.use_cases:
+        if not use_case.legacy_program or not status_as_data(list(files), use_case.legacy_program):
+            continue
+        status = next((f for f in use_case.outputs if (f.legacy or "").lower() == STATUS), None)
+        if status is None:
+            problems.append(f"{use_case.name}: {use_case.legacy_program} returns its status as data (its error exit "
+                            "returns an output parameter or returns 0 with the error code in one): declare an "
+                            "output field of the use case with legacy \"return\" (type integer(32,signed)) that "
+                            "the service fills with the status the legacy returns on each path; the error exits "
+                            "that return 0 with the code in an output parameter are not exceptions")  # fmt: skip
+        elif not status.type.startswith("integer"):
+            problems.append(f"{use_case.name}: the output {status.name} mapped to \"return\" is the return status: "
+                            f"its type is integer(32,signed), not {status.type}")  # fmt: skip
+        if use_case.unit_of_work is None:
+            continue
+        port = next((p for p in design.ports if p.name == UNIT_OF_WORK_PORT and not p.legacy_program), None)
+        declared = {m.name for m in port.methods} if port else set()
+        missing = [m for m in UNIT_OF_WORK_METHODS if m not in declared]
+        if port is None or missing:
+            problems.append(f"{use_case.name}: the service owns the transaction (the legacy returns its status as "
+                            "data after committing or rolling back): declare a port named UnitOfWork with the void "
+                            "methods begin(), commit(), rollback() (no inputs) and savepoint(name), rollbackTo(name) "
+                            "(text input), list it in the use case's ports, and the platform implements it"
+                            + (f" (missing: {', '.join(missing)})" if port is not None else ""))  # fmt: skip
+        elif port.name not in use_case.ports:
+            problems.append(f"{use_case.name}: the UnitOfWork port is not in the use case's ports")
     return problems
 
 

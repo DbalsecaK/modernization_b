@@ -101,6 +101,18 @@ El `Design` gana dos campos obligatorios cuando el fuente los exige:
   driver, los nombres de tablas y cómo se llaman los procedimientos. El pack recibe la unidad de trabajo y **debe**
   generar la transacción; el verificador comprueba que lo hizo.
 
+**Precisión de la fase F (2026-10-18).** El estado de retorno del propio programa es dato cuando el legado lo
+entrega junto con sus salidas (devuelve un parámetro de salida, o devuelve 0 con el código del error en uno:
+`select @o_error = @w_num_error  return 0`). En ese caso el caso de uso declara una salida con el nombre reservado
+`return`, el destino devuelve estado y salidas en cada camino (esas salidas de error no son excepciones) y, como el
+legado confirma o revierte antes de devolver, el servicio es dueño de la transacción: el puerto `UnitOfWork` tiene
+`begin()`, `commit()` y `rollback()` además de los savepoints, el adaptador REST y el harness no envuelven el caso
+de uso, y la transacción empieza donde el legado la empieza (en `sp_debcred_empresa`, después de las consultas de
+comisión y configuración contable: una excepción que la deshiciera borraría llamadas que en el legado sobreviven).
+Un programa que falla con estado distinto de cero y sin salidas sigue siendo una excepción de negocio. La
+comparación canoniza los argumentos del registro de llamadas del motor con el tipo del parámetro del sustituto
+(un `char(4)` registrado como `C1  ` es el `C1` que grabó la caracterización).
+
 ### 5. La ejecución del legado tiene tres modos para todo origen
 
 La configuración «Ejecución del legado» (ADR-0052) se extiende a cada origen con `kind` propio: `sybase`, `cics`,

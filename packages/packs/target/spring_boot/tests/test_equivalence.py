@@ -294,3 +294,48 @@ def test_the_return_status_of_a_called_program_travels_as_data_when_the_design_m
     assert first["carries_status"] is True
     assert first["outputs"]["status"] == first["returns"]
     assert "sequence" in first["outputs"]
+
+
+def test_the_engines_call_log_is_canonicalised_by_the_substitutes_parameter_types() -> None:
+    # Phase F: a `char(4)` the substitute logged as `C1  ` is the `C1` the characterization recorded; without the
+    # type every case of a real run differed on the padding alone and the convergence could not move.
+    from nexti_core.spec.equivalence import EngineTarget
+
+    engine = EngineTarget(
+        name="e", network="n", jdbc_url="jdbc:jtds:sybase://e:5000/gm", user="sa",
+        password="x",  # noqa: S106 - the throw-away engine's own
+        setup_for=lambda case: [], calls_query="select 1",
+        programs={"db_cuentas..sp_debito": ["@i_cuenta", "@i_tipo", "@i_valor", "@i_referencia"]},
+        parse_args=lambda text: text.split("|"),
+        types={"db_cuentas..sp_debito": ["text(fixed,10,iso8859-1)", "text(fixed,4,iso8859-1)",
+                                         "decimal(19,4,signed)", None]},
+    )  # fmt: skip
+    (call,) = engine.calls([{"program": "DB_CUENTAS..SP_DEBITO", "args": "1234567890|C1  |100|REF "}])
+    assert call.arguments == {"@i_cuenta": "1234567890", "@i_tipo": "C1", "@i_valor": "100.0000",
+                              "@i_referencia": "REF "}  # fmt: skip
+
+
+def test_the_programs_own_status_is_read_from_the_response_when_the_use_case_maps_it() -> None:
+    # Phase F: a legacy whose error exit returns 0 with the code in an output parameter signals errors as data;
+    # the use case maps the status with the reserved name `return` and the comparison reads it from the response
+    # (never as an output, never masked as a rejected-path output).
+    from nexti_core.spec.equivalence import actual_view, masks
+
+    data = json.loads(DESIGN.model_dump_json(by_alias=True))
+    data["use_cases"][0]["outputs"].append({"name": "status", "type": "integer(32,signed)", "legacy": "return"})
+    design = Design.model_validate(data)
+    use_case = design.use_cases[0]
+    raw = {"response": {"movement": "900001", "message": "PAGO REALIZADO", "status": "0"}, "tables": {}, "calls": []}
+    assert actual_view(design, use_case, raw, []).returns == 0
+    raw["response"]["status"] = "120000"
+    view = actual_view(design, use_case, raw, [])
+    assert view.returns == 120000
+    assert view.outputs["@o_movimiento"] == "900001"
+    assert "return" not in view.outputs
+    raw["response"].pop("status")
+    assert actual_view(design, use_case, raw, []).returns == 0
+    found = masks(design, use_case, MASTER)
+    assert not any(m.path.lower() == "outputs:return" for m in found)
+    # A thrown rejection still reads as the legacy code.
+    thrown = {"error": {"code": "X", "legacy_code": "50005", "message": "m"}, "tables": {}, "calls": []}
+    assert actual_view(design, use_case, thrown, []).returns == 50005

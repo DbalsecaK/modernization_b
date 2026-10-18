@@ -149,7 +149,17 @@ public final class EquivalenceHarness {
             Object request = record(Class.forName(plan.get("request").asText()), testCase.get("request"));
             Method execute = service.getClass().getMethod("execute", request.getClass());
             try {
-                out.set("response", fields(inTransaction(jdbc, execute, service, request)));
+                if (plan.path("service_transaction").asBoolean(false)) {
+                    try {
+                        out.set("response", fields(invoke(execute, service, request)));
+                        unitOfWork(service, "commitIfActive");
+                    } catch (RuntimeException e) {
+                        unitOfWork(service, "rollbackIfActive");
+                        throw e;
+                    }
+                } else {
+                    out.set("response", fields(inTransaction(jdbc, execute, service, request)));
+                }
             } catch (RuntimeException e) {
                 // The rollback undoes the tables (dumped after it) and the effects of the calls made inside the
                 // transaction: they are reported apart, as `undone`, like the legacy's calls its rollback erased
@@ -193,6 +203,22 @@ public final class EquivalenceHarness {
             throw new IllegalStateException(e.getCause());
         } catch (IllegalAccessException e) {
             throw new IllegalStateException(e);
+        }
+    }
+
+    /** The UnitOfWork adapter among the service's ports (a field of the service), told to close what is open. */
+    private static void unitOfWork(Object service, String method) {
+        for (java.lang.reflect.Field field : service.getClass().getDeclaredFields()) {
+            try {
+                field.setAccessible(true);
+                Object port = field.get(service);
+                if (port != null && port.getClass().getSimpleName().equals("JdbcUnitOfWork")) {
+                    port.getClass().getMethod(method).invoke(port);
+                    return;
+                }
+            } catch (ReflectiveOperationException | RuntimeException e) {
+                // not this field
+            }
         }
     }
 
