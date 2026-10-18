@@ -771,16 +771,19 @@ class WorkerProjectPort:
         return GoldenMaster.model_validate_json(await self._get(key)) if key else None
 
     async def load_generated(self) -> tuple[dict[str, str], dict[str, list[str]]]:
-        """The latest version of every generated file of the project (the design and the golden master apart)."""
+        """The latest version of every generated file of THIS run (the design and the golden master apart). A
+        project's earlier runs may have had another design: their files never join this run's build (phase F of
+        ADR-0055: a gateway of an old design broke the compilation of the new one)."""
         async with self._db() as conn:
             rows = (
                 await conn.execute(
                     text("SELECT DISTINCT ON (path) path, object_key, rules FROM generated_artifact "
-                         "WHERE project_id = :p AND path NOT LIKE 'design/%' AND path NOT LIKE 'characterization/%' "
+                         "WHERE project_id = :p AND run_id = :r AND path NOT LIKE 'design/%' "
+                         "AND path NOT LIKE 'characterization/%' "
                          "AND path NOT LIKE 'frontend/%' AND path NOT LIKE 'inputs/%' AND path NOT LIKE 'infra/%' "
                          "AND path NOT LIKE 'ivv/%' AND path NOT LIKE 'delta/%' "
                          "ORDER BY path, created_at DESC"),
-                    {"p": self.run.project_id},
+                    {"p": self.run.project_id, "r": self.run.run_id},
                 )
             ).all()  # fmt: skip
         files = {row.path: await self._get(row.object_key) for row in rows}
@@ -792,7 +795,7 @@ class WorkerProjectPort:
             rows = (
                 await conn.execute(
                     text("SELECT DISTINCT ON (path) path, object_key FROM generated_artifact WHERE project_id = :p "
-                         "AND path LIKE 'frontend/%' ORDER BY path, created_at DESC"),
+                         "AND run_id = :r AND path LIKE 'frontend/%' ORDER BY path, created_at DESC"),
                     {"p": self.run.project_id},
                 )
             ).all()  # fmt: skip

@@ -289,6 +289,12 @@ def _schema_of(pack: BackendPack) -> str | None:
     return str(found()) if callable(found) and found() else None
 
 
+def _engine(engine: Any | None) -> dict[str, Any]:
+    """The legacy's engine for the golden master (ADR-0055), passed only when there is one: the fakes of the tests
+    and the packs that do not run against an engine keep their signature."""
+    return {"engine": engine} if engine is not None else {}
+
+
 async def rebuild_base(
     ctx: PhaseContext,
     port: FidelityPort,
@@ -300,6 +306,7 @@ async def rebuild_base(
     defaults: dict[str, Any],
     files: dict[str, str],
     outcomes_of: Any,
+    engine: Any | None = None,
 ) -> tuple[dict[str, str], EquivalenceRun | None]:
     """The base of the convergence after a worker restart (ADR-0043): the journal keeps every attempt of the
     developer, so the corrections that were kept (or passed) are applied again, in order, each one re-evaluated
@@ -312,7 +319,7 @@ async def rebuild_base(
     if not kept:
         return files, None
     base = dict(files)
-    run = await pack.run_equivalence(sandbox, base, design, use_case, master, defaults)
+    run = await pack.run_equivalence(sandbox, base, design, use_case, master, defaults, **_engine(engine))
     outcomes: list[CaseOutcome] = outcomes_of(run)
     applied = 0
     for _iteration, memo in kept:
@@ -321,7 +328,8 @@ async def rebuild_base(
         candidate = dict(base)
         for path, reference in ((memo.get("artifact") or {}).get("files") or {}).items():
             candidate[path] = await port.load_file(reference)
-        candidate_run = await pack.run_equivalence(sandbox, candidate, design, use_case, master, defaults)
+        candidate_run = await pack.run_equivalence(sandbox, candidate, design, use_case, master, defaults,
+                                                   **_engine(engine))  # fmt: skip
         candidate_outcomes: list[CaseOutcome] = outcomes_of(candidate_run)
         if candidate_run.problem or not closer(candidate_outcomes, outcomes):
             continue
@@ -347,13 +355,15 @@ async def converge(
     outcomes_of: Any,
     system_prompt: str,
     program: str,
+    engine: Any | None = None,
 ) -> tuple[dict[str, str], Convergence]:
     """The generated project against the golden master, corrected by the developer until every case matches: at
     most `max_iterations` developer calls per round, then the escalation question (retry or stop) a person answers
     (11.1). Returns the files to keep and what happened."""
     files, resumed = await rebuild_base(ctx, port, pack, sandbox, design, use_case, master, defaults, files,
-                                        outcomes_of)  # fmt: skip
-    first = resumed or await pack.run_equivalence(sandbox, files, design, use_case, master, defaults)
+                                        outcomes_of, engine)  # fmt: skip
+    first = resumed or await pack.run_equivalence(sandbox, files, design, use_case, master, defaults,
+                                                  **_engine(engine))  # fmt: skip
     first_outcomes: list[CaseOutcome] = outcomes_of(first)
     if first.problem:
         raise_problem = f"the golden master could not run on the generated project: {first.problem}"
@@ -450,7 +460,8 @@ async def converge(
             else f"\n\nUnit tests that fail (align them with the program if they contradict "
             f"it, the golden master proves what the program does):\n{build.diagnostic(1200)}"
         )
-        run: EquivalenceRun = await pack.run_equivalence(sandbox, candidate, design, use_case, master, defaults)
+        run: EquivalenceRun = await pack.run_equivalence(sandbox, candidate, design, use_case, master, defaults,
+                                                         **_engine(engine))  # fmt: skip
         outcomes: list[CaseOutcome] = outcomes_of(run)
         if run.problem:
             return Verification(False, f"the golden master could not run: {run.problem}"[:1500])
