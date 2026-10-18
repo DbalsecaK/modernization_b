@@ -766,7 +766,7 @@ class GenerationPhases:
                         hints=guided_enabled(ctx.run.options), files=files, written=written_tables(files),
                         read=read_tables(files), guidance=stack_guidance(ctx.run.target),
                         package_root=ctx.run.target.get("package_root"),
-                        save=self._save_docs if guided_enabled(ctx.run.options) else None,
+                        save=self._save_docs,  # every run: a failed design can be diagnosed (ADR-0045)
                         database=str(ctx.run.target.get("database") or "") or None, legacy=legacy_name,
                     )  # fmt: skip
             except ReplyError as exc:
