@@ -154,9 +154,10 @@ def placeholder_service(design: Design, use_case: UseCase) -> tuple[str, str]:
     return service_path(design, use_case), body
 
 
-def controller_file(design: Design, use_case: UseCase) -> tuple[str, str]:
+def controller_file(design: Design, use_case: UseCase, transactional: bool = True) -> tuple[str, str]:
     """The REST adapter; with a unit of work in the design (ADR-0055) it runs the use case inside one transaction:
-    a rejection (BusinessError) or any failure undoes every write and every call of the use case."""
+    a rejection (BusinessError) or any failure undoes every write and every call of the use case. A flavour whose
+    persistence has its own transaction (MongoDB) passes `transactional=False`: no TransactionTemplate there."""
     package = f"{design.base_package}.adapters.in.rest"
     service = f"{design.base_package}.application.{use_case.name}Service"
     path = use_case.path or "/" + _snake(use_case.name).replace("_", "-")
@@ -171,7 +172,8 @@ def controller_file(design: Design, use_case: UseCase) -> tuple[str, str]:
     doc = (f" The unit of work of the legacy (begin at {work.begins_at}, {lines}, commit at {work.commits_at}) is "
            "this transaction." if work else " The use case writes: the request is its transaction." if own
            else "")  # fmt: skip
-    work = work or own  # type: ignore[assignment]
+    work = (work or own) if transactional else None  # type: ignore[assignment]
+    doc = doc if transactional else ""
     imports = "import org.springframework.web.bind.annotation.*;\n" + (
         "import org.springframework.transaction.support.TransactionTemplate;\n" if work else ""
     )
@@ -499,8 +501,11 @@ def adapter_path(design: Design, port: Port) -> str:
     return _path(f"{design.base_package}.adapters.out.jdbc", f"Jdbc{port.name}")
 
 
-def skeleton(design: Design, spring_boot_version: str = SPRING_BOOT_VERSION) -> dict[str, str]:
-    """The deterministic files by layer: contracts, domain (model, ports, error), adapters (REST), orchestration."""
+def skeleton(
+    design: Design, spring_boot_version: str = SPRING_BOOT_VERSION, transactional: bool = True
+) -> dict[str, str]:
+    """The deterministic files by layer: contracts, domain (model, ports, error), adapters (REST), orchestration.
+    `transactional`: the REST adapter opens the unit of work (False for a persistence with its own transaction)."""
     files: dict[str, str] = dict(
         [pom_file(design, spring_boot_version), application_file(design), error_file(design), schema_file(design)]
     )
@@ -510,7 +515,7 @@ def skeleton(design: Design, spring_boot_version: str = SPRING_BOOT_VERSION) -> 
         files.update([port_file(design, port)])
     for use_case in design.use_cases:
         files.update(contract_files(design, use_case))
-        files.update([controller_file(design, use_case)])
+        files.update([controller_file(design, use_case, transactional)])
     files.update(generated_adapters(design))
     return files
 

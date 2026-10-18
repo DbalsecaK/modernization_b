@@ -257,3 +257,12 @@ def test_a_decimal_written_as_a_double_is_refused_by_the_collection(mongodb_sand
     failures = [c.failure for c in run.cases if c.failure]
     assert failures
     assert all("validation" in (f or "").lower() for f in failures), failures
+
+
+def test_the_mongodb_controller_leaves_the_transaction_to_mongo_transaction() -> None:
+    # The MongoDB flavour has no spring-tx on its classpath and its own MongoTransaction (ADR-0029): the REST
+    # adapter must not wrap the use case in a TransactionTemplate, even when the design declares a unit of work.
+    files = MONGODB_PACK.skeleton(DESIGN)
+    controller = next(text for path, text in files.items() if path.endswith("PayOrderController.java"))
+    assert "TransactionTemplate" not in controller
+    assert "return service.execute(request);" in controller

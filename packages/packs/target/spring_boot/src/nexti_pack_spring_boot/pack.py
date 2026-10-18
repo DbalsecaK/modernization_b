@@ -73,8 +73,10 @@ class SpringBootPack:
         pack.spring_boot_version = chosen
         return pack
 
+    controller_transaction = True  # the REST adapter opens the unit of work (MongoDB has its own transaction)
+
     def skeleton(self, design: Design) -> dict[str, str]:
-        files = skeleton(design, self.spring_boot_version)
+        files = skeleton(design, self.spring_boot_version, self.controller_transaction)
         path, content = wiring(design)
         files[path] = content
         return files
@@ -266,6 +268,7 @@ class SpringBootMongoDbPack(SpringBootPack):
         return None  # collections, no schema file
 
     image = mongodb.IMAGE
+    controller_transaction = False  # MongoTransaction (ADR-0029) is the unit of work; no spring-tx on the classpath
     database = "mongodb"
 
     def skeleton(self, design: Design) -> dict[str, str]:
