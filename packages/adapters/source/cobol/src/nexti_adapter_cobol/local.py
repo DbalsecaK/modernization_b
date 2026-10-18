@@ -422,13 +422,25 @@ def map_input(bms_map: BmsMap, inputs: Mapping[str, Scalar]) -> bytes:
     size = 12 + sum(3 + f.length for f in layout)
     out = bytearray(size)
     given = {k.upper(): v for k, v in inputs.items()}
+    pictures = {f.label.upper(): f.picin for f in bms_map.fields if f.label}
     for item in layout:
         if item.name not in given or given[item.name] is None:
             continue
-        text = str(given[item.name]).encode("latin-1", "replace")[: item.length]
+        text = _typed(given[item.name], pictures.get(item.name, "")).encode("latin-1", "replace")[: item.length]
         out[item.offset : item.offset + 2] = len(text).to_bytes(2, "big")
         out[item.data_offset : item.data_offset + item.length] = text.ljust(item.length, b" ")
     return bytes(out)
+
+
+def _typed(value: Scalar, picin: str) -> str:
+    """The value as the operator types it in a field with that PICIN: a numeric picture with an implied decimal
+    point (`9(9)V99`) takes the digits without the point, scaled, as the terminal sends them."""
+    body = expand(picin).upper() if picin else ""
+    if body and set(body) <= set("9VS") and "V" in body:
+        scale = body.partition("V")[2].count("9")
+        number = _decimal(value).scaleb(scale).quantize(Decimal(1), rounding=ROUND_HALF_UP)
+        return str(abs(int(number)))
+    return str(value)
 
 
 def output_layout(bms_map: BmsMap) -> list[dict[str, Any]]:
@@ -479,6 +491,32 @@ def _parse_exec(body: str) -> tuple[str, dict[str, str], list[str]]:
     return " ".join(words), options, flags
 
 
+def _wrapped(code: str, width: int = 72 - len(AREA)) -> list[str]:
+    """A generated statement in lines that fit the fixed format (columns 12-72): broken at blanks outside the
+    quotes, the continuation lines indented four more."""
+    if len(code) <= width:
+        return [code]
+    parts: list[str] = []
+    rest = code
+    first = True
+    while len(rest) > (width if first else width - 4):
+        limit = width if first else width - 4
+        cut = -1
+        quoted = False
+        for i, char in enumerate(rest[:limit]):
+            if char == "'":
+                quoted = not quoted
+            elif char == " " and not quoted:
+                cut = i
+        if cut <= 0:
+            break
+        parts.append(rest[:cut] if first else "    " + rest[:cut])
+        rest = rest[cut + 1 :]
+        first = False
+    parts.append(rest if first else "    " + rest)
+    return parts
+
+
 def _literal(value: str | None) -> str:
     if value is None:
         return ""
@@ -524,7 +562,7 @@ def translate(program: Program, text: str, schema: Schema, local_programs: set[s
         if lines is None:
             found.unsupported.append(f"EXEC CICS {command}")
             lines = ["CONTINUE"]
-        out = "\n".join(AREA + line for line in lines)
+        out = "\n".join(AREA + part for line in lines for part in _wrapped(line))
         return out + period
 
     body = _EXEC_CICS.sub(replacement, text)
@@ -660,7 +698,8 @@ def _with_environment(body: str, program: Program, files: Mapping[str, tuple[int
         for line in (
             f"           SELECT NX-F-{name} ASSIGN TO '/work/case/{name}.idx'",
             "               ORGANIZATION IS INDEXED ACCESS MODE IS DYNAMIC",
-            f"               RECORD KEY IS NX-F-{name}-KEY FILE STATUS IS NX-FS-{name}.",
+            f"               RECORD KEY IS NX-F-{name}-KEY",
+            f"               FILE STATUS IS NX-FS-{name}.",
         )
     ]
     fds = [
@@ -754,28 +793,29 @@ def driver_source(main_program: str) -> str:
                 "       01  NX-OFFSET              PIC X(8) VALUE LOW-VALUES.",
                 "       01  NX-COUNT               PIC X(4) COMP-X.",
                 "       01  NX-FLAGS               PIC X VALUE LOW-VALUE.",
+                "       01  NX-ZERO                PIC X VALUE LOW-VALUE.",
                 "       01  NX-MODE                PIC X VALUE X'01'.",
                 "       01  NX-RC                  PIC S9(8) COMP-5.",
                 "       PROCEDURE DIVISION.",
                 "       0000-MAIN.",
                 "           MOVE '/work/case/eib.bin' TO NX-NAME",
                 "           INSPECT NX-NAME REPLACING ALL SPACE BY X'00'",
-                "           CALL 'CBL_OPEN_FILE' USING NX-NAME NX-MODE NX-FLAGS NX-FLAGS",
+                "           CALL 'CBL_OPEN_FILE' USING NX-NAME NX-MODE NX-FLAGS NX-ZERO",
                 "                                      NX-HANDLE RETURNING NX-RC",
                 "           IF NX-RC = 0",
                 f"              MOVE {eib_length()} TO NX-COUNT",
                 "              CALL 'CBL_READ_FILE' USING NX-HANDLE NX-OFFSET NX-COUNT",
-                "                                         NX-FLAGS NX-EIB",
+                "                                         NX-ZERO NX-EIB",
                 "              CALL 'CBL_CLOSE_FILE' USING NX-HANDLE",
                 "           END-IF",
                 "           MOVE '/work/case/commarea.bin' TO NX-NAME",
                 "           INSPECT NX-NAME REPLACING ALL SPACE BY X'00'",
-                "           CALL 'CBL_OPEN_FILE' USING NX-NAME NX-MODE NX-FLAGS NX-FLAGS",
+                "           CALL 'CBL_OPEN_FILE' USING NX-NAME NX-MODE NX-FLAGS NX-ZERO",
                 "                                      NX-HANDLE RETURNING NX-RC",
                 "           IF NX-RC = 0 AND EIBCALEN OF NX-EIB > 0",
                 "              MOVE EIBCALEN OF NX-EIB TO NX-COUNT",
                 "              CALL 'CBL_READ_FILE' USING NX-HANDLE NX-OFFSET NX-COUNT",
-                "                                         NX-FLAGS NX-COMMAREA",
+                "                                         NX-ZERO NX-COMMAREA",
                 "              CALL 'CBL_CLOSE_FILE' USING NX-HANDLE",
                 "           END-IF",
                 f"           CALL '{main_program.upper()}' USING NX-EIB NX-COMMAREA",
@@ -830,7 +870,8 @@ def _file_program(program: str, name: str, length: int, key: int, load: bool) ->
         "               ORGANIZATION IS SEQUENTIAL FILE STATUS IS NX-FS-SEQ.",
         f"           SELECT NX-IDX ASSIGN TO '{idx}'",
         "               ORGANIZATION IS INDEXED ACCESS MODE IS DYNAMIC",
-        "               RECORD KEY IS NX-IDX-KEY FILE STATUS IS NX-FS-IDX.",
+        "               RECORD KEY IS NX-IDX-KEY",
+        "               FILE STATUS IS NX-FS-IDX.",
         "       DATA DIVISION.",
         "       FILE SECTION.",
         "       FD  NX-SEQ.",
@@ -891,7 +932,7 @@ class CasePlan:
 
 def case_plan(
     case: Case, schema: Schema, maps: Mapping[str, BmsMap], transid: str, commarea_layouts: Mapping[str, list[Field]],
-    aid: str = "ENTER", commarea: bytes = b"",
+    aid: str = "ENTER", commarea: bytes = b"", commarea_length: int = 0,
 ) -> CasePlan:  # fmt: skip
     """The case as the sandbox receives it. The inputs of the case fill the map the program receives (every named
     field it knows); `COMMAREA`, `AID`, `TRANSID`, `USERID` inputs (when present) set the task's context. The
@@ -907,6 +948,10 @@ def case_plan(
     given = inputs.pop("COMMAREA", None)
     if given is not None:
         commarea = str(given).encode("latin-1")
+    elif inputs and commarea_length > 0:
+        # A pseudo-conversational task that receives a map comes with the COMMAREA of its previous RETURN (its
+        # length is what the program tests first); the case gives the map, so the task is that continuation.
+        commarea = b"\x00" * commarea_length
     map_bytes = {name: map_input(bms_map, inputs).hex() for name, bms_map in maps.items()}
     layouts = {name: output_layout(bms_map) for name, bms_map in maps.items()}
     stubs: dict[str, list[dict[str, Any]]] = {}
@@ -953,12 +998,8 @@ def observe(output: str, schema: Schema, case: Case, commarea_layouts: Mapping[s
             layout = commarea_layouts.get(program.upper(), [])
             arguments = {f.name.upper().replace("-", "_"): decode(bytes.fromhex(data), f) for f in layout}
             pending_calls.append(Call(program=program, arguments=arguments))
-            if line.startswith("NXX|"):
-                outputs.setdefault("XCTL", program)
         elif line.startswith("NXR|"):
-            _, transid, data = line.split("|", 2)
-            if transid:
-                outputs.setdefault("TRANSID", transid)
+            pass  # the RETURN closes the task; its transid and COMMAREA are the next task's business
         elif line.startswith("NXS|"):
             if line.endswith("ROLLBACK"):
                 writes = [w for w in writes if w[0] == "committed"]

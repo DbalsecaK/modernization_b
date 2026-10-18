@@ -193,6 +193,7 @@ def controller_file(design: Design, use_case: UseCase, transactional: bool = Tru
     contract = _contract(use_case)
     if contract is not None:
         parameter, building, helpers = contract
+        parameter = f"@RequestBody(required = false) {parameter}"
         fields += "    private final ObjectMapper mapper;\n"
         imports += (
             "import com.fasterxml.jackson.databind.JsonNode;\nimport com.fasterxml.jackson.databind.ObjectMapper;\n"
@@ -294,7 +295,7 @@ def _contract(use_case: UseCase) -> tuple[str, str, str] | None:
         if arguments
         else f"        {use_case.name}Request request = new {use_case.name}Request();\n"
     )
-    return "@RequestBody(required = false) JsonNode body", building, _CONTRACT_HELPERS
+    return "JsonNode body", building, _CONTRACT_HELPERS
 
 
 def _service_owned_controller(design: Design, use_case: UseCase, unit: Port) -> str:
@@ -318,6 +319,7 @@ def _service_owned_controller(design: Design, use_case: UseCase, unit: Port) -> 
     building = helpers = imports = mapper_field = mapper_parameter = mapper_init = ""
     if contract is not None:
         parameter, building, helpers = contract
+        parameter = f"@RequestBody(required = false) {parameter}"
         doc += CONTRACT_DOC
         imports = (
             "import com.fasterxml.jackson.databind.JsonNode;\nimport com.fasterxml.jackson.databind.ObjectMapper;\n"

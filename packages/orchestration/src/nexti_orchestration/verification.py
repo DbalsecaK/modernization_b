@@ -229,6 +229,8 @@ def _certainty(
     stubbed = stubbed_programs(master)
     if master.from_traces:
         kind: Engine = "traces"
+    elif master.engine.lower().startswith("gnucobol"):
+        kind = "other"  # the platform's own engine for COBOL (ADR-0056, point 7): the logic, not the product
     elif engine is not None:
         kind = "same_local"  # the legacy's engine, started by the platform (ADR-0055)
     else:

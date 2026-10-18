@@ -19,7 +19,16 @@ from nexti_core.spec.design import writes
 from nexti_core.spec.equivalence import EquivalenceRun
 from nexti_pack_spring_boot.design import Design, UseCase
 from nexti_pack_spring_boot.equivalence import harness_source, run_equivalence
-from nexti_pack_spring_boot.generate import _pascal, _path, _snake, java_type, owns_transaction, unit_of_work_port
+from nexti_pack_spring_boot.generate import (
+    CONTRACT_DOC,
+    _contract,
+    _pascal,
+    _path,
+    _snake,
+    java_type,
+    owns_transaction,
+    unit_of_work_port,
+)
 from nexti_pack_spring_boot.generate import skeleton as core_skeleton
 from nexti_pack_spring_boot.pack import SCHEMA, SpringBootPack
 from nexti_sandbox import Sandbox
@@ -52,6 +61,16 @@ def resource_file(design: Design, use_case: UseCase) -> tuple[str, str]:
                "jakarta.ws.rs.Produces", "jakarta.ws.rs.core.MediaType"]  # fmt: skip
     if method not in _BODY_METHODS and use_case.inputs:
         imports.append("jakarta.ws.rs.QueryParam")
+    # ADR-0056 (phase D): a use case that replaces a legacy program reads its body as the program reads its
+    # arguments (defaults when absent, lengths, scale); the same generator the Spring adapter uses.
+    contract = _contract(use_case)
+    building = helpers = mapper_field = mapper_param = mapper_init = doc = ""
+    if contract is not None:
+        params, building, helpers = contract
+        argument = "request"
+        imports += ["com.fasterxml.jackson.databind.JsonNode", "com.fasterxml.jackson.databind.ObjectMapper"]
+        mapper_field, mapper_param = "    private final ObjectMapper mapper;\n", ", ObjectMapper mapper"
+        mapper_init, doc = "        this.mapper = mapper;\n", CONTRACT_DOC
     # ADR-0055: the unit of work of the legacy is the transaction of the request (a rejection undoes everything).
     # ADR-0055 (point 17): a use case that writes without a legacy makes the request its transaction too.
     unit = unit_of_work_port(design)
@@ -64,16 +83,18 @@ def resource_file(design: Design, use_case: UseCase) -> tuple[str, str]:
     lines = "".join(f"import {i};\n" for i in sorted(imports))
     return _path(package, f"{use_case.name}Resource"), (
         f"package {package};\n\n{lines}\n"
-        f"/** REST resource of {use_case.name} (rules {', '.join(use_case.rules)}). */\n"
+        f"/** REST resource of {use_case.name} (rules {', '.join(use_case.rules)}).{doc} */\n"
         f'@Path("/api/{design.context}")\n@Produces(MediaType.APPLICATION_JSON)\n'
         f"@Consumes(MediaType.APPLICATION_JSON)\n"
         f"public class {use_case.name}Resource {{\n\n"
-        f"    private final {service} service;\n\n"
+        f"    private final {service} service;\n{mapper_field}\n"
         f"    @Inject\n"
-        f"    public {use_case.name}Resource({service} service) {{\n        this.service = service;\n    }}\n\n"
+        f"    public {use_case.name}Resource({service} service{mapper_param}) {{\n"
+        f"        this.service = service;\n{mapper_init}    }}\n\n"
         f'    @{method}\n    @Path("{path}")\n{transactional}'
         f"    public {use_case.name}Response handle({params}) {{\n"
-        f"        return service.execute({argument});\n    }}\n}}\n"
+        f"{building}"
+        f"        return service.execute({argument});\n    }}\n{helpers}}}\n"
     )
 
 

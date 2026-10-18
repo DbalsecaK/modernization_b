@@ -26,7 +26,9 @@
        01  WS-OFFSET              PIC X(8) VALUE LOW-VALUES.
        01  WS-COUNT               PIC X(4) COMP-X.
        01  WS-FLAGS               PIC X VALUE LOW-VALUE.
-       01  WS-MODE                PIC X VALUE LOW-VALUE.
+       01  WS-MODE                PIC X VALUE X'01'.
+       01  WS-OUT                 PIC X VALUE X'02'.
+       01  WS-ZERO                PIC X VALUE LOW-VALUE.
        01  WS-RC                  PIC S9(8) COMP-5.
        01  WS-SIZE                PIC 9(8).
        LINKAGE SECTION.
@@ -90,8 +92,7 @@
        2000-READ-AREA.
            MOVE '/work/case/area.bin' TO WS-NAME.
            INSPECT WS-NAME REPLACING ALL SPACE BY X'00'.
-           MOVE 1 TO WS-MODE.
-           CALL 'CBL_OPEN_FILE' USING WS-NAME WS-MODE WS-FLAGS WS-FLAGS
+           CALL 'CBL_OPEN_FILE' USING WS-NAME WS-MODE WS-FLAGS WS-ZERO
                                       WS-HANDLE
                 RETURNING WS-RC.
            IF WS-RC = 0
@@ -107,8 +108,8 @@
            MOVE '/work/case/area.bin' TO WS-NAME.
            INSPECT WS-NAME REPLACING ALL SPACE BY X'00'.
            CALL 'CBL_DELETE_FILE' USING WS-NAME.
-           CALL 'CBL_CREATE_FILE' USING WS-NAME WS-MODE WS-FLAGS
-                                        WS-FLAGS WS-HANDLE
+           CALL 'CBL_CREATE_FILE' USING WS-NAME WS-OUT WS-FLAGS
+                                        WS-ZERO WS-HANDLE
                 RETURNING WS-RC.
            IF WS-RC = 0
               MOVE LS-LEN TO WS-COUNT

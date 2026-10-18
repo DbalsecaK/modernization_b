@@ -8,6 +8,7 @@ a guess."""
 
 import re
 from collections.abc import Callable
+from dataclasses import dataclass
 from importlib.resources import files as package_files
 
 from nexti_adapter_bms import BmsAdapter
@@ -18,6 +19,7 @@ from nexti_adapter_cobol.local import (
     IMAGE,
     Field,
     Translation,
+    byte_length,
     case_plan,
     driver_source,
     dumper_source,
@@ -44,7 +46,8 @@ _EXEC_SQL = re.compile(r"\bEXEC\s+SQL\b", re.IGNORECASE)
 
 RUN_SCRIPT = r"""
 set -u
-mkdir -p /work/bin /work/src /work/case
+mkdir -p /work/bin /work/src /work/case /work/tmp
+export TMPDIR=/work/tmp
 cp -r /input/src/. /work/src/
 cd /work/src
 if ! cobc -x -o /work/bin/NXMAIN -I /input/cpy -I /input/nx NXMAIN.cbl PROGRAMS NXCICS.cbl > /work/cobc.txt 2>&1; then
@@ -119,6 +122,37 @@ class GnuCobolRunner:
         self.image = image
 
     async def run(self, files: list[SourceFile], suite: Suite) -> GoldenMaster:
+        prepared = self.prepare(files, suite)
+        sandbox = self._sandboxes(self.image)
+        result = await sandbox.run(["sh", "/input/run.sh"], prepared.inputs,
+                                   Limits(timeout_seconds=600, memory_mb=512, work_exec=True, work_mb=256,
+                                          max_output_bytes=16 * 1024 * 1024))  # fmt: skip
+        if "NXCOMPILE-FAILED" in result.stdout:
+            detail = result.stdout.split("NXCOMPILE-FAILED", 1)[1].strip()[:1500]
+            raise LegacyUnavailableError(f"GnuCOBOL could not compile the translated programs: {detail}")
+        if "NXDONE" not in result.stdout:
+            tail = (result.stderr or result.stdout)[-800:]
+            failure = LegacyUnavailableError(f"the local COBOL engine did not finish: {tail}")
+            failure.transient = result.timed_out
+            raise failure
+        sections = _sections(result.stdout)
+        results = []
+        for case in suite.cases:
+            output = sections.get(case.name)
+            if output is None:
+                raise LegacyUnavailableError(f"the local COBOL engine printed nothing for the case {case.name}")
+            results.append(Recorded(case=case, observation=observe(output, suite.schema_, case, prepared.layouts)))
+        return GoldenMaster(
+            program=prepared.program, source_sha256=source_digest(files), engine=ENGINE, schema_=suite.schema_,
+            results=results, unreachable=dict(suite.unreachable),
+            environment=[EnvironmentItem(key="engine", value="GnuCOBOL 3 (ASCII, big-endian binary, local "
+                                         "substitutes of CICS)", source="engine")],
+        )  # fmt: skip
+
+    def prepare(self, files: list[SourceFile], suite: Suite) -> "Prepared":
+        """Everything the sandbox receives for the suite (sources translated, copybooks, runtime, the cases as
+        bytes, the script), and the layouts the observations are decoded with. Raises LegacyUnavailableError with
+        the list of what the engine cannot do yet."""
         adapter = CobolAdapter()
         programs, problems = adapter._programs(files)
         copybooks = adapter._copybooks(files)
@@ -185,8 +219,10 @@ class GnuCobolRunner:
         inputs["nx/DFHAID.cpy"] = (runtime / "DFHAID.cpy").read_bytes()
         inputs["nx/nxhelper.py"] = (runtime / "nxhelper.py").read_bytes()
         received = {m for t in translations.values() for m in t.maps if m in maps}
+        commarea_length = _commarea_length(main, copybooks)
         for case in suite.cases:
-            plan = case_plan(case, suite.schema_, {m: maps[m] for m in received}, transid, layouts)
+            plan = case_plan(case, suite.schema_, {m: maps[m] for m in received}, transid, layouts,
+                             commarea_length=commarea_length)  # fmt: skip
             folder = f"cases/{case.name}"
             for file_name, data in plan.files.items():
                 inputs[f"{folder}/{file_name}"] = data
@@ -196,31 +232,24 @@ class GnuCobolRunner:
         script = (RUN_SCRIPT.replace("PROGRAMS", " ".join(f"{name}.cbl" for name in translations))
                   .replace("FILES", " ".join(file_sizes) or "''"))  # fmt: skip
         inputs["run.sh"] = script.encode("utf-8")
-        sandbox = self._sandboxes(self.image)
-        result = await sandbox.run(["sh", "/input/run.sh"], inputs,
-                                   Limits(timeout_seconds=600, memory_mb=512, work_exec=True, work_mb=256,
-                                          max_output_bytes=16 * 1024 * 1024))  # fmt: skip
-        if "NXCOMPILE-FAILED" in result.stdout:
-            detail = result.stdout.split("NXCOMPILE-FAILED", 1)[1].strip()[:1500]
-            raise LegacyUnavailableError(f"GnuCOBOL could not compile the translated programs: {detail}")
-        if "NXDONE" not in result.stdout:
-            tail = (result.stderr or result.stdout)[-800:]
-            failure = LegacyUnavailableError(f"the local COBOL engine did not finish: {tail}")
-            failure.transient = result.timed_out
-            raise failure
-        sections = _sections(result.stdout)
-        results = []
-        for case in suite.cases:
-            output = sections.get(case.name)
-            if output is None:
-                raise LegacyUnavailableError(f"the local COBOL engine printed nothing for the case {case.name}")
-            results.append(Recorded(case=case, observation=observe(output, suite.schema_, case, layouts)))
-        return GoldenMaster(
-            program=main.name, source_sha256=source_digest(files), engine=ENGINE, schema_=suite.schema_,
-            results=results, unreachable=dict(suite.unreachable),
-            environment=[EnvironmentItem(key="engine", value="GnuCOBOL 3 (ASCII, big-endian binary, local "
-                                         "substitutes of CICS)", source="engine")],
-        )  # fmt: skip
+        return Prepared(main.name, inputs, layouts)
+
+
+@dataclass(frozen=True)
+class Prepared:
+    program: str
+    inputs: dict[str, bytes]
+    layouts: dict[str, list[Field]]
+
+
+def _commarea_length(program: Program, copybooks: dict[str, Copybook]) -> int:
+    """The bytes of the program's DFHCOMMAREA (LINKAGE), the length a continuation of its task comes with."""
+    items = expanded_data(program, copybooks)
+    layout = group_layout(items, "DFHCOMMAREA")
+    if layout:
+        return max(f.offset + f.length for f in layout)
+    own = next((it for it in items if it.name.upper() == "DFHCOMMAREA" and it.picture), None)
+    return byte_length(own.picture, own.usage) if own else 0
 
 
 def _text_of(files: list[SourceFile], owner: Program | Copybook) -> str:

@@ -136,7 +136,8 @@ def test_the_translation_replaces_every_exec_cics_and_declares_what_the_program_
     assert "READ NX-F-ORDENES INTO ORD-REGISTRO" in out
     assert "MOVE EIBRESP TO WS-RESP" in out
     assert "REWRITE NX-F-ORDENES-REC" in out
-    assert "CALL 'NXCICS' USING 'FILEOP  ' 'ORDENES:REWRITE' NX-F-ORDENES-REC NX-LEN" in out
+    assert "CALL 'NXCICS' USING 'FILEOP  ' 'ORDENES:REWRITE'" in out  # wrapped at column 72:
+    assert "               NX-F-ORDENES-REC NX-LEN" in out
     assert "CALL 'PAGODEB' USING DFHEIBLK WS-DEBCOM" in out  # a program of the sources runs for real
     assert "CALL 'NXCICS' USING 'LINK    ' 'PAGOMOV ' WS-MOVCOM NX-LEN" in out  # one not in them: a substitute
     assert "CALL 'NXCICS' USING 'SYNC    ' 'COMMIT' NX-NAME NX-LEN" in out
@@ -202,7 +203,6 @@ def test_the_observation_is_read_from_what_the_sandbox_printed() -> None:
     assert seen.returns == 0
     assert seen.error is None
     assert seen.outputs["RMENS"] == "PAGO REALIZADO"
-    assert seen.outputs["TRANSID"] == "PGOR"
     assert seen.calls[0].program == "PAGOMOV"
     assert seen.calls[0].arguments == {"MOV_ORDEN": "1000001", "MOV_NUMERO": "5555500010"}
     assert seen.tables["ORDENES"][0]["ORD_ESTADO"] == "G"

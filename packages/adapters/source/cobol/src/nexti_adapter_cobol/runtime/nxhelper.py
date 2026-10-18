@@ -45,15 +45,20 @@ def receive(name: str, size: int) -> None:
 
 
 def send(name: str, size: int) -> None:
-    """The output fields of a sent map, decoded by the layout of the platform: LOW-VALUES means not sent."""
-    layout = case().get("layouts", {}).get(name.upper(), [])
+    """The output fields of a sent map, decoded by the layout of the platform: LOW-VALUES means not sent, and a
+    field sent back exactly as the operator typed it is not an output of the program."""
+    found = case()
+    layout = found.get("layouts", {}).get(name.upper(), [])
+    received = bytes.fromhex(found.get("maps", {}).get(name.upper(), ""))
     data = area()
     for field in layout:
         start, length = field["offset"], field["length"]
         value = data[start : start + length]
         if not value.strip(b"\x00"):
             continue
-        log(f"NXO|{field['name']}|{value.decode('latin-1').rstrip()}")
+        if received and received[start : start + length] == value:
+            continue
+        log(f"NXO|{field['name']}|{value.decode('latin-1').strip()}")  # edited numerics lead with blanks
 
 
 def text(size: int) -> None:
