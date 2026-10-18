@@ -730,3 +730,23 @@ def test_a_savepoint_keeps_the_name_the_legacy_gives_it() -> None:
     assert Savepoint(name="sp_debito_empresa", legacy_line=408).name == "sp_debito_empresa"
     with pytest.raises(ValidationError):
         Savepoint(name="9 spaces", legacy_line=1)
+
+
+def test_a_result_entity_may_name_the_output_parameters_its_fields_carry() -> None:
+    # Phase F (ADR-0043): an entity a port method returns has no table; its fields carry output parameters and
+    # naming them in `legacy` is not a mistake. A field of an entity that keeps a table still needs a column.
+    data = json.loads(DESIGN_JSON)
+    data["entities"].append(
+        {
+            "name": "DebitResult",
+            "key": [],
+            "fields": [{"name": "sequence", "type": "integer(64,signed)", "legacy": "@o_secuencial"}],
+        }
+    )
+    assert not any(
+        p.startswith("entity fields map to columns") for p in design_problems(Design.model_validate(data), RULES)
+    )
+    data["entities"][0]["fields"][0]["legacy"] = "@i_orden"
+    assert any(
+        p.startswith("entity fields map to columns") for p in design_problems(Design.model_validate(data), RULES)
+    )
