@@ -750,3 +750,33 @@ def test_a_result_entity_may_name_the_output_parameters_its_fields_carry() -> No
     assert any(
         p.startswith("entity fields map to columns") for p in design_problems(Design.model_validate(data), RULES)
     )
+
+
+def test_an_entity_is_asked_only_for_the_columns_loaded_from_its_own_table() -> None:
+    # Phase F (ADR-0055): two tables share the short name bp_detalle; the entity of each keeps the columns the
+    # program loads from that table, not from the other. A design cannot satisfy a rule that merges them.
+    from nexti_orchestration.generation import legacy_shape_problems
+
+    text = (
+        "create procedure sp_x as\ndeclare @a int, @b int\n"
+        "select @a = dt_nombre_beneficiario from bp_detalle where dt_orden = 1\n"
+        "select @b = dt_tipo_cta from db_otra..bp_detalle where dt_orden = 1\nreturn 0\n"
+    )
+    files = [SourceFile("sp/x.sp", text)]
+    data = json.loads(DESIGN_JSON)
+    data["entities"] += [
+        {"name": "Detalle", "table": "bp_detalle", "legacy_table": "bp_detalle", "key": ["orden"],
+         "fields": [{"name": "orden", "type": "integer(32,signed)", "column": "dt_orden", "legacy": "dt_orden"},
+                    {"name": "beneficiario", "type": "text(var,40,utf8)", "column": "dt_nombre_beneficiario",
+                     "legacy": "dt_nombre_beneficiario"}]},
+        {"name": "DetallePagos", "table": "bp_detalle_pagos", "legacy_table": "db_otra..bp_detalle",
+         "key": ["orden"],
+         "fields": [{"name": "orden", "type": "integer(32,signed)", "column": "dt_orden", "legacy": "dt_orden"},
+                    {"name": "tipo", "type": "text(fixed,3,utf8)", "column": "dt_tipo_cta", "legacy": "dt_tipo_cta"}]},
+    ]  # fmt: skip
+    design = Design.model_validate(data)
+    assert [p for p in legacy_shape_problems(design, files) if "loads these of its columns" in p] == []
+    data["entities"][-1]["fields"].pop()
+    (problem,) = [p for p in legacy_shape_problems(Design.model_validate(data), files) if "loads these" in p]
+    assert problem.startswith("DetallePagos keeps db_otra..bp_detalle")
+    assert "dt_tipo_cta" in problem

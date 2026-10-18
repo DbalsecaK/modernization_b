@@ -311,15 +311,17 @@ class SybaseAdapter:
         return []
 
     def columns_read(self, files: list[SourceFile]) -> dict[str, set[str]]:
-        """Table -> the columns a single-table SELECT loads into variables (`select @v = col from t`): the values the
-        program works with, which an entity keeping the table must carry as fields (step 9 of the plan)."""
+        """Table, as the program names it (`db..table` or a bare name of its own database) -> the columns a
+        single-table SELECT loads into variables (`select @v = col from t`): the values the program works with,
+        which an entity keeping the table must carry as fields (step 9 of the plan). Two tables that share a short
+        name are two keys (phase F of ADR-0055)."""
         found: dict[str, set[str]] = {}
         for source, proc in _procedures(files):
             tokens, _ = tokenize(source.text)
             for stmt in proc.statements():
                 if stmt.kind != "select" or len(stmt.reads) != 1 or not stmt.vars_written:
                     continue
-                table = next(iter(stmt.reads)).split(".")[-1].lower()
+                table = next(iter(stmt.reads)).lower()
                 inside = [t for t in tokens if stmt.line_start <= t.line <= stmt.line_end]
                 for i in range(len(inside) - 2):
                     var, eq, word = inside[i], inside[i + 1], inside[i + 2]

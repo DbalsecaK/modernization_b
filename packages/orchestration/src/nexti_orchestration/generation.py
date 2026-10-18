@@ -577,12 +577,20 @@ def legacy_shape_problems(design: Design, files: Sequence[SourceFile]) -> list[s
                                 "them)")  # fmt: skip
     columns_read = getattr(adapter, "columns_read", None)
     if callable(columns_read):
-        loaded = columns_read(list(files))
+        loaded = {key.lower(): columns for key, columns in columns_read(list(files)).items()}
+        by_short: dict[str, list[set[str]]] = {}
+        for key, columns in loaded.items():
+            by_short.setdefault(table_of(key), []).append(columns)
         for entity in design.entities:
             if not entity.legacy_table:
                 continue
             have = {(f.legacy or "").lower().split(".")[-1] for f in entity.fields}
-            absent = sorted(loaded.get(table_of(entity.legacy_table), set()) - have)
+            # The table as the program names it; by short name only when no other table shares it (phase F).
+            wanted = loaded.get(entity.legacy_table.lower())
+            if wanted is None:
+                candidates = by_short.get(table_of(entity.legacy_table), [])
+                wanted = candidates[0] if len(candidates) == 1 else set()
+            absent = sorted(wanted - have)
             if absent:
                 problems.append(f"{entity.name} keeps {entity.legacy_table}, and the program loads these of its "
                                 f"columns into variables: make them fields with their legacy column: "
