@@ -22,6 +22,20 @@ export function contextSummary(design: Design): ContextSummary {
   }
 }
 
+/** The unit of work of a use case in one line for the table (ADR-0055): where it begins, its savepoints, each
+ * rollback point with its outcome and where it commits; null when the design declares none. */
+export type DesignUseCase = NonNullable<Design['useCases']>[number]
+
+export function unitOfWorkText(useCase: DesignUseCase): string | null {
+  const work = useCase.unitOfWork
+  if (!work) return null
+  const parts = [`begin ${work.beginsAt}`]
+  for (const s of work.savepoints ?? []) parts.push(`savepoint ${s.name} @${s.legacyLine}`)
+  for (const r of work.rollbacks ?? []) parts.push(`rollback ${r.legacyLine} → ${r.outcome}`)
+  if (work.commitsAt != null) parts.push(`commit ${work.commitsAt}`)
+  return parts.join(' · ')
+}
+
 /** The OpenAPI document as text for reading, cut at `maxLines` so a large contract does not flood the page. */
 export function contractText(document: unknown, maxLines = 120): { text: string; truncated: boolean } {
   const lines = JSON.stringify(document, null, 2).split('\n')

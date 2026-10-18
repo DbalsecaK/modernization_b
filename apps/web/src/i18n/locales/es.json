@@ -850,6 +850,12 @@
     "useCase": "Servicio",
     "ports": "Puertos",
     "legacy": "Reemplaza",
+    "unitOfWork": "Unidad de trabajo",
+    "noUnitOfWork": "sin declarar",
+    "dataStrategy": {
+      "same_database": "Los datos se quedan en el motor del legado",
+      "migration": "Los datos migran a la base del destino"
+    },
     "entities": "Entidades",
     "entity": "Entidad",
     "table": "Tabla",

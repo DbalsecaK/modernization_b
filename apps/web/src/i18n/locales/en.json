@@ -850,6 +850,12 @@
     "useCase": "Service",
     "ports": "Ports",
     "legacy": "Replaces",
+    "unitOfWork": "Unit of work",
+    "noUnitOfWork": "none declared",
+    "dataStrategy": {
+      "same_database": "Data stays on the legacy's engine",
+      "migration": "Data migrates to the target database"
+    },
     "entities": "Entities",
     "entity": "Entity",
     "table": "Table",

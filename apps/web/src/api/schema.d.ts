@@ -3900,6 +3900,8 @@ export interface components {
              * Format: date-time
              */
             createdAt: string;
+            /** Datastrategy */
+            dataStrategy?: ("migration" | "same_database") | null;
             /** Decisions */
             decisions?: components["schemas"]["DesignDecisionOut"][];
             /** Entities */
@@ -3937,6 +3939,20 @@ export interface components {
             /** Name */
             name: string;
         };
+        /** DesignRollbackOut */
+        DesignRollbackOut: {
+            /** Legacyline */
+            legacyLine: number;
+            /** Outcome */
+            outcome: string;
+        };
+        /** DesignSavepointOut */
+        DesignSavepointOut: {
+            /** Legacyline */
+            legacyLine: number;
+            /** Name */
+            name: string;
+        };
         /** DesignSystemOut */
         DesignSystemOut: {
             /**
@@ -3957,6 +3973,21 @@ export interface components {
             };
             /** Version */
             version: number;
+        };
+        /**
+         * DesignUnitOfWorkOut
+         * @description The transaction of the use case as the legacy has it (ADR-0055): where it begins, its savepoints, each
+         *     rollback point with its outcome and where it commits.
+         */
+        DesignUnitOfWorkOut: {
+            /** Beginsat */
+            beginsAt: number;
+            /** Commitsat */
+            commitsAt?: number | null;
+            /** Rollbacks */
+            rollbacks?: components["schemas"]["DesignRollbackOut"][];
+            /** Savepoints */
+            savepoints?: components["schemas"]["DesignSavepointOut"][];
         };
         /** DesignUseCaseOut */
         DesignUseCaseOut: {
@@ -3985,6 +4016,7 @@ export interface components {
             ports?: string[];
             /** Rules */
             rules?: string[];
+            unitOfWork?: components["schemas"]["DesignUnitOfWorkOut"] | null;
         };
         /** DevLoginIn */
         DevLoginIn: {

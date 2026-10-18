@@ -3095,6 +3095,21 @@
             "title": "Createdat",
             "type": "string"
           },
+          "dataStrategy": {
+            "anyOf": [
+              {
+                "enum": [
+                  "migration",
+                  "same_database"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Datastrategy"
+          },
           "decisions": {
             "items": {
               "$ref": "#/components/schemas/DesignDecisionOut"
@@ -3205,6 +3220,42 @@
         "title": "DesignPortOut",
         "type": "object"
       },
+      "DesignRollbackOut": {
+        "properties": {
+          "legacyLine": {
+            "title": "Legacyline",
+            "type": "integer"
+          },
+          "outcome": {
+            "title": "Outcome",
+            "type": "string"
+          }
+        },
+        "required": [
+          "legacyLine",
+          "outcome"
+        ],
+        "title": "DesignRollbackOut",
+        "type": "object"
+      },
+      "DesignSavepointOut": {
+        "properties": {
+          "legacyLine": {
+            "title": "Legacyline",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "legacyLine"
+        ],
+        "title": "DesignSavepointOut",
+        "type": "object"
+      },
       "DesignSystemOut": {
         "properties": {
           "createdAt": {
@@ -3242,6 +3293,45 @@
           "createdAt"
         ],
         "title": "DesignSystemOut",
+        "type": "object"
+      },
+      "DesignUnitOfWorkOut": {
+        "description": "The transaction of the use case as the legacy has it (ADR-0055): where it begins, its savepoints, each\nrollback point with its outcome and where it commits.",
+        "properties": {
+          "beginsAt": {
+            "title": "Beginsat",
+            "type": "integer"
+          },
+          "commitsAt": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Commitsat"
+          },
+          "rollbacks": {
+            "items": {
+              "$ref": "#/components/schemas/DesignRollbackOut"
+            },
+            "title": "Rollbacks",
+            "type": "array"
+          },
+          "savepoints": {
+            "items": {
+              "$ref": "#/components/schemas/DesignSavepointOut"
+            },
+            "title": "Savepoints",
+            "type": "array"
+          }
+        },
+        "required": [
+          "beginsAt"
+        ],
+        "title": "DesignUnitOfWorkOut",
         "type": "object"
       },
       "DesignUseCaseOut": {
@@ -3296,6 +3386,16 @@
             },
             "title": "Rules",
             "type": "array"
+          },
+          "unitOfWork": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DesignUnitOfWorkOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
