@@ -42,10 +42,13 @@ async def execute_run_task(context: JobContext, run_id: str, tenant_id: str) -> 
     except Exception as exc:
         # attempts counts the previous failures: the last attempt fails the run instead of retrying.
         if context.job.attempts + 1 >= MAX_ATTEMPTS:
-            log.error("run.job_failed", error=type(exc).__name__)
+            log.error("run.job_failed", error=type(exc).__name__, detail=str(exc)[:300], exc_info=exc)
             await fail_run(runtime, run, tenant, exc)
         else:
-            log.warning("run.job_retry", error=type(exc).__name__, attempt=context.job.attempts + 1)
+            # With its trace: a bare `ReadTimeout` restarted a bank project's generation and nothing said which
+            # service had not answered (2026-10-19).
+            log.warning("run.job_retry", error=type(exc).__name__, detail=str(exc)[:300],
+                        attempt=context.job.attempts + 1, exc_info=exc)  # fmt: skip
         raise
     finally:
         structlog.contextvars.unbind_contextvars("run_id", "job_id")
