@@ -21,6 +21,15 @@ which database/sql scans and binds as NULL when nil; binary is a []byte (nil is 
 from nexti_core.spec import neutral_types as nt
 from nexti_core.spec.design import Design, Entity, FieldSpec, Port, PortMethod, UseCase
 from nexti_core.spec.equivalence import snake
+from nexti_pack_go.same_database import DB_FILE as SAME_DB_FILE
+from nexti_pack_go.same_database import (
+    LEGACY_FILE,
+    owns_transaction,
+    program_adapter,
+    same_database,
+    unit_of_work_adapter,
+    unit_of_work_port,
+)
 from nexti_pack_spring_boot.generate import schema_file as postgresql_schema
 from nexti_pack_spring_boot.generate import sql_type
 
@@ -30,15 +39,22 @@ GO_VERSION = "1.26"
 DECIMAL = "github.com/shopspring/decimal"
 PGX_STDLIB = "github.com/jackc/pgx/v5/stdlib"
 # The exact module versions cached in the sandbox image (infra/sandbox/go/seed/go.mod and go.sum): keep them equal.
-REQUIRE = {"github.com/jackc/pgx/v5": "v5.11.0", DECIMAL: "v1.4.0"}
+REQUIRE = {"github.com/jackc/pgx/v5": "v5.11.0", DECIMAL: "v1.4.0", "github.com/thda/tds": "v0.1.7"}
 INDIRECT = {
     "github.com/jackc/pgpassfile": "v1.0.0",
     "github.com/jackc/pgservicefile": "v0.0.0-20240606120523-5a60cdf6a761",
     "github.com/jackc/puddle/v2": "v2.2.2",
+    "golang.org/x/net": "v0.0.0-20190724013045-ca1201d0de80",
     "golang.org/x/sync": "v0.17.0",
     "golang.org/x/text": "v0.29.0",
 }
-GO_SUM = """github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
+GO_SUM = """github.com/chzyer/logex v1.1.10 h1:Swpa1K6QvQznwJRcfTfQJmTE72DqScAa40E+fbHEXEE=
+github.com/chzyer/logex v1.1.10/go.mod h1:+Ywpsq7O8HXn0nuIou7OrIPyXbp3wmkHB+jjWRnGsAI=
+github.com/chzyer/readline v0.0.0-20180603132655-2972be24d48e h1:fY5BOSpyZCqRo5OhCuC+XN+r/bBCmeuuJtjz+bCNIf8=
+github.com/chzyer/readline v0.0.0-20180603132655-2972be24d48e/go.mod h1:nSuG5e5PlCu98SY8svDHJxuZscDgtXS6KTTbou5AhLI=
+github.com/chzyer/test v0.0.0-20180213035817-a1ea475d72b1 h1:q763qf9huN11kDQavWsoZXJNW3xEE4JJyHa5Q25/sd8=
+github.com/chzyer/test v0.0.0-20180213035817-a1ea475d72b1/go.mod h1:Q3SI9o4m/ZMnBNeIyt5eFwwo7qiLfzFZmjNmxjkiQlU=
+github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/jackc/pgpassfile v1.0.0 h1:/6Hmqy13Ss2zCq62VdNG8tM1wchn8zjSGOBJ6icpsIM=
@@ -49,20 +65,51 @@ github.com/jackc/pgx/v5 v5.11.0 h1:IzBBtyK9AHqf98cctWFifYSci2hgQR/cd56wB4p+ogg=
 github.com/jackc/pgx/v5 v5.11.0/go.mod h1:mal1tBGAFfLHvZzaYh77YS/eC6IX9OWbRV1QIIM0Jn4=
 github.com/jackc/puddle/v2 v2.2.2 h1:PR8nw+E/1w0GLuRFSmiioY6UooMp6KJv0/61nB7icHo=
 github.com/jackc/puddle/v2 v2.2.2/go.mod h1:vriiEXHvEE654aYKXXjOvZM39qJ0q+azkZFrfEOc3H4=
+github.com/kr/pretty v0.3.0 h1:WgNl7dwNpEZ6jJ9k1snq4pZsg7DOEN8hP9Xw0Tsjwk0=
+github.com/kr/pretty v0.3.0/go.mod h1:640gp4NfQd8pI5XOwp5fnNeVWj67G7CFk/SaSQn7NBk=
+github.com/mattn/go-runewidth v0.0.4 h1:2BvfKmzob6Bmd4YsL0zygOqfdFnK7GR4QL06Do4/p7Y=
+github.com/mattn/go-runewidth v0.0.4/go.mod h1:LwmH8dsx7+W8Uxz3IHJYH5QSwggIsqBzpuz5H//U1FU=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/shopspring/decimal v1.4.0 h1:bxl37RwXBklmTi0C79JfXCEBD1cqqHt0bbgBAGFp81k=
 github.com/shopspring/decimal v1.4.0/go.mod h1:gawqmDU56v4yIKSwfBSFip1HdCCXN8/+DMd9qYNcwME=
+github.com/stretchr/objx v0.1.0 h1:4G4v2dO3VZwixGIRoQ5Lfboy6nUhCyYzaqnIAPPhYs4=
 github.com/stretchr/objx v0.1.0/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=
 github.com/stretchr/testify v1.3.0/go.mod h1:M5WIy9Dh21IEIfnGCwXGc5bZfKNJtfHm1UVUgZn+9EI=
 github.com/stretchr/testify v1.7.0/go.mod h1:6Fq8oRcR53rry900zMqJjRRixrwX3KX962/h/Wwjteg=
 github.com/stretchr/testify v1.11.1 h1:7s2iGBzp5EwR7/aIZr8ao5+dra3wiQyKjjFuvgVKu7U=
 github.com/stretchr/testify v1.11.1/go.mod h1:wZwfW3scLgRK+23gO65QZefKpKQRnfz6sD981Nm4B6U=
+github.com/thda/tds v0.1.7 h1:s29kbnJK0agL3ps85A/sb9XS2uxgKF5UJ6AZjbyqXX4=
+github.com/thda/tds v0.1.7/go.mod h1:isLIF1oZdXfkqVMJM8RyNrsjlHPlTKnPlnsBs7ngZcM=
+github.com/xo/tblfmt v0.0.0-20190609041254-28c54ec42ce8 h1:qhiFkSGFxTqLLnBE45iM1+USbeFcaYCJANlX/sWWMx4=
+github.com/xo/tblfmt v0.0.0-20190609041254-28c54ec42ce8/go.mod h1:3U5kKQdIhwACye7ml3acccHmjGExY9WmUGU7rnDWgv0=
+golang.org/x/crypto v0.0.0-20190308221718-c2843e01d9a2/go.mod h1:djNgcEr1/C05ACkg1iLfiJU5Ep61QUkGW8qpdssI0+w=
+golang.org/x/crypto v0.0.0-20190701094942-4def268fd1a4 h1:HuIa8hRrWRSrqYzx1qI49NNxhdi2PrY7gxVSq1JjLDc=
+golang.org/x/crypto v0.0.0-20190701094942-4def268fd1a4/go.mod h1:yigFU9vqHzYiE8UmvKecakEJjdnWj3jj499lnFckfCI=
+golang.org/x/mod v0.27.0 h1:kb+q2PyFnEADO2IEF935ehFUXlWiNjJWtRNgBLSfbxQ=
+golang.org/x/mod v0.27.0/go.mod h1:rWI627Fq0DEoudcK+MBkNkCe0EetEaDSwJJkCcjpazc=
+golang.org/x/net v0.0.0-20190404232315-eb5bcb51f2a3/go.mod h1:t9HGtf8HONx5eT2rtn7q6eTqICYqUVnKs3thJo3Qplg=
+golang.org/x/net v0.0.0-20190620200207-3b0461eec859/go.mod h1:z5CRVTTTmAJ677TzLLGU+0bjPO0LkuOLi4/5GtJWs/s=
+golang.org/x/net v0.0.0-20190724013045-ca1201d0de80 h1:Ao/3l156eZf2AW5wK8a7/smtodRU+gha3+BeqJ69lRk=
+golang.org/x/net v0.0.0-20190724013045-ca1201d0de80/go.mod h1:z5CRVTTTmAJ677TzLLGU+0bjPO0LkuOLi4/5GtJWs/s=
+golang.org/x/sync v0.0.0-20190423024810-112230192c58/go.mod h1:RxMgew5VJxzue5/jJTE5uejpjVlOe/izrB70Jof72aM=
 golang.org/x/sync v0.17.0 h1:l60nONMj9l5drqw6jlhIELNv9I0A4OFgRsG9k2oT9Ug=
 golang.org/x/sync v0.17.0/go.mod h1:9KTHXmSnoGruLpwFjVSX0lNNA75CykiMECbovNTZqGI=
+golang.org/x/sys v0.0.0-20190215142949-d0b11bdaac8a/go.mod h1:STP8DvDyc/dI5b8T5hshtkjS+E42TnysNCUPdjciGhY=
+golang.org/x/sys v0.0.0-20190412213103-97732733099d/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
+golang.org/x/sys v0.0.0-20190801041406-cbf593c0f2f3 h1:4y9KwBHBgBNwDbtu44R5o1fdOCQUEXhbk/P4A9WmJq0=
+golang.org/x/sys v0.0.0-20190801041406-cbf593c0f2f3/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
+golang.org/x/text v0.3.0/go.mod h1:NqM8EUOU14njkJ3fqMW+pc6Ldnwhi/IjpwHt7yyuwOQ=
+golang.org/x/text v0.3.2/go.mod h1:bEr9sfX3Q8Zfm5fL9x+3itogRgK3+ptLWKqgva+5dAk=
 golang.org/x/text v0.29.0 h1:1neNs90w9YzJ9BocxfsQNHKuAT4pkghyXc4nhZ6sJvk=
 golang.org/x/text v0.29.0/go.mod h1:7MhJOA9CD2qZyOKYazxdYMF85OwPdEr9jTtBpO7ydH4=
+golang.org/x/tools v0.0.0-20180917221912-90fa682c2a6e/go.mod h1:n7NCudcB/nEzxVGmLbDWY5pfWTLqBcC2KZ6jyYvM4mQ=
+golang.org/x/tools v0.0.0-20190802003818-e9bb7d36c060/go.mod h1:jcCCGcm9btYwXyDqrUWc6MKQKKGJCWEQ3AfLSRIbEuI=
+golang.org/x/tools v0.36.0 h1:kWS0uv/zsvHEle1LbV5LE8QujrxB3wfQyxHfhOk0Qkg=
+golang.org/x/tools v0.36.0/go.mod h1:WBDiHKJK8YgLHlcQPYQzNCkUxUypCaa5ZegCVutKm+s=
 gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405/go.mod h1:Co6ibVJAznAaIkqp8huTwlJQCZ016jof/cbN4VW5Yz0=
+gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c h1:Hei/4ADfdWqJk1ZMxUNpqntNwaWcugrBjAiHlqqRiVk=
+gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c/go.mod h1:JHkPIbrfpd72SG/EVd6muEfDQjcINNoR0C8j2r3qZ4Q=
 gopkg.in/yaml.v3 v3.0.0-20200313102051-9f266ea9e77c/go.mod h1:K4uyk7z7BCEPqu6E+C64Yfv1cQ7kz7rIZviUmN+EgEM=
 gopkg.in/yaml.v3 v3.0.1 h1:fxVm/GzAzEWqLHuvctI91KS9hhNmmWOoWu0XTYJS7CA=
 gopkg.in/yaml.v3 v3.0.1/go.mod h1:K4uyk7z7BCEPqu6E+C64Yfv1cQ7kz7rIZviUmN+EgEM=
@@ -257,6 +304,8 @@ def app_doc(design: Design) -> tuple[str, str]:
 
 
 def db_file(design: Design) -> tuple[str, str]:
+    if same_database(design):  # ADR-0055: the legacy's Sybase ASE, its unit of work as T-SQL (ADR-0056)
+        return f"{PG}/db.go", SAME_DB_FILE
     return f"{PG}/db.go", (
         "// Package pg holds the PostgreSQL adapters of the ports: database/sql with the pgx driver.\n"
         "package pg\n\n"
@@ -299,7 +348,14 @@ def http_file(design: Design) -> tuple[str, str]:
         "// one transaction and encode the response with encoding/json.\n"
         f"package httpapi\n\n{_imports(std, [DECIMAL], local)}"
         "// Transactor runs a use case inside one transaction (pg.DB is one).\n"
-        "type Transactor interface {\n\tInTx(ctx context.Context, fn func(ctx context.Context) error) error\n}\n\n"
+        "type Transactor interface {\n\tInTx(ctx context.Context, fn func(ctx context.Context) error) error\n"
+        + (
+            "\t// InConn binds the connection when the service owns its unit of work (the legacy's engine).\n"
+            "\tInConn(ctx context.Context, fn func(ctx context.Context) error) error\n"
+            if any(service_owns_transaction(design, u) for u in design.use_cases)
+            else ""
+        )
+        + "}\n\n"
         "type badRequest struct {\n\terr error\n}\n\n"
         "func (b badRequest) Error() string {\n\treturn b.err.Error()\n}\n\n"
         "func writeJSON(w http.ResponseWriter, status int, body any) {\n"
@@ -433,6 +489,9 @@ def handler_file(design: Design, use_case: UseCase) -> tuple[str, str]:
                 "\t\t\twriteError(w, err)\n\t\t\treturn\n\t\t}\n"
             )
     rules = ", ".join(use_case.rules)
+    # Phase F on the legacy's engine: the service owns the unit of work (its UnitOfWork port), so the request only
+    # binds the connection and closes what the use case left open.
+    bind = "InConn" if service_owns_transaction(design, use_case) else "InTx"
     return f"{HTTP}/{snake(name)}_handler.go", (
         f"package httpapi\n\n{_imports(std, external, local)}"
         f"// {name} is the REST adapter of {name} (rules {rules}): {route(design, use_case)}.\n"
@@ -440,7 +499,7 @@ def handler_file(design: Design, use_case: UseCase) -> tuple[str, str]:
         "\treturn func(w http.ResponseWriter, r *http.Request) {\n"
         f"{decode}"
         f"\t\tvar response app.{name}Response\n"
-        "\t\terr := tx.InTx(r.Context(), func(ctx context.Context) error {\n"
+        f"\t\terr := tx.{bind}(r.Context(), func(ctx context.Context) error {{\n"
         "\t\t\tvar err error\n\t\t\tresponse, err = service.Execute(ctx, request)\n\t\t\treturn err\n\t\t})\n"
         "\t\tif err != nil {\n\t\t\twriteError(w, err)\n\t\t\treturn\n\t\t}\n"
         "\t\twriteJSON(w, http.StatusOK, response)\n\t}\n}\n"
@@ -468,6 +527,13 @@ def _go_literal(value: object, kind: str) -> str:
         layout = "2006-01-02T15:04:05" if "T" in text else "2006-01-02"
         return f'ptr(mustTime("{layout}", "{text}"))'
     return "nil"
+
+
+def service_owns_transaction(design: Design, use_case: UseCase) -> bool:
+    """With `same_database` and a UnitOfWork port that begins, commits and rolls back (phase F), the service owns
+    the transaction of the use case."""
+    unit = unit_of_work_port(design)
+    return same_database(design) and owns_transaction(unit) and unit is not None and unit.name in use_case.ports
 
 
 def adapter_name(port: str) -> str:
@@ -565,15 +631,39 @@ def skeleton(design: Design) -> dict[str, str]:
     """The deterministic files by layer: contracts, domain (entities, ports, error), adapters (REST, the database
     session), orchestration (module and wiring)."""
     files: dict[str, str] = dict([
-        go_mod(design), ("go.sum", GO_SUM), schema_file(design), ports_doc(), app_doc(design), db_file(design),
+        go_mod(design), ("go.sum", GO_SUM), ports_doc(), app_doc(design), db_file(design),
         http_file(design), server_file(design), *domain_files(design),
     ])  # fmt: skip
+    if not same_database(design):  # same_database: the tables are the customer's, nothing creates them
+        files.update([schema_file(design)])
     for entity in design.entities:
         files.update([entity_file(design, entity)])
     for port in design.ports:
         files.update([port_file(design, port)])
     for use_case in design.use_cases:
         files.update([contract_file(design, use_case), handler_file(design, use_case)])
+    files.update(generated_adapters(design))
+    return files
+
+
+LEGACY_HELPERS = f"{PG}/legacy.go"
+
+
+def generated_adapters(design: Design) -> dict[str, str]:
+    """The adapters the platform writes itself with `same_database` (ADR-0055): the call helper, every port that
+    replaces a called program, and the unit of work. Generation skips the ports whose adapter is already here."""
+    if not same_database(design):
+        return {}
+    helpers = {"go_type": go_type, "ident": ident, "pascal": pascal, "method_signature": method_signature,
+               "imports": _imports, "domain": f"{module_path(design)}/{DOMAIN}"}  # fmt: skip
+    files = {LEGACY_HELPERS: LEGACY_FILE}
+    used = {p.name for p in used_ports(design)}
+    for port in design.ports:
+        if port.legacy_program and port.name in used:
+            files[adapter_path(design, port)] = program_adapter(design, port, helpers)
+    unit = unit_of_work_port(design)
+    if unit is not None and unit.name in used:
+        files[adapter_path(design, unit)] = unit_of_work_adapter(design, unit, helpers)
     return files
 
 

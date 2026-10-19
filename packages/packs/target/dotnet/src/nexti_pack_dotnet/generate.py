@@ -19,11 +19,21 @@ Names the design uses as C# identifiers are escaped with @ when C# reserves them
 from nexti_core.spec import neutral_types as nt
 from nexti_core.spec.design import Design, Entity, FieldSpec, Port, UseCase
 from nexti_core.spec.equivalence import snake
+from nexti_pack_dotnet.same_database import (
+    ASE_PACKAGE,
+    owns_transaction,
+    program_adapter,
+    same_database,
+    unit_of_work_adapter,
+    unit_of_work_port,
+)
+from nexti_pack_dotnet.same_database import db_file as same_db_file
 
 TARGET_FRAMEWORK = "net10.0"
 # The exact versions restored in the sandbox image (infra/sandbox/dotnet/seed/Seed.csproj): keep both lists equal.
 PACKAGES = {
     "Microsoft.Data.SqlClient": "6.1.7",
+    "AdoNetCore.AseClient": "0.19.2",  # same_database on Sybase ASE (ADR-0055): a managed TDS client
     "Microsoft.NET.Test.Sdk": "18.10.1",
     "xunit.v3": "3.2.2",
     "xunit.runner.visualstudio": "3.1.5",
@@ -147,6 +157,8 @@ def error_file(design: Design) -> tuple[str, str]:
 
 
 def db_file(design: Design) -> tuple[str, str]:
+    if same_database(design):  # ADR-0055: the legacy's Sybase ASE, its unit of work as T-SQL (ADR-0056)
+        return f"{APP}/Infrastructure/Db.cs", same_db_file(namespace(design))
     return f"{APP}/Infrastructure/Db.cs", (
         f"using Microsoft.Data.SqlClient;\n\nnamespace {namespace(design)}.Infrastructure;\n\n"
         "/// <summary>One connection and its transaction: every adapter of a request (or of a golden case) works\n"
@@ -160,6 +172,8 @@ def db_file(design: Design) -> tuple[str, str]:
         "    public void Begin() => Transaction = Connection.BeginTransaction();\n\n"
         "    public void Commit()\n    {\n        Transaction?.Commit();\n        Transaction = null;\n    }\n\n"
         "    public void Rollback()\n    {\n        Transaction?.Rollback();\n        Transaction = null;\n    }\n\n"
+        "    public void Savepoint(string name) => Transaction?.Save(name);\n\n"
+        "    public void RollbackTo(string name) => Transaction?.Rollback(name);\n\n"
         "    /// <summary>A command on the connection, inside the current transaction if there is one.</summary>\n"
         "    public SqlCommand Command(string sql)\n    {\n        var command = Connection.CreateCommand();\n"
         "        command.CommandText = sql;\n        command.Transaction = Transaction;\n        return command;\n    }\n\n"
@@ -169,14 +183,21 @@ def db_file(design: Design) -> tuple[str, str]:
 
 def filters_file(design: Design) -> tuple[str, str]:
     ns = namespace(design)
+    # Phase F: with a UnitOfWork port that begins, commits and rolls back, the service owns the transaction (the
+    # legacy begins after some work and returns after committing): the request only closes what is left open.
+    owned = owns_transaction(unit_of_work_port(design))
+    doc = ("The service owns the unit of work (its UnitOfWork port); the request confirms what the use case left "
+           "open and undoes it when the use case fails." if owned
+           else "Each request in one transaction: committed when it succeeds, undone when it fails.")  # fmt: skip
+    begin = "" if owned else "        db.Begin();\n"
     return f"{APP}/Adapters/In/Rest/Filters.cs", (
         "using Microsoft.AspNetCore.Mvc;\nusing Microsoft.AspNetCore.Mvc.Filters;\n"
         f"using {ns}.Domain.Error;\nusing {ns}.Infrastructure;\n\n"
         f"namespace {ns}.Adapters.In.Rest;\n\n"
-        "/// <summary>Each request in one transaction: committed when it succeeds, undone when it fails.</summary>\n"
+        f"/// <summary>{doc}</summary>\n"
         "public sealed class TransactionFilter(Db db) : IAsyncActionFilter\n{\n"
         "    public async Task OnActionExecutionAsync(ActionExecutingContext context, ActionExecutionDelegate next)\n"
-        "    {\n        db.Begin();\n        var executed = await next();\n"
+        f"    {{\n{begin}        var executed = await next();\n"
         "        if (executed.Exception is null)\n"
         "        {\n            db.Commit();\n        }\n        else\n        {\n            db.Rollback();\n        }\n"
         "    }\n}\n\n"
@@ -333,9 +354,15 @@ def app_project(design: Design) -> tuple[str, str]:
         # Before the host exists (it joins with the services), the application builds as a library.
         "    <OutputType Condition=\"!Exists('Program.cs')\">Library</OutputType>\n"
         "  </PropertyGroup>\n"
-        f"  <ItemGroup>\n{_package('Microsoft.Data.SqlClient')}\n  </ItemGroup>\n"
-        '  <ItemGroup>\n    <None Include="Db/schema.sql" CopyToOutputDirectory="PreserveNewest" />\n  </ItemGroup>\n'
-        "</Project>\n"
+        + (
+            # same_database (ADR-0055): the legacy's engine through its own client; its tables are the customer's,
+            # so the project carries no schema to create them.
+            f"  <ItemGroup>\n{_package(ASE_PACKAGE)}\n  </ItemGroup>\n"
+            if same_database(design)
+            else f"  <ItemGroup>\n{_package('Microsoft.Data.SqlClient')}\n  </ItemGroup>\n"
+            '  <ItemGroup>\n    <None Include="Db/schema.sql" CopyToOutputDirectory="PreserveNewest" />\n  </ItemGroup>\n'
+        )
+        + "</Project>\n"
     )
 
 
@@ -390,8 +417,10 @@ def skeleton(design: Design) -> dict[str, str]:
     """The deterministic files by layer: contracts, domain (model, ports, error), adapters (REST), orchestration."""
     files: dict[str, str] = dict([
         app_project(design), test_project(design), error_file(design), db_file(design), filters_file(design),
-        schema_file(design), wiring_file(design), program_file(design),
+        wiring_file(design), program_file(design),
     ])  # fmt: skip
+    if not same_database(design):  # same_database: the tables are the customer's, nothing creates them
+        files.update([schema_file(design)])
     for entity in design.entities:
         files.update([entity_file(design, entity)])
     for port in design.ports:
@@ -399,6 +428,22 @@ def skeleton(design: Design) -> dict[str, str]:
     for use_case in design.use_cases:
         files.update(contract_files(design, use_case))
         files.update([controller_file(design, use_case)])
+    files.update(generated_adapters(design))
+    return files
+
+
+def generated_adapters(design: Design) -> dict[str, str]:
+    """The adapters the platform writes itself (ADR-0055): the unit of work, and with `same_database` every port
+    that replaces a called program. Generation skips the ports whose adapter is already in the skeleton."""
+    ns = namespace(design)
+    files: dict[str, str] = {}
+    unit = unit_of_work_port(design)
+    if unit is not None:
+        files[adapter_path(design, unit)] = unit_of_work_adapter(design, unit, ns, adapter_name(unit.name))
+    if same_database(design):
+        for port in design.ports:
+            if port.legacy_program:
+                files[adapter_path(design, port)] = program_adapter(design, port, ns, adapter_name(port.name), cs_type)
     return files
 
 

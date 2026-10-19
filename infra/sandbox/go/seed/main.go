@@ -8,6 +8,7 @@ import (
 	"fmt"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
+	_ "github.com/thda/tds" // the "tds" driver of database/sql: Sybase ASE (same_database)
 	"github.com/shopspring/decimal"
 )
 

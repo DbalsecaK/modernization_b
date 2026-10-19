@@ -107,12 +107,14 @@ async def compile_and_test(
     run_tests: bool = True,
     extra_inputs: Mapping[str, str] | None = None,
     after: str = "",
+    limits: Limits = LIMITS,
 ) -> BuildResult:
-    """`extra_inputs` land in /input next to the project; `after` runs once the project compiled and tested."""
+    """`extra_inputs` land in /input next to the project; `after` runs once the project compiled and tested;
+    `limits` add the network of the legacy's engine when the cases run there (ADR-0055)."""
     inputs = {f"project/{path}": content.encode("utf-8") for path, content in files.items()}
     inputs.update({path: content.encode("utf-8") for path, content in (extra_inputs or {}).items()})
     script = f"RUN_TESTS={'1' if run_tests else '0'}; export RUN_TESTS; {SCRIPT}{after}{DONE}"
-    result = await sandbox.run(["sh", "-c", script], files=inputs, limits=LIMITS)
+    result = await sandbox.run(["sh", "-c", script], files=inputs, limits=limits)
     out = result.stdout
     if "===COMPILE-FAILED===" in out:
         errors = out.split("===COMPILE-FAILED===", 1)[1]

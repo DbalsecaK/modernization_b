@@ -48,7 +48,7 @@ pg_ctl -D /work/pg -m fast stop > /dev/null 2>&1 || true
 async def probe_sql(sandbox: Sandbox, files: Mapping[str, str], path: str) -> str:
     """Prepare every SQL statement of the adapter at `path` against the project's schema; the errors, or ""."""
     found = go_statements(files.get(path, ""))
-    if not found:
+    if not found or SCHEMA not in files:  # same_database: the tables are the legacy's, no schema to probe
         return ""
     build = await compile_and_test(sandbox, files, run_tests=False, extra_inputs={PROBE_PATH: probe_file(found)},
                                    after=SCRIPT)  # fmt: skip

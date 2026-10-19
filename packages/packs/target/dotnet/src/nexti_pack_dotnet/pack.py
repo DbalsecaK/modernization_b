@@ -27,6 +27,25 @@ from nexti_sandbox import Sandbox
 from nexti_sandbox.build import BuildResult
 
 
+def _schema_text(design: Design, files: Mapping[str, str]) -> str:
+    """The tables the adapter works on: the SQL Server schema of the project, or with `same_database` the legacy's
+    own tables on Sybase ASE (ADR-0055), reached through the session's AseCommand with their qualified names."""
+    if SCHEMA in files:
+        return f"Target schema (SQL Server):\n{files[SCHEMA]}"
+    tables = "\n".join(
+        f"- {e.table}: " + ", ".join(f"{f.column or f.name} ({f.type})" for f in e.fields)
+        for e in design.entities
+        if e.table
+    )
+    return (
+        "The database is the legacy's own Sybase ASE (same_database, ADR-0055): the session `Db` is an "
+        "AdoNetCore.AseClient connection (`db.Command(sql)` is an AseCommand; bind parameters as @name with "
+        "`command.Parameters.AddWithValue`). Use the tables exactly as the legacy names them, qualified (db..table), "
+        "in T-SQL; never open or commit a transaction (the request owns the unit of work).\n"
+        f"The legacy's tables:\n{tables}"
+    )
+
+
 class DotnetPack:
     name = "dotnet-10"
     image = IMAGE
@@ -106,7 +125,7 @@ class DotnetPack:
             f"`{namespace(design)}.Adapters.Out.Sql.{adapter_name(port)}`, in exactly that namespace (the wiring "
             "uses it).\n\n"
             f"Design:\n{design.model_dump_json(indent=1)}\n\nExisting files:\n{self.existing(files, design)}\n\n"
-            f"Target schema (SQL Server):\n{files[SCHEMA]}"
+            + _schema_text(design, files)
         )
 
     async def compile_and_test(
@@ -118,10 +137,19 @@ class DotnetPack:
         self, sandbox: Sandbox, files: dict[str, str], design: Design, use_case: UseCase, master: GoldenMaster,
         defaults: dict[str, Scalar] | None = None, engine: Any | None = None,
     ) -> EquivalenceRun:  # fmt: skip
-        return await run_equivalence(sandbox, files, design, use_case, master, defaults)
+        return await run_equivalence(sandbox, files, design, use_case, master, defaults, engine=engine)
 
     def mutations(self, source: str) -> Sequence[Mutation]:
         return mutations(source)
+
+    def delivery_files(
+        self, design: Design, use_case: UseCase, run: EquivalenceRun, master: GoldenMaster,
+        defaults: dict[str, Scalar] | None = None, engine: Any | None = None,
+    ) -> dict[str, str]:  # fmt: skip
+        """The golden master as a tool of the delivered solution (ADR-0056, phase E)."""
+        from nexti_pack_dotnet.equivalence import delivery_files
+
+        return delivery_files(design, use_case, run, master, defaults, engine)
 
 
 class DotnetOraclePack(DotnetPack):

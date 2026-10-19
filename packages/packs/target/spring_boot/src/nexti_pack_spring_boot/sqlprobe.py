@@ -113,7 +113,8 @@ def report(after_output: str, statements: list[str]) -> str:
 async def probe_sql(sandbox: Sandbox, files: Mapping[str, str], path: str) -> str:
     """Prepare every SQL statement of the adapter at `path` against the project's schema; the errors, or ""."""
     statements = sql_statements(files.get(path, ""))
-    if not statements:
+    if not statements or "<artifactId>jtds</artifactId>" in files.get("pom.xml", ""):
+        # same_database (ADR-0055): the statements run on the legacy's tables, which PostgreSQL does not have
         return ""
     build = await compile_and_test(sandbox, files, run_tests=False, extra_inputs={PROBE_PATH: probe_file(statements)},
                                    after=SCRIPT)  # fmt: skip

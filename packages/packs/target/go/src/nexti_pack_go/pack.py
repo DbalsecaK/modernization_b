@@ -35,6 +35,25 @@ from nexti_sandbox.build import BuildResult
 NAME = "go"
 
 
+def _schema_text(design: Design, files: Mapping[str, str]) -> str:
+    """The tables the adapter works on: the PostgreSQL schema of the project, or with `same_database` the legacy's
+    own tables on Sybase ASE (ADR-0055), reached through the tds driver with their qualified names."""
+    if SCHEMA in files:
+        return f"Target schema (PostgreSQL):\n{files[SCHEMA]}"
+    tables = "\n".join(
+        f"- {e.table}: " + ", ".join(f"{f.column or f.name} ({f.type})" for f in e.fields)
+        for e in design.entities
+        if e.table
+    )
+    return (
+        "The database is the legacy's own Sybase ASE (same_database, ADR-0055), through database/sql with the tds "
+        "driver: placeholders are `?` (not $1), the SQL is T-SQL and the tables are used exactly as the legacy names "
+        "them, qualified (db..table); run every statement on `r.db.Q(ctx)` and never open or commit a transaction "
+        "(the request owns the unit of work).\n"
+        f"The legacy's tables:\n{tables}"
+    )
+
+
 class GoPack:
     name = NAME
     image = IMAGE
@@ -112,7 +131,7 @@ class GoPack:
             f"*{name}` (the wiring and the harness call exactly that) and pointer receivers implementing "
             f"`ports.{port}`.\n\n"
             f"Design:\n{design.model_dump_json(indent=1)}\n\nExisting files:\n{self.existing(files, design)}\n\n"
-            f"Target schema (PostgreSQL):\n{files[SCHEMA]}"
+            + _schema_text(design, files)
         )
 
     async def compile_and_test(
@@ -124,10 +143,19 @@ class GoPack:
         self, sandbox: Sandbox, files: dict[str, str], design: Design, use_case: UseCase, master: GoldenMaster,
         defaults: dict[str, Scalar] | None = None, engine: Any | None = None,
     ) -> EquivalenceRun:  # fmt: skip
-        return await run_equivalence(sandbox, files, design, use_case, master, defaults)
+        return await run_equivalence(sandbox, files, design, use_case, master, defaults, engine=engine)
 
     def mutations(self, source: str) -> Sequence[Mutation]:
         return mutations(source)
+
+    def delivery_files(
+        self, design: Design, use_case: UseCase, run: EquivalenceRun, master: GoldenMaster,
+        defaults: dict[str, Scalar] | None = None, engine: Any | None = None,
+    ) -> dict[str, str]:  # fmt: skip
+        """The golden master as a command of the delivered module (ADR-0056, phase E)."""
+        from nexti_pack_go.equivalence import delivery_files
+
+        return delivery_files(design, use_case, run, master, defaults, engine)
 
     def describe(self) -> dict[str, Any]:
         return {"name": self.name, "image": self.image, "database": self.database}
