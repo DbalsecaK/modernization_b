@@ -284,3 +284,22 @@ def test_the_program_adapter_keeps_the_messages_the_program_raises_and_reads_on_
     assert 'e.getSQLState().startsWith("08")' in adapter
     assert "results = statement.getMoreResults();" in adapter
     assert 'String.join("; ", raised.get())' in adapter
+
+
+def test_a_unit_of_work_port_without_savepoints_gets_no_savepoint_methods() -> None:
+    # A port that declares begin/commit/rollback alone (no savepoint in the legacy) compiled an @Override of
+    # savepoint(name) the interface did not have: only the declared methods are implemented.
+    data = json.loads(DESIGN.model_dump_json(by_alias=True))
+    data["ports"].append({"name": "UnitOfWork", "methods": [
+        {"name": "begin", "inputs": [], "returns": None},
+        {"name": "commit", "inputs": [], "returns": None},
+        {"name": "rollback", "inputs": [], "returns": None},
+    ]})  # fmt: skip
+    data["use_cases"][0]["ports"].append("UnitOfWork")
+    design = Design.model_validate(data)
+    port = next(p for p in design.ports if p.name == "UnitOfWork")
+    _, adapter = unit_of_work_adapter_file(design, port)
+    assert "public void begin()" in adapter
+    assert "void savepoint(" not in adapter
+    assert "void rollbackTo(" not in adapter
+    assert adapter.count("{") == adapter.count("}")

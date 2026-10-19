@@ -34,8 +34,15 @@ def test_fields_must_fit_the_grid_and_not_overlap() -> None:
     with pytest.raises(ValidationError, match="does not fit in a 24x80 screen"):
         _screen(_field("WIDE", 3, 70, 12))
     with pytest.raises(ValidationError, match="B overlaps A at row 3, column 14"):
-        _screen(_field("A", 3, 10, 5), _field("B", 3, 15, 5))  # B's attribute byte is column 14
+        _screen(_field("A", 3, 10, 5), _field("B", 3, 14, 5))  # B's data starts on A's last data byte
+    with pytest.raises(ValidationError, match="B overlaps A at row 3, column 9"):
+        _screen(_field("A", 3, 10, 5), _field("B", 3, 10, 2))  # the same attribute byte
     assert _screen(_field("A", 3, 10, 5), _field("B", 3, 16, 5)).field("B") is not None
+    # A 3270 lets the attribute byte of the next field end the previous one on its last data byte: a one-byte
+    # stopper at BMS POS=(21,24) followed by a literal at POS=(21,25) is a real map, not an overlap.
+    truncated = _screen(_field("A", 3, 10, 5), _field("B", 3, 15, 5))
+    assert [f.name for f in truncated.fields] == ["A", "B"]
+    assert _screen(_field("STOP", 21, 25, 1), _field("FCH", 21, 26, 4)).field("FCH") is not None
 
 
 def test_kinds_and_attributes_agree_and_names_are_unique() -> None:

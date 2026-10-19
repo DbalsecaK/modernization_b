@@ -672,7 +672,27 @@ def test_the_design_declares_the_unit_of_work_the_legacy_has_and_every_rollback_
     assert target("sybase") == []
     (problem,) = target("oracle")
     assert problem.startswith("the project's target keeps its data in oracle: data_strategy must be 'migration'")
-    assert target("oracle", design=Design.model_validate({**data, "data_strategy": "migration"})) == []
+    moved = Design.model_validate({**data, "data_strategy": "migration"})
+    assert target("oracle", design=moved) == []
+    (own,) = target("sybase", design=moved)
+    assert own.startswith("the project's target is the legacy's own engine (sybase): data_strategy must be")
+    # The target decides, and the architect is told and corrected (a CICS project with a PostgreSQL target failed
+    # its design twice answering same_database): the value is not the model's to choose.
+    from nexti_orchestration.generation import (
+        data_strategy_text,
+        required_data_strategy,
+        with_required_data_strategy,
+    )
+
+    assert required_data_strategy(None, "sybase-ase") is None
+    assert required_data_strategy("postgresql", "cobol-cics") == "migration"
+    assert required_data_strategy("Sybase", "sybase-ase") == "same_database"
+    assert with_required_data_strategy(same, "postgresql", "cobol-cics").data_strategy == "migration"
+    assert with_required_data_strategy(moved, "sybase", "sybase-ase").data_strategy == "same_database"
+    assert with_required_data_strategy(same, None, "sybase-ase") is same
+    assert data_strategy_text(None, "sybase-ase") == ""
+    assert "data_strategy is 'migration'" in data_strategy_text("postgresql", "cobol-cics")
+    assert "data_strategy is 'same_database'" in data_strategy_text("sybase", "sybase-ase")
     data["data_strategy"] = "same_database"
     (renamed,) = [p for p in design_problems(Design.model_validate(data), RULES) if p.startswith("with same_database")]
     assert "PaymentOrder (payment_order vs db_pagos..pg_orden)" in renamed
@@ -889,7 +909,56 @@ def test_a_program_that_returns_its_status_as_data_needs_a_status_output_and_the
     use_case["outputs"][-1]["type"] = "integer(32,signed)"
     use_case["ports"].append("UnitOfWork")
     assert status_output_problems(Design.model_validate(data), files) == []
-    # sp_pago_orden rejects with a non-zero status and no outputs: the exception model fits, nothing is demanded.
-    assert status_output_problems(Design.model_validate_json(DESIGN_JSON),
-                                  [SourceFile("sp/sp_pago_orden.sp", SOURCE)]) == []  # fmt: skip
+    # sp_pago_orden rejects with a non-zero status and no outputs: the exception model fits, nothing is demanded,
+    # and a UnitOfWork that begins and commits is sent back (the REST adapter owns that transaction).
+    pago = [SourceFile("sp/sp_pago_orden.sp", SOURCE)]
+    assert status_output_problems(Design.model_validate_json(DESIGN_JSON), pago) == []
+    rejecting = json.loads(DESIGN_JSON)
+    rejecting["ports"].append({"name": "UnitOfWork", "methods": [
+        {"name": "begin", "inputs": [], "returns": None},
+        {"name": "commit", "inputs": [], "returns": None},
+        {"name": "rollback", "inputs": [], "returns": None},
+        {"name": "savepoint", "inputs": [{"name": "name", "type": "text(var,30,iso8859-1)"}], "returns": None},
+        {"name": "rollbackTo", "inputs": [{"name": "name", "type": "text(var,30,iso8859-1)"}], "returns": None},
+    ]})  # fmt: skip
+    rejecting["use_cases"][0]["ports"].append("UnitOfWork")
+    (owned,) = status_output_problems(Design.model_validate(rejecting), pago)
+    assert owned.startswith("PayOrder: dbo.sp_pago_orden rejects with a non-zero return status")
     assert status_output_problems(Design.model_validate(data), []) == []
+
+
+def test_cobol_names_are_known_with_their_hyphens_and_with_underscores() -> None:
+    # A real CICS design named P015-EMPRESA exactly as the copybook field appears in the program and the validator
+    # only knew p015_empresa: both forms are legacy names.
+    from nexti_orchestration.generation import _known, legacy_names
+
+    cobol = SourceFile("SSITP007.cbl", "MOVE P015-EMPRESA TO W-CONEMPRESA. MOVE M15CEMPI TO INSSI011-EMPRESA.")
+    names = legacy_names([cobol])
+    assert {"p015-empresa", "p015_empresa", "w-conempresa", "inssi011-empresa", "m15cempi"} <= names
+    assert _known("P015-EMPRESA", names)
+    assert _known("p015_empresa", names)
+
+
+def test_one_legacy_program_becomes_one_use_case_and_generation_converges_the_one_verification_proves() -> None:
+    # ADR-0056: a CICS design split PAGOORD into its first screen and its processing; the first-screen use case was
+    # compared against every trace of the program (payments included) and escalated. Every case of a golden master
+    # is a whole run of the program, so one use case replaces it, and generation converges the one verification
+    # proves (not every use case that names the program or names none).
+    from nexti_core.spec.characterization import GoldenMaster, Schema
+    from nexti_orchestration.generation import _replaces, program_use_case, split_program_problems
+
+    design = Design.model_validate_json(DESIGN_JSON)
+    data = design.model_dump(mode="json")
+    first = {**data["use_cases"][0], "name": "StartOrderEntry", "legacy_program": "PAGOORD"}
+    rest = {**data["use_cases"][0], "name": "ProcessOrderEntry", "legacy_program": "pagoord.cbl"}
+    split = Design.model_validate({**data, "use_cases": [first, rest]})
+    (problem,) = split_program_problems(split)
+    assert "StartOrderEntry, ProcessOrderEntry all replace the legacy program PAGOORD" in problem
+    assert split_program_problems(design) == []
+
+    master = GoldenMaster(program="PAGOORD", source_sha256="0" * 64, engine="x", schema_=Schema(), results=[])
+    assert program_use_case(split, "PAGOORD") is split.use_cases[0]
+    assert [u.name for u in split.use_cases if _replaces(u, split, master)] == ["StartOrderEntry"]
+    other = {**data["use_cases"][0], "name": "NewFeature", "legacy_program": None}
+    mixed = Design.model_validate({**data, "use_cases": [{**first, "name": "Entry"}, other]})
+    assert [u.name for u in mixed.use_cases if _replaces(u, mixed, master)] == ["Entry"]  # not the new feature

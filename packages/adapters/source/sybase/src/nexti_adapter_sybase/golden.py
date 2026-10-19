@@ -567,7 +567,7 @@ def observe(p: Plan, output: str) -> Observation:
     attempted: list[str] = []
     survived: list[str] | None = None
     messages: list[str] = []
-    errors: list[str] = []
+    errors: list[tuple[int, str]] = []
     types = {q.name: q.type for q in p.program.parameters}
     lines = output.splitlines()
     for index, raw in enumerate(lines):
@@ -579,7 +579,7 @@ def observe(p: Plan, output: str) -> Observation:
             if number >= 17000:
                 messages.append(f"{number}: {detail}"[:500])
             elif level >= 11 and number not in _WARNINGS:
-                errors.append(f"Msg {number}: {detail}"[:500])
+                errors.append((level, f"Msg {number}: {detail}"[:500]))
             continue
         if line.startswith("NXR|"):
             value = read_values(line[4:])[0]
@@ -601,7 +601,14 @@ def observe(p: Plan, output: str) -> Observation:
         elif line.startswith("NXK|") and survived is not None:
             survived.append(line[4:])
     calls, undone = _calls(p, attempted, survived)
-    error = "; ".join(errors)[:2000] if errors else None
+    # ADR-0056: a statement-level error the program lived through (level 11-16: a NULL into a NOT NULL column, a
+    # constraint) is behaviour the program handles with @@error, the way its rollback branches are entered; it is
+    # a message of the case, not a failure of the engine. Only a fatal error (level 17 or more) or a program that
+    # never returned fails the case.
+    handled = [text for level, text in errors if level < 17] if returns is not None else []
+    fatal = [text for level, text in errors if level >= 17 or returns is None]
+    messages += handled
+    error = "; ".join(fatal)[:2000] if fatal else None
     if returns is None and error is None:
         error = "the program did not return (no result was printed)"
     return Observation(returns=returns, outputs=outputs, tables=tables, calls=calls, undone=undone,

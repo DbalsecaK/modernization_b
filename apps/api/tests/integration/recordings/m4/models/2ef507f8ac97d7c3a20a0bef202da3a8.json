@@ -1,0 +1,28 @@
+{
+  "request_digest": "2ef507f8ac97d7c3a20a0bef202da3a8",
+  "model": "anthropic/claude-sonnet-5.5",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are the Rules Verifier of a legacy modernization platform, an independent reviewer. You receive one business rule\nwritten by another agent and the exact source lines it cites. You did not write the rule: check it against the code\nonly.\n\nDecide:\n- `supported`: true only if the cited lines implement the rule as written, including its concrete values\n  (codes, amounts, states, limits) and its condition.\n- `problems`: every discrepancy you find: a value that differs from the code, a condition the code does not have, a\n  missing branch the rule should mention, a citation that does not contain the behaviour.\n- `corrected_statement`: if the rule is close but a detail is wrong, the statement rewritten to match the code;\n  otherwise null.\n\nAnswer with one JSON object and nothing else:\n{\"supported\": true, \"problems\": [], \"corrected_statement\": null}\n"
+    },
+    {
+      "role": "user",
+      "content": "Rule:\n{\"name\":\"Failed debit undoes the payment and reports error 50005\",\"category\":\"lifecycle\",\"priority\":\"P0\",\"statement\":\"If the debit fails, either by a non-zero return code or a database error, the transaction is rolled back so that nothing of the payment is kept. The caller receives error 50005 with the message 'ERROR EN DEBITO'.\",\"condition\":\"@w_return <> 0 or @@error <> 0 after calling sp_debito\",\"action\":\"Roll back the transaction; set @w_error = 50005 and @o_mensaje = 'ERROR EN DEBITO'\"}\n\nCited lines:\nsp/sp_pago_orden.sp:117-121:\n  117  if @w_return <> 0 or @@error <> 0\n  118  begin\n  119      rollback tran\n  120      select @w_error = 50005,\n  121             @o_mensaje = 'ERROR EN DEBITO'"
+    }
+  ],
+  "response": {
+    "request_id": "gen-1792355855-cIzAg37TFcyVD4CY5U8j",
+    "model": "anthropic/claude-sonnet-5.5",
+    "provider_name": "Anthropic",
+    "content": "{\"supported\": true, \"problems\": [], \"corrected_statement\": null}",
+    "usage": {
+      "input_tokens": 583,
+      "output_tokens": 373,
+      "reasoning_tokens": 348,
+      "cache_read_tokens": 0,
+      "cache_write_tokens": 0,
+      "provider_cost_usd": "0.004896"
+    }
+  }
+}

@@ -89,3 +89,33 @@ def test_the_inventory_and_errors() -> None:
         parse("         DFHMDF POS=(1,1),LENGTH=1")
     with pytest.raises(BmsError, match="not closed"):
         parse("M1       DFHMDI SIZE=(24,80)\n         DFHMDF POS=(1,1),LENGTH=3,INITIAL='OPEN")
+
+
+def test_a_one_byte_stopper_followed_by_the_next_field_is_a_valid_map() -> None:
+    # A real CICS map: `POS=(21,24),LENGTH=01` then `POS=(21,25),LENGTH=04`. BMS POS is the attribute byte, so the
+    # second attribute ends the first field on its only data byte; the screen spec takes positions as the first data
+    # byte and must accept it (the UI design phase of a customer project failed on it).
+    from nexti_adapter_bms.screens import data_position, screen_spec
+
+    source = "\n".join([
+        "SSIM007  DFHMSD TYPE=&SYSPARM,MODE=INOUT,LANG=COBOL,TERM=3270",
+        "SSI0701  DFHMDI SIZE=(24,80),LINE=01,COLUMN=1",
+        "         DFHMDF POS=(21,01),LENGTH=22,ATTRB=ASKIP",
+        "         DFHMDF POS=(21,24),LENGTH=01,ATTRB=(PROT,ASKIP)",
+        "         DFHMDF POS=(21,25),LENGTH=04,ATTRB=(PROT,ASKIP,FSET)",
+        "M15FCHL  DFHMDF POS=(21,30),LENGTH=08,ATTRB=(PROT,ASKIP)",
+        "LAST     DFHMDF POS=(22,80),LENGTH=05,ATTRB=(UNPROT)",
+        "         DFHMSD TYPE=FINAL",
+    ])  # fmt: skip
+    (mapset,) = parse(source)
+    (bms_map,) = mapset.maps
+    screen = screen_spec(bms_map, "SSIM007.bms", mapset.name)
+
+    def at(name: str) -> tuple[int, int] | None:
+        field = screen.field(name)
+        return (field.position.row, field.position.column) if field and field.position else None
+
+    assert at("L21C24") == (21, 25)
+    assert at("L21C25") == (21, 26)
+    assert at("LAST") == (23, 1)  # the attribute byte in column 80: the data wraps to the next row
+    assert data_position(bms_map.fields[0], 80) == (21, 2)
