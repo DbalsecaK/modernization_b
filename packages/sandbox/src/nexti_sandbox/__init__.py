@@ -167,14 +167,26 @@ class DockerSandbox:
 
     async def _network(self, action: str, *args: str) -> None:
         """Create or remove the run's own internal network (ADR-0021)."""
-        await asyncio.to_thread(
-            subprocess.run, [self.docker, "network", action, *args], capture_output=True, timeout=60, check=False
-        )
+        try:
+            await asyncio.to_thread(
+                subprocess.run, [self.docker, "network", action, *args], capture_output=True, timeout=60, check=False
+            )
+        except subprocess.TimeoutExpired:
+            if action == "create":
+                raise  # a run without its network cannot start
+            # Removing it can wait: docker was too slow on a loaded host, and the run already has its result.
 
     async def _kill(self, name: str) -> None:
-        await asyncio.to_thread(
-            subprocess.run, [self.docker, "kill", name], capture_output=True, timeout=30, check=False
-        )
+        """Removes a sandbox that ran out of time, and never fails: on a loaded host `docker kill` itself timed out
+        and its exception stopped a whole phase (2026-10-19, the recording of M8)."""
+        for seconds in (30, 120):
+            try:
+                await asyncio.to_thread(
+                    subprocess.run, [self.docker, "rm", "-f", name], capture_output=True, timeout=seconds, check=False
+                )
+                return
+            except subprocess.TimeoutExpired:
+                continue
 
     async def available(self) -> bool:
         try:
