@@ -2,7 +2,7 @@
 
 import asyncio
 import contextlib
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Callable
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -62,7 +62,8 @@ from nexti_model_gateway.service import GatewayService, SecretsConfig
 
 
 async def _connect_fga(resources: Resources, settings: Settings) -> fga_module.OpenFga | None:
-    """OpenFGA unavailable at startup does not stop the API: protected endpoints answer 503 until restart."""
+    """OpenFGA unavailable at startup does not stop the API: protected endpoints answer 503 until it connects
+    (`_connect_fga_later` keeps trying in the background)."""
     if not settings.openfga_url:
         return None
     try:
@@ -70,6 +71,31 @@ async def _connect_fga(resources: Resources, settings: Settings) -> fga_module.O
     except Exception as exc:
         log.error("openfga_unavailable", error=type(exc).__name__, detail=str(exc)[:200])
         return None
+
+
+FGA_RETRY_SECONDS = 10
+
+
+async def _connect_fga_later(
+    app: FastAPI,
+    resources: Resources,
+    settings: Settings,
+    stop: asyncio.Event,
+    start: Callable[[fga_module.OpenFga], None],
+) -> None:
+    """Keeps trying to reach OpenFGA after a failed start: on a loaded host its first answer timed out and the API
+    answered 503 to every protected endpoint until someone restarted it (2026-10-19)."""
+    while not stop.is_set():
+        with contextlib.suppress(TimeoutError):
+            await asyncio.wait_for(stop.wait(), FGA_RETRY_SECONDS)
+        if stop.is_set():
+            return
+        fga = await _connect_fga(resources, settings)
+        if fga is not None:
+            app.state.fga = fga
+            log.info("openfga_connected_after_start")
+            start(fga)
+            return
 
 
 async def _reconcile_periodically(
@@ -143,15 +169,23 @@ def create_app(settings: Settings | None = None, health_checks: dict[str, health
         stop = asyncio.Event()
         tasks: list[asyncio.Task[None]] = []
         await license_gate.record_startup(resources.engine, app.state.license)
-        if app.state.fga is not None and resources.relay_engine is not None:
-            app.state.relay = OutboxRelay(resources.relay_engine, app.state.fga)
-            tasks.append(asyncio.create_task(app.state.relay.run_forever(stop, settings.relay_poll_seconds)))
+
+        def start_authorization(fga: fga_module.OpenFga) -> None:
+            """The tasks that need OpenFGA: the outbox relay and the periodic reconciliation."""
+            if resources.relay_engine is not None:
+                app.state.relay = OutboxRelay(resources.relay_engine, fga)
+                tasks.append(asyncio.create_task(app.state.relay.run_forever(stop, settings.relay_poll_seconds)))
+            if resources.engine is not None and settings.reconcile_interval_seconds > 0:
+                tasks.append(asyncio.create_task(_reconcile_periodically(resources, fga, settings, stop)))
+
+        if app.state.fga is not None:
+            start_authorization(app.state.fga)
+        elif settings.openfga_url:
+            tasks.append(asyncio.create_task(_connect_fga_later(app, resources, settings, stop, start_authorization)))
         events_enabled = settings.keycloak_events_interval_seconds > 0
         if app.state.keycloak_admin is not None and resources.engine is not None and events_enabled:
             admin = app.state.keycloak_admin
             tasks.append(asyncio.create_task(_copy_keycloak_events(resources, admin, settings, stop)))
-        if app.state.fga is not None and resources.engine is not None and settings.reconcile_interval_seconds > 0:
-            tasks.append(asyncio.create_task(_reconcile_periodically(resources, app.state.fga, settings, stop)))
         if resources.engine is not None:  # this instance in Operación de plataforma (ADR-0024)
             tasks.append(asyncio.create_task(beat_forever(resources.engine, "api", "nexti-api", stop)))
         try:
