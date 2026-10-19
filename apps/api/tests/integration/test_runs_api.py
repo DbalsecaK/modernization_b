@@ -323,6 +323,14 @@ async def test_a_failed_run_is_queued_again_to_retry_from_its_failed_phase(
     redone = api.post(f"/api/v1/projects/{project_id}/runs/{run['id']}:retry", json={"phase": "design"},
                       headers=headers)  # fmt: skip
     assert (redone.status_code, redone.json()["status"]) == (200, "queued"), redone.text
+    # A run a person cancelled goes on from the phase it stopped at or an earlier one (2026-10-19).
+    cancelled = api.post(f"/api/v1/projects/{project_id}/runs/{run['id']}:cancel", headers=headers)
+    assert (cancelled.status_code, cancelled.json()["status"]) == (200, "cancelled"), cancelled.text
+    await execute(owner_engine, "UPDATE procrastinate_jobs SET status = 'succeeded' WHERE args->>'run_id' = :r",
+                  r=run["id"])  # fmt: skip
+    resumed = api.post(f"/api/v1/projects/{project_id}/runs/{run['id']}:retry", json={"phase": "design"},
+                       headers=headers)  # fmt: skip
+    assert (resumed.status_code, resumed.json()["status"]) == (200, "queued"), resumed.text
 
 
 async def test_a_run_waiting_for_an_unavailable_phase_is_queued_again_without_a_reset(

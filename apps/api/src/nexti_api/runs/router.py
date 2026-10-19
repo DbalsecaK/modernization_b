@@ -196,8 +196,10 @@ async def retry_run(
     request: Request, project_id: uuid.UUID, run_id: uuid.UUID, auth: RunPipeline, body: RetryIn | None = None
 ) -> RunOut:
     """A failed run goes on from the phase that failed, or from an earlier phase a person chooses (ADR-0034,
-    ADR-0035); a finished run may start again from any phase (a NOT PROVEN delivery redone from the design): what
-    comes before keeps its results, the rest runs again with its gates asked again. One run at a time per project."""
+    ADR-0035); a finished run may start again from any phase (a NOT PROVEN delivery redone from the design); a run a
+    person cancelled goes on from the phase it stopped at or an earlier one (a cancelled verification of code that
+    had not converged, 2026-10-19). What comes before keeps its results, the rest runs again with its gates asked
+    again. One run at a time per project."""
     assert auth.tenant_id is not None  # noqa: S101 - require_project guarantees it
     await license_gate.ensure_writable(request, auth, "run.retry", f"project:{project_id}")
     async with transaction(request, auth) as conn:
@@ -209,8 +211,8 @@ async def retry_run(
                         {"run_id": str(run_id), "status": "waiting", "phase": run["current_phase"],
                          "reason": "phaseUnavailable"})  # fmt: skip
             return RunOut.model_validate(dict(await load_run(conn, project_id, run_id)))
-        if run["status"] not in ("failed", "succeeded"):
-            raise ProblemError(409, "run_not_finished", "Only a failed or finished run can be retried.")
+        if run["status"] not in ("failed", "succeeded", "cancelled"):
+            raise ProblemError(409, "run_not_finished", "Only a failed, cancelled or finished run can be retried.")
         chosen = body.phase if body else None
         if chosen is not None:
             rows = await conn.execute(
