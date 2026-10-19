@@ -57,6 +57,14 @@ class LegacyEngineTimeoutError(LegacyUnavailableError):
     transient = True
 
 
+# The engine's start, made reliable on a loaded host (2026-10-19: a crashed boot and a stop that timed out left
+# engines running for hours and the run of a bank project stopped in generation).
+START_ATTEMPTS = 3
+CRASHED_BOOT_SECONDS = 90  # initialized but silent this long: the boot crashed
+EXPIRY_LABEL = "nexti.engine.expires"
+ENGINE_LIFETIME_SECONDS = 6 * 3600  # no run keeps one engine longer; past it, the next start removes it
+
+
 class LegacyEngineError(LegacyUnavailableError):
     """The engine could not be started or did not answer."""
 
@@ -104,28 +112,82 @@ class AseRunner:
         return output
 
     async def _start(self, network: str = "none") -> str:
+        """A fresh engine, answering. On a loaded host the engine's boot can crash (a thread that exhausts its time
+        slice while the master database starts): the image still prints that it initialized, but nothing answers.
+        Such a boot is stopped and started again, up to `START_ATTEMPTS` times, instead of waiting out the whole
+        start time; engines a crashed process left behind are removed first (their expiry has passed)."""
+        await self._reap()
+        problems: list[str] = []
+        for _ in range(START_ATTEMPTS):
+            name, problem = await self._boot(network)
+            if problem is None:
+                return name
+            problems.append(problem)
+            if problem.startswith("the Sybase engine did not start"):
+                break  # docker itself refused: another attempt would fail the same way
+        raise LegacyEngineTimeoutError("; ".join(problems))
+
+    async def _boot(self, network: str) -> tuple[str, str | None]:
         name = f"nexti-ase-{uuid.uuid4().hex[:12]}"
+        expires = int(time.time()) + ENGINE_LIFETIME_SECONDS
         args = ["run", "-d", "--rm", "--name", name, "--network", network, "--memory", f"{self.memory_mb}m",
                 "--memory-swap", f"{self.memory_mb}m", "--pids-limit", "512", "--security-opt", "no-new-privileges",
-                self.image]  # fmt: skip
+                "--label", f"{EXPIRY_LABEL}={expires}", self.image]  # fmt: skip
         try:
             code, output = await asyncio.to_thread(self._cli, args, None, 600)
         except FileNotFoundError as exc:
             raise LegacyEngineError(f"{self.docker} is not installed") from exc
+        except subprocess.TimeoutExpired:
+            await self._stop(name)
+            return name, "docker did not start the Sybase engine within 600 s"
         if code != 0:
-            raise LegacyEngineTimeoutError(f"the Sybase engine did not start: {output[:300]}")
+            return name, f"the Sybase engine did not start: {output[:300]}"
         deadline = time.monotonic() + self.start_seconds
+        unanswered_since: float | None = None
         while time.monotonic() < deadline:
             # The image's entrypoint resizes master and creates its login before it prints this line.
-            _, logs = await asyncio.to_thread(self._cli, ["logs", "--tail", "5", name], None, 30)
-            if "SYBASE INITIALIZED" in logs and "NXREADY" in await self._isql(name, "select 'NXREADY'\ngo\n", 30):
-                return name
+            try:
+                _, logs = await asyncio.to_thread(self._cli, ["logs", "--tail", "5", name], None, 30)
+            except subprocess.TimeoutExpired:
+                logs = ""  # docker is slow to answer: ask again
+            if "SYBASE INITIALIZED" in logs:
+                if "NXREADY" in await self._isql(name, "select 'NXREADY'\ngo\n", 30):
+                    return name, None
+                unanswered_since = unanswered_since or time.monotonic()
+                if time.monotonic() - unanswered_since > CRASHED_BOOT_SECONDS:
+                    await self._stop(name)
+                    return name, (f"the Sybase engine initialized but did not answer for {CRASHED_BOOT_SECONDS} s "
+                                  "(a crashed boot)")  # fmt: skip
             await asyncio.sleep(3)
         await self._stop(name)
-        raise LegacyEngineTimeoutError(f"the Sybase engine did not answer within {self.start_seconds} s")
+        return name, f"the Sybase engine did not answer within {self.start_seconds} s"
 
     async def _stop(self, name: str) -> None:
-        await asyncio.to_thread(self._cli, ["kill", name], None, 60)
+        """Removes the engine and never fails: a stop that timed out on a loaded host left a 3 GB engine running
+        for hours, and every later start failed for lack of memory. What a stop cannot remove, its expiry does."""
+        for seconds in (60, 180):
+            try:
+                await asyncio.to_thread(self._cli, ["rm", "-f", name], None, seconds)
+                return
+            except subprocess.TimeoutExpired:
+                continue
+            except FileNotFoundError:
+                return
+
+    async def _reap(self) -> None:
+        """Removes the engines whose expiry has passed (left behind by a process that died before stopping them)."""
+        try:
+            _, listed = await asyncio.to_thread(
+                self._cli, ["ps", "-a", "--filter", f"label={EXPIRY_LABEL}",
+                            "--format", f'{{{{.Names}}}} {{{{.Label "{EXPIRY_LABEL}"}}}}'], None, 60,
+            )  # fmt: skip
+        except (subprocess.TimeoutExpired, FileNotFoundError):
+            return
+        now = int(time.time())
+        for line in listed.splitlines():
+            parts = line.split()
+            if len(parts) == 2 and parts[1].isdigit() and int(parts[1]) < now:
+                await self._stop(parts[0])
 
     async def run(self, files: list[SourceFile], suite: Suite) -> GoldenMaster:
         plan = golden.plan(files, suite)

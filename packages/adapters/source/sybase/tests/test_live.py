@@ -58,7 +58,7 @@ class Client(LiveAseRunner):
 
     def _cli(self, args: list[str], stdin: str | None = None, timeout: int = 60) -> tuple[int, str]:
         self.commands.append((args, stdin))
-        if args[0] in ("run", "kill"):
+        if args[0] in ("run", "rm", "ps"):
             return 0, "abc123\n"
         script = (stdin or "").split("\n", 1)[1]
         if "NXREADY" in script:
@@ -120,7 +120,7 @@ def test_a_missing_object_on_the_customers_server_stops_the_run_with_its_name() 
     expected = r"lacks what the program needs: table db_pagos\.\.pg_orden, procedure db_cuentas\.\.sp_debito"
     with pytest.raises(golden.GoldenError, match=expected):
         asyncio.run(client.run(FILES, _without_stubs()))
-    assert any(args[0] == "kill" for args, _ in client.commands)  # the client container never outlives the run
+    assert any(args[0] == "rm" for args, _ in client.commands)  # the client container never outlives the run
 
 
 def test_the_connection_check_signs_on_and_uses_the_database() -> None:

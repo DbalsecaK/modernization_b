@@ -423,7 +423,7 @@ def test_the_same_engine_starts_on_a_private_network_and_hands_the_target_what_i
         assert started[started.index("--network") + 1] == target.network
         assert ["network", "create", "--internal", target.network] in commands
         assert ["network", "rm", target.network] in commands
-        assert any(a[0] == "kill" for a in commands)
+        assert any(a[0] == "rm" for a in commands)
 
     asyncio.run(run())
 
