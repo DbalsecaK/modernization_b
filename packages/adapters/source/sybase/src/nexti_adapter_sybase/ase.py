@@ -57,6 +57,8 @@ class LegacyEngineTimeoutError(LegacyUnavailableError):
     transient = True
 
 
+from nexti_sandbox.containers import OWNER_LABEL, owner, reap_orphans  # noqa: E402
+
 # The engine's start, made reliable on a loaded host (2026-10-19: a crashed boot and a stop that timed out left
 # engines running for hours and the run of a bank project stopped in generation).
 START_ATTEMPTS = 3
@@ -132,7 +134,7 @@ class AseRunner:
         expires = int(time.time()) + ENGINE_LIFETIME_SECONDS
         args = ["run", "-d", "--rm", "--name", name, "--network", network, "--memory", f"{self.memory_mb}m",
                 "--memory-swap", f"{self.memory_mb}m", "--pids-limit", "512", "--security-opt", "no-new-privileges",
-                "--label", f"{EXPIRY_LABEL}={expires}", self.image]  # fmt: skip
+                "--label", f"{EXPIRY_LABEL}={expires}", "--label", f"{OWNER_LABEL}={owner()}", self.image]  # fmt: skip
         try:
             code, output = await asyncio.to_thread(self._cli, args, None, 600)
         except FileNotFoundError as exc:
@@ -175,7 +177,9 @@ class AseRunner:
                 return
 
     async def _reap(self) -> None:
-        """Removes the engines whose expiry has passed (left behind by a process that died before stopping them)."""
+        """Removes the engines a dead process of this host left behind (its owner is gone) and those whose expiry
+        has passed (a process of another host, or one that never stopped them)."""
+        await asyncio.to_thread(reap_orphans, self.docker)
         try:
             _, listed = await asyncio.to_thread(
                 self._cli, ["ps", "-a", "--filter", f"label={EXPIRY_LABEL}",

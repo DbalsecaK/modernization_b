@@ -43,6 +43,7 @@ class FakeDocker(AseRunner):
 @pytest.fixture(autouse=True)
 def quick(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(ase, "CRASHED_BOOT_SECONDS", 0)
+    monkeypatch.setattr(ase, "reap_orphans", lambda docker: [])  # no real docker here
 
     async def no_wait(_: float) -> None:
         return None

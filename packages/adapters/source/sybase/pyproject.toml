@@ -3,10 +3,11 @@ name = "nexti-adapter-sybase"
 version = "0.1.0"
 description = "Source adapter for Sybase ASE stored procedures: deterministic inventory, neutral types, classification and slicing (spec 8.2, 8.3)."
 requires-python = ">=3.12"
-dependencies = ["nexti-core"]
+dependencies = ["nexti-core", "nexti-sandbox"]
 
 [tool.uv.sources]
 nexti-core = { workspace = true }
+nexti-sandbox = { workspace = true }
 
 [build-system]
 requires = ["hatchling"]

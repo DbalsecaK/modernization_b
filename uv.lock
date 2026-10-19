@@ -1334,10 +1334,14 @@ version = "0.1.0"
 source = { editable = "packages/adapters/source/sybase" }
 dependencies = [
     { name = "nexti-core" },
+    { name = "nexti-sandbox" },
 ]
 
 [package.metadata]
-requires-dist = [{ name = "nexti-core", editable = "packages/core" }]
+requires-dist = [
+    { name = "nexti-core", editable = "packages/core" },
+    { name = "nexti-sandbox", editable = "packages/sandbox" },
+]
 
 [[package]]
 name = "nexti-agents"

@@ -18,6 +18,8 @@ from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 from typing import Protocol
 
+from nexti_sandbox.containers import OWNER_LABEL, owner, reap_orphans
+
 # python:3.12-slim, pinned by digest: the image never changes under a running pipeline.
 DEFAULT_IMAGE = "python:3.12-slim@sha256:f77ac9e44ae96ef2c90b8053ea08c31f8be030f824196b0ae4db6d462c84e51f"
 NOBODY = "65534:65534"
@@ -102,6 +104,7 @@ class DockerSandbox:
     def _args(self, name: str, input_dir: Path, limits: Limits, network: str = "none") -> list[str]:
         return [
             self.docker, "run", "--rm", "--name", name,
+            "--label", f"{OWNER_LABEL}={owner()}",  # removed by the next start if this process dies first
             "--network", network,
             *([] if limits.writable_root else ["--read-only"]),
             "--cap-drop", "ALL",
@@ -129,6 +132,7 @@ class DockerSandbox:
         input_dir = Path(tempfile.mkdtemp(prefix="nexti-sandbox-"))
         started = time.monotonic()
         network = limits.network or (f"{name}-net" if limits.internal_network else "none")
+        await asyncio.to_thread(reap_orphans, self.docker)  # what a dead worker left running, first
         try:
             if limits.internal_network and not limits.network:
                 await self._network("create", "--internal", network)
