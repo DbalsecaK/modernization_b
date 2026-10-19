@@ -16,6 +16,7 @@ from nexti_core.spec.equivalence import (
     Mask,
     actual_view,
     column_of,
+    engine_seconds,
     expected_view,
     masks,
 )
@@ -200,9 +201,9 @@ async def run_equivalence(
     if engine is not None:
         # Against the legacy's engine every case resets the engine and the call log travels with the output: more
         # time and more output than a local run (phase F: the sandbox killed a 17-case run at 600 s).
-        build = await compile_and_test(sandbox, files, extra_inputs=extra, after=engine_script(engine),
-                                       limits=replace(LIMITS, network=engine.network, timeout_seconds=1800,
-                                                      max_output_bytes=16 * 1024 * 1024))  # fmt: skip
+        limits = replace(LIMITS, network=engine.network, timeout_seconds=engine_seconds(len(cases) + 2),
+                         max_output_bytes=16 * 1024 * 1024)  # fmt: skip
+        build = await compile_and_test(sandbox, files, extra_inputs=extra, after=engine_script(engine), limits=limits)
     else:
         build = await compile_and_test(sandbox, files, extra_inputs=extra, after=SCRIPT)
     found = masks(design, use_case, master)

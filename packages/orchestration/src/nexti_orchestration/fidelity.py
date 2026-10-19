@@ -28,6 +28,7 @@ from nexti_orchestration.correction import (
 )
 from nexti_orchestration.escalation import explainer, many_files
 from nexti_orchestration.extraction import ModelCaller, ReplyError, raise_if_cut
+from nexti_orchestration.model import PhaseFailedError
 from nexti_orchestration.packs import BackendPack
 from nexti_orchestration.scope import scope_files
 from nexti_sandbox import Sandbox
@@ -366,9 +367,9 @@ async def converge(
                                                   **_engine(engine))  # fmt: skip
     first_outcomes: list[CaseOutcome] = outcomes_of(first)
     if first.problem:
-        raise_problem = f"the golden master could not run on the generated project: {first.problem}"
-        await ctx.store.event("info", "failed", raise_problem[:2000], phase=ctx.phase.key)
-        return files, Convergence(len(first_outcomes), len(first_outcomes), 0, (), [])
+        # The phase does not end as if the project had been compared (2026-10-19: a cut golden master let the
+        # generation complete with "0 case(s) match" and the verification would only have repeated the cut).
+        raise PhaseFailedError(f"the golden master could not run on the generated project: {first.problem[:1500]}")
     first_build_ok = bool(getattr(first.build, "ok", True))
     tests_first = (
         ""

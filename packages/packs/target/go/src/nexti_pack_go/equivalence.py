@@ -25,6 +25,7 @@ from nexti_core.spec.equivalence import (
     Mask,
     actual_view,
     column_of,
+    engine_seconds,
     expected_view,
     masks,
 )
@@ -276,7 +277,12 @@ async def run_equivalence(
         "harness/cases.json": json.dumps(cases),
     }
     if engine is not None:
-        limits = replace(LIMITS, network=engine.network, timeout_seconds=1800, max_output_bytes=16 * 1024 * 1024)
+        limits = replace(
+            LIMITS,
+            network=engine.network,
+            timeout_seconds=engine_seconds(len(cases) + 2),
+            max_output_bytes=16 * 1024 * 1024,
+        )
         build = await compile_and_test(sandbox, files, extra_inputs=extra, after=ENGINE_SCRIPT, limits=limits)
     else:
         build = await compile_and_test(sandbox, files, extra_inputs=extra, after=SCRIPT)

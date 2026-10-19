@@ -21,6 +21,7 @@ from nexti_core.spec.equivalence import (
     Mask,
     actual_view,
     column_of,
+    engine_seconds,
     expected_view,
     masks,
 )
@@ -192,7 +193,12 @@ async def run_equivalence(
         cases = [target_case(design, use_case, r.case, defaults, engine) for r in recorded]
         chosen_plan = plan(design, use_case, engine)
         script = ENGINE_SCRIPT
-        limits = replace(LIMITS, network=engine.network, timeout_seconds=1800, max_output_bytes=16 * 1024 * 1024)
+        limits = replace(
+            LIMITS,
+            network=engine.network,
+            timeout_seconds=engine_seconds(len(cases) + 2),
+            max_output_bytes=16 * 1024 * 1024,
+        )
     else:
         cases = [case_of(design, use_case, r.case, defaults) for r in recorded]
         chosen_plan = harness_plan or plan(design, use_case)

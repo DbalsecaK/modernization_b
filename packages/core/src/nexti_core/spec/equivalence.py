@@ -100,6 +100,13 @@ class EquivalenceRun:
     raw: dict[str, Any] = dc_field(default_factory=dict)
 
 
+def engine_seconds(cases: int) -> int:
+    """How long a golden master may run against the legacy's engine: every case resets the engine (rows and
+    substitutes) and reads its call log, so the time grows with the suite. A fixed 1 800 s cut a bank project's
+    run in the middle of its cases on a loaded host (2026-10-19) and the convergence never ran."""
+    return max(1800, 900 + 120 * cases)
+
+
 def column_of(field_name: str, column: str | None) -> str:
     return column or snake(field_name)
 
