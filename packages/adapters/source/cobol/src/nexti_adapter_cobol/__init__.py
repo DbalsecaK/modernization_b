@@ -41,6 +41,7 @@ _INFRASTRUCTURE = {"SEND MAP", "SEND TEXT", "SEND CONTROL", "RECEIVE MAP", "RETU
                    "FORMATTIME", "HANDLE CONDITION", "HANDLE AID", "HANDLE ABEND", "ENDBR", "UNLOCK"}  # fmt: skip
 _CONTROL = {"PERFORM", "IF", "ELSE", "END-IF", "EVALUATE", "WHEN", "END-EVALUATE", "GO", "CONTINUE", "END-PERFORM",
             "EXIT", "GOBACK", "STOP"}  # fmt: skip
+_EMPTY_VALUES = {"LOW-VALUES", "LOW-VALUE", "SPACES", "SPACE", "ZEROS", "ZERO", "ZEROES"}
 _FILE_READS = {"READ", "READNEXT", "READPREV", "STARTBR"}
 _FILE_WRITES = {"WRITE", "REWRITE", "DELETE"}
 
@@ -384,7 +385,11 @@ def _kind(statement: Statement) -> str:
     if statement.verb in _CONTROL:
         return "control_flow"
     words = [t.upper for t in statement.tokens]
-    if statement.verb == "MOVE" and len(words) > 1 and words[1] in ("LOW-VALUES", "LOW-VALUE", "SPACES"):
+    # Housekeeping: a field cleared to its empty value before it is filled (2026-10-19: a CICS program's
+    # `MOVE ZEROS TO W-NUMROWS` and `INITIALIZE T95BAN04` blocked C1 as business no rule cited).
+    if statement.verb == "MOVE" and len(words) > 1 and words[1] in _EMPTY_VALUES:
+        return "infrastructure"
+    if statement.verb == "INITIALIZE" and "REPLACING" not in words:
         return "infrastructure"
     return "business"
 
