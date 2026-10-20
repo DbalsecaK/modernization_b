@@ -364,7 +364,15 @@
       "ivv": "El target del tercero, su mapeo y el informe aparecen tras la recepción del target",
       "delta": "La línea base, el diseño del delta y sus archivos aparecen tras la recepción del AS-IS"
     },
-    "openRuns": "Ejecuciones"
+    "openRuns": "Ejecuciones",
+    "missingInputs": {
+      "title_one": "Falta {{count}} insumo del cliente",
+      "title_other": "Faltan {{count}} insumos del cliente",
+      "why": "El código incluye estos copybooks y no están en los insumos del proyecto. Sin ellos los programas no compilan y la caracterización (el golden master) no puede correr: pídelos al cliente tal cual están en su librería.",
+      "usedBy": "lo usa {{where}}",
+      "line": "línea {{line}}",
+      "action": "Subir los copybooks en Insumos"
+    }
   },
   "overview": {
     "pipeline": "Pipeline",

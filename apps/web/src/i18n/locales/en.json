@@ -364,7 +364,15 @@
       "ivv": "The third party target, its mapping and the report appear after the target intake",
       "delta": "The baseline, the delta design and its files appear after the AS-IS intake"
     },
-    "openRuns": "Runs"
+    "openRuns": "Runs",
+    "missingInputs": {
+      "title_one": "{{count}} input from the customer is missing",
+      "title_other": "{{count}} inputs from the customer are missing",
+      "why": "The code includes these copybooks and the project's inputs do not carry them. Without them the programs do not compile and the characterization (the golden master) cannot run: ask the customer for them as they are in their library.",
+      "usedBy": "used by {{where}}",
+      "line": "line {{line}}",
+      "action": "Upload the copybooks in Inputs"
+    }
   },
   "overview": {
     "pipeline": "Pipeline",

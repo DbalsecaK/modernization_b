@@ -1353,6 +1353,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/projects/{project_id}/graph/missing": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Missing Inputs
+         * @description What the code includes and the inputs do not carry (2026-10-19: a CICS project lacked seven copybooks and
+         *     nothing on screen said so until the golden master could not compile): each one with who includes it and where,
+         *     so the person knows what to ask the customer for before a run stops on it.
+         */
+        get: operations["missing_inputs_api_v1_projects__project_id__graph_missing_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/projects/{project_id}/hardening": {
         parameters: {
             query?: never;
@@ -1801,8 +1823,10 @@ export interface paths {
         /**
          * Retry Run
          * @description A failed run goes on from the phase that failed, or from an earlier phase a person chooses (ADR-0034,
-         *     ADR-0035); a finished run may start again from any phase (a NOT PROVEN delivery redone from the design): what
-         *     comes before keeps its results, the rest runs again with its gates asked again. One run at a time per project.
+         *     ADR-0035); a finished run may start again from any phase (a NOT PROVEN delivery redone from the design); a run a
+         *     person cancelled goes on from the phase it stopped at or an earlier one (a cancelled verification of code that
+         *     had not converged, 2026-10-19). What comes before keeps its results, the rest runs again with its gates asked
+         *     again. One run at a time per project.
          */
         post: operations["retry_run_api_v1_projects__project_id__runs__run_id__retry_post"];
         delete?: never;
@@ -4965,12 +4989,39 @@ export interface components {
             /** Into */
             into: string;
         };
+        /** MissingInputOut */
+        MissingInputOut: {
+            /**
+             * Kind
+             * @constant
+             */
+            kind: "copybook";
+            /**
+             * Name
+             * @description The name the code uses, e.g. the copybook of a COPY
+             */
+            name: string;
+            /** Usedby */
+            usedBy: components["schemas"]["MissingUseOut"][];
+        };
         /** MissingSkillOut */
         MissingSkillOut: {
             /** Skill */
             skill: string;
             /** Source */
             source: string;
+        };
+        /** MissingUseOut */
+        MissingUseOut: {
+            /** File */
+            file: string | null;
+            /** Line */
+            line: number | null;
+            /**
+             * Unit
+             * @description The program or copybook that includes it
+             */
+            unit: string;
         };
         /** ModelAssignmentIn */
         ModelAssignmentIn: {
@@ -9850,6 +9901,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["GraphInsightsOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    missing_inputs_api_v1_projects__project_id__graph_missing_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MissingInputOut"][];
                 };
             };
             /** @description Validation Error */

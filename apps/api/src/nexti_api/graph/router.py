@@ -175,3 +175,41 @@ async def impact(
     except GraphError as exc:
         raise ProblemError(422, "invalid_impact", str(exc)) from exc
     return ImpactOut(node=node, depth=depth, impacted=[k for k in lift(keys, view_ids) if k != node])
+
+
+class MissingUseOut(ApiModel):
+    unit: str = Field(description="The program or copybook that includes it")
+    file: str | None
+    line: int | None
+
+
+class MissingInputOut(ApiModel):
+    name: str = Field(description="The name the code uses, e.g. the copybook of a COPY")
+    kind: Literal["copybook"]
+    used_by: list[MissingUseOut]
+
+
+@router.get("/missing", response_model=list[MissingInputOut])
+async def missing_inputs(request: Request, project_id: uuid.UUID, auth: ViewProject) -> list[MissingInputOut]:
+    """What the code includes and the inputs do not carry (2026-10-19: a CICS project lacked seven copybooks and
+    nothing on screen said so until the golden master could not compile): each one with who includes it and where,
+    so the person knows what to ask the customer for before a run stops on it."""
+    graph = _graph(request)
+    scope = _scope(auth, project_id)
+    nodes = {n.key: n for n in await graph.nodes(scope)}
+    missing = {k: n for k, n in nodes.items() if n.properties.get("missing") and "Copybook" in n.labels}
+    uses: dict[str, list[MissingUseOut]] = {k: [] for k in missing}
+    for edge in await graph.relationships(scope):
+        if edge.get("type") == "COPIES" and edge.get("target") in missing:
+            source = nodes.get(str(edge.get("source")))
+            props = edge.get("props") or {}
+            line = props.get("line")
+            uses[str(edge["target"])].append(MissingUseOut(
+                unit=source.name if source else str(edge.get("source")),
+                file=str(source.properties.get("file")) if source and source.properties.get("file") else None,
+                line=int(line) if isinstance(line, int) else None,
+            ))  # fmt: skip
+    return [
+        MissingInputOut(name=n.name, kind="copybook", used_by=sorted(uses[k], key=lambda u: (u.unit, u.line or 0)))
+        for k, n in sorted(missing.items(), key=lambda kv: kv[1].name)
+    ]

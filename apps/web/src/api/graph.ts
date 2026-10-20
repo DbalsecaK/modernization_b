@@ -52,6 +52,16 @@ export async function impactOf(projectId: string, node: string, depth = 3): Prom
   return result.impacted
 }
 
+/** What the code includes and the inputs do not carry (a COPY with no copybook), with who includes it and where. */
+export type MissingInput = Schemas['MissingInputOut']
+export const useMissingInputs = (projectId: string) =>
+  useQuery({
+    queryKey: ['projects', projectId, 'graph', 'missing'],
+    queryFn: () =>
+      unwrap(api.GET('/api/v1/projects/{project_id}/graph/missing', { params: { path: { project_id: projectId } } })),
+    retry: false,
+  })
+
 /** The statements of the legacy with their class and why (stored by the classification phase); null before it. */
 export const useClassification = (projectId: string) =>
   useQuery({

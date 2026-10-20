@@ -21,6 +21,7 @@ import { ProjectCosts } from './workspace/ProjectCosts'
 import { ProjectBacklog } from './workspace/ProjectBacklog'
 import { ProjectIvv } from './workspace/ProjectIvv'
 import { ProjectDelta } from './workspace/ProjectDelta'
+import { MissingInputsBanner } from './workspace/MissingInputsBanner'
 
 const TABS = [
   'overview',
@@ -126,6 +127,7 @@ export function ProjectWorkspace() {
           </Button>
         }
       />
+      {p.flow === 'modernization' && <MissingInputsBanner projectId={p.id} onOpenInputs={() => setTab('inputs')} />}
       <Tabs tabs={visibleTabs.map((id) => ({ id, label: t(`project.tabs.${id}`) }))} value={tab} onChange={setTab} />
       {tab === 'overview' && <ProjectOverview project={p} onOpen={setTab} />}
       {tab === 'inputs' && <ProjectInputs project={p} />}

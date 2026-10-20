@@ -6118,6 +6118,34 @@
         "title": "MergeIn",
         "type": "object"
       },
+      "MissingInputOut": {
+        "properties": {
+          "kind": {
+            "const": "copybook",
+            "title": "Kind",
+            "type": "string"
+          },
+          "name": {
+            "description": "The name the code uses, e.g. the copybook of a COPY",
+            "title": "Name",
+            "type": "string"
+          },
+          "usedBy": {
+            "items": {
+              "$ref": "#/components/schemas/MissingUseOut"
+            },
+            "title": "Usedby",
+            "type": "array"
+          }
+        },
+        "required": [
+          "name",
+          "kind",
+          "usedBy"
+        ],
+        "title": "MissingInputOut",
+        "type": "object"
+      },
       "MissingSkillOut": {
         "properties": {
           "skill": {
@@ -6134,6 +6162,44 @@
           "skill"
         ],
         "title": "MissingSkillOut",
+        "type": "object"
+      },
+      "MissingUseOut": {
+        "properties": {
+          "file": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "File"
+          },
+          "line": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Line"
+          },
+          "unit": {
+            "description": "The program or copybook that includes it",
+            "title": "Unit",
+            "type": "string"
+          }
+        },
+        "required": [
+          "unit",
+          "file",
+          "line"
+        ],
+        "title": "MissingUseOut",
         "type": "object"
       },
       "ModelAssignmentIn": {
@@ -15855,6 +15921,54 @@
         ]
       }
     },
+    "/api/v1/projects/{project_id}/graph/missing": {
+      "get": {
+        "description": "What the code includes and the inputs do not carry (2026-10-19: a CICS project lacked seven copybooks and\nnothing on screen said so until the golden master could not compile): each one with who includes it and where,\nso the person knows what to ask the customer for before a run stops on it.",
+        "operationId": "missing_inputs_api_v1_projects__project_id__graph_missing_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/MissingInputOut"
+                  },
+                  "title": "Response Missing Inputs Api V1 Projects  Project Id  Graph Missing Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Missing Inputs",
+        "tags": [
+          "graph"
+        ]
+      }
+    },
     "/api/v1/projects/{project_id}/hardening": {
       "get": {
         "operationId": "hardening_report_api_v1_projects__project_id__hardening_get",
@@ -17431,7 +17545,7 @@
     },
     "/api/v1/projects/{project_id}/runs/{run_id}:retry": {
       "post": {
-        "description": "A failed run goes on from the phase that failed, or from an earlier phase a person chooses (ADR-0034,\nADR-0035); a finished run may start again from any phase (a NOT PROVEN delivery redone from the design): what\ncomes before keeps its results, the rest runs again with its gates asked again. One run at a time per project.",
+        "description": "A failed run goes on from the phase that failed, or from an earlier phase a person chooses (ADR-0034,\nADR-0035); a finished run may start again from any phase (a NOT PROVEN delivery redone from the design); a run a\nperson cancelled goes on from the phase it stopped at or an earlier one (a cancelled verification of code that\nhad not converged, 2026-10-19). What comes before keeps its results, the rest runs again with its gates asked\nagain. One run at a time per project.",
         "operationId": "retry_run_api_v1_projects__project_id__runs__run_id__retry_post",
         "parameters": [
           {
