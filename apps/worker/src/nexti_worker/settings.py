@@ -24,7 +24,9 @@ class WorkerSettings(BaseSettings):
     concurrency: int = 4
     # Heartbeats and stalled jobs: a job whose worker stopped sending heartbeats is retried by another worker.
     heartbeat_seconds: float = 5
-    stalled_after_seconds: float = 20
+    # 2026-10-19: at 20 s a loaded host delayed the heartbeat of a live job, which was queued again twice and ran
+    # three times at once from the start of its phase; a dead worker is still noticed within minutes.
+    stalled_after_seconds: float = 300
     object_store_url: str = ""
     object_store_access_key: str = ""
     object_store_secret_key: SecretStr = SecretStr("")

@@ -3,9 +3,13 @@
 from the last checkpoint."""
 
 import uuid
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 
 import structlog
 from procrastinate import App, Blueprint, JobContext, PsycopgConnector, RetryStrategy
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncEngine
 
 from nexti_core.jobs import BACKLOG_SYNC_TASK, EXECUTE_RUN_TASK, LEGACY_CHECK_TASK, RUNS_QUEUE, UI_CHANGE_TASK
 from nexti_worker.backlog import bug_fixer, sync_backlog, tracker_for
@@ -19,6 +23,21 @@ MAX_ATTEMPTS = 4
 
 log = structlog.get_logger("nexti_worker")
 tasks = Blueprint()
+
+
+@asynccontextmanager
+async def only_execution(engine: AsyncEngine, run: uuid.UUID) -> AsyncIterator[bool]:
+    """One execution of a run at a time: a session advisory lock on the run, held by a connection of this job for
+    as long as it runs (2026-10-19: a live job taken for a stalled one ran three times at once). A worker that dies
+    loses its connection and with it the lock, so the retry of a really dead job goes on."""
+    async with engine.connect() as conn:
+        key = {"k": f"nexti.run:{run}"}
+        alone = bool((await conn.execute(text("SELECT pg_try_advisory_lock(hashtext(:k))"), key)).scalar())
+        try:
+            yield alone
+        finally:
+            if alone:
+                await conn.execute(text("SELECT pg_advisory_unlock(hashtext(:k))"), key)
 
 
 def _runtime(context: JobContext) -> Runtime:
@@ -37,7 +56,11 @@ async def execute_run_task(context: JobContext, run_id: str, tenant_id: str) -> 
     run, tenant = uuid.UUID(run_id), uuid.UUID(tenant_id)
     structlog.contextvars.bind_contextvars(run_id=run_id, job_id=context.job.id)
     try:
-        outcome = await execute_run(runtime, run, tenant)
+        async with only_execution(runtime.engine, run) as alone:
+            if not alone:  # another execution of this run is alive: this copy has nothing to do
+                log.warning("run.already_executing")
+                return
+            outcome = await execute_run(runtime, run, tenant)
         log.info("run.job_done", outcome=outcome)
     except Exception as exc:
         # attempts counts the previous failures: the last attempt fails the run instead of retrying.
