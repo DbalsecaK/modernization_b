@@ -95,6 +95,7 @@ class CobolAdapter:
         maps = BmsAdapter().inventory(files)
         inv = Inventory(self.name, list(maps.nodes), list(maps.edges), problems=problems + maps.problems)
         map_keys = {n.name: n.key for n in maps.nodes if n.label == "BmsMap"}
+        mapsets = {n.name.upper() for n in maps.nodes if n.label == "Mapset"}
         known = {p.name for p in programs}
         external: set[str] = set()
         files_used: dict[str, set[str]] = {}
@@ -130,8 +131,13 @@ class CobolAdapter:
                 if copied in SYSTEM_COPYBOOKS:
                     continue
                 if copied not in copybooks:
-                    inv.problems.append(f"{program.file}:{line}: copybook {copied} is not in the inputs")
-                    inv.nodes.append(Node(f"copybook:{copied}", "Copybook", copied, properties={"missing": True}))
+                    # The symbolic map of a mapset in the inputs is generated from its BMS: not missing.
+                    generated = copied.upper() in mapsets
+                    if not generated:
+                        inv.problems.append(f"{program.file}:{line}: copybook {copied} is not in the inputs")
+                    inv.nodes.append(Node(f"copybook:{copied}", "Copybook", copied,
+                                          properties={"generated_from_bms": True} if generated
+                                          else {"missing": True}))  # fmt: skip
                     copybooks[copied] = Copybook(copied, "", [])
                 inv.edges.append(Edge(key, "COPIES", f"copybook:{copied}", {"line": line}))
             for paragraph in program.paragraphs:

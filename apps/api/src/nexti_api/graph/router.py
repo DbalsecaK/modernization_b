@@ -197,7 +197,14 @@ async def missing_inputs(request: Request, project_id: uuid.UUID, auth: ViewProj
     graph = _graph(request)
     scope = _scope(auth, project_id)
     nodes = {n.key: n for n in await graph.nodes(scope)}
-    missing = {k: n for k, n in nodes.items() if n.properties.get("missing") and "Copybook" in n.labels}
+    # A copybook named as a mapset of the inputs is its symbolic map, generated from the BMS (inventories written
+    # before the COBOL adapter said so still mark it missing).
+    mapsets = {n.name.upper() for n in nodes.values() if "Mapset" in n.labels}
+    missing = {
+        k: n
+        for k, n in nodes.items()
+        if n.properties.get("missing") and "Copybook" in n.labels and n.name.upper() not in mapsets
+    }
     uses: dict[str, list[MissingUseOut]] = {k: [] for k in missing}
     for edge in await graph.relationships(scope):
         if edge.get("type") == "COPIES" and edge.get("target") in missing:
