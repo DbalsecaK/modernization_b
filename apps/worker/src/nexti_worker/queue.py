@@ -2,6 +2,7 @@
 `retry_stalled` hands the jobs of a dead worker (no heartbeat) back to the queue, where another worker continues them
 from the last checkpoint."""
 
+import contextlib
 import uuid
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
@@ -9,6 +10,7 @@ from contextlib import asynccontextmanager
 import structlog
 from procrastinate import App, Blueprint, JobContext, PsycopgConnector, RetryStrategy
 from sqlalchemy import text
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncEngine
 
 from nexti_core.jobs import BACKLOG_SYNC_TASK, EXECUTE_RUN_TASK, LEGACY_CHECK_TASK, RUNS_QUEUE, UI_CHANGE_TASK
@@ -37,7 +39,10 @@ async def only_execution(engine: AsyncEngine, run: uuid.UUID) -> AsyncIterator[b
             yield alone
         finally:
             if alone:
-                await conn.execute(text("SELECT pg_advisory_unlock(hashtext(:k))"), key)
+                # A connection the database lost took the lock with it (2026-10-20: PostgreSQL restarted in the
+                # middle of a run and the failed unlock failed the whole job): nothing is left to release.
+                with contextlib.suppress(SQLAlchemyError):
+                    await conn.execute(text("SELECT pg_advisory_unlock(hashtext(:k))"), key)
 
 
 def _runtime(context: JobContext) -> Runtime:

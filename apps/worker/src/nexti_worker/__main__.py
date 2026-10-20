@@ -3,6 +3,7 @@
 import asyncio
 import logging
 import sys
+import time
 from collections.abc import Callable, Mapping, MutableMapping
 from pathlib import Path
 from typing import Any
@@ -136,13 +137,28 @@ async def run_worker(settings: WorkerSettings, *, name: str | None = None, wait:
             await engine.dispose()
 
 
+RESTART_AFTER_SECONDS = 10
+
+
 def main() -> int:
     settings = get_settings()
     configure_logging(settings)
     name = sys.argv[1] if len(sys.argv) > 1 else None
-    # psycopg's async mode needs the selector loop (the default on Windows is the proactor loop).
-    asyncio.run(run_worker(settings, name=name), loop_factory=asyncio.SelectorEventLoop)
-    return 0
+    # The worker outlives a database that restarts (2026-10-20: PostgreSQL went through recovery, the queue's
+    # connector failed and the worker exited, leaving a bank project's run stopped for hours): it starts again; the
+    # jobs it held go back to the queue as stalled and continue from their checkpoint. Ctrl+C still stops it.
+    while True:
+        try:
+            # psycopg's async mode needs the selector loop (the default on Windows is the proactor loop).
+            asyncio.run(run_worker(settings, name=name), loop_factory=asyncio.SelectorEventLoop)
+            return 0
+        except KeyboardInterrupt:
+            return 130
+        except Exception as exc:
+            structlog.get_logger("nexti_worker").error(
+                "worker.restart", error=type(exc).__name__, detail=str(exc)[:300], exc_info=exc
+            )
+            time.sleep(RESTART_AFTER_SECONDS)
 
 
 if __name__ == "__main__":
