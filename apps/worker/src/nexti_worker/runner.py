@@ -202,6 +202,14 @@ async def _execute(
             waiting = await pending_interrupts(graph, run)
             if waiting:
                 value = await _resume_value(runtime.engine, tenant_id, run_id, waiting[0], executors)
+                target = await _retry_from(runtime.engine, tenant_id, run_id)
+                if value is None and target and await store.status() == "queued":
+                    # A run cancelled while it waited (a gate, a question) and retried from a phase (2026-10-20: a
+                    # COBOL run retried from its inventory answered "still waiting" for the gate of the cancelled
+                    # run): what it waited for is gone, the graph starts again from the chosen phase.
+                    log.info("run.restart", run_id=str(run_id), phase=target, abandoned=waiting[0].get("type"))
+                    await graph.ainvoke({"resume_from": target}, config)
+                    return str(await store.status())
                 if value is None:
                     return "still waiting"
                 log.info("run.resume", run_id=str(run_id), waiting=waiting[0].get("type"))
