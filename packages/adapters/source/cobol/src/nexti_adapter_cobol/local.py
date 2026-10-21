@@ -581,11 +581,46 @@ def translate(program: Program, text: str, schema: Schema, local_programs: set[s
 
     body = _EXEC_CICS.sub(replacement, text)
     body = _DFHRESP.sub(lambda m: str(DFHRESP.get(m.group(1).upper(), 1)), body)
+    cursors: list[str] = []
     if found.sql:
         body = _EXEC_SQL.sub(sql_replacement, body)
+        body = _cursors_to_procedure(_level_77_as_01(body), cursors)
     found.files = used
-    found.text = _with_environment(body, program, used, sql=found.sql, main=main)
+    found.text = _with_environment(body, program, used, sql=found.sql, main=main, cursors=cursors)
     return found
+
+
+_LEVEL_77 = re.compile(r"^(.{6}[ ]+)77(?=\s)", re.MULTILINE)
+
+
+def _level_77_as_01(body: str) -> str:
+    """ocesql does not take a level 77 item as a host variable (`:S-CODIGO is not defined in the working-storage`):
+    an independent elementary item is the same as a 01 for the program."""
+    start = next((m.start() for m in _DIVISION.finditer(body) if m.group(2).upper() == "PROCEDURE"), len(body))
+    return _LEVEL_77.sub(lambda m: m.group(1) + "01", body[:start]) + body[start:]
+
+
+# A statement that starts its line (the comment the translator leaves for a DECLARE TABLE mentions EXEC SQL too).
+_SQL_LINE = re.compile(r"^[ \t]+EXEC\s+SQL\s+.*?\s*END-EXEC\.?", re.IGNORECASE | re.DOTALL | re.MULTILINE)
+_DECLARE_CURSOR = re.compile(r"\s*EXEC\s+SQL\s+DECLARE\s+[A-Z0-9_-]+\s+CURSOR\b", re.IGNORECASE)
+
+
+def _cursors_to_procedure(body: str, cursors: list[str]) -> str:
+    """ocesql does not take DECLARE CURSOR in WORKING-STORAGE (the estate's DB2 programs declare them there): they are
+    taken out, a comment per line keeping the numbers, and `cursors` carries them to the start of the PROCEDURE
+    DIVISION, where ocesql registers them before any OPEN."""
+    start = next((m.start() for m in _DIVISION.finditer(body) if m.group(2).upper() == "PROCEDURE"), None)
+    if start is None:
+        return body
+
+    def moved(match: re.Match[str]) -> str:
+        if not _DECLARE_CURSOR.match(match.group(0)):
+            return match.group(0)
+        text = match.group(0).strip("\n")
+        cursors.append(text)
+        return "\n".join("      * cursor declared at the start of the PROCEDURE DIVISION" for _ in text.split("\n"))
+
+    return _SQL_LINE.sub(moved, body[:start]) + body[start:]
 
 
 def _translate_command(
@@ -703,7 +738,13 @@ def _translate_command(
 
 
 def _with_environment(
-    body: str, program: Program, files: Mapping[str, tuple[int, int]], *, sql: bool = False, main: bool = False
+    body: str,
+    program: Program,
+    files: Mapping[str, tuple[int, int]],
+    *,
+    sql: bool = False,
+    main: bool = False,
+    cursors: Sequence[str] = (),
 ) -> str:
     """The declarations the translated program needs: the files it uses, the working items of the substitutes,
     the EIB and the COMMAREA in LINKAGE, the PROCEDURE DIVISION receiving them and the files opened at the start."""
@@ -802,6 +843,7 @@ def _with_environment(
             out.append("       PROCEDURE DIVISION USING DFHEIBLK DFHCOMMAREA.")
             if opens:
                 out += ["       NX-0000-OPEN-FILES.", *opens]
+            out += cursors
             i += 1
             continue
         out.append(line)

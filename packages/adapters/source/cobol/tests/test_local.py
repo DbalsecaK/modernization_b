@@ -253,3 +253,31 @@ def test_cics_options_may_have_blanks_before_their_parenthesis() -> None:
     )
     assert _parse_exec("RETURN TRANSID('I002')")[1] == {"TRANSID": "'I002'"}
     assert _parse_exec("RETURN")[0] == "RETURN"
+
+
+def test_ocesql_limits_are_rewritten_level_77_as_01_and_cursors_into_the_procedure_division() -> None:
+    from nexti_adapter_cobol.local import _cursors_to_procedure, _level_77_as_01
+
+    program = "\n".join(
+        [
+            "       WORKING-STORAGE SECTION.",
+            "       77  S-CODIGO                PIC X(08) VALUES SPACES.",
+            "      * EXEC SQL DECLARE TABLE: table in PostgreSQL (NX)",
+            "           EXEC SQL DECLARE C1 CURSOR FOR SELECT A FROM T",
+            "               WHERE B LIKE :S-CODIGO END-EXEC.",
+            "       PROCEDURE DIVISION.",
+            "           MOVE 77 TO X.",
+            "       77  NOT-A-DECLARATION PIC X.",
+        ]
+    )
+    cursors: list[str] = []
+    out = _cursors_to_procedure(_level_77_as_01(program), cursors)
+    assert "       01  S-CODIGO " in out
+    assert "       77  NOT-A-DECLARATION" in out  # only the data division is rewritten
+    assert cursors == [
+        "           EXEC SQL DECLARE C1 CURSOR FOR SELECT A FROM T\n               WHERE B LIKE :S-CODIGO END-EXEC."
+    ]
+    assert out.count("cursor declared at the start") == 2  # one comment per line: the line numbers hold
+    assert out.splitlines().index("       PROCEDURE DIVISION.") == program.splitlines().index(
+        "       PROCEDURE DIVISION."
+    )
