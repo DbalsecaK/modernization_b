@@ -242,16 +242,14 @@ def test_the_local_engine_reproduces_the_recorded_traces_of_the_fictitious_appli
         assert recorded.observation.tables == wanted["tables"], recorded.case.name
 
 
-def test_return_transid_without_parentheses_is_parsed_like_the_parenthesised_form() -> None:
+def test_cics_options_may_have_blanks_before_their_parenthesis() -> None:
     from nexti_adapter_cobol.local import _parse_exec
 
-    bare = _parse_exec("RETURN TRANSID I002 COMMAREA REG-INSSI02 LENGTH LENGTH OF REG-INSSI02")
-    assert bare == (
+    spaced = _parse_exec("RETURN TRANSID ('I002') COMMAREA (REG-INSSI02) LENGTH (LENGTH OF REG-INSSI02)")
+    assert spaced == (
         "RETURN",
-        {"TRANSID": "I002", "COMMAREA": "REG-INSSI02", "LENGTH": "LENGTH OF REG-INSSI02"},
+        {"TRANSID": "'I002'", "COMMAREA": "REG-INSSI02", "LENGTH": "LENGTH OF REG-INSSI02"},
         [],
     )
-    quoted = _parse_exec("RETURN TRANSID('I002') COMMAREA(REG-INSSI02) LENGTH(LENGTH OF REG-INSSI02)")
-    assert quoted[0] == "RETURN"
-    assert quoted[1]["TRANSID"] == "'I002'"
+    assert _parse_exec("RETURN TRANSID('I002')")[1] == {"TRANSID": "'I002'"}
     assert _parse_exec("RETURN")[0] == "RETURN"

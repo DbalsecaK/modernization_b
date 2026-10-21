@@ -31,8 +31,8 @@ run of a transaction; **memory is not shared between tasks**, only what a comman
   wait between screens, and **the COMMAREA is the only state that crosses**. It behaves as "call the next program
   with this data in memory on the next interaction", never as an immediate call: nothing after the RETURN runs.
   Locks and uncommitted work end with the task (an implicit SYNCPOINT).
-- The forms seen in real estates include the parenthesised `TRANSID('PGMN') COMMAREA(WS-AREA) LENGTH(LENGTH OF
-  WS-AREA)` and the bare `TRANSID I002 COMMAREA REG LENGTH LENGTH OF REG`; both mean the same.
+- Options are written `NAME(value)`, often with blanks before the parenthesis and one option per line:
+  `TRANSID ('I002')`, `COMMAREA (REG-X)`, `LENGTH (LENGTH OF REG-X)`.
 - **EIBCALEN = 0** means first entry into the transaction (no COMMAREA came); **EIBAID** is the key the user
   pressed; **EIBTRNID** the current transaction. All are business branch points and must appear in the extracted
   flow, together with the COMMAREA fields the program reads first.
