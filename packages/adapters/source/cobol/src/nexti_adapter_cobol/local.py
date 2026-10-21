@@ -460,6 +460,11 @@ _SECTION = re.compile(
 )
 
 
+# Options whose argument may come without parentheses: a literal, a name or `LENGTH OF name`.
+_BARE_ARGUMENTS = frozenset({"TRANSID", "COMMAREA", "LENGTH", "PROGRAM", "MAPSET", "MAP", "FROM", "INTO", "QUEUE"})
+_BARE_ARGUMENT = re.compile(r"\s+('[^']*'|\"[^\"]*\"|LENGTH\s+OF\s+[A-Z0-9-]+|[A-Z0-9][A-Z0-9-]*)", re.IGNORECASE)
+
+
 def _parse_exec(body: str) -> tuple[str, dict[str, str], list[str]]:
     """(command words, options with an argument, options without one) of the text between EXEC CICS and END-EXEC;
     the arguments keep their text (`LENGTH OF X` included, parentheses balanced)."""
@@ -485,6 +490,10 @@ def _parse_exec(body: str) -> tuple[str, dict[str, str], list[str]]:
                     break
             options[word] = text[i + 1 : j - 1].strip()
             i = j
+        elif word in _BARE_ARGUMENTS and words and (bare := _BARE_ARGUMENT.match(text, i)):
+            # The estate writes `RETURN TRANSID I002 COMMAREA REG LENGTH LENGTH OF REG` without parentheses.
+            options[word] = bare.group(1)
+            i = bare.end()
         elif not options and not flags:
             words.append(word)
         else:
