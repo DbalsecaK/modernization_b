@@ -40,6 +40,9 @@ public final class EquivalenceHarness {
 
     public static void main(String[] args) throws Exception {
         JsonNode plan = JSON.readTree(new File(args[0]));
+        if (plan.hasNonNull("driver")) { // the driver of the legacy's engine, generated with the project
+            Class.forName(plan.get("driver").asText());
+        }
         JsonNode cases = JSON.readTree(new File(args[1]));
         String password = plan.has("password") ? plan.get("password").asText() : "";
         SingleConnectionDataSource dataSource = new SingleConnectionDataSource(

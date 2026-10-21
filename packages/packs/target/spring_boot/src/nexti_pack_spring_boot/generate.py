@@ -705,14 +705,32 @@ CALL_HELPER = (
 )
 
 
+LEGACY_DRIVER_PATH = "src/main/java/nexti/jdbc/LegacyDriver.java"
+LEGACY_DRIVER = "nexti.jdbc.LegacyDriver"
+
+
+def legacy_driver_source() -> str:
+    """jTDS with what it lacks of JDBC 4.1/4.2 (`rs.getObject(col, Type.class)`, java.time binding, `isValid`...):
+    a service on the legacy's engine failed 32 of its 110 golden cases with AbstractMethodError (2026-10-20)."""
+    from importlib.resources import files as package_files
+
+    return (package_files("nexti_pack_spring_boot") / "jdbc" / "LegacyDriver.java").read_text("utf-8")
+
+
+def legacy_url(jdbc_url: str) -> str:
+    """The URL of the legacy's engine through LegacyDriver: `jdbc:jtds:...` becomes `jdbc:nexti:jtds:...`."""
+    return jdbc_url if jdbc_url.startswith("jdbc:nexti:") else "jdbc:nexti:" + jdbc_url.removeprefix("jdbc:")
+
+
 def generated_adapters(design: Design) -> dict[str, str]:
     """The adapters the platform writes itself (ADR-0055): the unit of work with savepoints, and with
-    `same_database` every port that replaces a legacy program."""
+    `same_database` every port that replaces a legacy program and the driver of the legacy's engine."""
     files: dict[str, str] = {}
     unit = unit_of_work_port(design)
     if unit is not None:
         files.update([unit_of_work_adapter_file(design, unit)])
     if design.data_strategy == "same_database":
+        files[LEGACY_DRIVER_PATH] = legacy_driver_source()
         for port in design.ports:
             if port.legacy_program:
                 files.update([program_adapter_file(design, port)])

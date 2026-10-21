@@ -250,7 +250,8 @@ def test_against_the_legacys_engine_every_port_is_real_and_the_calls_come_from_t
         parse_args=lambda text: [part.split(":", 1)[1] for part in text.split("|")],
     )
     harness = plan(DESIGN, PAY, engine)
-    assert harness["jdbc_url"] == engine.jdbc_url
+    assert harness["jdbc_url"] == "jdbc:nexti:" + engine.jdbc_url.removeprefix("jdbc:")  # through LegacyDriver
+    assert harness["driver"] == "nexti.jdbc.LegacyDriver"
     assert harness["reset"] == []
     assert harness["calls"] == engine.calls_query
     assert all(p["adapter"] for p in harness["ports"])  # DebitGateway too: the substitute answers for real
