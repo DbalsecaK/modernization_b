@@ -21,6 +21,7 @@ from nexti_api.schemas import ApiModel
 from nexti_core.db.models import AppUser, InputArtifact, Project
 from nexti_core.object_store import input_key
 from nexti_ingest import Rejection, ScannerUnavailableError, figma_link, prototype_link, safe_name, validate
+from nexti_ingest.archive import SOURCE_SUFFIXES
 from nexti_ingest.loose import CODE_KINDS, as_upload
 
 router = APIRouter(prefix="/api/v1/projects/{project_id}/inputs", tags=["inputs"])
@@ -28,6 +29,12 @@ ViewProject = Annotated[Authorized, Depends(require_project("project.view"))]
 UploadInputs = Annotated[Authorized, Depends(require_project("input.upload"))]
 FileKind = Literal["source_archive", "target_archive", "document", "screenshot"]
 LinkKind = Literal["figma_link", "prototype_link"]
+# Suffixes that are only ever legacy code (a .txt or .json may be a document): uploaded as a document, they are code.
+_LEGACY_CODE = frozenset(SOURCE_SUFFIXES) - {".txt", ".json", ".config"}
+
+
+def _is_legacy_code(filename: str) -> bool:
+    return "." in filename and "." + filename.rsplit(".", 1)[-1].lower() in _LEGACY_CODE
 
 
 class InputOut(ApiModel):
@@ -143,6 +150,10 @@ async def upload_input(
     code files, which are packed into one zip and validated like an uploaded archive."""
     store, scanner, limits = services.store(request), services.scanner(request), services.services(request).limits
     name = safe_name(file[0].filename or "") if file else ""
+    if kind == "document" and file and all(_is_legacy_code(f.filename or "") for f in file):
+        # Code chosen as a document is code (2026-10-21: seven copybooks of a CICS project went in as documents and
+        # the run, which reads only code inputs, never saw them).
+        kind = "source_archive"
     async with transaction(request, auth) as conn:
         await _project(conn, project_id)
     try:

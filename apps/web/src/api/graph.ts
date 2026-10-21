@@ -60,6 +60,9 @@ export const useMissingInputs = (projectId: string) =>
     queryFn: () =>
       unwrap(api.GET('/api/v1/projects/{project_id}/graph/missing', { params: { path: { project_id: projectId } } })),
     retry: false,
+    // A new inventory (the customer's files uploaded, a run retried) clears the warning without reloading the page.
+    refetchInterval: 60_000,
+    refetchOnWindowFocus: true,
   })
 
 /** The statements of the legacy with their class and why (stored by the classification phase); null before it. */
