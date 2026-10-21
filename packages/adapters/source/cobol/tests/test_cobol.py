@@ -169,3 +169,26 @@ def test_the_unit_of_work_of_a_cics_program_is_its_syncpoints() -> None:
     assert (172, "commit") in work
     assert adapter.unit_of_work(workspace(), "PAGOMNU") == []
     assert adapter.unit_of_work(workspace(), "NOPE") == []
+
+
+def test_exec_sql_include_is_a_copybook_the_inputs_must_carry() -> None:
+    from nexti_adapter_cobol.parser import parse_program
+
+    source = "\n".join(
+        [
+            "       IDENTIFICATION DIVISION.",
+            "       PROGRAM-ID. P1.",
+            "       DATA DIVISION.",
+            "       WORKING-STORAGE SECTION.",
+            "           EXEC SQL",
+            "              INCLUDE SQLCA",
+            "           END-EXEC.",
+            "           EXEC SQL",
+            "              INCLUDE T95OBS04",
+            "           END-EXEC.",
+            "       PROCEDURE DIVISION.",
+            "           GOBACK.",
+        ]
+    )
+    program = parse_program("p1.cbl", source)
+    assert [name for name, _ in program.copies] == ["SQLCA", "T95OBS04"]

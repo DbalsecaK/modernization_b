@@ -274,6 +274,10 @@ def _data_items(
             if section == "LINKAGE":
                 linkage.add(copies[-1][0])
             continue
+        if head.upper == "EXEC" and [t.upper for t in sentence[1:3]] == ["SQL", "INCLUDE"] and len(sentence) > 3:
+            # EXEC SQL INCLUDE member (a DCLGEN of a DB2 table) is a COPY for the precompiler: the member is an input.
+            copies.append((sentence[3].text.strip("'\"").upper(), head.line))
+            continue
         if head.kind != "number" or not head.text.isdigit():
             if head.upper in ("WORKING-STORAGE", "LINKAGE", "LOCAL-STORAGE", "FILE"):
                 section = head.upper
