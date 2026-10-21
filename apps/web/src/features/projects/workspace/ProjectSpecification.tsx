@@ -8,8 +8,18 @@ import type { ProjectDetail } from '@/api/projects'
 import { useContracts } from '@/api/architecture'
 import { useQuestions } from '@/api/runs'
 import { useScreens } from '@/api/screens'
-import { useC1Check, useCoverage, usePlan, useRules, useStories, type C1Check } from '@/api/spec'
-import { Button, Card, CardBody, EmptyState } from '@/components/ui/primitives'
+import {
+  useC1Check,
+  useClassifyStatements,
+  useCoverage,
+  usePlan,
+  useResetPlan,
+  useRules,
+  useStories,
+  type C1Check,
+} from '@/api/spec'
+import { Button, Card, CardBody, EmptyState, Field } from '@/components/ui/primitives'
+import { Textarea, toast } from '@/components/ui/overlay'
 import { QuestionList } from '@/features/decisions/QuestionCard'
 import { isActive, toRuleView } from './spec/model'
 import { ContractsView } from './spec/ContractsView'
@@ -116,7 +126,15 @@ export function ProjectSpecification({ project, onOpenRuns }: { project: Project
         ))}
       </div>
 
-      {(view === 'rules' || view === 'stories') && c1.data && <C1Readiness check={c1.data} onOpenRuns={onOpenRuns} />}
+      {(view === 'rules' || view === 'stories') && c1.data && (
+        <C1Readiness
+          projectId={project.id}
+          check={c1.data}
+          canClassify={perms.includes('story.edit')}
+          canEditPlan={perms.includes('plan.edit')}
+          onOpenRuns={onOpenRuns}
+        />
+      )}
 
       {view === 'rules' && (
         <RulesView
@@ -161,8 +179,24 @@ export function ProjectSpecification({ project, onOpenRuns }: { project: Project
 }
 
 /** Why gate C1 (stories and plan) cannot be approved yet, as computed by the server. */
-function C1Readiness({ check, onOpenRuns }: { check: C1Check; onOpenRuns: () => void }) {
+function C1Readiness({
+  projectId,
+  check,
+  canClassify,
+  canEditPlan,
+  onOpenRuns,
+}: {
+  projectId: string
+  check: C1Check
+  canClassify: boolean
+  canEditPlan: boolean
+  onOpenRuns: () => void
+}) {
   const { t } = useTranslation()
+  const resetPlan = useResetPlan(projectId)
+  const classify = useClassifyStatements(projectId)
+  const [reason, setReason] = useState('')
+  const uncited = check.uncited ?? []
   return (
     <Card className={check.canApprove ? 'border-good' : 'border-warning'}>
       <CardBody className="flex flex-wrap items-start gap-3 text-sm">
@@ -179,6 +213,72 @@ function C1Readiness({ check, onOpenRuns }: { check: C1Check; onOpenRuns: () => 
                 <li key={b}>{b}</li>
               ))}
             </ul>
+          )}
+          {!check.canApprove && check.planProblems && (
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <span className="text-text-2">{t('spec.c1.plan')}</span>
+              {canEditPlan && (
+                <Button
+                  size="sm"
+                  disabled={resetPlan.isPending}
+                  onClick={() =>
+                    resetPlan.mutate(undefined, {
+                      onSuccess: () => toast(t('spec.c1.planDone')),
+                      onError: (e) => toast(e instanceof ApiError ? e.message : t('common.error')),
+                    })
+                  }
+                >
+                  {t('spec.c1.planAction')}
+                </Button>
+              )}
+            </div>
+          )}
+          {!check.canApprove && uncited.length > 0 && (
+            <div className="mt-3 space-y-2">
+              <p className="font-medium text-text">
+                {t('spec.c1.uncitedTitle')} ({uncited.length})
+              </p>
+              <p className="text-xs text-text-2">{t('spec.c1.uncitedWhy')}</p>
+              <ul className="list-disc space-y-0.5 pl-5 text-xs text-text-2">
+                {uncited.map((u) => (
+                  <li key={`${u.file}:${u.lineStart}`}>
+                    {u.file} · {t('spec.c1.line', { line: u.lineStart })}
+                    {u.unit ? ` · ${u.unit}` : ''}
+                  </li>
+                ))}
+              </ul>
+              {canClassify ? (
+                <div className="space-y-2">
+                  <Field label={t('spec.c1.reason')} hint={t('spec.c1.reasonHint')}>
+                    <Textarea rows={2} value={reason} onChange={(e) => setReason(e.target.value)} />
+                  </Field>
+                  <Button
+                    size="sm"
+                    disabled={classify.isPending || reason.trim().length < 10}
+                    onClick={() =>
+                      classify.mutate(
+                        {
+                          statements: uncited.map((u) => ({ file: u.file, lineStart: u.lineStart, lineEnd: u.lineEnd })),
+                          label: 'infrastructure',
+                          reason: reason.trim(),
+                        },
+                        {
+                          onSuccess: () => {
+                            toast(t('spec.c1.marked'))
+                            setReason('')
+                          },
+                          onError: (e) => toast(e instanceof ApiError ? e.message : t('common.error')),
+                        },
+                      )
+                    }
+                  >
+                    {t('spec.c1.markInfra')}
+                  </Button>
+                </div>
+              ) : (
+                <p className="text-xs text-muted">{t('spec.c1.noPermission')}</p>
+              )}
+            </div>
           )}
           {(check.warnings ?? []).length > 0 && (
             <div className="mt-2">

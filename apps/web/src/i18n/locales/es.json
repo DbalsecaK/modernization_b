@@ -699,8 +699,19 @@
     },
     "c1": {
       "ready": "Las historias y el plan pueden aprobarse en la compuerta C1 (en la pestaña Ejecuciones).",
-      "blocked": "La compuerta C1 aún no puede aprobarse:",
-      "coverageWarning": "Código de negocio que ninguna regla cubre (no bloquea; revisá que no falte lógica):"
+      "blocked": "La compuerta C1 aún no puede aprobarse. Resolvé esto y se habilita sola:",
+      "coverageWarning": "Código de negocio que ninguna regla cubre (no bloquea; revisá que no falte lógica):",
+      "plan": "El plan por olas rompe una dependencia obligatoria entre historias.",
+      "planAction": "Usar el plan sugerido",
+      "planDone": "Plan restablecido al sugerido.",
+      "uncitedTitle": "Sentencias de negocio que ninguna regla cita",
+      "uncitedWhy": "Son comportamientos del legado que ninguna regla le pide reproducir al código nuevo, así que la prueba no puede exigirlos. Si son lógica de negocio, volvé a extraer las reglas (nueva ejecución desde las reglas). Si son infraestructura (el mensaje de un error que el negocio nunca ve, una traza), marcalas con el motivo.",
+      "line": "línea {{line}}",
+      "reason": "Motivo (obligatorio, queda auditado)",
+      "reasonHint": "Ej.: manejo del error SQL de la tabla; no es una regla de negocio",
+      "markInfra": "Marcar como infraestructura",
+      "marked": "Sentencias marcadas como infraestructura.",
+      "noPermission": "Tu rol no puede reclasificar; pedíselo a quien revise la especificación."
     },
     "noScreens": "Este legacy no tiene pantallas",
     "noScreensHint": "Las pantallas vienen de mapas BMS u otras fuentes de pantallas; un conjunto de procedimientos almacenados no tiene.",
@@ -2949,7 +2960,11 @@
       "ivvProblems_one": "El mapeo tiene {{count}} problema. Corrígelo en la pestaña IV&V antes de aprobar.",
       "ivvProblems_other": "El mapeo tiene {{count}} problemas. Corrígelos en la pestaña IV&V antes de aprobar.",
       "ivvNoMapping": "Todavía no hay mapeo: el target no se ha recibido.",
-      "ivvUnknown": "No se pudo cargar el estado del mapeo. Revísalo en la pestaña IV&V antes de aprobar."
+      "ivvUnknown": "No se pudo cargar el estado del mapeo. Revísalo en la pestaña IV&V antes de aprobar.",
+      "blockedTitle": "C1 todavía no se puede aprobar",
+      "blockedWhy": "La compuerta aprueba la especificación, las historias y el plan juntos, y hay pendientes. Se resuelven en la pestaña Especificación.",
+      "open": "Ir a Especificación",
+      "blockedToast": "C1 no puede aprobarse todavía: abrí la pestaña Especificación, ahí se explica qué falta."
     },
     "status": {
       "queued": "En cola",

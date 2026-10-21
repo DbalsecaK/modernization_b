@@ -140,7 +140,7 @@ export function ProjectWorkspace() {
       {tab === 'ivv' && <ProjectIvv project={p} onOpenRuns={() => setTab('runs')} />}
       {tab === 'delta' && <ProjectDelta project={p} onOpenRuns={() => setTab('runs')} />}
       {tab === 'validation' && <ProjectValidation project={p} onOpenRuns={() => setTab('runs')} />}
-      {tab === 'runs' && <ProjectRuns project={p} />}
+      {tab === 'runs' && <ProjectRuns project={p} onOpenSpec={() => setTab('specification')} />}
       {tab === 'costs' && <ProjectCosts project={p} onOpenRuns={() => setTab('runs')} />}
       {tab === 'activity' && <ProjectActivity project={p} />}
       {tab === 'settings' && <ProjectSettings project={p} />}

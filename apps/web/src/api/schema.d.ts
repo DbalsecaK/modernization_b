@@ -1088,6 +1088,35 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/projects/{project_id}/classification/overrides": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Overrides
+         * @description The statements people classified again, newest first.
+         */
+        get: operations["list_overrides_api_v1_projects__project_id__classification_overrides_get"];
+        put?: never;
+        /**
+         * Classify Again
+         * @description Classify business statements as infrastructure (or control flow), with a reason: they stop blocking C1. Only
+         *     statements the classification has as business can be classified again; the decision is audited.
+         */
+        post: operations["classify_again_api_v1_projects__project_id__classification_overrides_post"];
+        /**
+         * Undo Override
+         * @description Give a statement back the classification the phase gave it.
+         */
+        delete: operations["undo_override_api_v1_projects__project_id__classification_overrides_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/projects/{project_id}/code": {
         parameters: {
             query?: never;
@@ -3300,6 +3329,13 @@ export interface components {
             blockers: string[];
             /** Canapprove */
             canApprove: boolean;
+            /**
+             * Planproblems
+             * @default false
+             */
+            planProblems: boolean;
+            /** Uncited */
+            uncited?: components["schemas"]["UncitedStatementOut"][];
             /** Warnings */
             warnings?: string[];
         };
@@ -3467,6 +3503,10 @@ export interface components {
             lineEnd: number;
             /** Linestart */
             lineStart: number;
+            /** Overriddenby */
+            overriddenBy?: string | null;
+            /** Overridereason */
+            overrideReason?: string | null;
             /** Reason */
             reason: string;
             /** Statement */
@@ -5163,6 +5203,36 @@ export interface components {
             /** Name */
             name: string;
         };
+        /** OverrideIn */
+        OverrideIn: {
+            /**
+             * Label
+             * @default infrastructure
+             * @enum {string}
+             */
+            label: "infrastructure" | "control_flow";
+            /** Reason */
+            reason: string;
+            /** Statements */
+            statements: components["schemas"]["StatementRef"][];
+        };
+        /** OverrideOut */
+        OverrideOut: {
+            /** Createdat */
+            createdAt: string;
+            /** Createdby */
+            createdBy?: string | null;
+            /** File */
+            file: string;
+            /** Label */
+            label: string;
+            /** Lineend */
+            lineEnd: number;
+            /** Linestart */
+            lineStart: number;
+            /** Reason */
+            reason: string;
+        };
         /** PackProfileIn */
         PackProfileIn: {
             /**
@@ -6466,6 +6536,15 @@ export interface components {
             /** Notsliced */
             notSliced: number;
         };
+        /** StatementRef */
+        StatementRef: {
+            /** File */
+            file: string;
+            /** Lineend */
+            lineEnd: number;
+            /** Linestart */
+            lineStart: number;
+        };
         /** StoryIn */
         StoryIn: {
             /** Criteria */
@@ -6847,6 +6926,20 @@ export interface components {
             summary: {
                 [key: string]: unknown;
             };
+        };
+        /**
+         * UncitedStatementOut
+         * @description A business statement no rule cites: it blocks C1, and here is where it is so a person can act on it.
+         */
+        UncitedStatementOut: {
+            /** File */
+            file: string;
+            /** Lineend */
+            lineEnd: number;
+            /** Linestart */
+            lineStart: number;
+            /** Unit */
+            unit?: string | null;
         };
         /** UsageRow */
         UsageRow: {
@@ -9458,6 +9551,107 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ClassificationOut"] | null;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_overrides_api_v1_projects__project_id__classification_overrides_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OverrideOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    classify_again_api_v1_projects__project_id__classification_overrides_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OverrideIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OverrideOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    undo_override_api_v1_projects__project_id__classification_overrides_delete: {
+        parameters: {
+            query: {
+                file: string;
+                line_start: number;
+                line_end: number;
+            };
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OverrideOut"][];
                 };
             };
             /** @description Validation Error */

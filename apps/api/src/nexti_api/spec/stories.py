@@ -381,10 +381,13 @@ async def get_coverage(request: Request, project_id: uuid.UUID, auth: ViewProjec
 
 @router.get("/c1-check", response_model=C1CheckOut)
 async def c1_check(request: Request, project_id: uuid.UUID, auth: ViewProject) -> C1CheckOut:
-    from nexti_api.spec.classification import coverage_blockers, coverage_warnings
+    from nexti_api.spec.classification import coverage_blockers, coverage_warnings, uncited
 
     async with transaction(request, auth) as conn:
         blockers = await common.c1_blockers(conn, project_id)
         blockers += await coverage_blockers(request, conn, project_id)  # ADR-0056: uncited business statements
         warnings = await coverage_warnings(request, conn, project_id)
-    return C1CheckOut(can_approve=not blockers, blockers=blockers, warnings=warnings)
+        statements = await uncited(request, conn, project_id)
+        plan_problems = bool(await common.plan_blockers(conn, project_id))
+    return C1CheckOut(can_approve=not blockers, blockers=blockers, warnings=warnings, uncited=statements,
+                      plan_problems=plan_problems)  # fmt: skip

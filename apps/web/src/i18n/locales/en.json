@@ -699,8 +699,19 @@
     },
     "c1": {
       "ready": "The stories and the plan can be approved at gate C1 (in the Runs tab).",
-      "blocked": "Gate C1 cannot be approved yet:",
-      "coverageWarning": "Business code no rule covers (not blocking; check it holds no missing logic):"
+      "blocked": "Gate C1 cannot be approved yet. Fix this and it enables itself:",
+      "coverageWarning": "Business code no rule covers (not blocking; check it holds no missing logic):",
+      "plan": "The plan by waves breaks a hard dependency between stories.",
+      "planAction": "Use the suggested plan",
+      "planDone": "Plan reset to the suggested one.",
+      "uncitedTitle": "Business statements no rule cites",
+      "uncitedWhy": "They are legacy behaviours no rule asks the new code to reproduce, so the proof cannot require them. If they are business logic, extract the rules again (new run from the rules). If they are infrastructure (the message of an error the business never sees, a trace), mark them with the reason.",
+      "line": "line {{line}}",
+      "reason": "Reason (required, audited)",
+      "reasonHint": "E.g. SQL error handling of the table; not a business rule",
+      "markInfra": "Mark as infrastructure",
+      "marked": "Statements marked as infrastructure.",
+      "noPermission": "Your role cannot classify again; ask whoever reviews the specification."
     },
     "noScreens": "This legacy has no screens",
     "noScreensHint": "Screens come from BMS maps or other screen sources; a stored-procedure estate has none.",
@@ -2949,7 +2960,11 @@
       "ivvProblems_one": "The mapping has {{count}} problem. Correct it in the IV&V tab before approving.",
       "ivvProblems_other": "The mapping has {{count}} problems. Correct them in the IV&V tab before approving.",
       "ivvNoMapping": "There is no mapping yet: the target has not been taken in.",
-      "ivvUnknown": "The state of the mapping could not be loaded. Review it in the IV&V tab before approving."
+      "ivvUnknown": "The state of the mapping could not be loaded. Review it in the IV&V tab before approving.",
+      "blockedTitle": "C1 cannot be approved yet",
+      "blockedWhy": "The gate approves the specification, the stories and the plan together, and something is pending. It is resolved in the Specification tab.",
+      "open": "Go to Specification",
+      "blockedToast": "C1 cannot be approved yet: open the Specification tab, it explains what is missing."
     },
     "status": {
       "queued": "Queued",

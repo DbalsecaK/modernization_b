@@ -92,6 +92,35 @@ async def test_coverage_marks_each_business_statement_and_warns_before_c1(
     assert check["warnings"] == []
     assert check["canApprove"] is False
     assert check["blockers"] == [
-        f"1 of {len(business)} business statement(s) are cited by no rule (lines {first['lineStart']}): extract the "
-        "rules again so each one is cited, or classify the statement as infrastructure"
+        f"1 of {len(business)} business statement(s) are cited by no rule ({first['file']}:{first['lineStart']}): "
+        "extract the rules again so each one is cited, or classify the statement as infrastructure"
     ]
+    where = {"file": first["file"], "lineStart": first["lineStart"], "lineEnd": first["lineEnd"]}
+    assert check["uncited"] == [{**where, "unit": first["unit"]}]
+    # The reviewer classifies it as infrastructure, with a reason (audited): it stops blocking and shows as theirs.
+    url = f"/api/v1/projects/{project_id}/classification/overrides"
+    assert api.post(url, json={"statements": [where], "reason": "corto"}, headers=headers).status_code == 422
+    control = next(s for s in found["statements"] if s["label"] != "business")
+    other = {"file": control["file"], "lineStart": control["lineStart"], "lineEnd": control["lineEnd"]}
+    refused = api.post(url, json={"statements": [other], "reason": "Not business at all here"}, headers=headers)
+    assert refused.status_code == 422, refused.text
+    reason = "Error message of a table failure the business never sees"
+    made = api.post(url, json={"statements": [where], "reason": reason}, headers=headers)
+    assert made.status_code == 201, made.text
+    assert [(o["file"], o["lineStart"], o["label"], o["reason"]) for o in made.json()] == [
+        (first["file"], first["lineStart"], "infrastructure", reason)
+    ]
+    check = api.get(f"/api/v1/projects/{project_id}/c1-check", headers=headers).json()
+    assert (check["blockers"], check["uncited"]) == ([], [])
+    again = api.get(f"/api/v1/projects/{project_id}/classification", headers=headers).json()
+    mine = next(s for s in again["statements"] if (s["file"], s["lineStart"]) == (first["file"], first["lineStart"]))
+    assert (mine["label"], mine["overrideReason"]) == ("infrastructure", reason)
+    assert again["counts"]["business"] == found["counts"]["business"] - 1
+    assert again["coverage"]["notCited"] == 0
+    assert api.post(
+        url, json={"statements": [where], "reason": reason}, headers=sign_in(api, world.b_user)
+    ).status_code in (403, 404)
+    # Undone, it blocks again.
+    params = {"file": first["file"], "line_start": first["lineStart"], "line_end": first["lineEnd"]}
+    assert api.delete(url, params=params, headers=headers).json() == []
+    assert api.get(f"/api/v1/projects/{project_id}/c1-check", headers=headers).json()["canApprove"] is False

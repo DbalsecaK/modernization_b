@@ -166,11 +166,18 @@ async def c1_blockers(conn: AsyncConnection, project_id: uuid.UUID) -> list[str]
             reasons.append(f"{s.key} has no acceptance criteria.")
         elif gherkin.validate_criteria(s.criteria):
             reasons.append(f"{s.key} has invalid Gherkin criteria.")
+    return reasons + await plan_blockers(conn, project_id, all_stories)
+
+
+async def plan_blockers(
+    conn: AsyncConnection, project_id: uuid.UUID, all_stories: list[StoryRow] | None = None
+) -> list[str]:
+    """Why the plan by waves keeps C1 closed: there is none, or it breaks a hard dependency (the suggested plan
+    respects them)."""
+    all_stories = await stories(conn, project_id) if all_stories is None else all_stories
     current = await plan(conn, project_id)
     if current is None:
-        reasons.append("There is no migration plan.")
-    else:
-        check = check_plan(clean_waves(current["waves"], planned_stories(all_stories)), all_stories,
-                           await dependencies(conn, project_id))  # fmt: skip
-        reasons += [p.message for p in check.errors]
-    return reasons
+        return ["There is no migration plan."]
+    check = check_plan(clean_waves(current["waves"], planned_stories(all_stories)), all_stories,
+                       await dependencies(conn, project_id))  # fmt: skip
+    return [p.message for p in check.errors]

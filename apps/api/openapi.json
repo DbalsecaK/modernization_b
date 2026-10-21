@@ -1158,6 +1158,18 @@
             "title": "Canapprove",
             "type": "boolean"
           },
+          "planProblems": {
+            "default": false,
+            "title": "Planproblems",
+            "type": "boolean"
+          },
+          "uncited": {
+            "items": {
+              "$ref": "#/components/schemas/UncitedStatementOut"
+            },
+            "title": "Uncited",
+            "type": "array"
+          },
           "warnings": {
             "items": {
               "type": "string"
@@ -1634,6 +1646,28 @@
           "lineStart": {
             "title": "Linestart",
             "type": "integer"
+          },
+          "overriddenBy": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Overriddenby"
+          },
+          "overrideReason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Overridereason"
           },
           "reason": {
             "title": "Reason",
@@ -6661,6 +6695,93 @@
         "title": "OptionVersionOut",
         "type": "object"
       },
+      "OverrideIn": {
+        "properties": {
+          "label": {
+            "default": "infrastructure",
+            "enum": [
+              "infrastructure",
+              "control_flow"
+            ],
+            "title": "Label",
+            "type": "string"
+          },
+          "reason": {
+            "maxLength": 2000,
+            "minLength": 10,
+            "title": "Reason",
+            "type": "string"
+          },
+          "statements": {
+            "items": {
+              "$ref": "#/components/schemas/StatementRef"
+            },
+            "maxItems": 200,
+            "minItems": 1,
+            "title": "Statements",
+            "type": "array"
+          }
+        },
+        "required": [
+          "statements",
+          "reason"
+        ],
+        "title": "OverrideIn",
+        "type": "object"
+      },
+      "OverrideOut": {
+        "properties": {
+          "createdAt": {
+            "title": "Createdat",
+            "type": "string"
+          },
+          "createdBy": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Createdby"
+          },
+          "file": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "File",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "lineEnd": {
+            "exclusiveMinimum": 0.0,
+            "title": "Lineend",
+            "type": "integer"
+          },
+          "lineStart": {
+            "exclusiveMinimum": 0.0,
+            "title": "Linestart",
+            "type": "integer"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file",
+          "lineStart",
+          "lineEnd",
+          "label",
+          "reason",
+          "createdAt"
+        ],
+        "title": "OverrideOut",
+        "type": "object"
+      },
       "PackProfileIn": {
         "properties": {
           "backend": {
@@ -10342,6 +10463,33 @@
         "title": "StatementCoverageOut",
         "type": "object"
       },
+      "StatementRef": {
+        "properties": {
+          "file": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "File",
+            "type": "string"
+          },
+          "lineEnd": {
+            "exclusiveMinimum": 0.0,
+            "title": "Lineend",
+            "type": "integer"
+          },
+          "lineStart": {
+            "exclusiveMinimum": 0.0,
+            "title": "Linestart",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "file",
+          "lineStart",
+          "lineEnd"
+        ],
+        "title": "StatementRef",
+        "type": "object"
+      },
       "StoryIn": {
         "properties": {
           "criteria": {
@@ -11333,6 +11481,41 @@
           "digest"
         ],
         "title": "TryOut",
+        "type": "object"
+      },
+      "UncitedStatementOut": {
+        "description": "A business statement no rule cites: it blocks C1, and here is where it is so a person can act on it.",
+        "properties": {
+          "file": {
+            "title": "File",
+            "type": "string"
+          },
+          "lineEnd": {
+            "title": "Lineend",
+            "type": "integer"
+          },
+          "lineStart": {
+            "title": "Linestart",
+            "type": "integer"
+          },
+          "unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unit"
+          }
+        },
+        "required": [
+          "file",
+          "lineStart",
+          "lineEnd"
+        ],
+        "title": "UncitedStatementOut",
         "type": "object"
       },
       "UsageRow": {
@@ -15236,6 +15419,183 @@
           }
         },
         "summary": "Get Classification",
+        "tags": [
+          "graph"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/classification/overrides": {
+      "delete": {
+        "description": "Give a statement back the classification the phase gave it.",
+        "operationId": "undo_override_api_v1_projects__project_id__classification_overrides_delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "file",
+            "required": true,
+            "schema": {
+              "title": "File",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "line_start",
+            "required": true,
+            "schema": {
+              "title": "Line Start",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "line_end",
+            "required": true,
+            "schema": {
+              "title": "Line End",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/OverrideOut"
+                  },
+                  "title": "Response Undo Override Api V1 Projects  Project Id  Classification Overrides Delete",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Undo Override",
+        "tags": [
+          "graph"
+        ]
+      },
+      "get": {
+        "description": "The statements people classified again, newest first.",
+        "operationId": "list_overrides_api_v1_projects__project_id__classification_overrides_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/OverrideOut"
+                  },
+                  "title": "Response List Overrides Api V1 Projects  Project Id  Classification Overrides Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Overrides",
+        "tags": [
+          "graph"
+        ]
+      },
+      "post": {
+        "description": "Classify business statements as infrastructure (or control flow), with a reason: they stop blocking C1. Only\nstatements the classification has as business can be classified again; the decision is audited.",
+        "operationId": "classify_again_api_v1_projects__project_id__classification_overrides_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OverrideIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/OverrideOut"
+                  },
+                  "title": "Response Classify Again Api V1 Projects  Project Id  Classification Overrides Post",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Classify Again",
         "tags": [
           "graph"
         ]

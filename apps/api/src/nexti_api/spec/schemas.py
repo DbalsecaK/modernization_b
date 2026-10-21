@@ -124,10 +124,23 @@ class PlanIn(ApiModel):
     change_note: str | None = Field(default=None, max_length=2000)
 
 
+class UncitedStatementOut(ApiModel):
+    """A business statement no rule cites: it blocks C1, and here is where it is so a person can act on it."""
+
+    file: str
+    line_start: int
+    line_end: int
+    unit: str | None = None
+
+
 class C1CheckOut(ApiModel):
     can_approve: bool
     blockers: list[str]
     warnings: list[str] = Field(default_factory=list)  # not blocking: business code no rule covers
+    # What each kind of blocker asks for, so the screen offers the action: statements to cite or classify again,
+    # and whether the plan breaks a hard dependency (the suggested plan fixes it).
+    uncited: list[UncitedStatementOut] = Field(default_factory=list)
+    plan_problems: bool = False
 
 
 class CheckOut(ApiModel):

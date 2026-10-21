@@ -10,6 +10,7 @@ export type StoryOut = Schemas['StoryOut']
 export type StoryInput = Schemas['StoryIn']
 export type Coverage = Schemas['CoverageOut']
 export type C1Check = Schemas['C1CheckOut']
+export type UncitedStatement = Schemas['UncitedStatementOut']
 export type PlanOut = Schemas['PlanOut']
 export type PlanProblem = Schemas['PlanProblemOut']
 export type GherkinResult = Schemas['GherkinOut']
@@ -153,6 +154,12 @@ export const useSavePlan = (projectId: string) =>
 
 export const useResetPlan = (projectId: string) =>
   useSpecMutation(projectId, () => unwrap(api.POST('/api/v1/projects/{project_id}/plan:reset', path(projectId))))
+
+/** A reviewer classifies business statements no rule cites as infrastructure, with a reason (audited). */
+export const useClassifyStatements = (projectId: string) =>
+  useSpecMutation(projectId, (body: Schemas['OverrideIn']) =>
+    unwrap(api.POST('/api/v1/projects/{project_id}/classification/overrides', { ...path(projectId), body })),
+  )
 
 // Gherkin
 export function validateGherkin(criteria: string[]): Promise<GherkinResult> {

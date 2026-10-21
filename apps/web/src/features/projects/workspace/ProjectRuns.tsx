@@ -15,6 +15,7 @@ import {
 import { cn } from '@/lib/cn'
 import { formatDateTime, formatNumber, formatUsd } from '@/lib/format'
 import { ApiError } from '@/api/client'
+import { useC1Check } from '@/api/spec'
 import type { ProjectDetail } from '@/api/projects'
 import {
   ACTIVE_STATUSES,
@@ -78,7 +79,7 @@ function errorText(e: unknown, fallback: string) {
 
 // Runs of the project (spec 10, 18.4): launch the pipeline, follow its phases live, decide its gates, answer its
 // questions. Everything comes from the API; the worker does the work.
-export function ProjectRuns({ project }: { project: ProjectDetail }) {
+export function ProjectRuns({ project, onOpenSpec }: { project: ProjectDetail; onOpenSpec?: () => void }) {
   const { t } = useTranslation()
   const runs = useRuns(project.id)
   const [selected, setSelected] = useState<string | null>(null)
@@ -146,14 +147,14 @@ export function ProjectRuns({ project }: { project: ProjectDetail }) {
               ))}
             </ul>
           </Card>
-          {detail.data && <RunView project={project} run={detail.data} />}
+          {detail.data && <RunView project={project} run={detail.data} onOpenSpec={onOpenSpec} />}
         </div>
       )}
     </div>
   )
 }
 
-function RunView({ project, run }: { project: ProjectDetail; run: RunDetail }) {
+function RunView({ project, run, onOpenSpec }: { project: ProjectDetail; run: RunDetail; onOpenSpec?: () => void }) {
   const { t } = useTranslation()
   const me = useMe()
   const cancel = useCancelRun(project.id)
@@ -293,6 +294,7 @@ function RunView({ project, run }: { project: ProjectDetail; run: RunDetail }) {
         <GateCard
           key={gate.gate}
           project={project}
+          onOpenSpec={onOpenSpec}
           runId={run.id}
           gate={gate}
           launchedByMe={run.startedBy === me?.user.id}
@@ -384,14 +386,17 @@ function GateCard({
   runId,
   gate,
   launchedByMe,
+  onOpenSpec,
 }: {
   project: ProjectDetail
   runId: string
   gate: GateRow
   launchedByMe: boolean
+  onOpenSpec?: () => void
 }) {
   const { t } = useTranslation()
   const decide = useDecideGate(project.id)
+  const c1 = useC1Check(project.id)
   const [comment, setComment] = useState('')
   const key = gate.gate as Gate
   const allowed = project.permissions.includes(GATE_PERMISSION[key]) && !launchedByMe
@@ -402,9 +407,15 @@ function GateCard({
       { runId, gate: key, approve, comment },
       {
         onSuccess: () => toast(t(approve ? 'runsPage.gate.approved' : 'runsPage.gate.rejected', { gate: key })),
-        onError: (e) => toast(errorText(e, t('common.error'))),
+        onError: (e) =>
+          toast(
+            e instanceof ApiError && e.code === 'c1_blocked'
+              ? t('runsPage.gate.blockedToast')
+              : errorText(e, t('common.error')),
+          ),
       },
     )
+  const blocked = key === 'C1' && c1.data?.canApprove === false
   return (
     <Card>
       <CardHeader
@@ -413,6 +424,22 @@ function GateCard({
       />
       <CardBody className="space-y-3">
         {ivvMapping && <IvvMappingStatus projectId={project.id} />}
+        {blocked && (
+          <div className="space-y-2 rounded-md border border-warning p-3 text-sm">
+            <p className="font-medium text-text">{t('runsPage.gate.blockedTitle')}</p>
+            <p className="text-text-2">{t('runsPage.gate.blockedWhy')}</p>
+            <ul className="list-disc space-y-0.5 pl-5 text-xs text-text-2">
+              {c1.data?.blockers.map((b) => (
+                <li key={b}>{b}</li>
+              ))}
+            </ul>
+            {onOpenSpec && (
+              <Button size="sm" variant="primary" onClick={onOpenSpec}>
+                {t('runsPage.gate.open')}
+              </Button>
+            )}
+          </div>
+        )}
         {launchedByMe && <p className="text-sm text-muted">{t('runsPage.gate.segregation')}</p>}
         {!allowed && !launchedByMe && (
           <p className="text-sm text-muted">
@@ -435,7 +462,7 @@ function GateCard({
           aria-label={t('runsPage.gate.comment')}
         />
         <div className="flex gap-2">
-          <Button variant="primary" disabled={!allowed || decide.isPending} onClick={() => send(true)}>
+          <Button variant="primary" disabled={!allowed || decide.isPending || blocked} onClick={() => send(true)}>
             {t('runsPage.gate.approve')}
           </Button>
           <Button disabled={!allowed || decide.isPending || !comment.trim()} onClick={() => send(false)}>
